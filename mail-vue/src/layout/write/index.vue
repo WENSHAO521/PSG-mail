@@ -152,6 +152,7 @@
                 :disabled-date="d => d < new Date(Date.now() - 86400000)"
                 size="small"
                 class="schedule-picker"
+                popper-class="schedule-datetime-popper"
               />
               <el-button size="small" class="schedule-confirm-btn" type="primary"
                          @click="sendScheduled" :disabled="!scheduledAt">
@@ -1055,6 +1056,38 @@ function close() {
 
 .write-select .el-select-dropdown {
   min-width: 0 !important;
+}
+
+/* Send-later date/time popup — desktop widget is fine anchored to the field,
+   but on phones it overflowed and felt like an unrelated overlay popping up.
+   Below 768px, pin it centered as its own compact sheet instead. */
+@media (max-width: 767px) {
+  .schedule-datetime-popper {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 3000 !important;
+    margin: 0 !important;
+  }
+  .schedule-datetime-popper .el-popper__arrow {
+    display: none !important;
+  }
+  .schedule-datetime-popper .el-picker-panel {
+    width: min(320px, calc(100vw - 32px)) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.30) !important;
+  }
+  .schedule-datetime-popper .el-date-picker__content {
+    width: auto !important;
+  }
+  .schedule-datetime-popper .el-date-table td {
+    height: 36px;
+  }
+  .schedule-datetime-popper .el-picker-panel__footer {
+    padding: 8px 12px;
+  }
 }
 </style>
 <style scoped lang="scss">
