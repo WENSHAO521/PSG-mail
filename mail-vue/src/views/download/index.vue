@@ -8,22 +8,27 @@
           <div class="hero-publisher">PANORAMA SCHOLARLY GROUP</div>
           <div class="hero-product">PSG MAIL</div>
           <div class="hero-sub">{{ $t('dlHeroSub') }}</div>
+          <div class="hero-badge" v-if="!dlLoading && release.tag">
+            <span class="hero-badge-dot"/>
+            {{ release.tag }} · {{ fromNow(release.publishedAt) }}
+          </div>
         </div>
 
         <!-- ── Platform cards ── -->
         <div class="dl-grid">
 
           <!-- Windows -->
-          <div class="dl-card">
+          <div class="dl-card" :class="{ 'dl-card--recommended': detected === 'win' }" :style="{ order: detected === 'win' ? -1 : 0 }">
+            <div class="dl-card-badge" v-if="detected === 'win'">{{ $t('dlRecommended') }}</div>
             <div class="dl-card-icon">
               <Icon icon="simple-icons:windows11" width="40" height="40" />
             </div>
             <div class="dl-card-info">
               <div class="dl-card-platform">Windows</div>
               <div class="dl-card-desc">{{ $t('dlWindowsDesc') }}</div>
-              <div class="dl-card-meta">Windows 10 / 11 · x64</div>
+              <div class="dl-card-meta">{{ dlMeta('win', 'Windows 10 / 11 · x64') }}</div>
             </div>
-            <a class="dl-btn" :class="{ 'dl-btn--loading': dlLoading }" :href="dlUrl('win')" target="_blank" rel="noopener">
+            <a class="dl-btn" :class="{ 'dl-btn--loading': dlLoading, 'dl-btn--accent': detected === 'win' }" :href="dlUrl('win')" target="_blank" rel="noopener">
               <Icon icon="solar:download-minimalistic-bold" width="16" height="16" />
               {{ $t('dlDownload') }} .exe
             </a>
@@ -34,32 +39,34 @@
           </div>
 
           <!-- macOS -->
-          <div class="dl-card">
+          <div class="dl-card" :class="{ 'dl-card--recommended': detected === 'mac' }" :style="{ order: detected === 'mac' ? -1 : 0 }">
+            <div class="dl-card-badge" v-if="detected === 'mac'">{{ $t('dlRecommended') }}</div>
             <div class="dl-card-icon">
               <Icon icon="simple-icons:apple" width="40" height="40" />
             </div>
             <div class="dl-card-info">
               <div class="dl-card-platform">macOS</div>
               <div class="dl-card-desc">{{ $t('dlMacDesc') }}</div>
-              <div class="dl-card-meta">macOS 12+ · Intel & Apple Silicon</div>
+              <div class="dl-card-meta">{{ dlMeta('mac', 'macOS 12+ · Intel & Apple Silicon') }}</div>
             </div>
-            <a class="dl-btn" :class="{ 'dl-btn--loading': dlLoading }" :href="dlUrl('mac')" target="_blank" rel="noopener">
+            <a class="dl-btn" :class="{ 'dl-btn--loading': dlLoading, 'dl-btn--accent': detected === 'mac' }" :href="dlUrl('mac')" target="_blank" rel="noopener">
               <Icon icon="solar:download-minimalistic-bold" width="16" height="16" />
               {{ $t('dlDownload') }} .dmg
             </a>
           </div>
 
           <!-- Android -->
-          <div class="dl-card">
+          <div class="dl-card" :class="{ 'dl-card--recommended': detected === 'android' }" :style="{ order: detected === 'android' ? -1 : 0 }">
+            <div class="dl-card-badge" v-if="detected === 'android'">{{ $t('dlRecommended') }}</div>
             <div class="dl-card-icon">
               <Icon icon="simple-icons:android" width="40" height="40" />
             </div>
             <div class="dl-card-info">
               <div class="dl-card-platform">Android</div>
               <div class="dl-card-desc">{{ $t('dlAndroidDesc') }}</div>
-              <div class="dl-card-meta">Android 8.0+</div>
+              <div class="dl-card-meta">{{ dlMeta('android', 'Android 8.0+') }}</div>
             </div>
-            <a class="dl-btn" :class="{ 'dl-btn--loading': dlLoading }" :href="dlUrl('android')" target="_blank" rel="noopener">
+            <a class="dl-btn" :class="{ 'dl-btn--loading': dlLoading, 'dl-btn--accent': detected === 'android' }" :href="dlUrl('android')" target="_blank" rel="noopener">
               <Icon icon="solar:download-minimalistic-bold" width="16" height="16" />
               {{ $t('dlDownload') }} .apk
             </a>
@@ -70,16 +77,17 @@
           </div>
 
           <!-- Linux -->
-          <div class="dl-card">
+          <div class="dl-card" :class="{ 'dl-card--recommended': detected === 'linux' }" :style="{ order: detected === 'linux' ? -1 : 0 }">
+            <div class="dl-card-badge" v-if="detected === 'linux'">{{ $t('dlRecommended') }}</div>
             <div class="dl-card-icon">
               <Icon icon="simple-icons:linux" width="40" height="40" />
             </div>
             <div class="dl-card-info">
               <div class="dl-card-platform">Linux</div>
               <div class="dl-card-desc">{{ $t('dlLinuxDesc') }}</div>
-              <div class="dl-card-meta">Ubuntu 22.04+ · .deb / .AppImage</div>
+              <div class="dl-card-meta">{{ dlMeta('linux', 'Ubuntu 22.04+ · .deb') }}</div>
             </div>
-            <a class="dl-btn" :class="{ 'dl-btn--loading': dlLoading }" :href="dlUrl('linux')" target="_blank" rel="noopener">
+            <a class="dl-btn" :class="{ 'dl-btn--loading': dlLoading, 'dl-btn--accent': detected === 'linux' }" :href="dlUrl('linux')" target="_blank" rel="noopener">
               <Icon icon="solar:download-minimalistic-bold" width="16" height="16" />
               {{ $t('dlDownload') }} .deb
             </a>
@@ -124,15 +132,31 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
+import { formatBytes } from '@/utils/file-utils.js'
+import { fromNow } from '@/utils/day.js'
 
 const appVersion = __APP_VERSION__
 
 const RELEASES_URL = 'https://github.com/WENSHAO521/cloud-mail/releases'
 const GITHUB_API   = 'https://api.github.com/repos/WENSHAO521/cloud-mail/releases/latest'
 
-const dlUrls   = ref({})   // platform → primary (default) download URL
-const dlAlt    = ref({})   // platform → [{label, url}] other arch/ABI variants
+const dlUrls    = ref({})   // platform → primary (default) download URL
+const dlSizes   = ref({})   // platform → primary asset size in bytes
+const dlAlt     = ref({})   // platform → [{label, url}] other arch/ABI variants
 const dlLoading = ref(true)
+const release   = ref({ tag: '', publishedAt: '' })
+
+// Highlights the platform matching the visitor's own device so the "right"
+// button stands out instead of making people compare five identical cards.
+function detectPlatform() {
+  const ua = navigator.userAgent || ''
+  if (/Android/i.test(ua)) return 'android'
+  if (/Win/i.test(ua)) return 'win'
+  if (/Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) return 'mac'
+  if (/Linux/i.test(ua)) return 'linux'
+  return null
+}
+const detected = ref(detectPlatform())
 
 // Releases now ship multiple files per platform (win x64/arm64, linux
 // amd64/arm64, android universal + per-ABI splits) — pick a single sensible
@@ -141,7 +165,7 @@ const dlLoading = ref(true)
 function pickAsset(assets, patterns) {
   for (const pattern of patterns) {
     const found = assets.find(a => pattern.test(a.name))
-    if (found) return found.browser_download_url
+    if (found) return found
   }
   return null
 }
@@ -162,12 +186,20 @@ onMounted(async () => {
     const res    = await fetch(GITHUB_API)
     const data   = await res.json()
     const assets = data.assets || []
-    dlUrls.value = {
+
+    release.value = { tag: data.tag_name || '', publishedAt: data.published_at || '' }
+
+    const picked = {
       win:     pickAsset(assets, [/-win-x64\.exe$/i, /-win\.exe$/i, /\.exe$/i]),
       mac:     pickAsset(assets, [/\.dmg$/i]),
       linux:   pickAsset(assets, [/-linux-amd64\.deb$/i, /\.deb$/i]),
       android: pickAsset(assets, [/-android-universal\.apk$/i, /\.apk$/i]),
     }
+    for (const platform of Object.keys(picked)) {
+      dlUrls.value[platform]  = picked[platform]?.browser_download_url || null
+      dlSizes.value[platform] = picked[platform]?.size || 0
+    }
+
     dlAlt.value = {
       win: altAssets(assets, [
         { label: 'arm64', pattern: /-win-arm64\.exe$/i },
@@ -190,6 +222,11 @@ onMounted(async () => {
 
 function dlUrl(platform) {
   return dlUrls.value[platform] || RELEASES_URL
+}
+
+function dlMeta(platform, fallback) {
+  const size = dlSizes.value[platform]
+  return size ? `${fallback} · ${formatBytes(size)}` : fallback
 }
 </script>
 
@@ -237,6 +274,34 @@ function dlUrl(platform) {
   color: var(--muted, #7e7576);
 }
 
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--el-bg-color, #ffffff);
+  border: 1px solid var(--light-border, #e2e2e6);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--muted, #7e7576);
+}
+
+.hero-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red-accent);
+  flex-shrink: 0;
+}
+
+:global(.dark) .hero-badge {
+  background: var(--el-bg-color, #1c1c20);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
 /* ── Grid ── */
 .dl-grid {
   display: grid;
@@ -247,6 +312,7 @@ function dlUrl(platform) {
 
 /* ── Card ── */
 .dl-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -256,7 +322,7 @@ function dlUrl(platform) {
   background: var(--el-bg-color, #ffffff);
   border: 1px solid var(--light-border, #e2e2e6);
   border-top: 3px solid var(--light-border, #e2e2e6);
-  transition: border-top-color 0.12s, box-shadow 0.12s;
+  transition: border-top-color 0.12s, box-shadow 0.12s, transform 0.12s;
 
   @media (hover: hover) {
     &:hover { border-top-color: var(--red-accent); }
@@ -270,12 +336,40 @@ function dlUrl(platform) {
       &:hover { border-top-color: #444; }
     }
   }
+
+  /* The card matching the visitor's own device — called out so the "right"
+     button doesn't require comparing every platform first. Note: despite the
+     name, --red-accent is this app's monochrome ink accent (black in light
+     mode, white in dark mode), not a literal red — so no hardcoded red here. */
+  &--recommended {
+    border-top-color: var(--red-accent);
+    border-color: var(--red-accent);
+    box-shadow: 0 8px 24px -12px var(--red-accent), var(--card-shadow);
+  }
 }
 
 :global(.dark) .dl-card {
   background: var(--el-bg-color, #1c1c20);
   border-color: rgba(255, 255, 255, 0.15);
   border-top-color: rgba(255, 255, 255, 0.3);
+
+  &.dl-card--recommended {
+    border-top-color: var(--red-accent);
+  }
+}
+
+.dl-card-badge {
+  position: absolute;
+  top: -10px;
+  right: 16px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--red-accent);
+  color: var(--on-accent, #fff);
+  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .dl-card-icon {
@@ -378,6 +472,14 @@ function dlUrl(platform) {
     pointer-events: none;
     animation: dl-pulse 1.2s ease-in-out infinite;
   }
+
+  &--accent {
+    background: var(--red-accent);
+
+    @media (hover: hover) {
+      &:hover { background: var(--red-accent-dark); }
+    }
+  }
 }
 
 @keyframes dl-pulse {
@@ -400,6 +502,15 @@ function dlUrl(platform) {
 
     @media (hover: hover) {
       &:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
+    }
+  }
+
+  &--accent {
+    background: var(--red-accent);
+    color: var(--on-accent, #fff);
+
+    @media (hover: hover) {
+      &:hover { background: var(--red-accent-dark); color: var(--on-accent, #fff); }
     }
   }
 }
