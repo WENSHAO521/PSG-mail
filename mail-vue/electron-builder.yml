@@ -31,7 +31,7 @@ extraResources:
 win:
   target:
     - target: nsis
-      arch: [x64]
+      arch: [x64, arm64]
   icon: build/desktop-icon.ico
 
 nsis:
@@ -78,7 +78,7 @@ dmg:
 linux:
   target:
     - target: deb
-      arch: [x64]
+      arch: [x64, arm64]
   icon: build/desktop-icon.png
   category: Network
   maintainer: Panorama Scholarly Group <admin@panorama-sg.com>
