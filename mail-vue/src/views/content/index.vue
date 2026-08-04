@@ -837,7 +837,10 @@ function handleDelete() {
     min-height: 64px;
     padding: 8px 10px;
     border-bottom: 1px solid rgba(0,0,0,0.08);
-    background: rgba(255,255,255,0.92);
+    /* Tinted to match the page's own cream gradient (#f7f6f3) instead of
+       literal white, so the translucent header reads as "elevated" rather
+       than "a different, whiter material sitting on top of the page." */
+    background: rgba(247,246,243,0.92);
     box-shadow: 0 10px 24px rgba(0,0,0,0.06);
     backdrop-filter: blur(18px);
   }
@@ -892,7 +895,7 @@ function handleDelete() {
     border: 1px solid rgba(0,0,0,0.08);
     border-left: none;
     border-radius: 22px;
-    background: rgba(255,255,255,0.86);
+    background: rgba(247,246,243,0.86);
     box-shadow: 0 12px 28px rgba(0,0,0,0.07);
     padding: 14px;
   }
@@ -949,7 +952,7 @@ function handleDelete() {
     border-radius: 20px;
     border: 1px solid rgba(0,0,0,0.08);
     border-left: 1px solid rgba(0,0,0,0.08);
-    background: rgba(255,255,255,0.84);
+    background: rgba(247,246,243,0.84);
     box-shadow: 0 10px 24px rgba(0,0,0,0.06);
   }
 
