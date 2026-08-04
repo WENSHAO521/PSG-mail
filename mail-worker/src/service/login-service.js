@@ -20,6 +20,7 @@ import dayjs from 'dayjs';
 import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
+import telegramService from './telegram-service';
 
 const loginService = {
 
@@ -134,6 +135,8 @@ const loginService = {
 		await accountService.insert(c, { userId: userId, email, name: (name && name.trim()) || emailUtils.getName(email) });
 
 		await userService.updateUserInfo(c, userId, true);
+
+		telegramService.sendUserRegisteredToBot(c, { email, userId }).catch(() => {});
 
 		if (regKey !== settingConst.regKey.CLOSE && type) {
 			await regKeyService.reduceCount(c, code, 1);

@@ -104,6 +104,13 @@
           <NotificationPanel />
         </div>
 
+        <!-- AI mail assistant -->
+        <el-tooltip v-if="aiAssistantEnabled" :content="$t('aiAssistantOpen')" placement="right">
+          <button class="icon-button" @click="uiStore.aiAssistantShow = true">
+            <Icon icon="solar:magic-stick-3-bold-duotone" width="20" height="20" />
+          </button>
+        </el-tooltip>
+
         <!-- ··· dropdown -->
         <el-dropdown placement="top-end" trigger="click">
           <button class="sidebar-more-button">
@@ -132,6 +139,8 @@
     </div>
 
   </aside>
+
+  <AiAssistantDrawer />
 </template>
 
 <script setup>
@@ -141,16 +150,22 @@ import { Icon } from "@iconify/vue";
 import { useUiStore } from "@/store/ui.js";
 import { useUserStore } from "@/store/user.js";
 import { useEmailStore } from "@/store/email.js";
+import { useSettingStore } from "@/store/setting.js";
 import { hasPerm } from "@/perm/perm.js";
 import { logout } from "@/request/login.js";
 import { computed, ref, onUnmounted } from "vue";
 import { avatarBg, avatarLetter } from "@/utils/avatar.js";
 import NotificationPanel from '@/components/notification-panel/index.vue'
+import AiAssistantDrawer from '@/components/ai-assistant-drawer/index.vue'
 
 const route  = useRoute();
 const uiStore = useUiStore();
 const userStore = useUserStore();
 const emailStore = useEmailStore();
+const settingStore = useSettingStore();
+
+/* ── AI assistant availability (admin-gated) ── */
+const aiAssistantEnabled = computed(() => Number(settingStore.settings.aiAssistantStatus) === 0);
 
 /* ── macOS traffic-light detection ── */
 const isMac = !!window.electronAPI?.isMac;

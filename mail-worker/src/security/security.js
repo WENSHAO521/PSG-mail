@@ -8,6 +8,7 @@ import userService from '../service/user-service';
 import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
+import externalApiKeyService from '../service/external-api-key-service';
 
 const exclude = [
 	'/login',
@@ -16,6 +17,7 @@ const exclude = [
 	'/setting/websiteConfig',
 	'/webhooks',
 	'/init',
+	'/reset-admin',
 	'/public/genToken',
 	'/telegram',
 	'/test',
@@ -112,6 +114,17 @@ app.use('*', async (c, next) => {
 		if (publicToken !== userPublicToken) {
 			throw new BizError(t('publicTokenFail'), 401);
 		}
+		return await next();
+	}
+
+	if (path.startsWith('/openapi')) {
+
+		const apiKey = c.req.header('X-Api-Key');
+		const userId = apiKey ? await externalApiKeyService.verify(c, apiKey) : null;
+		if (!userId) {
+			throw new BizError(t('apiKeyInvalid'), 401);
+		}
+		c.set('user', { userId });
 		return await next();
 	}
 

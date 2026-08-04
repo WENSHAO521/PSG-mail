@@ -213,6 +213,35 @@
               </div>
             </div>
 
+            <!-- ── External API section ── -->
+            <div v-show="activeSection === 'apikey'" class="settings-card">
+              <div class="card-body backup-body">
+                <div class="card-desc">{{ $t('apiKeyDesc') }}</div>
+                <el-button size="small" type="primary" style="align-self:flex-start" @click="createApiKey">
+                  {{ $t('apiKeyCreate') }}
+                </el-button>
+                <div v-if="apiKeyList.length === 0" class="backup-empty-state">
+                  {{ $t('apiKeyEmpty') }}
+                </div>
+                <div v-for="k in apiKeyList" :key="k.id" class="backup-provider-row">
+                  <div class="backup-provider-info">
+                    <Icon icon="solar:key-bold-duotone" width="24" height="24" class="backup-provider-logo"/>
+                    <div class="backup-provider-meta">
+                      <div class="backup-provider-name">{{ k.name || t('apiKeyUnnamed') }}</div>
+                      <div class="backup-provider-status">
+                        <span class="mono">{{ k.keyPrefix }}••••••••</span>
+                        <span class="backup-stat">· {{ $t('apiKeyCreatedAt') }} {{ dayjs(k.createTime).format('YYYY-MM-DD HH:mm') }}</span>
+                        <span class="backup-stat" v-if="k.lastUsedTime">· {{ $t('apiKeyLastUsed') }} {{ dayjs(k.lastUsedTime).format('YYYY-MM-DD HH:mm') }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="backup-provider-actions">
+                    <el-button size="small" type="danger" plain @click="revokeApiKey(k)">{{ $t('apiKeyRevoke') }}</el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- ── Danger zone section ── -->
             <div v-show="activeSection === 'danger'" class="settings-card">
               <div class="danger-inner">
@@ -265,6 +294,7 @@ import tinyEditor from "@/components/tiny-editor/index.vue"
 import http from "@/axios/index.js"
 import { hasPerm } from "@/perm/perm.js"
 import { backupProviders, backupConnectUrl, backupStatus, backupDisconnect, backupStart } from "@/request/backup.js"
+import { apikeyList as fetchApiKeyList, apikeyCreate, apikeyRevoke } from "@/request/apikey.js"
 import dayjs from "dayjs"
 
 const { t } = useI18n()
@@ -352,6 +382,38 @@ function formatBackupTime(ts) {
   return dayjs(ts).format('YYYY-MM-DD HH:mm')
 }
 
+// ── External API keys ──
+const apiKeyList = ref([])
+
+function loadApiKeyList() {
+  fetchApiKeyList().then(list => { apiKeyList.value = list }).catch(() => {})
+}
+
+async function createApiKey() {
+  try {
+    const { value: name } = await ElMessageBox.prompt(t('apiKeyNamePrompt'), t('apiKeyCreate'), {
+      confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), inputValue: ''
+    })
+    const { token } = await apikeyCreate(name || '')
+    await ElMessageBox.alert(token, t('apiKeyCreatedTitle'), {
+      confirmButtonText: t('confirm'),
+      dangerouslyUseHTMLString: true,
+      message: `<div style="word-break:break-all;font-family:monospace;">${token}</div><div style="margin-top:8px;color:var(--el-text-color-secondary);font-size:12px;">${t('apiKeyShownOnce')}</div>`
+    })
+    loadApiKeyList()
+  } catch {
+    // cancelled
+  }
+}
+
+function revokeApiKey(k) {
+  ElMessageBox.confirm(t('apiKeyRevokeConfirm', { name: k.name || k.keyPrefix }), {
+    confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), type: 'warning',
+  }).then(() => {
+    apikeyRevoke(k.id).then(() => loadApiKeyList())
+  }).catch(() => {})
+}
+
 defineOptions({ name: 'setting' })
 
 const activeSection = ref('profile')
@@ -364,6 +426,7 @@ const navItems = computed(() => {
     { key: 'autoreply', icon: 'solar:chat-round-dots-bold-duotone', label: t('autoReply') },
     { key: 'mail',      icon: 'solar:mailbox-bold-duotone',         label: t('mailManagement') },
     { key: 'backup',    icon: 'solar:cloud-upload-bold-duotone',    label: t('cloudBackup') },
+    { key: 'apikey',    icon: 'solar:key-bold-duotone',             label: t('externalApi') },
   ]
   if (hasPerm('my:delete')) {
     items.push({ key: 'danger', icon: 'solar:danger-triangle-bold-duotone', label: t('dangerZone') })
@@ -378,6 +441,7 @@ const sectionMeta = computed(() => ({
   autoreply: { label: t('autoReply'),      desc: t('autoReplyDesc') },
   mail:      { label: t('mailManagement'), desc: t('mailManagementDesc') },
   backup:    { label: t('cloudBackup'),    desc: t('cloudBackupDesc') },
+  apikey:    { label: t('externalApi'),    desc: t('apiKeyDesc') },
   danger:    { label: t('dangerZone'),     desc: t('dangerZoneDesc') },
 }))
 
@@ -396,6 +460,7 @@ onMounted(() => {
   }).catch(() => {})
   loadBackupProviders()
   loadBackupStatus()
+  loadApiKeyList()
 
   // Handle OAuth popup redirect back with ?backup_connected=provider
   const hash = window.location.hash

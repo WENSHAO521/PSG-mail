@@ -79,3 +79,13 @@ app.delete('/email/permanent-delete', async (c) => {
 	return c.json(result.ok());
 })
 
+app.get('/email/export-eml/:emailId', async (c) => {
+	const { filename, content } = await emailService.buildEml(c, c.req.param('emailId'), userContext.getUserId(c));
+	return new Response(content, {
+		headers: {
+			'Content-Type': 'message/rfc822',
+			'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`
+		}
+	});
+})
+

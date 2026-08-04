@@ -34,6 +34,12 @@
                 v-if="getSelectedMailsIds().length > 0" @click="handleDelete">
           <Icon icon="solar:trash-bin-trash-linear" width="17" height="17" />
         </button>
+        <el-tooltip v-if="getSelectedMailsIds().length > 0 && props.type !== 'draft'"
+                    :content="$t('exportEml')" placement="bottom">
+          <button class="icon-btn" @click="handleExportEml">
+            <Icon icon="solar:download-linear" width="17" height="17" />
+          </button>
+        </el-tooltip>
         <button class="icon-btn" v-if="getSelectedMailsIds().length > 0 && showUnread" @click="handleRead">
           <Icon icon="solar:letter-opened-linear" width="19" height="19" />
         </button>
@@ -261,6 +267,7 @@ import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
 import { UseVirtualList } from '@vueuse/components'
 import { useScroll } from '@vueuse/core'
+import { downloadEml } from '@/utils/download-eml.js'
 
 const props = defineProps({
   getEmailList: Function,
@@ -585,6 +592,18 @@ function addItem(email) {
   else if (noLoading.value) { handleList([email]); emailList.push(email); }
   if (email.emailId > latestEmail.value?.emailId) latestEmail.value = email
   total.value++; return true;
+}
+
+async function handleExportEml() {
+  const emailIds = getSelectedMailsIds()
+  for (const emailId of emailIds) {
+    try {
+      await downloadEml(emailId)
+    } catch {
+      ElMessage({ message: t('exportEmlFail'), type: 'error', plain: true })
+    }
+    if (emailIds.length > 1) await sleep(300)
+  }
 }
 
 function handleCheckAllChange(val) { emailList.forEach(item => item.checked = val); isIndeterminate.value = false; }

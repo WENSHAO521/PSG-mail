@@ -53,6 +53,7 @@ export const setting = sqliteTable('setting', {
 	blackFrom: text('black_from').default('').notNull(),
 	aiCode: integer('ai_code').default(1).notNull(),
 	aiCodeFilter: text('ai_code_filter').default('').notNull(),
-	autoDeleteDays: integer('auto_delete_days').default(0).notNull()
+	autoDeleteDays: integer('auto_delete_days').default(0).notNull(),
+	aiAssistantStatus: integer('ai_assistant_status').default(1).notNull()
 });
 export default setting

@@ -23,6 +23,7 @@ import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
 import kvCache from '../cache/kv-cache';
+import r2Service from './r2-service';
 
 // ── Per-request helpers ────────────────────────────────────────────────────
 
@@ -54,6 +55,42 @@ async function columnExists(c, table, col) {
 	try { await c.env.db.prepare(`SELECT ${col} FROM ${table} LIMIT 0`).run(); exists = true } catch {}
 	kvCache.set(key, exists, SCHEMA_TTL)
 	return exists
+}
+
+// ── .eml export helpers ─────────────────────────────────────────────────
+function arrayBufferToBase64(buf) {
+	const bytes = new Uint8Array(buf)
+	let binary = ''
+	const chunkSize = 0x8000
+	for (let i = 0; i < bytes.length; i += chunkSize) {
+		binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+	}
+	return btoa(binary)
+}
+
+function utf8ToBase64(str) {
+	return arrayBufferToBase64(new TextEncoder().encode(str).buffer)
+}
+
+function wrapBase64(b64) {
+	return b64.replace(/(.{76})/g, '$1\r\n')
+}
+
+function encodeMimeWord(str) {
+	if (/^[\x00-\x7F]*$/.test(str)) return str
+	return `=?UTF-8?B?${utf8ToBase64(str)}?=`
+}
+
+// Strips CR/LF so untrusted values (subject, attachment filenames, sender
+// name…) can't inject extra header/MIME lines into the exported .eml.
+function sanitizeHeaderValue(str) {
+	return String(str ?? '').replace(/[\r\n]+/g, ' ')
+}
+
+function emlSafeFilename(row, emailId) {
+	const date = row.create_time ? String(row.create_time).slice(0, 10) : 'unknown'
+	const subject = (row.subject || 'no-subject').replace(/[\\/:*?"<>|]/g, '_').slice(0, 60)
+	return `${date}_${subject}_${emailId}.eml`
 }
 
 const emailService = {
@@ -383,6 +420,126 @@ const emailService = {
 		await c.env.db.prepare(
 			`DELETE FROM email WHERE email_id IN (${idsToDelete.map(() => '?').join(',')})`
 		).bind(...idsToDelete).run();
+	},
+
+	// Ownership-scoped single-row fetch (includes trashed rows) — shared by the
+	// External API and the AI assistant tools, neither of which should see
+	// other users' mail regardless of soft-delete state.
+	async getOwned(c, emailId, userId) {
+		emailId = Number(emailId);
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const accessCond = sharedIds.length > 0
+			? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))`
+			: 'user_id = ?';
+		const { results } = await c.env.db.prepare(
+			`SELECT * FROM email WHERE email_id = ? AND ${accessCond}`
+		).bind(emailId, userId, ...sharedIds).all();
+		return results[0] || null;
+	},
+
+	// Simple subject/sender search scoped to the caller's own mail — used by
+	// the AI assistant's searchEmails tool.
+	async searchOwned(c, userId, { query, limit }) {
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const accessCond = sharedIds.length > 0
+			? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))`
+			: 'user_id = ?';
+		const like = `%${String(query || '').slice(0, 100)}%`;
+		const { results } = await c.env.db.prepare(
+			`SELECT email_id, subject, send_email, name, to_email, create_time, is_del
+			 FROM email
+			 WHERE ${accessCond} AND (subject LIKE ? COLLATE NOCASE OR send_email LIKE ? COLLATE NOCASE)
+			 ORDER BY email_id DESC LIMIT ?`
+		).bind(userId, ...sharedIds, like, like, Math.min(Number(limit) || 10, 30)).all();
+		return results;
+	},
+
+	// Builds a standalone RFC 5322 .eml file (multipart/mixed + multipart/alternative,
+	// attachments embedded as base64 parts) for a single email, for download/export.
+	async buildEml(c, emailId, userId) {
+		emailId = Number(emailId);
+		const row = await this.getOwned(c, emailId, userId);
+		if (!row) throw new BizError(t('emailNotExist'));
+
+		const attList = await attService.selectByEmailIds(c, [emailId]);
+
+		const boundaryAlt = `alt_${emailId}_${Date.now().toString(36)}`;
+		const boundaryMixed = `mix_${emailId}_${Date.now().toString(36)}`;
+
+		const dateHeader = row.create_time
+			? new Date(String(row.create_time).replace(' ', 'T') + 'Z').toUTCString()
+			: new Date().toUTCString();
+
+		const fromHeader = row.name
+			? `"${sanitizeHeaderValue(row.name).replace(/"/g, '')}" <${sanitizeHeaderValue(row.send_email)}>`
+			: sanitizeHeaderValue(row.send_email);
+
+		let cc = [];
+		try { cc = JSON.parse(row.cc || '[]'); } catch {}
+
+		const headerLines = [
+			`From: ${fromHeader}`,
+			`To: ${sanitizeHeaderValue(row.to_email)}`,
+			cc.length ? `Cc: ${sanitizeHeaderValue(cc.join(', '))}` : null,
+			`Subject: ${encodeMimeWord(sanitizeHeaderValue(row.subject || '(no subject)'))}`,
+			`Date: ${dateHeader}`,
+			`Message-ID: ${sanitizeHeaderValue(row.message_id || `<${emailId}@cloudmail>`)}`,
+			`MIME-Version: 1.0`,
+		].filter(Boolean);
+
+		const altLines = [
+			`Content-Type: multipart/alternative; boundary="${boundaryAlt}"`,
+			``,
+			`--${boundaryAlt}`,
+			`Content-Type: text/plain; charset=UTF-8`,
+			`Content-Transfer-Encoding: base64`,
+			``,
+			wrapBase64(utf8ToBase64(row.text || '')),
+			`--${boundaryAlt}`,
+			`Content-Type: text/html; charset=UTF-8`,
+			`Content-Transfer-Encoding: base64`,
+			``,
+			wrapBase64(utf8ToBase64(row.content || row.text || '')),
+			`--${boundaryAlt}--`,
+		];
+
+		const filename = emlSafeFilename(row, emailId);
+
+		if (!attList.length) {
+			return { filename, content: headerLines.concat(altLines).join('\r\n') };
+		}
+
+		const attParts = [];
+		for (const a of attList) {
+			try {
+				const obj = await r2Service.getObj(c, a.key);
+				if (!obj) continue;
+				const buf = await obj.arrayBuffer();
+				const safeMime = sanitizeHeaderValue(a.mimeType || 'application/octet-stream');
+				const safeName = sanitizeHeaderValue(a.filename || 'attachment').replace(/"/g, '');
+				attParts.push(
+					`--${boundaryMixed}`,
+					`Content-Type: ${safeMime}; name="${safeName}"`,
+					`Content-Transfer-Encoding: base64`,
+					`Content-Disposition: attachment; filename="${safeName}"`,
+					``,
+					wrapBase64(arrayBufferToBase64(buf)),
+				);
+			} catch (e) {
+				console.error(`export eml: failed to read attachment ${a.key}`, e);
+			}
+		}
+
+		const bodyLines = [
+			`Content-Type: multipart/mixed; boundary="${boundaryMixed}"`,
+			``,
+			`--${boundaryMixed}`,
+			...altLines,
+			...attParts,
+			`--${boundaryMixed}--`,
+		];
+
+		return { filename, content: headerLines.concat(bodyLines).join('\r\n') };
 	},
 
 	receive(c, params, cidAttList, r2domain) {

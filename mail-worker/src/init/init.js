@@ -40,8 +40,29 @@ const dbInit = {
 		await this.v3_9DB(c);
 		await this.v4_0DB(c);
 		await this.v4_1DB(c);
+		await this.v4_2DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v4_2DB(c) {
+		try {
+			await c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS external_api_key (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					name TEXT NOT NULL DEFAULT '',
+					key_hash TEXT NOT NULL,
+					key_prefix TEXT NOT NULL,
+					status INTEGER NOT NULL DEFAULT 1,
+					last_used_time TEXT,
+					create_time TEXT DEFAULT CURRENT_TIMESTAMP
+				)
+			`).run();
+		} catch (e) { console.warn(`跳过：${e.message}`); }
+		try {
+			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN ai_assistant_status INTEGER NOT NULL DEFAULT 1;`).run();
+		} catch (e) { console.warn(`跳过：${e.message}`); }
 	},
 
 	async v4_1DB(c) {

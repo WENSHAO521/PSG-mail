@@ -94,6 +94,33 @@ const telegramService = {
 			}
 		}));
 
+	},
+
+	async sendUserRegisteredToBot(c, { email, userId }) {
+
+		const { tgBotToken, tgChatId } = await settingService.query(c);
+
+		if (!tgBotToken || !tgChatId) {
+			return;
+		}
+
+		const tgChatIds = tgChatId.split(',');
+		const text = `🆕 新用户注册\n邮箱：${email}\n时间：${dayjs().format('YYYY-MM-DD HH:mm:ss')}`;
+
+		await Promise.all(tgChatIds.map(async chatId => {
+			try {
+				const res = await fetch(`https://api.telegram.org/bot${tgBotToken}/sendMessage`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ chat_id: chatId, text })
+				});
+				if (!res.ok) {
+					console.error(`注册通知转发 Telegram 失败 status: ${res.status} response: ${await res.text()}`);
+				}
+			} catch (e) {
+				console.error(`注册通知转发 Telegram 失败:`, e.message);
+			}
+		}));
 	}
 
 }

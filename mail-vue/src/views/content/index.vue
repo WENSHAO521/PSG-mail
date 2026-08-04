@@ -185,6 +185,7 @@ import { useI18n } from 'vue-i18n'
 import { EmailUnreadEnum } from '@/enums/email-enum.js'
 import { avatarBg, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
+import { downloadEml } from '@/utils/download-eml.js'
 
 const emit = defineEmits(['back'])
 
@@ -377,28 +378,7 @@ function handlePrint() {
 function handleDownloadEml() {
   const e = email.value
   if (!e) return
-  const date = new Date(e.createTime || Date.now()).toUTCString()
-  const recipientList = (() => {
-    try { return JSON.parse(e.recipient || '[]').map(r => r.address || r).join(', ') }
-    catch { return e.recipient || '' }
-  })()
-  const lines = [
-    `From: ${e.name ? `"${e.name}" <${e.sendEmail}>` : e.sendEmail || ''}`,
-    `To: ${recipientList}`,
-    `Subject: ${e.subject || ''}`,
-    `Date: ${date}`,
-    `MIME-Version: 1.0`,
-    `Content-Type: text/html; charset=utf-8`,
-    ``,
-    e.content || e.text || '',
-  ]
-  const blob = new Blob([lines.join('\r\n')], { type: 'message/rfc822' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${(e.subject || 'email').replace(/[/\\?%*:|"<>]/g, '_')}.eml`
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadEml(e.emailId).catch(() => ElMessage({ message: t('exportEmlFail'), type: 'error', plain: true }))
 }
 
 function handleDelete() {

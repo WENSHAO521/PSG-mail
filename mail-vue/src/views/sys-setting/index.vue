@@ -446,6 +446,13 @@
                   </el-button>
                 </div>
               </div>
+              <div class="setting-item">
+                <div><span>{{ $t('aiAssistant') }}</span></div>
+                <div>
+                  <el-switch @change="changeField('aiAssistantStatus', $event)" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.aiAssistantStatus"/>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1510,7 +1517,7 @@ function saveResendToken() {
     resendTokens: {}
   }
   const domain = resendTokenForm.domain.slice(1)
-  settingForm.resendTokens[domain] = resendTokenForm.token
+  settingForm.resendTokens[domain] = resendTokenForm.token.trim()
   editSetting(settingForm)
 }
 

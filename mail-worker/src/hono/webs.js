@@ -25,4 +25,8 @@ import '../api/contact-group-api'
 import '../api/auto-reply-api'
 import '../api/backup-api'
 import '../api/translate-api'
+import '../api/reset-admin-api'
+import '../api/apikey-api'
+import '../api/external-api'
+import '../api/ai-assistant-api'
 export default app;

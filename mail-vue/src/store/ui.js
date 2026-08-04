@@ -14,6 +14,7 @@ export const useUiStore = defineStore('ui', {
         previewData: {},
         key: 0,
         dark: false,
+        aiAssistantShow: false,
         asideCount: {
             email: 0,
             send: 0,
