@@ -19,7 +19,8 @@
         <div class="dl-grid">
 
           <!-- Windows -->
-          <div class="dl-card">
+          <div class="dl-card" :class="{ 'dl-card--recommended': detected === 'win' }" :style="{ order: detected === 'win' ? -1 : 0 }">
+            <div class="dl-card-badge" v-if="detected === 'win'">{{ $t('dlRecommended') }}</div>
             <div class="dl-card-icon">
               <Icon icon="simple-icons:windows11" width="40" height="40" />
             </div>
@@ -49,7 +50,8 @@
           </div>
 
           <!-- macOS -->
-          <div class="dl-card">
+          <div class="dl-card" :class="{ 'dl-card--recommended': detected === 'mac' }" :style="{ order: detected === 'mac' ? -1 : 0 }">
+            <div class="dl-card-badge" v-if="detected === 'mac'">{{ $t('dlRecommended') }}</div>
             <div class="dl-card-icon">
               <Icon icon="simple-icons:apple" width="40" height="40" />
             </div>
@@ -79,7 +81,8 @@
           </div>
 
           <!-- Android -->
-          <div class="dl-card">
+          <div class="dl-card" :class="{ 'dl-card--recommended': detected === 'android' }" :style="{ order: detected === 'android' ? -1 : 0 }">
+            <div class="dl-card-badge" v-if="detected === 'android'">{{ $t('dlRecommended') }}</div>
             <div class="dl-card-icon">
               <Icon icon="simple-icons:android" width="40" height="40" />
             </div>
@@ -109,7 +112,8 @@
           </div>
 
           <!-- Linux -->
-          <div class="dl-card">
+          <div class="dl-card" :class="{ 'dl-card--recommended': detected === 'linux' }" :style="{ order: detected === 'linux' ? -1 : 0 }">
+            <div class="dl-card-badge" v-if="detected === 'linux'">{{ $t('dlRecommended') }}</div>
             <div class="dl-card-icon">
               <Icon icon="simple-icons:linux" width="40" height="40" />
             </div>
@@ -189,6 +193,18 @@ const GITHUB_API   = 'https://api.github.com/repos/WENSHAO521/cloud-mail/release
 const dlVariants = ref({ win: [], mac: [], linux: [], android: [] })
 const dlLoading  = ref(true)
 const release    = ref({ tag: '', publishedAt: '' })
+
+// Highlights the platform matching the visitor's own device so the "right"
+// card stands out instead of making people compare four identical ones.
+function detectPlatform() {
+  const ua = navigator.userAgent || ''
+  if (/Android/i.test(ua)) return 'android'
+  if (/Win/i.test(ua)) return 'win'
+  if (/Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) return 'mac'
+  if (/Linux/i.test(ua)) return 'linux'
+  return null
+}
+const detected = ref(detectPlatform())
 
 function formatReleaseDate(iso) {
   return iso ? '  ' + dayjs(iso).format('YYYY-MM-DD') : ''
@@ -312,6 +328,7 @@ onMounted(async () => {
 
 /* ── Card ── */
 .dl-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -320,15 +337,42 @@ onMounted(async () => {
   box-shadow: var(--card-shadow);
   background: var(--el-bg-color, #ffffff);
   border: 1px solid var(--light-border, #e2e2e6);
+  transition: border-color 0.12s, box-shadow 0.12s;
 
   &--web {
     opacity: 0.75;
+  }
+
+  /* The card matching the visitor's own device. Despite the name,
+     --red-accent is this app's monochrome ink accent (black in light mode,
+     white in dark mode), not a literal red. */
+  &--recommended {
+    border-color: var(--red-accent);
+    box-shadow: 0 8px 24px -12px var(--red-accent), var(--card-shadow);
   }
 }
 
 :global(.dark) .dl-card {
   background: var(--el-bg-color, #1c1c20);
   border-color: rgba(255, 255, 255, 0.15);
+
+  &.dl-card--recommended {
+    border-color: var(--red-accent);
+  }
+}
+
+.dl-card-badge {
+  position: absolute;
+  top: -10px;
+  right: 16px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--red-accent);
+  color: var(--on-accent, #fff);
+  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .dl-card-icon {
