@@ -34,7 +34,10 @@
             </a>
             <div class="dl-alt" v-if="dlAlt.win?.length">
               <span class="dl-alt-label">{{ $t('dlOtherVariants') }}</span>
-              <a v-for="alt in dlAlt.win" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-link">{{ alt.label }}</a>
+              <a v-for="alt in dlAlt.win" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-chip">
+                <Icon icon="solar:download-minimalistic-linear" width="12" height="12" />
+                {{ alt.label }}
+              </a>
             </div>
           </div>
 
@@ -72,7 +75,10 @@
             </a>
             <div class="dl-alt" v-if="dlAlt.android?.length">
               <span class="dl-alt-label">{{ $t('dlOtherVariants') }}</span>
-              <a v-for="alt in dlAlt.android" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-link">{{ alt.label }}</a>
+              <a v-for="alt in dlAlt.android" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-chip">
+                <Icon icon="solar:download-minimalistic-linear" width="12" height="12" />
+                {{ alt.label }}
+              </a>
             </div>
           </div>
 
@@ -93,7 +99,10 @@
             </a>
             <div class="dl-alt" v-if="dlAlt.linux?.length">
               <span class="dl-alt-label">{{ $t('dlOtherVariants') }}</span>
-              <a v-for="alt in dlAlt.linux" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-link">{{ alt.label }}</a>
+              <a v-for="alt in dlAlt.linux" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-chip">
+                <Icon icon="solar:download-minimalistic-linear" width="12" height="12" />
+                {{ alt.label }}
+              </a>
             </div>
           </div>
 
@@ -418,15 +427,36 @@ function dlMeta(platform, fallback) {
   color: var(--muted, #7e7576);
 }
 
-.dl-alt-link {
+.dl-alt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--light-border, #e2e2e6);
+  background: var(--el-bg-color-page, #f5f5f5);
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  color: var(--muted, #7e7576);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: var(--el-text-color-primary);
+  text-decoration: none;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 
   @media (hover: hover) {
-    &:hover { color: var(--red-accent); }
+    &:hover {
+      background: var(--red-accent);
+      border-color: var(--red-accent);
+      color: var(--on-accent, #fff);
+    }
+  }
+}
+
+:global(.dark) .dl-alt-chip {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.14);
+
+  @media (hover: hover) {
+    &:hover { color: var(--on-accent); }
   }
 }
 
