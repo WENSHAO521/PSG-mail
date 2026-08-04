@@ -121,20 +121,29 @@ const GITHUB_API   = 'https://api.github.com/repos/WENSHAO521/cloud-mail/release
 const dlUrls   = ref({})   // platform → direct download URL
 const dlLoading = ref(true)
 
+// Releases now ship multiple files per platform (win x64/arm64, linux
+// amd64/arm64, android universal + per-ABI splits) — pick a single sensible
+// default per platform in priority order rather than "last match wins",
+// which used to silently land on whatever asset happened to sort last.
+function pickAsset(assets, patterns) {
+  for (const pattern of patterns) {
+    const found = assets.find(a => pattern.test(a.name))
+    if (found) return found.browser_download_url
+  }
+  return null
+}
+
 onMounted(async () => {
   try {
-    const res  = await fetch(GITHUB_API)
-    const data = await res.json()
-    const map  = {}
-    for (const asset of data.assets || []) {
-      const n = asset.name.toLowerCase()
-      const url = asset.browser_download_url
-      if (n.endsWith('.exe'))                          map.win     = url
-      else if (n.endsWith('.dmg'))                     map.mac     = url
-      else if (n.endsWith('.deb'))                     map.linux   = url
-      else if (n.endsWith('.apk'))                     map.android = url
+    const res    = await fetch(GITHUB_API)
+    const data   = await res.json()
+    const assets = data.assets || []
+    dlUrls.value = {
+      win:     pickAsset(assets, [/-win-x64\.exe$/i, /-win\.exe$/i, /\.exe$/i]),
+      mac:     pickAsset(assets, [/\.dmg$/i]),
+      linux:   pickAsset(assets, [/-linux-amd64\.deb$/i, /\.deb$/i]),
+      android: pickAsset(assets, [/-android-universal\.apk$/i, /\.apk$/i]),
     }
-    dlUrls.value = map
   } catch {
     // fall back to releases page on any error
   } finally {
