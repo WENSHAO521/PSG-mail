@@ -27,6 +27,10 @@
               <Icon icon="solar:download-minimalistic-bold" width="16" height="16" />
               {{ $t('dlDownload') }} .exe
             </a>
+            <div class="dl-alt" v-if="dlAlt.win?.length">
+              <span class="dl-alt-label">{{ $t('dlOtherVariants') }}</span>
+              <a v-for="alt in dlAlt.win" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-link">{{ alt.label }}</a>
+            </div>
           </div>
 
           <!-- macOS -->
@@ -59,6 +63,10 @@
               <Icon icon="solar:download-minimalistic-bold" width="16" height="16" />
               {{ $t('dlDownload') }} .apk
             </a>
+            <div class="dl-alt" v-if="dlAlt.android?.length">
+              <span class="dl-alt-label">{{ $t('dlOtherVariants') }}</span>
+              <a v-for="alt in dlAlt.android" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-link">{{ alt.label }}</a>
+            </div>
           </div>
 
           <!-- Linux -->
@@ -75,6 +83,10 @@
               <Icon icon="solar:download-minimalistic-bold" width="16" height="16" />
               {{ $t('dlDownload') }} .deb
             </a>
+            <div class="dl-alt" v-if="dlAlt.linux?.length">
+              <span class="dl-alt-label">{{ $t('dlOtherVariants') }}</span>
+              <a v-for="alt in dlAlt.linux" :key="alt.url" :href="alt.url" target="_blank" rel="noopener" class="dl-alt-link">{{ alt.label }}</a>
+            </div>
           </div>
 
           <!-- Web -->
@@ -118,7 +130,8 @@ const appVersion = __APP_VERSION__
 const RELEASES_URL = 'https://github.com/WENSHAO521/cloud-mail/releases'
 const GITHUB_API   = 'https://api.github.com/repos/WENSHAO521/cloud-mail/releases/latest'
 
-const dlUrls   = ref({})   // platform → direct download URL
+const dlUrls   = ref({})   // platform → primary (default) download URL
+const dlAlt    = ref({})   // platform → [{label, url}] other arch/ABI variants
 const dlLoading = ref(true)
 
 // Releases now ship multiple files per platform (win x64/arm64, linux
@@ -133,6 +146,17 @@ function pickAsset(assets, patterns) {
   return null
 }
 
+// Surfaces the remaining arch/ABI builds as secondary links instead of
+// hiding them entirely behind the one default button.
+function altAssets(assets, defs) {
+  const out = []
+  for (const { label, pattern } of defs) {
+    const found = assets.find(a => pattern.test(a.name))
+    if (found) out.push({ label, url: found.browser_download_url })
+  }
+  return out
+}
+
 onMounted(async () => {
   try {
     const res    = await fetch(GITHUB_API)
@@ -143,6 +167,19 @@ onMounted(async () => {
       mac:     pickAsset(assets, [/\.dmg$/i]),
       linux:   pickAsset(assets, [/-linux-amd64\.deb$/i, /\.deb$/i]),
       android: pickAsset(assets, [/-android-universal\.apk$/i, /\.apk$/i]),
+    }
+    dlAlt.value = {
+      win: altAssets(assets, [
+        { label: 'arm64', pattern: /-win-arm64\.exe$/i },
+      ]),
+      linux: altAssets(assets, [
+        { label: 'arm64', pattern: /-linux-arm64\.deb$/i },
+      ]),
+      android: altAssets(assets, [
+        { label: 'arm64-v8a',   pattern: /-android-arm64-v8a\.apk$/i },
+        { label: 'armeabi-v7a', pattern: /-android-armeabi-v7a\.apk$/i },
+        { label: 'x86_64',      pattern: /-android-x86_64\.apk$/i },
+      ]),
     }
   } catch {
     // fall back to releases page on any error
@@ -271,6 +308,32 @@ function dlUrl(platform) {
   font-size: 10px;
   color: var(--muted, #7e7576);
   letter-spacing: 0.04em;
+}
+
+/* ── Other arch/ABI variants ── */
+.dl-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: -2px;
+}
+
+.dl-alt-label {
+  font-size: 11px;
+  color: var(--muted, #7e7576);
+}
+
+.dl-alt-link {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted, #7e7576);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  @media (hover: hover) {
+    &:hover { color: var(--red-accent); }
+  }
 }
 
 /* ── Button ── */

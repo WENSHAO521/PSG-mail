@@ -633,6 +633,7 @@ const en = {
     download: 'Downloads',
     dlHeroSub: 'Download PSG Mail for desktop or mobile and stay connected anywhere',
     dlDownload: 'Download',
+    dlOtherVariants: 'Other builds:',
     dlWindowsDesc: 'PSG Mail desktop client for Windows with system notifications and background sync',
     dlMacDesc: 'PSG Mail desktop client for macOS — Apple Silicon and Intel',
     dlAndroidDesc: 'PSG Mail mobile client for Android with push notifications',
