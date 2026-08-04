@@ -14,7 +14,10 @@ export function cvtR2Url(key) {
     let domain = settings.r2Domain
 
     if (!domain) {
-        return key;
+        // No public bucket domain configured — proxy through the worker's own
+        // /oss/:key route instead of returning a bare storage key (which isn't
+        // a valid href and silently fails to download/render).
+        return `${import.meta.env.VITE_BASE_URL}/oss/${key}`;
     }
 
     if (!domain.startsWith('http')) {
