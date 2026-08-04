@@ -976,7 +976,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
       gap: 8px;
       border-radius: 18px;
       padding: 0 8px;
-      background: rgba(255,255,255,0.78);
+      /* Tinted to match .email-container's own cream gradient (#f6f5f3)
+         instead of literal white — see content/index.vue for the same fix
+         applied to the email detail view. */
+      background: rgba(246,245,243,0.78);
       border: 1px solid rgba(0,0,0,0.08);
       box-shadow: 0 10px 24px rgba(0,0,0,0.06);
     }
@@ -1035,7 +1038,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     border: 1px solid rgba(0,0,0,0.08);
     border-bottom: 1px solid rgba(0,0,0,0.08);
     border-radius: 20px;
-    background: rgba(255,255,255,0.88);
+    background: rgba(246,245,243,0.88);
     box-shadow: 0 10px 24px rgba(0,0,0,0.06);
     align-items: center;
 

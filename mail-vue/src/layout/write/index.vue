@@ -1619,7 +1619,10 @@ function close() {
   .wh {
     height: 64px;
     padding: 8px 10px 8px 16px;
-    background: rgba(255,255,255,0.94);
+    /* Tinted to match .write-box's own cream gradient (#f7f6f3) instead of
+       literal white — see mail-vue/src/views/content/index.vue for the same
+       fix applied to the email detail view. */
+    background: rgba(247,246,243,0.94);
     border-bottom: 1px solid rgba(0,0,0,0.08);
     box-shadow: 0 10px 24px rgba(0,0,0,0.06);
     backdrop-filter: blur(18px);
@@ -1667,7 +1670,7 @@ function close() {
     gap: 8px;
     border-bottom: none;
     border-radius: 18px;
-    background: rgba(255,255,255,0.86);
+    background: rgba(247,246,243,0.86);
     border: 1px solid rgba(0,0,0,0.08);
     box-shadow: 0 8px 20px rgba(0,0,0,0.05);
     margin-bottom: 8px;
@@ -1709,7 +1712,7 @@ function close() {
     min-height: 220px;
     overflow: hidden;
     border-radius: 20px 20px 0 0;
-    background: rgba(255,255,255,0.90);
+    background: rgba(247,246,243,0.90);
     border: 1px solid rgba(0,0,0,0.08);
     border-bottom: none;
     box-shadow: 0 12px 28px rgba(0,0,0,0.06);
@@ -1718,7 +1721,7 @@ function close() {
   .toolbar-bar {
     padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid rgba(0,0,0,0.08);
-    background: rgba(255,255,255,0.94);
+    background: rgba(247,246,243,0.94);
     gap: 8px;
   }
 
