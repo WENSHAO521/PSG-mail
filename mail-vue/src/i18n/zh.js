@@ -633,8 +633,6 @@ const zh = {
     download: '客户端下载',
     dlHeroSub: '下载 PSG Mail 桌面端或移动端，随时随地高效收发邮件',
     dlDownload: '下载',
-    dlOtherVariants: '其他版本：',
-    dlRecommended: '推荐',
     dlWindowsDesc: 'PSG Mail Windows 桌面客户端，支持系统通知与后台运行',
     dlMacDesc: 'PSG Mail macOS 桌面客户端，支持 Apple Silicon 与 Intel',
     dlAndroidDesc: 'PSG Mail Android 移动客户端，支持推送通知',
