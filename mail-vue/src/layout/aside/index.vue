@@ -89,7 +89,7 @@
 
         <!-- Compose — collapsed: icon only -->
         <el-tooltip v-if="canSend && collapsed" :content="$t('compose')" placement="right">
-          <button class="icon-button compose-icon-btn" @click="openCompose">
+          <button class="compose-icon-btn" @click="openCompose">
             <Icon icon="psg:compose" width="20" height="20" />
           </button>
         </el-tooltip>
@@ -99,41 +99,43 @@
           <span>{{ $t('compose') }}</span>
         </button>
 
-        <!-- Notification bell -->
-        <div class="notif-trigger-wrap">
-          <NotificationPanel />
+        <!-- Utility cluster: notifications / AI assistant / more, grouped as one unit -->
+        <div class="sidebar-util-cluster">
+          <div class="notif-trigger-wrap">
+            <NotificationPanel />
+          </div>
+
+          <!-- AI mail assistant -->
+          <el-tooltip v-if="aiAssistantEnabled" :content="$t('aiAssistantOpen')" placement="right">
+            <button class="util-btn" @click="uiStore.aiAssistantShow = true">
+              <Icon icon="solar:magic-stick-3-bold-duotone" width="18" height="18" />
+            </button>
+          </el-tooltip>
+
+          <!-- ··· dropdown -->
+          <el-dropdown placement="top-end" trigger="click">
+            <button class="util-btn">
+              <span class="more-dots"><span/><span/><span/></span>
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="toggleDark">
+                  <div class="drop-item">
+                    <Icon :icon="uiStore.dark ? 'solar:sun-linear' : 'solar:moon-linear'"
+                          width="17" height="17" />
+                    <span>{{ uiStore.dark ? $t('lightMode') : $t('darkMode') }}</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item @click="clickLogout" class="logout-item">
+                  <div class="drop-item">
+                    <Icon icon="solar:logout-linear" width="17" height="17" />
+                    <span>{{ $t('logOut') }}</span>
+                  </div>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
-
-        <!-- AI mail assistant -->
-        <el-tooltip v-if="aiAssistantEnabled" :content="$t('aiAssistantOpen')" placement="right">
-          <button class="icon-button" @click="uiStore.aiAssistantShow = true">
-            <Icon icon="solar:magic-stick-3-bold-duotone" width="20" height="20" />
-          </button>
-        </el-tooltip>
-
-        <!-- ··· dropdown -->
-        <el-dropdown placement="top-end" trigger="click">
-          <button class="sidebar-more-button">
-            <span class="more-dots"><span/><span/><span/></span>
-          </button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="toggleDark">
-                <div class="drop-item">
-                  <Icon :icon="uiStore.dark ? 'solar:sun-linear' : 'solar:moon-linear'"
-                        width="17" height="17" />
-                  <span>{{ uiStore.dark ? $t('lightMode') : $t('darkMode') }}</span>
-                </div>
-              </el-dropdown-item>
-              <el-dropdown-item @click="clickLogout" class="logout-item">
-                <div class="drop-item">
-                  <Icon icon="solar:logout-linear" width="17" height="17" />
-                  <span>{{ $t('logOut') }}</span>
-                </div>
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
 
       </div>
     </div>
@@ -406,24 +408,26 @@ function clickLogout() {
   flex-shrink: 0;
 }
 
-/* ── Notification bell wrapper (matches icon-button sizing) ── */
+/* ── Notification bell wrapper (sized to match footer util-btn) ── */
 .notif-trigger-wrap :deep(.icon-btn) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   cursor: pointer;
   color: var(--muted, #7e7576);
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.14s ease, color 0.14s ease, transform 0.1s ease;
   flex-shrink: 0;
 
   @media (hover: hover) {
     &:hover {
-      background: var(--email-hover-background, #eeeeee);
+      background: #ffffff;
       color: var(--el-text-color-primary);
     }
   }
+  &:active { transform: scale(0.92); }
 }
 
 /* ── Icon button ─────────────────────────────────────────── */
@@ -577,7 +581,7 @@ function clickLogout() {
   gap: 8px;
   height: 36px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   background: var(--red-accent);
   color: var(--on-accent);
   font-size: 13.5px;
@@ -586,32 +590,49 @@ function clickLogout() {
   text-transform: none;
   font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   cursor: pointer;
-  transition: background 0.14s ease;
+  transition: background 0.14s ease, transform 0.1s ease;
 
   @media (hover: hover) {
     &:hover { background: var(--red-accent-dark); }
   }
-  &:active { background: var(--red-accent-dark); }
+  &:active { background: var(--red-accent-dark); transform: scale(0.97); }
 }
 
-.sidebar-more-button {
-  width: 36px;
+/* Secondary actions grouped into one quiet surface, distinct from the
+   primary compose CTA rather than four buttons of equal weight. */
+.sidebar-util-cluster {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   height: 36px;
+  padding: 0 3px;
   flex-shrink: 0;
+  border: 1px solid var(--light-border, #e2e2e6);
+  border-radius: 10px;
+  background: var(--email-hover-background, #eeeeee);
+}
+
+.util-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--light-border, #e2e2e6);
-  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 6px;
   background: transparent;
+  color: var(--muted, #7e7576);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.14s ease, color 0.14s ease, transform 0.1s ease;
 
   @media (hover: hover) {
     &:hover {
-      background: var(--email-hover-background, #eeeeee);
+      background: #ffffff;
+      color: var(--el-text-color-primary);
     }
   }
+  &:active { transform: scale(0.92); }
 }
 
 .more-dots {
@@ -623,21 +644,29 @@ function clickLogout() {
     display: block;
     width: 3.5px;
     height: 3.5px;
-    background: var(--el-text-color-primary);
+    border-radius: 50%;
+    background: currentColor;
   }
 }
 
 .compose-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   background: var(--red-accent);
   color: var(--on-accent);
+  cursor: pointer;
+  transition: background 0.14s ease, transform 0.1s ease;
 
   @media (hover: hover) {
     &:hover { background: var(--red-accent-dark); }
   }
+  &:active { background: var(--red-accent-dark); transform: scale(0.94); }
 }
 
 /* Dropdown items */
@@ -671,12 +700,22 @@ function clickLogout() {
     }
   }
 
-  .sidebar-more-button {
-    border-color: rgba(255, 255, 255, 0.30);
-    &:hover { background: rgba(255, 255, 255, 0.07); }
+  .sidebar-util-cluster {
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.05);
   }
 
-  .more-dots span { background: rgba(255, 255, 255, 0.75); }
+  .util-btn,
+  .notif-trigger-wrap :deep(.icon-btn) {
+    color: rgba(255, 255, 255, 0.55);
+
+    @media (hover: hover) {
+      &:hover {
+        background: rgba(255, 255, 255, 0.10);
+        color: rgba(255, 255, 255, 0.92);
+      }
+    }
+  }
 
   .icon-button {
     color: rgba(255, 255, 255, 0.40);
@@ -744,9 +783,12 @@ function clickLogout() {
     gap: 8px;
   }
 
-  .sidebar-more-button {
+  .sidebar-util-cluster {
+    flex-direction: column;
     width: 34px;
-    height: 34px;
+    height: auto;
+    padding: 3px;
+    gap: 4px;
   }
 }
 </style>
