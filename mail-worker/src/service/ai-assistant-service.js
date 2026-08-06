@@ -262,7 +262,7 @@ const aiAssistantService = {
 	},
 
 	async _runLoop(c, userId, convo, stepsUsed) {
-		const model = c.env.ai_assistant_model || c.env.ai_model || '@cf/meta/llama-3.1-8b-instruct';
+		const model = c.env.ai_assistant_model || c.env.ai_model || '@cf/meta/llama-3.1-8b-instruct-fast';
 		const ai = c.env.ai;
 
 		for (let step = stepsUsed; step < MAX_STEPS; step++) {
