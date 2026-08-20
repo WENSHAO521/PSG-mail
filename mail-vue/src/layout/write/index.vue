@@ -262,7 +262,8 @@ import tinyEditor from '@/components/tiny-editor/index.vue'
 import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
-import {emailSend} from "@/request/email.js";
+import {emailSend, emailSchedule, emailScheduleCancel} from "@/request/email.js";
+import {useUiStore} from "@/store/ui.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
@@ -290,13 +291,15 @@ defineExpose({
   openReply,
   openReplyAll,
   openForward,
-  openDraft
+  openDraft,
+  openScheduled
 })
 
 const {t} = useI18n()
 const writerStore = useWriterStore();
 const draftStore = userDraftStore()
 const settingStore = useSettingStore()
+const uiStore = useUiStore()
 const emailStore = useEmailStore();
 const accountStore = useAccountStore()
 const editor = ref({})
@@ -550,36 +553,21 @@ function chooseFile() {
   }
 }
 
-async function sendScheduled() {
-  if (!scheduledAt.value) return
-  form.scheduledAt = scheduledAt.value
-  showSchedulePicker.value = false
-  await sendEmail()
-  form.scheduledAt = undefined
-  scheduledAt.value = ''
-}
-
-async function sendEmail() {
-
+// Shared by sendEmail() and sendScheduled() — returns false (and shows the
+// relevant message) if the form isn't ready to leave Compose at all, real
+// send or scheduled.
+function validateBeforeSend() {
   // Commit any text typed but not yet confirmed as a tag (user skipped pressing Enter)
   commitPendingInputs()
 
   if (form.receiveEmail.length === 0) {
-    ElMessage({
-      message: t('emptyRecipientMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
+    ElMessage({ message: t('emptyRecipientMsg'), type: 'error', plain: true })
+    return false
   }
 
   if (!form.subject) {
-    ElMessage({
-      message: t('emptySubjectMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
+    ElMessage({ message: t('emptySubjectMsg'), type: 'error', plain: true })
+    return false
   }
 
   if (!form.content) {
@@ -587,22 +575,130 @@ async function sendEmail() {
   }
 
   if (!form.content) {
-    ElMessage({
-      message: t('emptyContentMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
+    ElMessage({ message: t('emptyContentMsg'), type: 'error', plain: true })
+    return false
   }
 
   if (form.manyType === 'divide' && form.attachments.length > 0) {
-    ElMessage({
-      message: t('noSeparateSendMsg'),
-      type: 'error',
-      plain: true,
-    })
+    ElMessage({ message: t('noSeparateSendMsg'), type: 'error', plain: true })
+    return false
+  }
+
+  return true
+}
+
+// Real server-side scheduling — POSTs to /email/schedule, which persists the
+// full send payload and a cron dispatches it later (mail-worker/src/service/
+// scheduled-email-service.js). This used to just call sendEmail() straight
+// away, silently ignoring the chosen time and sending immediately.
+async function sendScheduled() {
+  if (!scheduledAt.value) return
+  if (!validateBeforeSend()) return
+
+  if (sending) {
+    ElMessage({ message: t('sendingErrorMsg'), type: 'error', plain: true })
     return
   }
+
+  sending = true
+  try {
+    await emailSchedule({
+      ...toRaw(form),
+      scheduledAt: scheduledAt.value,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    })
+    ElNotification({
+      title: t('scheduleSuccessMsg'),
+      type: 'success',
+      message: h('span', { style: 'color: teal' }, form.subject),
+      position: 'bottom-right',
+    })
+    show.value = false
+    resetForm()
+  } catch (e) {
+    ElNotification({
+      title: t('scheduleFailMsg'),
+      type: 'error',
+      message: h('span', { style: 'color: teal' }, e.message || ''),
+      position: 'bottom-right',
+    })
+  } finally {
+    sending = false
+  }
+}
+
+// Undo Send: reuses the exact same server-side scheduled_email queue as
+// Scheduled Send (see mail-worker/src/service/scheduled-email-service.js —
+// create() arms a precise short-delay dispatch under its
+// FAST_PATH_THRESHOLD_MS, with the once-a-minute cron as a backstop), just
+// with a short delay (uiStore.undoSendSeconds) instead of a user-picked
+// future date. This is NOT a frontend setTimeout — the delayed delivery
+// keeps happening server-side even if this tab/app closes; only the "Undo"
+// button itself is naturally client-only (there's nothing to undo once the
+// tab that could show it is gone, but the send still completing without an
+// Undo option available is correct, not a bug).
+async function sendWithUndo() {
+  sending = true
+  const snapshot = { ...toRaw(form) }
+  const scheduledAt = new Date(Date.now() + uiStore.undoSendSeconds * 1000)
+    .toISOString().slice(0, 19).replace('T', ' ')
+
+  let scheduleId = null
+  try {
+    const created = await emailSchedule({
+      ...snapshot,
+      scheduledAt,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    })
+    scheduleId = created.id
+  } catch (e) {
+    ElNotification({
+      title: t('sendFailMsg'),
+      type: 'error',
+      message: h('span', { style: 'color: teal' }, e.message || ''),
+      position: 'bottom-right',
+    })
+    sending = false
+    return
+  }
+
+  show.value = false
+  resetForm()
+  sending = false
+
+  let undone = false
+  const notif = ElNotification({
+    title: t('messageSending'),
+    duration: uiStore.undoSendSeconds * 1000 + 500,
+    position: 'bottom-right',
+    message: () => h('div', { style: 'display:flex;align-items:center;gap:14px;justify-content:space-between' }, [
+      h('span', { style: 'color:teal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, snapshot.subject || t('noSubject')),
+      h('button', {
+        style: 'color:#1890ff;background:none;border:none;cursor:pointer;font-weight:700;flex-shrink:0;font-size:13px',
+        onClick: async () => {
+          if (undone) return
+          undone = true
+          notif.close()
+          try {
+            await emailScheduleCancel(scheduleId)
+            Object.assign(form, snapshot)
+            defValue.value = ''
+            setTimeout(() => { defValue.value = form.content })
+            show.value = true
+            ElMessage({ message: t('undoRestoredMsg'), type: 'success', plain: true })
+          } catch (e) {
+            // Already sent (fast path won the race against the click) — nothing to undo.
+            ElMessage({ message: t('scheduledCancelFail'), type: 'error', plain: true })
+          }
+        },
+      }, t('undo')),
+    ]),
+  })
+}
+
+async function sendEmail() {
+
+  if (!validateBeforeSend()) return
 
   if (sending) {
     ElMessage({
@@ -610,6 +706,11 @@ async function sendEmail() {
       type: 'error',
       plain: true,
     })
+    return
+  }
+
+  if (uiStore.undoSendSeconds > 0) {
+    await sendWithUndo()
     return
   }
 
@@ -933,6 +1034,37 @@ function openDraft(draft) {
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
   show.value = true;
+  try { editor.value.focus() } catch {}
+}
+
+// Reopens Compose from a scheduled-email payload (the schedule was already
+// cancelled server-side by /email/schedule/:id/edit before this is called —
+// see mail-vue/src/request/email.js#emailScheduleEdit and
+// scheduledEmailService.beginEdit). The payload has accountId but not the
+// sender's email string, so resolve it against the loaded sender list the
+// same way selectSender() does.
+async function openScheduled(payload) {
+  _showWindow()
+  await loadSenderAccounts()
+
+  const { id, scheduledAt: originalScheduledAt, timezone, ...sendFields } = payload
+  Object.assign(form, sendFields)
+
+  const acc = senderAccounts.value.find(a => a.accountId === payload.accountId)
+  if (acc) {
+    form.sendEmail = acc.email
+    form.name = acc.name || form.name
+  }
+
+  defValue.value = ''
+  setTimeout(() => defValue.value = form.content)
+
+  if (originalScheduledAt) {
+    scheduledAt.value = originalScheduledAt
+    showSchedulePicker.value = true
+  }
+
+  show.value = true
   try { editor.value.focus() } catch {}
 }
 

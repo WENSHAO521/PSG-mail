@@ -56,6 +56,8 @@ const en = {
 	noOsDomainUpBack: 'Cannot upload background: object storage domain not configured',
 	starNotExistEmail: 'Starred email does not exist',
 	emailNotExist: 'Email does not exist',
+	scheduleTooSoon: 'Scheduled time must be at least 30 seconds in the future',
+	scheduleNotCancellable: 'This scheduled email has already been sent, cancelled, or is being sent right now',
 	aiAssistantDisabled: 'The AI mail assistant is not enabled',
 	aiAssistantConfirmExpired: 'This confirmation request no longer exists or has expired — please try again',
 	aiAssistantTooManySteps: 'The AI assistant took too many steps — please rephrase your request',

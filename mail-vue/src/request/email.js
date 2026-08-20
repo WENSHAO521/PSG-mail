@@ -71,3 +71,27 @@ export function emailSend(form,progress) {
         noMsg: true
     })
 }
+
+export function emailSchedule(form) {
+    return http.post('/email/schedule', form, { noMsg: true })
+}
+
+export function emailScheduleList() {
+    return http.get('/email/schedule/list')
+}
+
+export function emailScheduleCancel(id) {
+    return http.put(`/email/schedule/${id}/cancel`)
+}
+
+export function emailScheduleReschedule(id, scheduledAt, timezone) {
+    return http.put(`/email/schedule/${id}/reschedule`, { scheduledAt, timezone })
+}
+
+export function emailScheduleSendNow(id) {
+    return http.post(`/email/schedule/${id}/send-now`, null, { noMsg: true })
+}
+
+export function emailScheduleEdit(id) {
+    return http.post(`/email/schedule/${id}/edit`, null, { noMsg: true })
+}

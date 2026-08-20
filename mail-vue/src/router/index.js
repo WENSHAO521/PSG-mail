@@ -104,6 +104,12 @@ const routes = [
                 meta: { title: 'drafts', name: 'draft', menu: true }
             },
             {
+                path: '/scheduled',
+                name: 'scheduled',
+                component: () => import('@/views/scheduled/index.vue'),
+                meta: { title: 'scheduled', name: 'scheduled', menu: true }
+            },
+            {
                 path: '/download',
                 name: 'download',
                 component: () => import('@/views/download/index.vue'),

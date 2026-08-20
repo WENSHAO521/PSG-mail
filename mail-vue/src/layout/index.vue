@@ -178,7 +178,7 @@ const isMailRoute = computed(() => MAIL_ROUTES.has(route.meta?.name))
 const sidebarCollapsed = computed(() => uiStore.asideCollapsed && window.innerWidth >= 1025)
 
 const keepAliveList = ['email', 'all-inbox', 'all-email', 'send', 'star', 'draft', 'archive', 'spam', 'trash']
-const keepAliveWorkspace = ['sys-setting', 'analysis', 'user', 'role', 'reg-key', 'setting', 'templates', 'groups']
+const keepAliveWorkspace = ['sys-setting', 'analysis', 'user', 'role', 'reg-key', 'setting', 'templates', 'groups', 'scheduled']
 
 // Clear selected email when switching mail folders
 watch(isMailRoute, (is) => { if (!is) emailStore.contentData.email = null })

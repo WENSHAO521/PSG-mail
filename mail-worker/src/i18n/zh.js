@@ -56,6 +56,8 @@ const zh = {
 	noOsDomainUpBack: '对象存储域名未配置不能上传背景',
 	starNotExistEmail: '星标的邮件不存在',
 	emailNotExist: '邮件不存在',
+	scheduleTooSoon: '定时发送时间必须至少晚于当前 30 秒',
+	scheduleNotCancellable: '该定时邮件已发送、已取消，或正在发送中',
 	aiAssistantDisabled: 'AI 邮件助手功能未开启',
 	aiAssistantConfirmExpired: '确认请求不存在或已过期，请重新发起',
 	aiAssistantTooManySteps: 'AI 助手执行步骤过多，请重新描述你的需求',

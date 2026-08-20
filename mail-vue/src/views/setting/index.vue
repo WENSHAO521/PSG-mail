@@ -188,6 +188,18 @@
                 <Icon icon="solar:danger-triangle-bold" width="15" height="15" style="flex-shrink:0"/>
                 {{ $t('autoDeleteDaysUserWarn', { n: settingStore.settings.autoDeleteDays > 0 ? settingStore.settings.autoDeleteDays : 30 }) }}
               </div>
+              <div class="card-body">
+                <div class="autoreply-toggle">
+                  <div>
+                    <div class="toggle-label">{{ $t('undoSendSetting') }}</div>
+                    <div class="card-desc" style="margin:0">{{ $t('undoSendSettingDesc') }}</div>
+                  </div>
+                  <el-select v-model="uiStore.undoSendSeconds" style="width:100px">
+                    <el-option :value="0" :label="$t('undoSendOff')"/>
+                    <el-option v-for="n in [5,10,20,30]" :key="n" :value="n" :label="$t('undoSendSeconds', { n })"/>
+                  </el-select>
+                </div>
+              </div>
               <div class="card-body mail-body">
                 <Account />
               </div>
@@ -327,6 +339,7 @@ import { accountSetName } from "@/request/account.js"
 import { useAccountStore } from "@/store/account.js"
 import { useI18n } from "vue-i18n"
 import { useSettingStore } from "@/store/setting.js"
+import { useUiStore } from "@/store/ui.js"
 import { Icon } from "@iconify/vue"
 import tinyEditor from "@/components/tiny-editor/index.vue"
 import http from "@/axios/index.js"
@@ -340,6 +353,7 @@ import dayjs from "dayjs"
 const { t } = useI18n()
 const accountStore = useAccountStore()
 const settingStore = useSettingStore()
+const uiStore = useUiStore()
 const userStore = useUserStore()
 const setPwdLoading = ref(false)
 const setNameShow = ref(false)

@@ -15,6 +15,13 @@ export const useUiStore = defineStore('ui', {
         key: 0,
         dark: false,
         aiAssistantShow: false,
+        // Undo Send grace period, seconds (0 = off). Purely a client-side
+        // preference for how long a delay to request when scheduling a
+        // just-clicked "Send" — the actual delayed delivery is enforced
+        // server-side via the same scheduled_email queue Scheduled Send
+        // uses (see mail-worker/src/service/scheduled-email-service.js),
+        // never a bare frontend setTimeout.
+        undoSendSeconds: 10,
         asideCount: {
             email: 0,
             send: 0,
@@ -31,6 +38,6 @@ export const useUiStore = defineStore('ui', {
         }
     },
     persist: {
-        pick: ['dark'],
+        pick: ['dark', 'undoSendSeconds'],
     },
 })
