@@ -142,6 +142,7 @@ const zh = {
     notifReconnect: '重新连接推送',
     notifPushConnected: '推送已连接',
     notifReconnectFailed: '连接推送失败',
+    notifErrorCode: '错误代码',
     notifStageFirebaseAppInit: 'Firebase 应用初始化失败',
     notifStageMessagingInit: 'Firebase Messaging 初始化失败',
     notifStageServiceWorker: 'Service Worker 注册失败',

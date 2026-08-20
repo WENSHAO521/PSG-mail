@@ -151,6 +151,7 @@
                   <div>
                     <div class="toggle-label">{{ $t('enableDesktopNotif') }}</div>
                     <div class="card-desc" style="margin:0">{{ notifStatusText }}</div>
+                    <div v-if="pushRegisterErrorCode" class="card-desc" style="margin:0">{{ $t('notifErrorCode') }}: {{ pushRegisterErrorCode }}</div>
                   </div>
                   <el-button
                     v-if="notifPermission !== 'granted' && !isElectronPlatform"
@@ -431,7 +432,13 @@ const notifDevicesLoaded = ref(false)
 const notifTestSending = ref(false)
 const notifReconnecting = ref(false)
 const isElectronPlatform = !!window.electronAPI?.sendNotification
-const pushRegisterError = ref('')
+// Split from the previous single pushRegisterError so the Settings UI can
+// show both the failure stage AND the safe error identifier (e.code/e.name/
+// FIREBASE_NOT_CONFIGURED — never e.message, see firebase.js#errorId) —
+// stage alone ("firebase_app_init") wasn't enough to tell a missing config
+// apart from a bad API key without opening devtools.
+const pushRegisterStage = ref('')
+const pushRegisterErrorCode = ref('')
 
 const pushConnected = computed(() => notifDevices.value.some(d => d.enabled))
 
@@ -467,7 +474,7 @@ function stageLabel(stage) {
 }
 
 // Order matters: a failed reconnect attempt still leaves notifDevices empty
-// (pushGrantedButDisconnected would also be true), so pushRegisterError must
+// (pushGrantedButDisconnected would also be true), so pushRegisterStage must
 // be checked FIRST — otherwise a real firebase_app_init/messaging_init/
 // service_worker/get_token/device_register failure silently reads as the
 // generic "granted but never tried" message and the user has no way to see
@@ -477,7 +484,7 @@ const notifStatusText = computed(() => {
   if (isElectronPlatform) return t('notifTestNative')
   if (notifPermission.value !== 'granted') return t('notificationsDesc')
   if (pushConnected.value) return t('notifPushConnected')
-  if (pushRegisterError.value) return `${t('notifReconnectFailed')}: ${stageLabel(pushRegisterError.value)}`
+  if (pushRegisterStage.value) return `${t('notifReconnectFailed')}: ${stageLabel(pushRegisterStage.value)}`
   if (pushGrantedButDisconnected.value) return t('notifGrantedNoDevice')
   return t('notifTestNoDevice')
 })
@@ -502,7 +509,13 @@ async function registerPushDevices() {
   const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush()])
   if (webResult.status === 'fulfilled') {
     const webStatus = webResult.value
-    pushRegisterError.value = webStatus && !webStatus.ok ? (webStatus.stage || 'unknown') : ''
+    const failed = webStatus && !webStatus.ok
+    pushRegisterStage.value = failed ? (webStatus.stage || 'unknown') : ''
+    // webStatus.error is already restricted to e.code/e.name/a known
+    // constant like FIREBASE_NOT_CONFIGURED by firebase.js#errorId — never
+    // e.message, an API key, VAPID key, FCM token, or credential — so it's
+    // safe to store and render as-is.
+    pushRegisterErrorCode.value = failed ? (webStatus.error || '') : ''
   } else {
     // registerWebPush() itself is supposed to catch everything into a
     // {ok:false, stage} result — a rejection here means something threw
@@ -510,7 +523,8 @@ async function registerPushDevices() {
     // read as "success" and left the user staring at the generic
     // "not connected" message with zero indication anything went wrong.
     console.error('[push] registerWebPush rejected', webResult.reason)
-    pushRegisterError.value = 'unknown'
+    pushRegisterStage.value = 'unknown'
+    pushRegisterErrorCode.value = ''
   }
   await loadNotifDevices()
 }

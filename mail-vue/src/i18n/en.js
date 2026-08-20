@@ -142,6 +142,7 @@ const en = {
     notifReconnect: 'Reconnect push',
     notifPushConnected: 'Push connected',
     notifReconnectFailed: 'Failed to connect push',
+    notifErrorCode: 'Error code',
     notifStageFirebaseAppInit: 'Firebase app initialization failed',
     notifStageMessagingInit: 'Firebase Messaging initialization failed',
     notifStageServiceWorker: 'Service worker registration failed',

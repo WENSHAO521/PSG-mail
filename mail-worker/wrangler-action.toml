@@ -84,5 +84,11 @@ linuxdo_switch = "${LINUXDO_SWITCH}"
 # with `sh: 1: vite: not found`. `&&` scopes the override to `install`
 # only; `run build` keeps Wrangler's NODE_ENV=production, which is
 # correct for a release build.
+#
+# scripts/check-vite-env.sh runs between install and build as a presence
+# preflight for the 7 VITE_FIREBASE_* vars (see that file) — it executes
+# inside this exact subprocess, so it doubles as direct proof that
+# wrangler's [build] command actually inherits the job-level env set in
+# .github/workflows/deploy-cloudflare.yml, rather than an assumption.
 [build]
-command = "ELECTRON_SKIP_BINARY_DOWNLOAD=1 NODE_ENV=development npm --prefix ../mail-vue install --legacy-peer-deps && npm --prefix ../mail-vue run build"
+command = "ELECTRON_SKIP_BINARY_DOWNLOAD=1 NODE_ENV=development npm --prefix ../mail-vue install --legacy-peer-deps && sh ./scripts/check-vite-env.sh && npm --prefix ../mail-vue run build"
