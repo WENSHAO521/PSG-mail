@@ -31,4 +31,5 @@ import '../api/external-api'
 import '../api/ai-assistant-api'
 import '../api/notification-api'
 import '../api/scheduled-email-api'
+import '../api/label-api'
 export default app;

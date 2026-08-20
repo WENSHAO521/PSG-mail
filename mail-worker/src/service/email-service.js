@@ -24,6 +24,7 @@ import { att } from '../entity/att';
 import telegramService from './telegram-service';
 import kvCache from '../cache/kv-cache';
 import r2Service from './r2-service';
+import labelService from './label-service';
 
 // ── Per-request helpers ────────────────────────────────────────────────────
 
@@ -91,6 +92,49 @@ function emlSafeFilename(row, emailId) {
 	const date = row.create_time ? String(row.create_time).slice(0, 10) : 'unknown'
 	const subject = (row.subject || 'no-subject').replace(/[\\/:*?"<>|]/g, '_').slice(0, 60)
 	return `${date}_${subject}_${emailId}.eml`
+}
+
+// archiveList()/spamList()/trashList() query via raw c.env.db.prepare()
+// instead of drizzle (they need dynamic WHERE clauses drizzle's typed query
+// builder doesn't fit well here), which means the returned rows carry the
+// literal snake_case SQL column names (email_id, account_id, ...) — NOT the
+// camelCase drizzle normally maps to. Every consumer of these lists
+// (emailAddAtt, labelService.attachLabels, and the entire frontend
+// email-scroll component) keys off `.emailId`, so without this mapping
+// every row in Archive/Spam/Trash had emailId === undefined: attachments
+// never resolved, and the frontend couldn't select/star/delete/key rows in
+// those three folders at all.
+function mapRawEmailRow(row) {
+	return {
+		emailId: row.email_id,
+		sendEmail: row.send_email,
+		name: row.name,
+		accountId: row.account_id,
+		userId: row.user_id,
+		subject: row.subject,
+		code: row.code,
+		text: row.text,
+		content: row.content,
+		cc: row.cc,
+		bcc: row.bcc,
+		recipient: row.recipient,
+		toEmail: row.to_email,
+		toName: row.to_name,
+		inReplyTo: row.in_reply_to,
+		relation: row.relation,
+		messageId: row.message_id,
+		type: row.type,
+		status: row.status,
+		resendEmailId: row.resend_email_id,
+		message: row.message,
+		unread: row.unread,
+		createTime: row.create_time,
+		isDel: row.is_del,
+		isArchive: row.is_archive,
+		isSpam: row.is_spam,
+		deleteTime: row.delete_time,
+		isStar: row.star_id != null ? 1 : 0,
+	};
 }
 
 const emailService = {
@@ -204,6 +248,7 @@ const emailService = {
 
 
 		await this.emailAddAtt(c, list);
+		await labelService.attachLabels(c, list);
 
 		if (!latestEmail) {
 			latestEmail = {
@@ -253,8 +298,9 @@ const emailService = {
 				${accountCond} AND e.email_id < ?
 				ORDER BY e.email_id DESC LIMIT ?
 			`).bind(userId, ...accessBinds, ...(allReceive ? [] : [accountId]), emailId, size).all();
-			const list = results.map(item => ({ ...item, isStar: item.star_id != null ? 1 : 0 }));
+			const list = results.map(mapRawEmailRow);
 			await this.emailAddAtt(c, list);
+			await labelService.attachLabels(c, list);
 			return { list, total: list.length, latestEmail: list[0] || { emailId: 0, accountId, userId } };
 		} catch { return { list: [], total: 0, latestEmail: { emailId: 0, accountId, userId } }; }
 	},
@@ -323,8 +369,9 @@ const emailService = {
 				LIMIT ?
 			`).bind(userId, ...spamAccessBinds, ...(allReceive ? [] : [accountId]), emailId, size).all();
 
-			const list = results.map(item => ({ ...item, isStar: item.star_id != null ? 1 : 0 }));
+			const list = results.map(mapRawEmailRow);
 			await this.emailAddAtt(c, list);
+			await labelService.attachLabels(c, list);
 
 			const latestEmail = list[0] || { emailId: 0, accountId, userId };
 			return { list, total: list.length, latestEmail };
@@ -381,8 +428,9 @@ const emailService = {
 				${accountCond} AND e.email_id < ?
 				ORDER BY e.email_id DESC LIMIT ?
 			`).bind(userId, ...accessBinds, ...(allReceive ? [] : [accountId]), emailId, size).all();
-			const list = results.map(item => ({ ...item, isStar: item.star_id != null ? 1 : 0 }));
+			const list = results.map(mapRawEmailRow);
 			await this.emailAddAtt(c, list);
+			await labelService.attachLabels(c, list);
 			return { list, total: list.length, latestEmail: list[0] || { emailId: 0, accountId, userId } };
 		} catch { return { list: [], total: 0, latestEmail: { emailId: 0, accountId, userId } }; }
 	},
@@ -460,6 +508,7 @@ const emailService = {
 		row.isStar = row.starId != null ? 1 : 0;
 		const list = [row];
 		await this.emailAddAtt(c, list);
+		await labelService.attachLabels(c, list);
 		return list[0];
 	},
 
@@ -1203,6 +1252,7 @@ const emailService = {
 			.limit(20);
 
 		await this.emailAddAtt(c, list);
+		await labelService.attachLabels(c, list);
 
 		return list;
 	},
