@@ -40,3 +40,4 @@ orm_log = false
 domain = ["example.com"]
 admin = "admin@example.com"
 jwt_secret = "vitest-only-secret-do-not-use-in-prod"
+maintenance_secret = "vitest-only-maintenance-secret-do-not-use-in-prod"

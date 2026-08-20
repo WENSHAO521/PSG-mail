@@ -59,8 +59,16 @@ pnpm wrangler d1 migrations apply db --remote -c wrangler-action.toml
 Via the existing `deploy-cloudflare.yml` workflow (push to `main`, or
 `workflow_dispatch`). **Before relying on this actually deploying anything:
 confirm the required GitHub Variables/Secrets are set** — `DOMAIN`, `ADMIN`,
-and `JWT_SECRET` in particular are hard requirements the workflow checks
-and fails fast on if missing (see "Known pre-existing blocker" below).
+`JWT_SECRET`, and `MAINTENANCE_SECRET` in particular are hard requirements
+the workflow checks and fails fast on if missing (see "Known pre-existing
+blocker" below). `MAINTENANCE_SECRET` is new as of this pass — a separate
+credential from `JWT_SECRET` that gates `/api/init` and `/api/reset-admin`;
+it doesn't need to match any existing value, just be set to something
+(generate a fresh random string).
+
+Secrets and code are uploaded together in a single `wrangler deploy
+--secrets-file` call — not the old `wrangler secret put` × N followed by a
+separate `wrangler deploy`, which used to produce one deployment per secret.
 
 ## 5. Smoke test (after deploy)
 
@@ -109,8 +117,12 @@ months (confirmed via `gh run list` — every "🚀 Deploy cloud-mail to
 Cloudflare Workers" run since at least 2026-06-14 failed in under 30s) due
 to `DOMAIN`, `ADMIN`, and `JWT_SECRET` not being set as GitHub
 Variables/Secrets for this repo — the workflow's own validation step
-rejects the run before touching Cloudflare at all. This means **pushing
-this release does not, by itself, deploy anything** until those three are
-configured (Settings → Secrets and variables → Actions). Not something this
-release caused or can fix from inside the repo — it needs your actual
-domain, admin email, and a JWT secret you choose.
+rejects the run before touching Cloudflare at all. `MAINTENANCE_SECRET` is
+now checked the same way (see "4. Deploy" above) and will also block the
+run if unset. This means **pushing this release does not, by itself, deploy
+anything** until all four are configured (Settings → Secrets and variables
+→ Actions). Not something this release caused or can fix from inside the
+repo — it needs your actual domain, admin email, a JWT secret you choose,
+and a maintenance secret you choose (see "8. Required deployment config" in
+the 2.9.0 deploy/security report for the full list, including
+`CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`).

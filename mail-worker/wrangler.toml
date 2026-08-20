@@ -58,11 +58,18 @@ crons = ["* * * * *", "*/30 * * * *", "0 16 * * *"]	#每分钟处理定时发送
 #orm_log = false			#是否sql日志
 #domain = []				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
 #admin = ""				#管理员的邮箱	示例: admin@example.com
-# jwt_secret 不要写在这里 —— 用 wrangler secret 存放（同 Firebase 三项密钥的方式）：
+# jwt_secret / maintenance_secret 不要写在这里 —— 用 Worker Secret 存放（同
+# Firebase 三项密钥的方式）。两者是两个独立的密钥，不要用同一个值：
+#   jwt_secret         只用于签发/校验每个用户的登录 JWT
+#   maintenance_secret 只用于 /init（部署引导）与 /reset-admin（管理员密码找回）
+# 明文写进 [vars] 意味着任何能读到这份配置文件的人都能拿到它。手动（非 CI）部署时：
 #   cd mail-worker
 #   npx wrangler secret put jwt_secret
-# 它用于签发/校验每个用户的登录 JWT，也是 /init 与 /reset-admin 的引导密钥，
-# 明文写进 [vars] 意味着任何能读到这份配置文件的人都能拿到它。
+#   npx wrangler secret put maintenance_secret
+# CI（.github/workflows/deploy-cloudflare.yml）改用一次性的
+# `wrangler deploy --secrets-file <临时文件>`，把代码和这些密钥在同一次部署里
+# 一起上传，不再逐个调用 `wrangler secret put`（那样每调一次就会立即产生一次
+# 独立部署）。
 
 # ── 云端备份 OAuth（不填则对应入口不显示）────────────────────────
 # Google Drive: https://console.cloud.google.com/ → APIs & Services → Credentials

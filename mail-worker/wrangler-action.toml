@@ -50,12 +50,15 @@ analysis_cache = "${ANALYSIS_CACHE}"
 #orm_log = false
 domain = "${DOMAIN}"
 admin = "${ADMIN}"
-# jwt_secret is deliberately NOT here — it's a Cloudflare Worker Secret
-# (`wrangler secret put jwt_secret`, see the deploy workflow's "🔐 同步
-# Worker Secrets" step), not a plaintext [vars] entry. It signs every login
-# JWT and gates /init and /reset-admin; a plaintext var is readable by
-# anyone with `wrangler deploy`/dashboard access to this config, which a
-# real secret isn't.
+# jwt_secret / maintenance_secret are deliberately NOT here — both are
+# Cloudflare Worker Secrets, uploaded together with the code by the deploy
+# workflow's single `wrangler deploy --secrets-file` step (see
+# .github/workflows/deploy-cloudflare.yml), never written into this file's
+# [vars] as plaintext (a plaintext var is readable by anyone with
+# `wrangler deploy`/dashboard access to this config, which a real secret
+# isn't). jwt_secret signs login JWTs only; maintenance_secret separately
+# gates /init and /reset-admin — see mail-worker/src/init/init.js and
+# mail-worker/src/api/reset-admin-api.js.
 project_link = "${PROJECT_LINK}"
 
 linuxdo_client_id = "${LINUXDO_CLIENT_ID}"

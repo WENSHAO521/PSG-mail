@@ -26,11 +26,22 @@ jobs:
       # right store; kept as a secrets-or-vars fallback so either works.
       DOMAIN: ${{ secrets.DOMAIN || vars.DOMAIN }}
       ADMIN: ${{ secrets.ADMIN || vars.ADMIN }}
-      # JWT_SECRET signs every login token and gates /init + /reset-admin —
-      # Secret only, no vars fallback. It's pushed to the Worker via
-      # `wrangler secret put jwt_secret` (see "🔐 同步 Worker Secrets" below),
-      # never written into wrangler-action.toml's [vars] as plaintext.
+      # JWT_SECRET signs every login JWT — nothing else. Secret only, no
+      # vars fallback. It's uploaded together with the code in the single
+      # `wrangler deploy --secrets-file` call below (see "🔐🚀 构建
+      # Secrets 文件并部署"), never written into wrangler-action.toml's
+      # [vars] as plaintext, and never passed to `wrangler secret put`
+      # (each `secret put` call creates its own immediate deployment —
+      # see the same step's comment for why that's avoided here).
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      # MAINTENANCE_SECRET is a separate credential from JWT_SECRET — it
+      # gates only the deploy-bootstrap/recovery endpoints (POST /api/init,
+      # POST /api/reset-admin), never JWT signing. Keeping it independent
+      # means rotating one doesn't invalidate the other (rotating
+      # JWT_SECRET logs out every user; rotating MAINTENANCE_SECRET does
+      # not). See mail-worker/src/init/init.js and
+      # mail-worker/src/api/reset-admin-api.js.
+      MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || vars.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID || vars.D1_DATABASE_ID }}
@@ -62,8 +73,9 @@ jobs:
       # Measurement ID instead of a VAPID key.
       VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
       # Firebase Admin service account — secrets only, never falls back to
-      # vars, and is pushed to the Worker via `wrangler secret put` (not
-      # written into any .toml) in the step below.
+      # vars, and (when all three are set) is uploaded via the same
+      # `wrangler deploy --secrets-file` call as jwt_secret/maintenance_secret
+      # below — not written into any .toml, not pushed with `secret put`.
       FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
       FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
       FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
@@ -107,7 +119,12 @@ jobs:
             echo "❌ JWT_SECRET variable is empty or contains invalid characters (?, %, #, /, \\)."
             exit 1
           fi
-          
+
+          if [ -z "$MAINTENANCE_SECRET" ]; then
+            echo "❌ MAINTENANCE_SECRET variable is empty. It must be set independently of JWT_SECRET — see .github/workflows/deploy-cloudflare.yml's env block comment."
+            exit 1
+          fi
+
           if ! jq -e 'type == "array"' <<< "$DOMAIN" ; then
             echo "❌ DOMAIN variable must be a JSON array (e.g., [\"example.com\"])."
             exit 1
@@ -180,9 +197,10 @@ jobs:
           sed -i "s|\${CUSTOM_DOMAIN}|${CUSTOM_DOMAIN}|g" "$CONFIG_FILE"
           sed -i "s|\"\${DOMAIN}\"|${DOMAIN}|g" "$CONFIG_FILE"
           sed -i "s|\${ADMIN}|${ADMIN}|g" "$CONFIG_FILE"
-          # No jwt_secret substitution here — wrangler-action.toml has no
-          # such [vars] entry to fill in; it's pushed as a real Worker
-          # Secret in the "🔐 同步 Worker Secrets" step below instead.
+          # No jwt_secret/maintenance_secret substitution here —
+          # wrangler-action.toml has no such [vars] entries to fill in;
+          # both are pushed as real Worker Secrets via the "🔐🚀 构建
+          # Secrets 文件并部署" step's `wrangler deploy --secrets-file` below.
           sed -i "s|\${R2_BUCKET_NAME}|${R2_BUCKET_NAME}|g" "$CONFIG_FILE"
           sed -i "s|\${PROJECT_LINK}|${PROJECT_LINK}|g" "$CONFIG_FILE"
           sed -i "s|\${ANALYSIS_CACHE}|${ANALYSIS_CACHE}|g" "$CONFIG_FILE"
@@ -279,43 +297,68 @@ jobs:
           # with $NAME — the binding always resolves correctly regardless).
           pnpm wrangler d1 migrations apply db --remote -c wrangler-action.toml
 
-      # Deliberately BEFORE "🚀 开始部署", not after (this used to be a
-      # post-deploy step for Firebase alone). jwt_secret and the Firebase
-      # secrets must exist before the new Worker code that expects them as
-      # real Secrets goes live — every endpoint that depends on them
-      # (login JWT signing/verification, /init, /reset-admin, FCM send)
-      # must fail closed if the secret is missing, never run against an
-      # accidentally-undefined value. `wrangler secret put` doesn't require
-      # the Worker to already be serving this exact code, so ordering it
-      # first closes that window instead of leaving it open for however
-      # long the post-deploy step used to take to run.
-      - name: 🔐 同步 Worker Secrets / Sync Worker secrets
-        working-directory: ./mail-worker
-        run: |
-          # jwt_secret is required (validated non-empty earlier in "🛠️ 设置
-          # 环境") — signs every login JWT and gates /init + /reset-admin.
-          # If this differs from whatever secret a currently-live Worker
-          # (deployed some other way) is already using, every existing
-          # user's login token stops validating the moment this takes
-          # effect — see mail-worker/migrations/ROLLOUT.md.
-          printf '%s' "$JWT_SECRET" | pnpm wrangler secret put jwt_secret -c wrangler-action.toml
-          echo "✅ jwt_secret synced."
-
-          if [ -n "$FIREBASE_PROJECT_ID" ] && [ -n "$FIREBASE_CLIENT_EMAIL" ] && [ -n "$FIREBASE_PRIVATE_KEY" ]; then
-            printf '%s' "$FIREBASE_PROJECT_ID"   | pnpm wrangler secret put FIREBASE_PROJECT_ID   -c wrangler-action.toml
-            printf '%s' "$FIREBASE_CLIENT_EMAIL" | pnpm wrangler secret put FIREBASE_CLIENT_EMAIL -c wrangler-action.toml
-            printf '%s' "$FIREBASE_PRIVATE_KEY"  | pnpm wrangler secret put FIREBASE_PRIVATE_KEY  -c wrangler-action.toml
-            echo "✅ Firebase secrets synced — push notifications enabled."
-          else
-            echo "::notice:: FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY not fully set — push notifications stay disabled."
-          fi
-
-      - name: 🚀 开始部署 / Start deployment
+      # Code and Worker Secrets go up in ONE `wrangler deploy
+      # --secrets-file` call — not `wrangler secret put` (which, per
+      # current Wrangler behavior, creates and immediately deploys its own
+      # new Worker version per call — i.e. one `secret put` per secret plus
+      # a trailing `wrangler deploy` used to mean up to 4 separate
+      # deployments for a single CI run, each one briefly live on its own).
+      # A single `--secrets-file` deploy keeps "migrations → one atomic
+      # Worker deployment → smoke test" actually atomic. The secrets file
+      # lives only on this runner's temp filesystem: mode 600, never
+      # printed/catted, no `set -x`, never uploaded as an artifact, and
+      # removed via `trap ... EXIT` so it's gone even if the deploy fails.
+      - name: 🔐🚀 构建 Secrets 文件并部署 / Build secrets file and deploy
         id: deploy
         working-directory: ./mail-worker
         run: |
+          SECRETS_FILE="$(mktemp)"
+          chmod 600 "$SECRETS_FILE"
+          trap 'rm -f "$SECRETS_FILE"' EXIT
+
+          # jwt_secret and maintenance_secret are both required (validated
+          # non-empty earlier in "🛠️ 设置环境"). jwt_secret signs every
+          # login JWT; maintenance_secret separately gates /api/init and
+          # /api/reset-admin (see mail-worker/src/init/init.js and
+          # mail-worker/src/api/reset-admin-api.js) — the two are no longer
+          # the same value. Read via jq's `env.NAME` (reads the process
+          # environment directly) rather than `--arg`, so the secret values
+          # never appear as command-line arguments.
+          #
+          # Reusing whatever jwt_secret a currently-live Worker (deployed
+          # some other way) already has is required — a different value
+          # here invalidates every existing user's session the moment this
+          # takes effect. See mail-worker/migrations/ROLLOUT.md.
+          FIREBASE_SET=0
+          [ -n "$FIREBASE_PROJECT_ID" ] && FIREBASE_SET=$((FIREBASE_SET + 1))
+          [ -n "$FIREBASE_CLIENT_EMAIL" ] && FIREBASE_SET=$((FIREBASE_SET + 1))
+          [ -n "$FIREBASE_PRIVATE_KEY" ] && FIREBASE_SET=$((FIREBASE_SET + 1))
+
+          if [ "$FIREBASE_SET" -eq 3 ]; then
+            jq -n '{
+              jwt_secret: env.JWT_SECRET,
+              maintenance_secret: env.MAINTENANCE_SECRET,
+              FIREBASE_PROJECT_ID: env.FIREBASE_PROJECT_ID,
+              FIREBASE_CLIENT_EMAIL: env.FIREBASE_CLIENT_EMAIL,
+              FIREBASE_PRIVATE_KEY: env.FIREBASE_PRIVATE_KEY
+            }' > "$SECRETS_FILE"
+            echo "✅ jwt_secret + maintenance_secret + Firebase secrets included — push notifications enabled."
+          elif [ "$FIREBASE_SET" -eq 0 ]; then
+            jq -n '{
+              jwt_secret: env.JWT_SECRET,
+              maintenance_secret: env.MAINTENANCE_SECRET
+            }' > "$SECRETS_FILE"
+            echo "::notice:: FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY not set. FCM sending disabled."
+          else
+            jq -n '{
+              jwt_secret: env.JWT_SECRET,
+              maintenance_secret: env.MAINTENANCE_SECRET
+            }' > "$SECRETS_FILE"
+            echo "::warning:: Only $FIREBASE_SET of 3 Firebase secrets are set (need FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY together, or none). FCM sending disabled."
+          fi
+
           echo "🚀 Starting deployment..."
-          pnpm wrangler deploy -c wrangler-action.toml 2>&1 \
+          pnpm wrangler deploy -c wrangler-action.toml --secrets-file "$SECRETS_FILE" 2>&1 \
             | tee deploy.log \
             | grep -v "https://.*\.workers\.dev" \
             | sed -E 's/env\.domain .*/env.domain (***)/' \
@@ -333,7 +376,7 @@ jobs:
           fi
 
           echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
-          echo "✅ Setup completed."
+          echo "✅ Deploy completed."
 
       - name: ♻️ 初始化数据库 / Initialize database
         run: |
@@ -352,8 +395,14 @@ jobs:
           # secret embedded in a URL can land in request/proxy/observability
           # logs even over HTTPS (logged server-side, not just visible in
           # transit), a header does not. See src/api/init-api.js.
+          #
+          # Bearer MAINTENANCE_SECRET, not JWT_SECRET — /api/init is a
+          # deploy-bootstrap endpoint, not a JWT-authenticated one; it's
+          # gated by maintenance_secret on the Worker side (see
+          # src/init/init.js), a credential kept separate from the one
+          # that signs login JWTs.
           HTTP_CODE=$(curl -sL -X POST -w "%{http_code}" -o response.txt \
-            -H "Authorization: Bearer ${JWT_SECRET}" \
+            -H "Authorization: Bearer ${MAINTENANCE_SECRET}" \
             "$WORKER_URL/api/init")
           RESPONSE_BODY=$(cat response.txt)
 

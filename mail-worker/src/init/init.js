@@ -10,11 +10,17 @@ const dbInit = {
 		// (the old GET /init/:secret) can end up in request/proxy/observability
 		// logs even over HTTPS (logged by the server itself, not just visible
 		// in transit). See init-api.js for the route.
+		//
+		// Checked against maintenance_secret, not jwt_secret — this is a
+		// deploy-bootstrap endpoint, not a JWT-authenticated one, and reusing
+		// jwt_secret here would mean rotating the JWT signing key also rotates
+		// (or requires re-syncing) the bootstrap credential, and vice versa.
+		// See mail-worker/src/api/reset-admin-api.js for the same split.
 		const auth = c.req.header('Authorization') || '';
 		const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
 
-		if (!secret || !timingSafeEqual(secret, c.env.jwt_secret)) {
-			return c.text('❌ JWT secret mismatch', 401);
+		if (!secret || !timingSafeEqual(secret, c.env.maintenance_secret)) {
+			return c.text('❌ maintenance secret mismatch', 401);
 		}
 
 		await this.intDB(c);

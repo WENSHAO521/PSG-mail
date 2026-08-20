@@ -43,3 +43,27 @@ NOT EXISTS`) since `d1_migrations` bookkeeping alone is what Wrangler uses to
 decide whether to run a file — the `IF NOT EXISTS` guards are a second,
 cheap line of defense in case bookkeeping and reality ever diverge (e.g. a
 migration was applied by hand before this system existed).
+
+## Legacy schema evolution (known debt)
+
+`src/init/init.js` (`dbInit.init`, called from `POST /api/init` on every
+deploy) still runs its own historical v1 → v4_2 chain of ad hoc
+`ALTER TABLE`/`CREATE TABLE IF NOT EXISTS` steps, wrapped in
+`try { } catch { console.warn(...) }` so an already-applied change is
+silently skipped rather than tracked. This predates the D1 migrations system
+above and currently runs **in addition to** it — two parallel schema-change
+mechanisms, not one.
+
+This was deliberately left alone in the 2.9.0 deploy/security pass: rewriting
+30 versions' worth of upgrader steps into proper migrations is a real project
+of its own, and doing it under a security-hardening change would risk the
+one thing that pass was trying to protect (a clean, atomic deploy). Not
+touched here.
+
+Planned for a 3.x release: port the v1 → v4_2 steps into numbered files in
+this directory (one squashed baseline migration, most likely, rather than 30
+separate ports), then shrink `/api/init` down to bootstrap data only
+(seeding the default admin/settings rows) with no schema changes left in it.
+Until that lands, treat this directory and `dbInit`'s version chain as one
+combined schema history — check both before assuming a column/table does or
+doesn't exist yet.

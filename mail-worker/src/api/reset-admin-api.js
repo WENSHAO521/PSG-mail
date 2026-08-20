@@ -6,7 +6,12 @@ import timingSafeEqual from '../utils/secure-compare';
 
 // Recovery endpoint for when the admin account is locked out — the secret
 // itself is the credential (same pattern as /init), so this must stay in
-// security.js's `exclude` list rather than requiring a normal JWT. Read from
+// security.js's `exclude` list rather than requiring a normal JWT. A
+// logged-in-admin+RBAC gate isn't an option here: the whole point of this
+// endpoint is recovering access when the admin *can't* log in, so it's kept
+// as disaster recovery, gated by maintenance_secret — a credential
+// independent of jwt_secret (see mail-worker/src/init/init.js for the same
+// split, and the deploy workflow's MAINTENANCE_SECRET handling). Read from
 // a header, not a URL path segment (/reset-admin/:secret used to) — a
 // secret in the URL can land in request/proxy/observability logs even over
 // HTTPS, a header does not.
@@ -14,7 +19,7 @@ app.post('/reset-admin', async (c) => {
 	const auth = c.req.header('Authorization') || '';
 	const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
 
-	if (!secret || !timingSafeEqual(secret, c.env.jwt_secret)) {
+	if (!secret || !timingSafeEqual(secret, c.env.maintenance_secret)) {
 		throw new BizError('secret mismatch', 401);
 	}
 
