@@ -449,7 +449,8 @@ const pushGrantedButDisconnected = computed(() =>
 )
 
 const STAGE_LABEL_KEYS = {
-  firebase_init: 'notifStageFirebaseInit',
+  firebase_app_init: 'notifStageFirebaseAppInit',
+  messaging_init: 'notifStageMessagingInit',
   service_worker: 'notifStageServiceWorker',
   get_token: 'notifStageGetToken',
   device_register: 'notifStageDeviceRegister',
@@ -467,9 +468,10 @@ function stageLabel(stage) {
 
 // Order matters: a failed reconnect attempt still leaves notifDevices empty
 // (pushGrantedButDisconnected would also be true), so pushRegisterError must
-// be checked FIRST — otherwise a real firebase_init/service_worker/get_token/
-// device_register failure silently reads as the generic "granted but never
-// tried" message and the user has no way to see what actually broke.
+// be checked FIRST — otherwise a real firebase_app_init/messaging_init/
+// service_worker/get_token/device_register failure silently reads as the
+// generic "granted but never tried" message and the user has no way to see
+// what actually broke.
 const notifStatusText = computed(() => {
   if (notifPermission.value === 'denied') return t('notifDenied')
   if (isElectronPlatform) return t('notifTestNative')

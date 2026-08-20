@@ -1,5 +1,5 @@
-import { initializeApp } from 'firebase/app'
-import { getMessaging, getToken, onMessage } from 'firebase/messaging'
+import { initializeApp, getApp, getApps } from 'firebase/app'
+import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported } from 'firebase/messaging'
 import { registerDevice } from '@/request/notification.js'
 import { handleNewMailSignal } from '@/utils/mail-sync-service.js'
 
@@ -12,14 +12,23 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-let messaging = null
-
-function isSupported() {
-  return typeof window !== 'undefined'
-    && 'serviceWorker' in navigator
-    && 'Notification' in window
-    && !!firebaseConfig.apiKey
+// Presence-only shape of the injected Firebase web config, never the values
+// themselves — lets a production build where a VITE_FIREBASE_* var didn't
+// actually get into the bundle be diagnosed from the console instead of
+// guessed at. measurementId is deliberately not tracked here: it isn't part
+// of firebaseConfig and isn't required for FCM init.
+const CONFIG_PRESENCE = {
+  apiKeyPresent: !!firebaseConfig.apiKey,
+  authDomainPresent: !!firebaseConfig.authDomain,
+  projectIdPresent: !!firebaseConfig.projectId,
+  storageBucketPresent: !!firebaseConfig.storageBucket,
+  messagingSenderIdPresent: !!firebaseConfig.messagingSenderId,
+  appIdPresent: !!firebaseConfig.appId,
+  vapidKeyPresent: !!import.meta.env.VITE_FIREBASE_VAPID_KEY,
 }
+
+let app = null
+let messaging = null
 
 // Safe error identifier only — a FirebaseError's .code (e.g.
 // "messaging/token-subscribe-failed") or the exception's .name, never
@@ -45,22 +54,25 @@ function swState(registration) {
 // "push is actually working" even when registration had failed downstream.
 //
 // Also logs a redacted diagnostic snapshot to the console at each stage —
-// permission/serviceWorker state/firebase init/getToken/device-register
-// outcome only, never a token, VAPID key, Firebase API key, or full error
-// message (see errorId() above) — so a failure can be triaged from a user's
-// DevTools console without asking them to paste anything sensitive.
+// permission/serviceWorker state/config-var presence/firebase app init/
+// messaging init/getToken/device-register outcome only, never a token,
+// VAPID key, Firebase API key, or full error message (see errorId() above)
+// — so a failure can be triaged from a user's DevTools console without
+// asking them to paste anything sensitive.
 export async function registerWebPush() {
   const diag = {
     permission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
     serviceWorkerSupported: typeof window !== 'undefined' && 'serviceWorker' in navigator,
     serviceWorkerState: 'not_attempted',
-    firebaseInit: 'not_attempted',
+    configPresence: CONFIG_PRESENCE,
+    firebaseAppInit: 'not_attempted',
+    messagingInit: 'not_attempted',
     getToken: 'not_attempted',
     deviceRegisterAttempted: false,
     deviceRegisterOk: null,
   }
   const finish = (result) => {
-    console.info('[push] registerWebPush', diag, { ok: result.ok, stage: result.stage })
+    console.info('[push] registerWebPush', diag, { ok: result.ok, stage: result.stage, error: result.error || null })
     return result
   }
 
@@ -68,8 +80,8 @@ export async function registerWebPush() {
     return finish({ ok: false, stage: 'unsupported' })
   }
   if (!firebaseConfig.apiKey) {
-    diag.firebaseInit = 'not_configured'
-    return finish({ ok: false, stage: 'firebase_init', error: 'FIREBASE_NOT_CONFIGURED' })
+    diag.firebaseAppInit = 'not_configured'
+    return finish({ ok: false, stage: 'firebase_app_init', error: 'FIREBASE_NOT_CONFIGURED' })
   }
 
   const permission = await Notification.requestPermission()
@@ -78,15 +90,47 @@ export async function registerWebPush() {
     return finish({ ok: false, stage: 'permission' })
   }
 
-  try {
-    if (!messaging) {
-      const app = initializeApp(firebaseConfig)
-      messaging = getMessaging(app)
+  // initializeApp() throws `app/duplicate-app` on a second call with the
+  // same config — getApps()/getApp() makes this idempotent so a retry after
+  // a messagingInit failure below (app init already succeeded, messaging
+  // still null) doesn't fail app init on the next attempt.
+  if (!app) {
+    try {
+      app = getApps().length ? getApp() : initializeApp(firebaseConfig)
+      diag.firebaseAppInit = 'ok'
+    } catch (e) {
+      diag.firebaseAppInit = 'failed'
+      return finish({ ok: false, stage: 'firebase_app_init', error: errorId(e) })
     }
-    diag.firebaseInit = 'ok'
-  } catch (e) {
-    diag.firebaseInit = 'failed'
-    return finish({ ok: false, stage: 'firebase_init', error: errorId(e) })
+  } else {
+    diag.firebaseAppInit = 'ok'
+  }
+
+  if (!messaging) {
+    // firebaseConfig.apiKey/serviceWorker/Notification presence (checked
+    // above) doesn't guarantee this browser actually supports FCM Messaging
+    // — isSupported() from the SDK checks the real capability set (e.g.
+    // PushManager, IndexedDB). A false here is a browser-support gap, not a
+    // Firebase init failure, so it gets its own stage.
+    let supported = false
+    try {
+      supported = await isMessagingSupported()
+    } catch {
+      supported = false
+    }
+    if (!supported) {
+      diag.messagingInit = 'unsupported'
+      return finish({ ok: false, stage: 'unsupported', error: 'messaging/unsupported-browser' })
+    }
+    try {
+      messaging = getMessaging(app)
+      diag.messagingInit = 'ok'
+    } catch (e) {
+      diag.messagingInit = 'failed'
+      return finish({ ok: false, stage: 'messaging_init', error: errorId(e) })
+    }
+  } else {
+    diag.messagingInit = 'ok'
   }
 
   let registration
