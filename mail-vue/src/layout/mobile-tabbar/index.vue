@@ -52,7 +52,7 @@ function openCompose() {
 }
 
 function openSearch() {
-  uiStore.commandPaletteShow = true
+  router.push({ name: 'search' })
 }
 </script>
 

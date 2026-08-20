@@ -205,6 +205,48 @@
               </div>
             </div>
 
+            <!-- ── Labels section ── -->
+            <div v-show="activeSection === 'labels'" class="settings-card">
+              <div class="card-body backup-body">
+                <div class="card-desc">{{ $t('labelManageDesc') }}</div>
+                <div class="label-create-row">
+                  <el-input v-model="newLabelName" :placeholder="$t('newLabelPrompt')" size="default" @keyup.enter="createLabelFromSettings"/>
+                  <div class="label-color-swatches">
+                    <button v-for="c in LABEL_COLOR_OPTIONS" :key="c"
+                            class="label-swatch" :class="{ active: newLabelColor === c }"
+                            :style="{ background: c }" @click="newLabelColor = c"/>
+                  </div>
+                  <el-button type="primary" size="default" @click="createLabelFromSettings">{{ $t('newLabel') }}</el-button>
+                </div>
+
+                <div v-if="!labelStore.labels.length" class="backup-empty-state">{{ $t('labelEmpty') }}</div>
+                <div v-for="l in labelStore.labels" :key="l.labelId" class="backup-provider-row">
+                  <div class="backup-provider-info">
+                    <span class="label-dot-lg" :style="{ background: l.color }"></span>
+                    <div class="backup-provider-meta">
+                      <template v-if="editingLabelId === l.labelId">
+                        <el-input v-model="editingLabelName" size="small" style="width:180px" @keyup.enter="saveLabelRename(l)"/>
+                      </template>
+                      <template v-else>
+                        <div class="backup-provider-name">{{ l.name }}</div>
+                        <div class="backup-provider-status">{{ l.emailCount || 0 }}</div>
+                      </template>
+                    </div>
+                  </div>
+                  <div class="backup-provider-actions">
+                    <template v-if="editingLabelId === l.labelId">
+                      <el-button size="small" type="primary" @click="saveLabelRename(l)">{{ $t('save') }}</el-button>
+                      <el-button size="small" @click="editingLabelId = null">{{ $t('cancel') }}</el-button>
+                    </template>
+                    <template v-else>
+                      <el-button size="small" @click="startLabelRename(l)">{{ $t('labelRename') }}</el-button>
+                      <el-button size="small" type="danger" plain @click="deleteLabel(l)">{{ $t('labelDelete') }}</el-button>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- ── Cloud backup section ── -->
             <div v-show="activeSection === 'backup'" class="settings-card">
               <div class="card-body backup-body">
@@ -340,6 +382,8 @@ import { useAccountStore } from "@/store/account.js"
 import { useI18n } from "vue-i18n"
 import { useSettingStore } from "@/store/setting.js"
 import { useUiStore } from "@/store/ui.js"
+import { useLabelStore } from "@/store/label.js"
+import { labelCreate, labelUpdate, labelDelete } from "@/request/label.js"
 import { Icon } from "@iconify/vue"
 import tinyEditor from "@/components/tiny-editor/index.vue"
 import http from "@/axios/index.js"
@@ -445,6 +489,55 @@ async function sendTestNotif() {
   } finally {
     notifTestSending.value = false
   }
+}
+
+// ── Labels ──
+const labelStore = useLabelStore()
+const newLabelName = ref('')
+const LABEL_COLOR_OPTIONS = ['#7e7576', '#c48c00', '#2f9e52', '#1890ff', '#a855f7', '#ef1748']
+const newLabelColor = ref(LABEL_COLOR_OPTIONS[0])
+const editingLabelId = ref(null)
+const editingLabelName = ref('')
+
+async function createLabelFromSettings() {
+  const name = newLabelName.value.trim()
+  if (!name) { ElMessage({ message: t('labelNameRequired'), type: 'error', plain: true }); return }
+  try {
+    const created = await labelCreate(name, newLabelColor.value)
+    labelStore.upsertLocal(created)
+    newLabelName.value = ''
+    ElMessage({ message: t('labelCreated'), type: 'success', plain: true })
+  } catch {
+    ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true })
+  }
+}
+
+function startLabelRename(l) {
+  editingLabelId.value = l.labelId
+  editingLabelName.value = l.name
+}
+
+async function saveLabelRename(l) {
+  const name = editingLabelName.value.trim()
+  if (!name) { ElMessage({ message: t('labelNameRequired'), type: 'error', plain: true }); return }
+  try {
+    const updated = await labelUpdate(l.labelId, { name })
+    labelStore.upsertLocal({ ...l, ...updated })
+    editingLabelId.value = null
+    ElMessage({ message: t('labelUpdated'), type: 'success', plain: true })
+  } catch {
+    ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true })
+  }
+}
+
+function deleteLabel(l) {
+  ElMessageBox.confirm(t('labelDeleteConfirm'), { confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), type: 'warning' })
+    .then(() => labelDelete(l.labelId))
+    .then(() => {
+      labelStore.removeLocal(l.labelId)
+      ElMessage({ message: t('labelDeleted'), type: 'success', plain: true })
+    })
+    .catch((e) => { if (e !== 'cancel') ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true }) })
 }
 
 function removeNotifDevice(id) {
@@ -564,6 +657,7 @@ const navItems = computed(() => {
     { key: 'autoreply', icon: 'solar:chat-round-dots-bold-duotone', label: t('autoReply') },
     { key: 'notification', icon: 'solar:bell-bold-duotone',         label: t('notifications') },
     { key: 'mail',      icon: 'solar:mailbox-bold-duotone',         label: t('mailManagement') },
+    { key: 'labels',    icon: 'solar:tag-bold-duotone',             label: t('labelManage') },
     { key: 'backup',    icon: 'solar:cloud-upload-bold-duotone',    label: t('cloudBackup') },
     { key: 'apikey',    icon: 'solar:key-bold-duotone',             label: t('externalApi') },
   ]
@@ -580,6 +674,7 @@ const sectionMeta = computed(() => ({
   autoreply: { label: t('autoReply'),      desc: t('autoReplyDesc') },
   notification: { label: t('notifications'), desc: t('notificationsDesc') },
   mail:      { label: t('mailManagement'), desc: t('mailManagementDesc') },
+  labels:    { label: t('labelManage'),    desc: t('labelManageDesc') },
   backup:    { label: t('cloudBackup'),    desc: t('cloudBackupDesc') },
   apikey:    { label: t('externalApi'),    desc: t('apiKeyDesc') },
   danger:    { label: t('dangerZone'),     desc: t('dangerZoneDesc') },
@@ -601,6 +696,7 @@ onMounted(() => {
   loadBackupProviders()
   loadBackupStatus()
   loadApiKeyList()
+  labelStore.load()
   if (notifPermission.value === 'granted') loadNotifDevices()
 
   // Handle OAuth popup redirect back with ?backup_connected=provider
@@ -909,6 +1005,39 @@ function submitPwd() {
   font-size: 13px;
   font-weight: 600;
   line-height: 1.4;
+}
+
+/* ── Labels ── */
+.label-create-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--light-border-color);
+}
+
+.label-color-swatches {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.label-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+
+  &.active { border-color: var(--el-text-color-primary); }
+}
+
+.label-dot-lg {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* ── Cloud backup ── */

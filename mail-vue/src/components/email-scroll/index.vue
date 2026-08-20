@@ -131,6 +131,9 @@
                 <span class="subject-text">
                   <slot name="subject" :email="item">{{ item.subject || '​' }}</slot>
                 </span>
+                <span class="row-label-dots" v-if="item.labels && item.labels.length">
+                  <span v-for="l in item.labels" :key="l.labelId" class="row-label-dot" :style="{ background: l.color }" :title="l.name"></span>
+                </span>
                 <span class="mail-preview-inline">{{ item.formatText ? ' — ' + item.formatText : '' }}</span>
                 <div class="user-info-inline" v-if="showUserInfo">
                   <span>{{ item.userEmail }}</span>
@@ -1393,6 +1396,18 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     padding: 0 4px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+  }
+
+  .row-label-dots {
+    display: inline-flex;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  .row-label-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
   }
 
   .user-info-inline {

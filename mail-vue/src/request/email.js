@@ -19,6 +19,10 @@ export function emailDetail(emailId) {
     return http.get('/email/detail', {params: {emailId}, noMsg: true})
 }
 
+export function emailSearch(query, accountId, allReceive, cursor, size) {
+    return http.post('/email/search', {query, accountId, allReceive, cursor, size}, {noMsg: true})
+}
+
 export function emailRead(emailIds) {
     return http.put('/email/read', {emailIds})
 }

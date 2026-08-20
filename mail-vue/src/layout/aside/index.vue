@@ -62,6 +62,31 @@
         </el-tooltip>
       </nav>
 
+      <!-- Labels -->
+      <template v-if="hasPerm('email:send')">
+        <div class="sidebar-section-separator"></div>
+        <div class="sidebar-section-title label-section-title">
+          <span>{{ $t('labels') }}</span>
+          <button class="label-add-btn" :title="$t('newLabel')" @click="promptCreateLabel">
+            <Icon icon="solar:add-circle-linear" width="15" height="15" />
+          </button>
+        </div>
+        <nav class="sidebar-nav" v-if="labelStore.labels.length">
+          <el-tooltip v-for="l in labelStore.labels" :key="l.labelId"
+                      :content="l.name" placement="right" :disabled="!collapsed">
+            <div class="sidebar-nav-link"
+                 :class="{ active: route.name === 'label' && Number(route.params.id) === l.labelId }"
+                 @click="router.push({ name: 'label', params: { id: l.labelId } })">
+              <span class="sidebar-nav-content">
+                <span class="label-dot" :style="{ background: l.color }"></span>
+                <span class="sidebar-label">{{ l.name }}</span>
+                <span class="label-count" v-if="l.emailCount">{{ l.emailCount }}</span>
+              </span>
+            </div>
+          </el-tooltip>
+        </nav>
+      </template>
+
       <!-- Admin section -->
       <template v-if="visibleAdminItems.length">
         <div class="sidebar-section-separator"></div>
@@ -99,8 +124,15 @@
           <span>{{ $t('compose') }}</span>
         </button>
 
-        <!-- Utility cluster: notifications / AI assistant / more, grouped as one unit -->
+        <!-- Utility cluster: search / notifications / AI assistant / more, grouped as one unit -->
         <div class="sidebar-util-cluster">
+          <!-- Real backend mail search — distinct from Command Palette (Ctrl+K) -->
+          <el-tooltip :content="$t('search') + ' (/)'" placement="right">
+            <button class="util-btn" @click="router.push({ name: 'search' })">
+              <Icon icon="solar:magnifer-linear" width="18" height="18" />
+            </button>
+          </el-tooltip>
+
           <div class="notif-trigger-wrap">
             <NotificationPanel />
           </div>
@@ -153,18 +185,44 @@ import { useUiStore } from "@/store/ui.js";
 import { useUserStore } from "@/store/user.js";
 import { useEmailStore } from "@/store/email.js";
 import { useSettingStore } from "@/store/setting.js";
+import { useLabelStore } from "@/store/label.js";
 import { hasPerm } from "@/perm/perm.js";
 import { logout } from "@/request/login.js";
-import { computed, ref, onUnmounted } from "vue";
+import { labelCreate } from "@/request/label.js";
+import { computed, ref, onMounted, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { avatarBg, avatarLetter } from "@/utils/avatar.js";
 import NotificationPanel from '@/components/notification-panel/index.vue'
 import AiAssistantDrawer from '@/components/ai-assistant-drawer/index.vue'
 
+const { t } = useI18n();
 const route  = useRoute();
 const uiStore = useUiStore();
 const userStore = useUserStore();
 const emailStore = useEmailStore();
 const settingStore = useSettingStore();
+const labelStore = useLabelStore();
+
+onMounted(() => { if (hasPerm('email:send')) labelStore.load(); })
+
+const LABEL_COLORS = ['#7e7576', '#c48c00', '#2f9e52', '#1890ff', '#a855f7', '#ef1748']
+
+async function promptCreateLabel() {
+  try {
+    const { value } = await ElMessageBox.prompt(t('newLabelPrompt'), t('newLabel'), {
+      confirmButtonText: t('confirm'),
+      cancelButtonText: t('cancel'),
+      inputValidator: v => !!v?.trim() || t('labelNameRequired'),
+    })
+    const color = LABEL_COLORS[labelStore.labels.length % LABEL_COLORS.length]
+    const created = await labelCreate(value.trim(), color)
+    labelStore.upsertLocal(created)
+    router.push({ name: 'label', params: { id: created.labelId } })
+  } catch (e) {
+    if (e === 'cancel') return
+    ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true })
+  }
+}
 
 /* ── AI assistant availability (admin-gated) ── */
 const aiAssistantEnabled = computed(() => Number(settingStore.settings.aiAssistantStatus) === 0);
@@ -557,6 +615,43 @@ function clickLogout() {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+}
+
+.label-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--muted, #7e7576);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s, color 0.1s;
+
+  &:hover { background: var(--base-fill); color: var(--el-text-color-primary); }
+}
+
+.label-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.label-count {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--secondary-text-color);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Footer ──────────────────────────────────────────────── */

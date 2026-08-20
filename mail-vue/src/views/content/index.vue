@@ -51,6 +51,21 @@
             <Icon icon="solar:download-linear" width="19" height="19" />
           </button>
         </el-tooltip>
+        <el-popover placement="bottom-end" width="220" trigger="click">
+          <template #reference>
+            <button class="icon-btn" :title="$t('labelApply')">
+              <Icon icon="solar:tag-linear" width="19" height="19" />
+            </button>
+          </template>
+          <div class="label-popover-list">
+            <div v-if="!labelStore.labels.length" class="label-popover-empty">{{ $t('labelEmpty') }}</div>
+            <div v-for="l in labelStore.labels" :key="l.labelId" class="label-popover-item" @click="toggleLabel(l)">
+              <span class="label-dot" :style="{ background: l.color }"></span>
+              <span class="label-popover-name">{{ l.name }}</span>
+              <Icon v-if="isLabelApplied(l.labelId)" icon="solar:check-circle-bold" width="16" height="16" class="label-popover-check"/>
+            </div>
+          </div>
+        </el-popover>
         <el-tooltip :content="translateBtnLabel" placement="bottom">
           <button class="icon-btn" :class="{ 'icon-btn--active': showTranslation }"
                   @click="handleTranslate" :disabled="translating">
@@ -69,6 +84,12 @@
       <div class="detail-content">
 
         <h1 class="email-title">{{ email.subject || $t('noSubject') }}</h1>
+
+        <div class="detail-label-chips" v-if="email.labels && email.labels.length">
+          <span v-for="l in email.labels" :key="l.labelId" class="detail-label-chip" :style="{ '--chip-color': l.color }">
+            {{ l.name }}
+          </span>
+        </div>
 
         <!-- Meta card: sender + fields + date all in one bordered block -->
         <div class="meta-card">
@@ -186,6 +207,8 @@ import { EmailUnreadEnum } from '@/enums/email-enum.js'
 import { avatarBg, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import { downloadEml } from '@/utils/download-eml.js'
+import { useLabelStore } from '@/store/label.js'
+import { labelApply, labelRemove } from '@/request/label.js'
 
 const emit = defineEmits(['back'])
 
@@ -194,6 +217,7 @@ const settingStore = useSettingStore()
 const accountStore = useAccountStore()
 const emailStore = useEmailStore()
 const avatarCache = useAvatarCacheStore()
+const labelStore = useLabelStore()
 const { t } = useI18n()
 
 // Reactive reference to the currently selected email
@@ -323,6 +347,30 @@ function parseAddressList(raw) {
     const list = JSON.parse(raw || '[]')
     return list.map(item => (typeof item === 'string' ? item : item.address)).filter(Boolean)
   } catch { return [] }
+}
+
+const appliedLabelIds = computed(() => new Set((email.value?.labels || []).map(l => l.labelId)))
+
+function isLabelApplied(labelId) {
+  return appliedLabelIds.value.has(labelId)
+}
+
+function toggleLabel(label) {
+  const e = email.value
+  if (!e) return
+  e.labels = e.labels || []
+  const applied = isLabelApplied(label.labelId)
+  if (applied) {
+    e.labels = e.labels.filter(l => l.labelId !== label.labelId)
+    labelRemove(label.labelId, [e.emailId]).then(() => {
+      ElMessage({ message: t('labelRemoved'), type: 'success', plain: true })
+    }).catch(() => { e.labels.push(label) })
+  } else {
+    e.labels.push({ labelId: label.labelId, name: label.name, color: label.color })
+    labelApply(label.labelId, [e.emailId]).then(() => {
+      ElMessage({ message: t('labelApplied'), type: 'success', plain: true })
+    }).catch(() => { e.labels = e.labels.filter(l => l.labelId !== label.labelId) })
+  }
 }
 
 function changeStar() {
@@ -556,6 +604,69 @@ function handleDelete() {
     font-size: 18px;
     margin-bottom: 14px;
   }
+}
+
+.detail-label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -10px 0 16px;
+}
+
+.detail-label-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: var(--radius-full, 999px);
+  color: var(--chip-color);
+  background: color-mix(in srgb, var(--chip-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip-color) 30%, transparent);
+}
+
+.label-popover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.label-popover-empty {
+  padding: 10px 4px;
+  font-size: 12.5px;
+  color: var(--secondary-text-color);
+}
+
+.label-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:hover { background: var(--base-fill); }
+}
+
+.label-popover-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.label-popover-check {
+  color: var(--el-color-primary);
+  flex-shrink: 0;
+}
+
+.label-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* ── Meta card ────────────────────────────────────────────── */

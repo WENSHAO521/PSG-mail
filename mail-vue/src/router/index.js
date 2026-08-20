@@ -110,6 +110,18 @@ const routes = [
                 meta: { title: 'scheduled', name: 'scheduled', menu: true }
             },
             {
+                path: '/label/:id',
+                name: 'label',
+                component: () => import('@/views/label/index.vue'),
+                meta: { title: 'labels', name: 'label', menu: true }
+            },
+            {
+                path: '/search',
+                name: 'search',
+                component: () => import('@/views/search/index.vue'),
+                meta: { title: 'search', name: 'search', menu: true }
+            },
+            {
                 path: '/download',
                 name: 'download',
                 component: () => import('@/views/download/index.vue'),

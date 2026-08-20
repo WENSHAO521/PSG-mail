@@ -17,10 +17,6 @@
       <NotificationPanel />
     </div>
 
-    <button class="m-search-btn" :aria-label="$t('search')" @click="openSearch">
-      <Icon icon="solar:magnifer-linear" width="20" height="20"/>
-    </button>
-
   </header>
 </template>
 
@@ -43,10 +39,6 @@ const title = computed(() => {
 
 function openDrawer() {
   uiStore.asideShow = true
-}
-
-function openSearch() {
-  uiStore.commandPaletteShow = true
 }
 </script>
 
@@ -146,30 +138,4 @@ function openSearch() {
   &:active { background: rgba(0, 0, 0, 0.08); }
 }
 
-.m-search-btn {
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: 14px;
-  background: #111;
-  color: #fff;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.16);
-
-  &:active {
-    transform: translateY(1px);
-    filter: brightness(1.4);
-  }
-
-  :global(.dark) & {
-    background: #f2f2f2;
-    color: #111;
-
-    &:active {
-      filter: brightness(0.9);
-    }
-  }
-}
 </style>

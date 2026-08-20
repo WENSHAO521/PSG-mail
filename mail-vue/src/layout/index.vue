@@ -136,7 +136,8 @@ const actionsShortcuts = [
   { key: 'A',      label: 'shortcutReplyAll' },
   { key: 'F',      label: 'shortcutForward'  },
   { key: 'E',      label: 'shortcutArchive'  },
-  { key: 'Ctrl K', label: 'shortcutSearch'   },
+  { key: '/',      label: 'shortcutSearch'   },
+  { key: 'Ctrl K', label: 'shortcutCommandPalette' },
   { key: '?',      label: 'shortcutHelp'     },
 ]
 const navShortcuts = [
@@ -173,11 +174,11 @@ function showNotice(data) {
   })
 }
 
-const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'star', 'archive', 'spam', 'trash', 'all-email'])
+const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'star', 'archive', 'spam', 'trash', 'all-email', 'label', 'search'])
 const isMailRoute = computed(() => MAIL_ROUTES.has(route.meta?.name))
 const sidebarCollapsed = computed(() => uiStore.asideCollapsed && window.innerWidth >= 1025)
 
-const keepAliveList = ['email', 'all-inbox', 'all-email', 'send', 'star', 'draft', 'archive', 'spam', 'trash']
+const keepAliveList = ['email', 'all-inbox', 'all-email', 'send', 'star', 'draft', 'archive', 'spam', 'trash', 'label', 'search']
 const keepAliveWorkspace = ['sys-setting', 'analysis', 'user', 'role', 'reg-key', 'setting', 'templates', 'groups', 'scheduled']
 
 // Clear selected email when switching mail folders
@@ -227,6 +228,8 @@ function handleKeydown(e) {
     case 'a': if (email) uiStore.writerRef?.openReplyAll?.(email); break
     case 'f': if (email) uiStore.writerRef?.openForward?.(email); break
     case '?': showShortcuts.value = true; break
+    // Real mail search — distinct from Ctrl+K's Command Palette.
+    case '/': e.preventDefault(); router.push({ name: 'search' }); break
     case 'e':
       if (email?.emailId) {
         emailArchive([email.emailId]).then(() => {
