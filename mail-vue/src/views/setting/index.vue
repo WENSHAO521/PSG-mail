@@ -455,6 +455,7 @@ const STAGE_LABEL_KEYS = {
   device_register: 'notifStageDeviceRegister',
   permission: 'notifStagePermission',
   unsupported: 'notifStageUnsupported',
+  unknown: 'notifStageUnknown',
 }
 
 // Never surface the raw FCM token or a verbose SDK error string here — only
@@ -464,13 +465,18 @@ function stageLabel(stage) {
   return key ? t(key) : stage
 }
 
+// Order matters: a failed reconnect attempt still leaves notifDevices empty
+// (pushGrantedButDisconnected would also be true), so pushRegisterError must
+// be checked FIRST — otherwise a real firebase_init/service_worker/get_token/
+// device_register failure silently reads as the generic "granted but never
+// tried" message and the user has no way to see what actually broke.
 const notifStatusText = computed(() => {
   if (notifPermission.value === 'denied') return t('notifDenied')
   if (isElectronPlatform) return t('notifTestNative')
   if (notifPermission.value !== 'granted') return t('notificationsDesc')
-  if (pushConnected.value) return t('notifPermissionGranted')
+  if (pushConnected.value) return t('notifPushConnected')
+  if (pushRegisterError.value) return `${t('notifReconnectFailed')}: ${stageLabel(pushRegisterError.value)}`
   if (pushGrantedButDisconnected.value) return t('notifGrantedNoDevice')
-  if (pushRegisterError.value) return `${t('notifTestNoDevice')} (${stageLabel(pushRegisterError.value)})`
   return t('notifTestNoDevice')
 })
 
@@ -492,8 +498,18 @@ async function registerPushDevices() {
     import('@/firebase.js'),
   ])
   const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush()])
-  const webStatus = webResult.status === 'fulfilled' ? webResult.value : null
-  pushRegisterError.value = webStatus && !webStatus.ok ? (webStatus.stage || '') : ''
+  if (webResult.status === 'fulfilled') {
+    const webStatus = webResult.value
+    pushRegisterError.value = webStatus && !webStatus.ok ? (webStatus.stage || 'unknown') : ''
+  } else {
+    // registerWebPush() itself is supposed to catch everything into a
+    // {ok:false, stage} result — a rejection here means something threw
+    // outside that (e.g. a dynamic import failure), which used to silently
+    // read as "success" and left the user staring at the generic
+    // "not connected" message with zero indication anything went wrong.
+    console.error('[push] registerWebPush rejected', webResult.reason)
+    pushRegisterError.value = 'unknown'
+  }
   await loadNotifDevices()
 }
 
