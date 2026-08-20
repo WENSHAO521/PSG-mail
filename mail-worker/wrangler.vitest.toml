@@ -1,0 +1,30 @@
+## Dedicated config for `vitest` (@cloudflare/vitest-pool-workers) — NOT used
+## for `wrangler dev`/`deploy`. Kept separate from wrangler-dev.toml because
+## the [assets] binding there points at ./dist, which only exists after a
+## mail-vue build; vitest needs to boot without that and never exercises the
+## static-asset route directly.
+name = "mail-worker-vitest"
+main = "src/index.js"
+compatibility_date = "2025-06-04"
+
+[[d1_databases]]
+binding = "db"
+database_name = "vitest-email"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[kv_namespaces]]
+binding = "kv"
+id = "0000000000000000000000000000vitest"
+
+# No [ai] binding: Workers AI can't be simulated locally — declaring it here
+# makes vitest-pool-workers try to open a "remote bindings" proxy session,
+# which needs real Cloudflare credentials and fails in CI/sandboxed runs.
+# None of the current regression tests exercise aiService, so it's omitted.
+
+[vars]
+ai_model = ""
+analysis_cache = false
+orm_log = false
+domain = ["example.com"]
+admin = "admin@example.com"
+jwt_secret = "vitest-only-secret-do-not-use-in-prod"
