@@ -17,6 +17,15 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+  # Firebase web config — public client identifiers, safe as plain Variables.
+  # Left empty, the app just skips push registration (see mail-vue/src/firebase.js).
+  VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+  VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+  VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+  VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+  VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+  VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+  VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
 
 jobs:
   build:
@@ -156,6 +165,19 @@ jobs:
       - name: Install dependencies
         working-directory: mail-vue
         run: npm ci --legacy-peer-deps
+
+      - name: Restore Firebase google-services.json
+        shell: bash
+        working-directory: mail-vue
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > android/app/google-services.json
+            echo "✅ google-services.json restored (push notifications enabled for this build)."
+          else
+            echo "::notice:: FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64 not set — building without push notifications."
+          fi
 
       - name: Sync Android project
         working-directory: mail-vue

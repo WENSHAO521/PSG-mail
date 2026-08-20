@@ -22,6 +22,12 @@ export default defineConfig(({mode}) => {
         plugins: [
             vue(),
             VitePWA({
+                // Custom SW (src/firebase-messaging-sw.js) replaces the auto-generated
+                // one so it can also handle Firebase background push messages —
+                // a site can only run one service worker per scope.
+                strategies: 'injectManifest',
+                srcDir: 'src',
+                filename: 'firebase-messaging-sw.js',
                 injectRegister: 'script-defer',
                 manifest: {
                     name: 'Panorama Scholarly Group Mail',
@@ -37,12 +43,9 @@ export default defineConfig(({mode}) => {
                         { src: 'pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
                     ],
                 },
-                workbox: {
-                    disableDevLogs: true,
+                injectManifest: {
+                    // Matches the previous generateSW globPatterns: [] — no offline precache.
                     globPatterns: [],
-                    runtimeCaching: [],
-                    navigateFallback: null,
-                    cleanupOutdatedCaches: true,
                 }
             }),
             AutoImport({ resolvers: [ElementPlusResolver()] }),

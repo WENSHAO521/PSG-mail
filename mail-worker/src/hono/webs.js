@@ -29,4 +29,5 @@ import '../api/reset-admin-api'
 import '../api/apikey-api'
 import '../api/external-api'
 import '../api/ai-assistant-api'
+import '../api/notification-api'
 export default app;

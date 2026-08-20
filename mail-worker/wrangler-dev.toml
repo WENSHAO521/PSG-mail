@@ -42,3 +42,10 @@ orm_log = false
 domain = ["example.com", "example2.com", "example3.com", "example4.com"]
 admin = "admin@example.com"
 jwt_secret = "b7f29a1d-18e2-4d3b-941f-f6b2c97c02fd"
+
+# Firebase 推送：本地 `wrangler dev` 不读 wrangler secret，而是读同目录下的
+# .dev.vars 文件（已加入 .gitignore）。新建 mail-worker/.dev.vars，内容：
+#   FIREBASE_PROJECT_ID=...
+#   FIREBASE_CLIENT_EMAIL=...
+#   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+# 部署环境改用 `npx wrangler secret put FIREBASE_PRIVATE_KEY` 等命令写入。

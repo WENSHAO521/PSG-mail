@@ -16,6 +16,15 @@
         "banner",
         "list"
       ]
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert",
+        "banner",
+        "list"
+      ]
     }
   }
 }

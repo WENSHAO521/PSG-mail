@@ -144,6 +144,44 @@
               </div>
             </div>
 
+            <!-- ── Push notification section ── -->
+            <div v-show="activeSection === 'notification'" class="settings-card">
+              <div class="card-body">
+                <div class="autoreply-toggle">
+                  <div>
+                    <div class="toggle-label">{{ $t('enableDesktopNotif') }}</div>
+                    <div class="card-desc" style="margin:0">
+                      {{ notifPermission === 'granted' ? $t('notifPermissionGranted') : notifPermission === 'denied' ? $t('notifDenied') : $t('notificationsDesc') }}
+                    </div>
+                  </div>
+                  <el-button
+                    v-if="notifPermission !== 'granted'"
+                    size="small" :disabled="notifPermission === 'denied'"
+                    @click="requestNotifPermission"
+                  >{{ $t('enable') }}</el-button>
+                  <el-button v-else size="small" :loading="notifTestSending" @click="sendTestNotif">
+                    {{ $t('notifSendTest') }}
+                  </el-button>
+                </div>
+
+                <div class="notif-devices">
+                  <div class="toggle-label" style="margin:16px 0 8px">{{ $t('notifDevices') }}</div>
+                  <div v-if="!notifDevices.length" class="card-desc">{{ $t('notifNoDevices') }}</div>
+                  <div v-for="d in notifDevices" :key="d.id" class="notif-device-row">
+                    <div class="notif-device-main">
+                      <span class="notif-device-name">{{ d.deviceName || d.platform }}</span>
+                      <span class="notif-device-platform">{{ d.platform }}</span>
+                      <span v-if="!d.enabled" class="notif-device-tag">{{ $t('notifDisabled') }}</span>
+                    </div>
+                    <div class="notif-device-meta">
+                      <span>{{ $t('notifLastSeen') }}: {{ d.lastSeenAt ? dayjs(d.lastSeenAt).format('YYYY-MM-DD HH:mm') : $t('notifNever') }}</span>
+                      <button class="link-btn dim" @click="removeNotifDevice(d.id)">{{ $t('notifRemoveDevice') }}</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- ── Mail management section ── -->
             <div v-show="activeSection === 'mail'" class="settings-card">
               <div class="auto-delete-notice">
@@ -295,6 +333,8 @@ import http from "@/axios/index.js"
 import { hasPerm } from "@/perm/perm.js"
 import { backupProviders, backupConnectUrl, backupStatus, backupDisconnect, backupStart } from "@/request/backup.js"
 import { apikeyList as fetchApiKeyList, apikeyCreate, apikeyRevoke } from "@/request/apikey.js"
+import { listDevices, removeDevice, sendTestNotification } from "@/request/notification.js"
+import { useNotificationStore } from "@/store/notification.js"
 import dayjs from "dayjs"
 
 const { t } = useI18n()
@@ -314,6 +354,47 @@ const signatureEditorRef = ref(null)
 const autoReplyEnabled = ref(false)
 const autoReplyMessage = ref('')
 const autoReplySaving = ref(false)
+
+// ── Push notifications ──
+const notificationStore = useNotificationStore()
+const notifPermission = ref(notificationStore.permission)
+const notifDevices = ref([])
+const notifTestSending = ref(false)
+
+function loadNotifDevices() {
+  listDevices().then(data => { notifDevices.value = data || [] }).catch(() => {})
+}
+
+async function requestNotifPermission() {
+  const result = await notificationStore.requestPermission()
+  notifPermission.value = result
+  if (result === 'granted') {
+    const [{ initNativePush }, { registerWebPush }] = await Promise.all([
+      import('@/utils/push-service.js'),
+      import('@/firebase.js'),
+    ])
+    await Promise.allSettled([initNativePush(), registerWebPush()])
+    loadNotifDevices()
+  }
+}
+
+async function sendTestNotif() {
+  notifTestSending.value = true
+  try {
+    await sendTestNotification()
+    ElMessage({ message: t('notifTestSent'), type: 'success', plain: true })
+  } catch {
+    ElMessage({ message: t('notifTestFailed'), type: 'error', plain: true })
+  } finally {
+    notifTestSending.value = false
+  }
+}
+
+function removeNotifDevice(id) {
+  removeDevice(id).then(() => {
+    notifDevices.value = notifDevices.value.filter(d => d.id !== id)
+  }).catch(() => {})
+}
 
 // ── Cloud backup ──
 const backupStatusData = ref({})
@@ -424,6 +505,7 @@ const navItems = computed(() => {
     { key: 'language',  icon: 'solar:global-bold-duotone',          label: t('language') },
     { key: 'signature', icon: 'solar:pen-bold-duotone',             label: t('signature') },
     { key: 'autoreply', icon: 'solar:chat-round-dots-bold-duotone', label: t('autoReply') },
+    { key: 'notification', icon: 'solar:bell-bold-duotone',         label: t('notifications') },
     { key: 'mail',      icon: 'solar:mailbox-bold-duotone',         label: t('mailManagement') },
     { key: 'backup',    icon: 'solar:cloud-upload-bold-duotone',    label: t('cloudBackup') },
     { key: 'apikey',    icon: 'solar:key-bold-duotone',             label: t('externalApi') },
@@ -439,6 +521,7 @@ const sectionMeta = computed(() => ({
   language:  { label: t('language'),       desc: t('languageDesc') },
   signature: { label: t('signature'),      desc: t('signatureDesc') },
   autoreply: { label: t('autoReply'),      desc: t('autoReplyDesc') },
+  notification: { label: t('notifications'), desc: t('notificationsDesc') },
   mail:      { label: t('mailManagement'), desc: t('mailManagementDesc') },
   backup:    { label: t('cloudBackup'),    desc: t('cloudBackupDesc') },
   apikey:    { label: t('externalApi'),    desc: t('apiKeyDesc') },
@@ -461,6 +544,7 @@ onMounted(() => {
   loadBackupProviders()
   loadBackupStatus()
   loadApiKeyList()
+  if (notifPermission.value === 'granted') loadNotifDevices()
 
   // Handle OAuth popup redirect back with ?backup_connected=provider
   const hash = window.location.hash
@@ -1015,6 +1099,34 @@ function submitPwd() {
 .autoreply-body {
   display: flex; flex-direction: column; gap: 12px;
   overflow: hidden; margin-top: 4px;
+}
+
+/* ── Push notification devices ── */
+.notif-device-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  padding: 10px 0;
+  border-top: 1px solid var(--light-border-color);
+}
+.notif-device-main {
+  display: flex; align-items: center; gap: 8px;
+}
+.notif-device-name {
+  font-size: 13px; font-weight: 700;
+  color: var(--el-text-color-primary);
+}
+.notif-device-platform {
+  font-size: 11px; color: var(--secondary-text-color);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.notif-device-tag {
+  font-size: 11px; color: #bc0000;
+  border: 1px solid currentColor; border-radius: 3px;
+  padding: 1px 6px;
+}
+.notif-device-meta {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px; color: var(--secondary-text-color);
 }
 
 .expand-enter-active {

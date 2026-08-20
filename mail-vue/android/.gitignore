@@ -61,8 +61,10 @@ captures/
 .externalNativeBuild
 .cxx/
 
-# Google Services (e.g. APIs or Firebase)
-# google-services.json
+# Google Services (e.g. APIs or Firebase) — contains no secret by itself,
+# but keep it out of git: CI restores it from FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64,
+# and it's easy to accidentally ship a build against the wrong Firebase project.
+app/google-services.json
 
 # Freeline
 freeline.py

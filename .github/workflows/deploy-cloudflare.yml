@@ -31,6 +31,21 @@ jobs:
       LINUXDO_CLIENT_SECRET: ${{ secrets.LINUXDO_CLIENT_SECRET || vars.LINUXDO_CLIENT_SECRET }}
       LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL || vars.LINUXDO_CALLBACK_URL }}
       LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH || vars.LINUXDO_SWITCH }}
+      # Firebase web config (public client identifiers) — feeds the mail-vue
+      # build that runs as part of the wrangler deploy [build] command below.
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
+      # Firebase Admin service account — secrets only, never falls back to
+      # vars, and is pushed to the Worker via `wrangler secret put` (not
+      # written into any .toml) in the step below.
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+      FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
 
 
     outputs:
@@ -238,6 +253,18 @@ jobs:
           
           echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
           echo "✅ Setup completed."
+
+      - name: 🔥 同步 Firebase Secrets / Sync Firebase secrets to Worker
+        working-directory: ./mail-worker
+        run: |
+          if [ -n "$FIREBASE_PROJECT_ID" ] && [ -n "$FIREBASE_CLIENT_EMAIL" ] && [ -n "$FIREBASE_PRIVATE_KEY" ]; then
+            printf '%s' "$FIREBASE_PROJECT_ID"   | pnpm wrangler secret put FIREBASE_PROJECT_ID   -c wrangler-action.toml
+            printf '%s' "$FIREBASE_CLIENT_EMAIL" | pnpm wrangler secret put FIREBASE_CLIENT_EMAIL -c wrangler-action.toml
+            printf '%s' "$FIREBASE_PRIVATE_KEY"  | pnpm wrangler secret put FIREBASE_PRIVATE_KEY  -c wrangler-action.toml
+            echo "✅ Firebase secrets synced — push notifications enabled."
+          else
+            echo "::notice:: FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY not fully set — push notifications stay disabled."
+          fi
 
       - name: ♻️ 初始化数据库 / Initialize database
         run: |

@@ -47,6 +47,8 @@ export async function init() {
                 router.addRoute('layout', routerData);
             });
             preloadAdminRoutes(user.permKeys);
+
+            initPushNotifications();
         }
 
     } else {
@@ -55,4 +57,19 @@ export async function init() {
         settingStore.domainList = setting.domainList;
         document.title = setting.title;
     }
+}
+
+// Fire-and-forget: registers this device for FCM push after a successful
+// login. Never blocks app boot — permission prompts and network calls run
+// in the background. Electron keeps its own native notifications + polling.
+function initPushNotifications() {
+    if (window.electronAPI?.sendNotification) return;
+
+    import('@/utils/push-service.js')
+        .then(({ initNativePush }) => initNativePush())
+        .catch(e => console.error('Native push init failed', e));
+
+    import('@/firebase.js')
+        .then(({ registerWebPush }) => registerWebPush())
+        .catch(e => console.error('Web push init failed', e));
 }
