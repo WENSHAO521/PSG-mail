@@ -157,6 +157,11 @@
                     size="small" :disabled="notifPermission === 'denied'"
                     @click="requestNotifPermission"
                   >{{ $t('enable') }}</el-button>
+                  <el-button
+                    v-else-if="pushGrantedButDisconnected"
+                    size="small" :loading="notifReconnecting"
+                    @click="reconnectPush"
+                  >{{ $t('notifReconnect') }}</el-button>
                   <el-button v-else size="small" :loading="notifTestSending" @click="sendTestNotif">
                     {{ isElectronPlatform ? $t('notifTestNative') : $t('notifSendTest') }}
                   </el-button>
@@ -422,37 +427,95 @@ const autoReplySaving = ref(false)
 const notificationStore = useNotificationStore()
 const notifPermission = ref(notificationStore.permission)
 const notifDevices = ref([])
+const notifDevicesLoaded = ref(false)
 const notifTestSending = ref(false)
+const notifReconnecting = ref(false)
 const isElectronPlatform = !!window.electronAPI?.sendNotification
 const pushRegisterError = ref('')
 
 const pushConnected = computed(() => notifDevices.value.some(d => d.enabled))
+
+// permission granted, device list has actually loaded (not just its initial
+// empty [] before the first fetch resolves), and it came back with nothing —
+// distinct from pushConnected === false while still loading, and from a
+// fetch that simply failed (loadNotifDevices only flips notifDevicesLoaded
+// on success, so a network error leaves this false rather than showing a
+// misleading "disconnected" state).
+const pushGrantedButDisconnected = computed(() =>
+  !isElectronPlatform &&
+  notifPermission.value === 'granted' &&
+  notifDevicesLoaded.value &&
+  notifDevices.value.length === 0
+)
+
+const STAGE_LABEL_KEYS = {
+  firebase_init: 'notifStageFirebaseInit',
+  service_worker: 'notifStageServiceWorker',
+  get_token: 'notifStageGetToken',
+  device_register: 'notifStageDeviceRegister',
+  permission: 'notifStagePermission',
+  unsupported: 'notifStageUnsupported',
+}
+
+// Never surface the raw FCM token or a verbose SDK error string here — only
+// the named stage the failure happened at (see firebase.js#registerWebPush).
+function stageLabel(stage) {
+  const key = STAGE_LABEL_KEYS[stage]
+  return key ? t(key) : stage
+}
 
 const notifStatusText = computed(() => {
   if (notifPermission.value === 'denied') return t('notifDenied')
   if (isElectronPlatform) return t('notifTestNative')
   if (notifPermission.value !== 'granted') return t('notificationsDesc')
   if (pushConnected.value) return t('notifPermissionGranted')
-  if (pushRegisterError.value) return `${t('notifTestNoDevice')} (${pushRegisterError.value})`
+  if (pushGrantedButDisconnected.value) return t('notifGrantedNoDevice')
+  if (pushRegisterError.value) return `${t('notifTestNoDevice')} (${stageLabel(pushRegisterError.value)})`
   return t('notifTestNoDevice')
 })
 
 function loadNotifDevices() {
-  listDevices().then(data => { notifDevices.value = data || [] }).catch(() => {})
+  return listDevices().then(data => {
+    notifDevices.value = data || []
+    notifDevicesLoaded.value = true
+  }).catch(() => {})
+}
+
+// Shared by "Enable" (permission just granted) and "Reconnect push"
+// (permission already granted, device missing) — both end in the same
+// getToken() + POST /notification/device round trip, which is idempotent
+// (backend UPSERTs on (userId, targetKind, targetValue)), so calling it
+// again never creates a duplicate device row.
+async function registerPushDevices() {
+  const [{ initNativePush }, { registerWebPush }] = await Promise.all([
+    import('@/utils/push-service.js'),
+    import('@/firebase.js'),
+  ])
+  const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush()])
+  const webStatus = webResult.status === 'fulfilled' ? webResult.value : null
+  pushRegisterError.value = webStatus && !webStatus.ok ? (webStatus.stage || '') : ''
+  await loadNotifDevices()
 }
 
 async function requestNotifPermission() {
   const result = await notificationStore.requestPermission()
   notifPermission.value = result
   if (result === 'granted') {
-    const [{ initNativePush }, { registerWebPush }] = await Promise.all([
-      import('@/utils/push-service.js'),
-      import('@/firebase.js'),
-    ])
-    const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush()])
-    const webStatus = webResult.status === 'fulfilled' ? webResult.value : null
-    pushRegisterError.value = webStatus && !webStatus.ok ? (webStatus.stage || '') : ''
-    loadNotifDevices()
+    await registerPushDevices()
+  }
+}
+
+// Manual repair path for a device that has notification permission granted
+// but no server-side registration (Settings' onMounted only *detects* this
+// via loadNotifDevices — it doesn't retry on its own, so this button is the
+// explicit way to retrigger registerWebPush() without asking the user to
+// revoke and re-grant browser permission first).
+async function reconnectPush() {
+  notifReconnecting.value = true
+  try {
+    await registerPushDevices()
+  } finally {
+    notifReconnecting.value = false
   }
 }
 

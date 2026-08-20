@@ -247,6 +247,7 @@ import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
 import {oauthBindUser, oauthLinuxDoLogin} from "@/request/ouath.js";
+import {initPushNotifications} from "@/init/init.js";
 
 const {t} = useI18n();
 
@@ -555,6 +556,12 @@ async function saveToken(token) {
   routers.forEach(routerData => {
     router.addRoute('layout', routerData);
   });
+  // init.js's init() only runs this on a full page load with a token
+  // already in localStorage — a fresh in-SPA login (this function) never
+  // triggers it otherwise, leaving Notification.permission === 'granted'
+  // users unregistered until their next full reload. Fire-and-forget, same
+  // as init.js.
+  initPushNotifications();
   await router.replace({name: 'layout'})
   uiStore.showNotice()
   oauthLoading.value = false;

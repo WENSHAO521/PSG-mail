@@ -62,7 +62,16 @@ export async function init() {
 // Fire-and-forget: registers this device for FCM push after a successful
 // login. Never blocks app boot — permission prompts and network calls run
 // in the background. Electron keeps its own native notifications + polling.
-function initPushNotifications() {
+//
+// registerWebPush() is idempotent (the backend UPSERTs on (userId,
+// targetKind, targetValue)) and, when Notification.permission is already
+// 'granted', calling it never re-prompts — Notification.requestPermission()
+// resolves immediately with the existing decision. So this is safe to call
+// on every app boot/login, and is exactly what repairs a device that has
+// permission granted but was never actually registered (see login/index.vue's
+// saveToken(), which calls this too, and setting/index.vue's manual
+// "reconnect push" button for the same repair on an already-open session).
+export function initPushNotifications() {
     if (window.electronAPI?.sendNotification) return;
 
     import('@/utils/push-service.js')
