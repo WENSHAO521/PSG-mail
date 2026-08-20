@@ -25,7 +25,10 @@ const PLATFORMS = new Set(['android', 'web', 'ios', 'windows', 'macos', 'linux']
 // a bare Firebase Installation ID can't be sent to directly, so that's the
 // only target kind worth persisting today.
 const TARGET_KINDS = new Set(['fcm_token']);
-const TEST_COOLDOWN_SECONDS = 30;
+// Cloudflare KV requires expirationTtl >= 60 — a lower value makes the KV
+// `put()` below throw on every single call, in production too, which is why
+// this is 60 and not some shorter "feels responsive" cooldown.
+const TEST_COOLDOWN_SECONDS = 60;
 
 const notificationService = {
 
@@ -97,8 +100,13 @@ const notificationService = {
 
 	// Fans a new-mail push out to every enabled device for the user. Never
 	// throws into the caller — a push failure must not affect mail receipt.
+	// Returns delivery stats so callers that DO care (sendTest) can tell a
+	// real send apart from "nobody was listening" or "FCM rejected it" —
+	// swallowing every outcome into a bare success used to let the Settings
+	// "Test notification" button say "sent" when nothing was delivered.
 	async dispatchNewMail(c) {
 		const { env, userId, accountId, email } = c;
+		const stats = { attempted: 0, succeeded: 0, failed: 0, reason: null };
 
 		try {
 			await this.ensureTable({ env });
@@ -108,7 +116,12 @@ const notificationService = {
 				 FROM notification_device WHERE user_id = ? AND enabled = 1`
 			).bind(userId).all();
 
-			if (!results || results.length === 0) return;
+			if (!results || results.length === 0) {
+				stats.reason = 'NO_REGISTERED_DEVICE';
+				return stats;
+			}
+
+			stats.attempted = results.length;
 
 			const payload = {
 				title: email.name || email.sendEmail || 'PSG Mail',
@@ -125,7 +138,16 @@ const notificationService = {
 			await Promise.all(results.map(async device => {
 				try {
 					await firebasePushService.sendPush({ env }, device, payload);
+					stats.succeeded++;
 				} catch (e) {
+					stats.failed++;
+					if (!stats.reason) {
+						stats.reason = /firebase.*secrets|FIREBASE_PROJECT_ID/i.test(e.message)
+							? 'FIREBASE_NOT_CONFIGURED'
+							: /oauth token exchange/i.test(e.message)
+								? 'FIREBASE_AUTH_FAILED'
+								: 'FCM_SEND_FAILED';
+					}
 					console.error('push send failed for device', device.id, e.message);
 					if (e && e.invalidDevice) {
 						await this.disableDeviceById({ env }, device.id);
@@ -134,7 +156,10 @@ const notificationService = {
 			}));
 		} catch (e) {
 			console.error('dispatchNewMail failed', e);
+			stats.reason = stats.reason || 'FCM_SEND_FAILED';
 		}
+
+		return stats;
 	},
 
 	async sendTest(c, userId) {
@@ -144,12 +169,21 @@ const notificationService = {
 		}
 		await c.env.kv.put(limitKey, '1', { expirationTtl: TEST_COOLDOWN_SECONDS });
 
-		await this.dispatchNewMail({
+		const stats = await this.dispatchNewMail({
 			env: c.env,
 			userId,
 			accountId: 0,
 			email: { name: 'PSG Mail', sendEmail: 'system', subject: 'This is a test notification', emailId: 0 }
 		});
+
+		if (stats.attempted === 0) {
+			throw new BizError('NO_REGISTERED_DEVICE', 404);
+		}
+		if (stats.succeeded === 0) {
+			throw new BizError(stats.reason || 'FCM_SEND_FAILED', 502);
+		}
+
+		return stats;
 	}
 };
 

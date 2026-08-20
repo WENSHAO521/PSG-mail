@@ -437,6 +437,36 @@ const emailService = {
 		return results[0] || null;
 	},
 
+	// Single-email fetch for the client's new-mail sync path (Firebase push
+	// carries only { emailId, accountId } — the client calls this to get the
+	// full row for Inbox display). Access-scoped like list() (owner or shared
+	// account), same camelCase + isStar + attList shape list() returns, and
+	// excludes trashed/staging rows since a push only ever names a
+	// just-received, currently-visible email.
+	async detail(c, emailId, userId) {
+		emailId = Number(emailId);
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const accessCond = sharedIds.length > 0
+			? or(eq(email.userId, userId), inArray(email.accountId, sharedIds))
+			: eq(email.userId, userId);
+
+		const row = await orm(c).select({ ...email, starId: star.starId })
+			.from(email)
+			.leftJoin(star, and(eq(star.emailId, email.emailId), eq(star.userId, userId)))
+			.where(and(eq(email.emailId, emailId), accessCond, eq(email.isDel, isDel.NORMAL)))
+			.get();
+
+		if (!row) return null;
+		row.isStar = row.starId != null ? 1 : 0;
+		const list = [row];
+		await this.emailAddAtt(c, list);
+		return list[0];
+	},
+
+	async updateCode(c, emailId, code) {
+		await orm(c).update(email).set({ code }).where(eq(email.emailId, emailId)).run();
+	},
+
 	// Simple subject/sender search scoped to the caller's own mail — used by
 	// the AI assistant's searchEmails tool.
 	async searchOwned(c, userId, { query, limit }) {
@@ -1134,11 +1164,14 @@ const emailService = {
 			.get();
 	},
 
+	// NOTE: deliberately no per-user throttle here. This endpoint is the
+	// fallback-sync poll (Firebase push is the primary real-time path) and a
+	// single user can have several legitimate concurrent pollers — multiple
+	// browser tabs, Android, Electron. A cache that silently returned `[]`
+	// once one caller had already asked in the last N seconds used to starve
+	// every other poller of new mail with no way to tell that apart from
+	// "there really is no new mail" — see the mail-sync incident writeup.
 	async latest(c, params, userId) {
-		const rateLimitKey = 'rate:latest:' + userId
-		if (kvCache.get(rateLimitKey)) return []
-		kvCache.set(rateLimitKey, 1, 10)
-
 		let { emailId, accountId, allReceive } = params;
 		allReceive = Number(allReceive);
 
@@ -1401,9 +1434,23 @@ const emailService = {
 		}).where(eq(email.emailId, emailId)).returning().get();
 	},
 
+	// Recovers rows stuck in the SAVING/DELETE staging state — normally
+	// completeReceive() flips both status and is_del right after a message is
+	// written, but if the Worker was killed between receive() and
+	// completeReceive() (e.g. isolation eviction) the row is orphaned mid-stage.
+	// This cron fallback must restore BOTH columns, or the row keeps status =
+	// RECEIVE/NOONE forever while is_del stays DELETE — invisible in every
+	// list query (list()/latest()/allList() all filter on isDel = NORMAL)
+	// despite looking "received" to anyone reading just the status column.
 	async completeReceiveAll(c) {
-		await c.env.db.prepare(`UPDATE email as e SET status = ${emailConst.status.RECEIVE} WHERE status = ${emailConst.status.SAVING} AND EXISTS (SELECT 1 FROM account WHERE account_id = e.account_id)`).run();
-		await c.env.db.prepare(`UPDATE email as e SET status = ${emailConst.status.NOONE} WHERE status = ${emailConst.status.SAVING} AND NOT EXISTS (SELECT 1 FROM account WHERE account_id = e.account_id)`).run();
+		await c.env.db.prepare(
+			`UPDATE email as e SET status = ${emailConst.status.RECEIVE}, is_del = ${isDel.NORMAL}
+			 WHERE status = ${emailConst.status.SAVING} AND EXISTS (SELECT 1 FROM account WHERE account_id = e.account_id)`
+		).run();
+		await c.env.db.prepare(
+			`UPDATE email as e SET status = ${emailConst.status.NOONE}, is_del = ${isDel.NORMAL}
+			 WHERE status = ${emailConst.status.SAVING} AND NOT EXISTS (SELECT 1 FROM account WHERE account_id = e.account_id)`
+		).run();
 	},
 
 	async batchDelete(c, params) {

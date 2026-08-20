@@ -29,6 +29,6 @@ app.delete('/notification/device/:id', async (c) => {
 app.post('/notification/test', async (c) => {
 	await notificationService.ensureTable(c);
 	const userId = userContext.getUserId(c);
-	await notificationService.sendTest(c, userId);
-	return c.json(result.ok());
+	const stats = await notificationService.sendTest(c, userId);
+	return c.json(result.ok(stats));
 });

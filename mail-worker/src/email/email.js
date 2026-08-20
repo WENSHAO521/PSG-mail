@@ -93,7 +93,6 @@ export async function email(message, env, ctx) {
 		}
 
 		const toName = email.to.find(item => item.address === message.to)?.name || '';
-		const code = await aiService.extractCode({ env }, email, { aiCode, aiCodeFilter });
 
 		const params = {
 			toEmail: message.to,
@@ -101,7 +100,6 @@ export async function email(message, env, ctx) {
 			sendEmail: email.from.address,
 			name: email.from.name || emailUtils.getName(email.from.address),
 			subject: email.subject,
-			code,
 			content: email.html,
 			text: email.text,
 			cc: email.cc ? JSON.stringify(email.cc) : '[]',
@@ -155,6 +153,24 @@ export async function email(message, env, ctx) {
 				email: emailRow
 			}));
 		}
+
+		// AI code extraction is a Workers AI inference call — can take
+		// seconds, occasionally longer on a cold model. Running it before the
+		// DB write (as this used to) delayed completeReceive() and therefore
+		// the push + every client's view of "the email exists" by that same
+		// amount. It now runs after the email is already visible, and only
+		// patches the code column in afterward — the mail body is never
+		// gated on it.
+		ctx.waitUntil((async () => {
+			try {
+				const code = await aiService.extractCode({ env }, email, { aiCode, aiCodeFilter });
+				if (code) {
+					await emailService.updateCode({ env }, emailRow.emailId, code);
+				}
+			} catch (e) {
+				console.error('async code extraction failed', e);
+			}
+		})());
 
 		if (ruleType === settingConst.ruleType.RULE) {
 
