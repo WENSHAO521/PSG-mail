@@ -235,6 +235,15 @@ jobs:
           sed -i "s|\${D1_DATABASE_ID}|$D1_ID|g" "$CONFIG_FILE"
           echo "✅ Setup completed."
 
+      - name: 🧬 应用数据库迁移 / Apply D1 migrations
+        working-directory: ./mail-worker
+        run: |
+          echo "🧬 Applying D1 migrations (see mail-worker/migrations/README.md)..."
+          # "db" is the binding name (wrangler-action.toml's [[d1_databases]]
+          # database_name is a hardcoded "cloud-mail" literal, not templated
+          # with $NAME — the binding always resolves correctly regardless).
+          pnpm wrangler d1 migrations apply db --remote -c wrangler-action.toml
+
       - name: 🚀 开始部署 / Start deployment
         id: deploy
         working-directory: ./mail-worker
