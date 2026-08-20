@@ -66,5 +66,23 @@ linuxdo_client_secret = "${LINUXDO_CLIENT_SECRET}"
 linuxdo_callback_url = "${LINUXDO_CALLBACK_URL}"
 linuxdo_switch = "${LINUXDO_SWITCH}"
 
+# mail-vue is an npm project (package-lock.json, no pnpm-lock.yaml — same
+# as release.yml's `npm ci` and wrangler.toml's self-host template below).
+# Installing it with pnpm here was a latent bug: pnpm's strict, non-hoisted
+# node_modules breaks src/firebase-messaging-sw.js's `import ... from
+# 'workbox-precaching'` (a transitive dependency of vite-plugin-pwa, never
+# a direct one — works under npm's hoisted layout by accident, fails
+# outright under pnpm with "Rollup failed to resolve import
+# workbox-precaching"). Confirmed by reproducing both this and the
+# NODE_ENV issue below locally against the real package.json.
+#
+# NODE_ENV=development on the `install` half only (not `run build`) —
+# `wrangler deploy` itself sets NODE_ENV=production for this child
+# process (targetConsumer === "deploy" in Wrangler's own source), which
+# makes `npm install` skip devDependencies. vite and its plugins live in
+# mail-vue's devDependencies, so without this override the build fails
+# with `sh: 1: vite: not found`. `&&` scopes the override to `install`
+# only; `run build` keeps Wrangler's NODE_ENV=production, which is
+# correct for a release build.
 [build]
-command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"
+command = "ELECTRON_SKIP_BINARY_DOWNLOAD=1 NODE_ENV=development npm --prefix ../mail-vue install --legacy-peer-deps && npm --prefix ../mail-vue run build"

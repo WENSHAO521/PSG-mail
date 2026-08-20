@@ -92,5 +92,12 @@ crons = ["* * * * *", "*/30 * * * *", "0 16 * * *"]	#每分钟处理定时发送
 # Generate new private key 下载的 JSON（project_id / client_email / private_key）
 
 
+# NODE_ENV=development on the `install` half only (not `run build`) —
+# `wrangler deploy` itself sets NODE_ENV=production for this child process,
+# which makes `npm install` skip devDependencies. vite and its plugins live
+# in mail-vue's devDependencies, so without this override the build fails
+# with `sh: 1: vite: not found`. `&&` scopes the override to `install`
+# only; `run build` keeps Wrangler's NODE_ENV=production, which is correct
+# for a release build.
 [build]
-command = "ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm --prefix ../mail-vue install --legacy-peer-deps && npm --prefix ../mail-vue run build"
+command = "ELECTRON_SKIP_BINARY_DOWNLOAD=1 NODE_ENV=development npm --prefix ../mail-vue install --legacy-peer-deps && npm --prefix ../mail-vue run build"
