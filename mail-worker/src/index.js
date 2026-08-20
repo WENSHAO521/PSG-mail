@@ -7,6 +7,10 @@ import kvObjService from './service/kv-obj-service';
 import oauthService from "./service/oauth-service";
 import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
+// Durable Object classes must be exported by name from the Worker's main
+// entry — this is that export, not a self-contained secondary Worker. See
+// src/durable/scheduled-send-alarm.js for what it's for.
+export { ScheduledSendAlarm } from './durable/scheduled-send-alarm';
 export default {
 	 async fetch(req, env, ctx) {
 

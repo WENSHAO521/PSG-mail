@@ -25,6 +25,23 @@ id = "ee2165a57dc04150b28ac40fdc7a3285"
 [ai]
 binding = "ai"
 
+# Durable Object powering Undo Send / Scheduled Send's short-delay precision
+# (mail-worker/src/durable/scheduled-send-alarm.js) — a guaranteed-delivery
+# alternative to a ctx.waitUntil()+setTimeout timer, which Cloudflare gives
+# no wall-clock reliability guarantee for. NOT a traditional always-on
+# server: it only runs when it has an armed alarm or an in-flight request.
+# `[[migrations]]` below is Durable Object CLASS migration bookkeeping —
+# unrelated to the SQL files in mail-worker/migrations/ (those are D1 schema
+# migrations, applied via `wrangler d1 migrations apply`, see that folder's
+# README.md).
+[[durable_objects.bindings]]
+name = "SCHEDULED_SEND_ALARM"
+class_name = "ScheduledSendAlarm"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ScheduledSendAlarm"]
+
 [assets]
 binding = "assets"		#静态资源绑定名默认不可修改
 directory = "./dist"	#前端vue项目打包的静态资源存放位置,默认dist

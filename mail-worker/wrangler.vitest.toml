@@ -21,6 +21,18 @@ id = "0000000000000000000000000000vitest"
 # which needs real Cloudflare credentials and fails in CI/sandboxed runs.
 # None of the current regression tests exercise aiService, so it's omitted.
 
+# Durable Objects ARE fully simulated locally by Miniflare (no remote-proxy
+# issue like [ai] above) — declared here so scheduled-send-alarm.spec.js can
+# exercise the real alarm mechanism via cloudflare:test's
+# runDurableObjectAlarm()/evictDurableObject().
+[[durable_objects.bindings]]
+name = "SCHEDULED_SEND_ALARM"
+class_name = "ScheduledSendAlarm"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ScheduledSendAlarm"]
+
 [vars]
 ai_model = ""
 analysis_cache = false

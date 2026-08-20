@@ -14,16 +14,6 @@ function makeCtx() {
 	return { env, get: (k) => store.get(k), set: (k, v) => store.set(k, v) };
 }
 
-// Undo Send drives create() with a short delay and relies on
-// c.executionCtx.waitUntil() to arm the precise fast-path dispatch (see
-// scheduledEmailService.armFastPath) — captures the promise instead of
-// actually backgrounding it so the test can await it directly.
-function makeCtxCapturingWaitUntil() {
-	const ctx = makeCtx();
-	ctx.executionCtx = { waitUntil: (p) => { ctx._armed = p; } };
-	return ctx;
-}
-
 const ACCOUNT_SCHEMA = `CREATE TABLE IF NOT EXISTS account (
 	account_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	email TEXT NOT NULL,
@@ -210,55 +200,13 @@ describe('scheduledEmailService.processDue() — claim atomicity and status mach
 	});
 });
 
-describe('scheduledEmailService fast path (Undo Send precision, sub-cron-granularity)', () => {
-	it('a short delay arms c.executionCtx.waitUntil and sends after the delay elapses, without waiting for the cron', async () => {
-		await insertAccount({ accountId: 5012, userId: 913 });
-		const ctx = makeCtxCapturingWaitUntil();
-		const sendSpy = vi.spyOn(emailService, 'send').mockResolvedValue([{ emailId: 99 }]);
-
-		const created = await scheduledEmailService.create(ctx, {
-			accountId: 5012, scheduledAt: isoMinutesFromNow(0.1) /* ~6s */, receiveEmail: ['x@example.com'], subject: 'undo send test', content: '<p>hi</p>',
-		}, 913);
-
-		expect(ctx._armed).toBeTruthy();
-		// Immediately after create(), the row must NOT be sent yet — the whole
-		// point of Undo Send is a window where the user can still cancel.
-		let row = await env.db.prepare('SELECT status FROM scheduled_email WHERE id = ?').bind(created.id).first();
-		expect(row.status).toBe('pending');
-
-		await ctx._armed;
-
-		expect(sendSpy).toHaveBeenCalledTimes(1);
-		row = await env.db.prepare('SELECT status FROM scheduled_email WHERE id = ?').bind(created.id).first();
-		expect(row.status).toBe('sent');
-	}, 10000);
-
-	it('cancelling during the fast-path window prevents the send (the armed timer finds nothing left to claim)', async () => {
-		await insertAccount({ accountId: 5013, userId: 914 });
-		const ctx = makeCtxCapturingWaitUntil();
-		const sendSpy = vi.spyOn(emailService, 'send').mockResolvedValue([{ emailId: 100 }]);
-
-		const created = await scheduledEmailService.create(ctx, {
-			accountId: 5013, scheduledAt: isoMinutesFromNow(0.1), receiveEmail: ['x@example.com'], subject: 'undo before it fires', content: '<p>hi</p>',
-		}, 914);
-
-		await scheduledEmailService.cancel(ctx, created.id, 914);
-		await ctx._armed;
-
-		expect(sendSpy).not.toHaveBeenCalled();
-		const row = await env.db.prepare('SELECT status FROM scheduled_email WHERE id = ?').bind(created.id).first();
-		expect(row.status).toBe('cancelled');
-	}, 10000);
-
-	it('a delay beyond the fast-path threshold does not arm an immediate timer (relies on the cron instead)', async () => {
-		await insertAccount({ accountId: 5014, userId: 915 });
-		const ctx = makeCtxCapturingWaitUntil();
-		await scheduledEmailService.create(ctx, {
-			accountId: 5014, scheduledAt: isoMinutesFromNow(10), receiveEmail: ['x@example.com'], subject: 'far enough to skip fast path', content: '<p>hi</p>',
-		}, 915);
-		expect(ctx._armed).toBeUndefined();
-	});
-});
+// The short-delay fast path used to be a c.executionCtx.waitUntil()+
+// setTimeout timer, tested here by capturing the waitUntil promise. That
+// mechanism was replaced with a Durable Object alarm (see
+// scheduled-email-service.js's FAST_PATH_THRESHOLD_MS comment for why —
+// waitUntil gives no wall-clock delivery guarantee if the isolate is
+// evicted mid-wait). Coverage for the new mechanism, including a real
+// simulated-isolate-eviction test, now lives in test/scheduled-send-alarm.spec.js.
 
 describe('scheduledEmailService.sendNow()', () => {
 	it('claims and sends immediately regardless of scheduled_at, bypassing the wait', async () => {

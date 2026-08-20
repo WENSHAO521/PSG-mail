@@ -27,16 +27,21 @@ const RETRY_DELAY_MINUTES = 5;
 const MIN_LEAD_SECONDS = 3;
 // Cloudflare Cron Triggers can't fire more often than once a minute, which
 // is far too coarse for Undo Send's 5-30s grace window. For any delay under
-// this threshold, create() also arms a direct in-Worker timer (below) for
-// real precision; the once-a-minute cron (processDue in index.js) remains
-// as a backstop for the rare case that background task doesn't survive
-// (e.g. a deploy recycling the isolate mid-wait) — processDue's atomic
-// claim means both paths racing is always safe, never a double-send.
+// this threshold, create() arms a Durable Object alarm (src/durable/
+// scheduled-send-alarm.js) for real sub-minute precision — NOT a
+// ctx.waitUntil()+setTimeout timer. That pattern was tried first and
+// rejected: waitUntil() only extends the current isolate's life for
+// in-flight async work, it is not a wall-clock delay guarantee, and
+// Cloudflare gives no SLA that an isolate stays alive for a fixed 5-30s
+// window — it can be evicted/recycled between requests (memory pressure,
+// low traffic, a redeploy) with no error and no retry, silently losing the
+// pending timer. A DO alarm is durably persisted by the platform and is
+// delivered even if the Worker that armed it is long gone, with automatic
+// retry on failure. The once-a-minute cron (processDue in index.js) still
+// remains as a backstop (e.g. if the DO binding is unavailable in some
+// environment) — claimAndProcessById()'s atomic claim means the alarm and
+// the cron racing is always safe, never a double-send.
 const FAST_PATH_THRESHOLD_MS = 2 * 60 * 1000;
-
-function sleep(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 async function assertOwnedAccount(c, accountId, userId) {
 	const accountRow = await accountService.selectById(c, accountId);
@@ -90,26 +95,51 @@ const scheduledEmailService = {
 		}).returning().get();
 
 		const delayMs = scheduledMs - Date.now();
-		if (delayMs <= FAST_PATH_THRESHOLD_MS && c.executionCtx?.waitUntil) {
-			c.executionCtx.waitUntil(this.armFastPath(c, row.id, delayMs));
+		if (delayMs <= FAST_PATH_THRESHOLD_MS) {
+			await this.armAlarm(c, row.id, Date.now() + delayMs);
 		}
 
 		return this.toClient(row);
 	},
 
-	// Precise short-delay dispatch for Undo Send (and any other sub-2-minute
-	// schedule) — see FAST_PATH_THRESHOLD_MS. Runs in the background past the
-	// response via c.executionCtx.waitUntil(); the claim is the same atomic
-	// pending->processing UPDATE processDue() uses, so this racing the cron
-	// (or a manual cancel/sendNow) can never double-send.
-	async armFastPath(c, id, delayMs) {
-		await sleep(Math.max(0, delayMs));
+	// Arms a Durable Object alarm for precise short-delay dispatch (Undo
+	// Send and any other sub-2-minute schedule) — see FAST_PATH_THRESHOLD_MS
+	// and the comment on it for why this is a DO alarm and not a
+	// waitUntil()+setTimeout. One DO instance per scheduled_email row
+	// (idFromName keyed on the row id), so arming is idempotent — rescheduling
+	// just overwrites that instance's alarm time.
+	//
+	// Deliberately swallows errors: arming is an optimization for precision,
+	// not the correctness mechanism — if the DO binding is missing (e.g. a
+	// local/test environment that doesn't declare it) or the call fails for
+	// any other reason, the row is still fully correct and durable as a
+	// plain 'pending' row; the once-a-minute cron backstop will pick it up.
+	async armAlarm(c, id, whenMs) {
+		if (!c.env.SCHEDULED_SEND_ALARM) return;
+		try {
+			const stub = c.env.SCHEDULED_SEND_ALARM.get(c.env.SCHEDULED_SEND_ALARM.idFromName('scheduled-email-' + id));
+			await stub.fetch('https://scheduled-send-alarm/arm', {
+				method: 'POST',
+				body: JSON.stringify({ scheduledEmailId: id, whenMs }),
+			});
+		} catch (e) {
+			console.error('failed to arm scheduled-send alarm, cron backstop will still catch it', id, e.message);
+		}
+	},
+
+	// Claims the row (pending -> processing) then sends it, scoped only to
+	// the id — used by the DO alarm handler, which has no userId context of
+	// its own to also check against (sendNow()/cancel() etc. additionally
+	// scope by userId since those are invoked from an authenticated API
+	// request; the alarm is a purely internal trigger for a row that was
+	// already ownership-checked back when it was created).
+	async claimAndProcessById(c, id) {
 		const claimed = await orm(c).update(scheduledEmail)
 			.set({ status: STATUS.PROCESSING, updateTime: new Date().toISOString() })
-			.where(and(eq(scheduledEmail.id, id), eq(scheduledEmail.status, STATUS.PENDING)))
+			.where(and(eq(scheduledEmail.id, Number(id)), eq(scheduledEmail.status, STATUS.PENDING)))
 			.returning().get();
-		if (!claimed) return;
-		await this.processOne(c, claimed);
+		if (!claimed) return null;
+		return this.processOne(c, claimed);
 	},
 
 	async list(c, userId) {
@@ -183,11 +213,22 @@ const scheduledEmailService = {
 	// WHERE clause simply matches nothing.
 	async processDue(c) {
 		const nowIso = new Date().toISOString().slice(0, 19).replace('T', ' ');
-		const { results } = await c.env.db.prepare(
-			`UPDATE scheduled_email SET status = ?, update_time = CURRENT_TIMESTAMP
-			 WHERE status = ? AND scheduled_at <= ?
-			 RETURNING *`
-		).bind(STATUS.PROCESSING, STATUS.PENDING, nowIso).all();
+		let results;
+		try {
+			({ results } = await c.env.db.prepare(
+				`UPDATE scheduled_email SET status = ?, update_time = CURRENT_TIMESTAMP
+				 WHERE status = ? AND scheduled_at <= ?
+				 RETURNING *`
+			).bind(STATUS.PROCESSING, STATUS.PENDING, nowIso).all());
+		} catch (e) {
+			// Only expected if this cron fires before migrations/
+			// 0001_scheduled_email.sql has been applied (wrong deploy order —
+			// see migrations/README.md's rollout checklist, which applies
+			// migrations before deploying the Worker specifically to avoid
+			// this). Logs and backs off rather than throwing every minute.
+			console.error('scheduled-email processDue: table unavailable (migration not yet applied?)', e.message);
+			return { processed: 0, error: e.message };
+		}
 
 		if (!results || results.length === 0) return { processed: 0 };
 

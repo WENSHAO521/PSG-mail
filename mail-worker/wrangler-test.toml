@@ -23,6 +23,15 @@ id = "9be10cd058e04c55b526f8c0c116f50c"					#kv数据库id
 [ai]
 binding = "ai"
 
+# See wrangler.toml for what this is.
+[[durable_objects.bindings]]
+name = "SCHEDULED_SEND_ALARM"
+class_name = "ScheduledSendAlarm"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ScheduledSendAlarm"]
+
 [assets]
 binding = "assets"		#静态资源绑定名默认不可修改
 directory = "./dist"	#前端vue项目打包的静态资源存放位置,默认dist

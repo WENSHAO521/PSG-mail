@@ -25,6 +25,17 @@ id = "2io01d4b299e481b9de060ece9e7785c"
 #[ai]
 #binding = "ai"
 
+# See wrangler.toml for what this is (Undo Send/Scheduled Send precision
+# timer) — `[[migrations]]` here is DO class migration bookkeeping, not the
+# D1 SQL migrations in mail-worker/migrations/.
+[[durable_objects.bindings]]
+name = "SCHEDULED_SEND_ALARM"
+class_name = "ScheduledSendAlarm"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ScheduledSendAlarm"]
+
 [assets]
 binding = "assets"
 directory = "./dist"
