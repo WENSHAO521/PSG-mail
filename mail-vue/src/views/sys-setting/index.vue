@@ -462,7 +462,7 @@
                 <span class="about-label">{{ $t('version') }}</span>
                 <div class="about-actions">
                   <el-badge is-dot :hidden="!hasUpdate">
-                    <el-button class="about-btn" @click="jump('https://github.com/maillab/cloud-mail/releases')">
+                    <el-button class="about-btn" @click="jump('https://github.com/WENSHAO521/PSG-mail/releases')">
                       <template #icon><Icon icon="solar:code-branch-linear" width="16" height="16" color="#1890FF"/></template>
                       {{ currentVersion }}
                     </el-button>
@@ -1099,8 +1099,12 @@ const resendList = computed(() => {
 
 function getUpdate() {
   if (getUpdateErrorCount > 5 || !getUpdateErrorCount) return
-  axios.get('https://api.github.com/repos/maillab/cloud-mail/releases/latest').then(({data}) => {
-    hasUpdate.value = data.name !== currentVersion
+  axios.get('https://api.github.com/repos/WENSHAO521/PSG-mail/releases/latest').then(({data}) => {
+    // release.yml's release "name" has no "v" prefix (RELEASE_VERSION strips
+    // it), but currentVersion here is written with one — compare normalized
+    // so this doesn't permanently show "update available" on a match.
+    const stripV = v => String(v || '').replace(/^v/i, '')
+    hasUpdate.value = stripV(data.name) !== stripV(currentVersion)
     getUpdateErrorCount = 0
   }).catch(e => {
     getUpdateErrorCount++

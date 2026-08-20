@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 
-const RELEASE_API = 'https://api.github.com/repos/WENSHAO521/cloud-mail/releases/latest'
+const RELEASE_API = 'https://api.github.com/repos/WENSHAO521/PSG-mail/releases/latest'
 const DOWNLOAD_KEY_PREFIX = 'psg-mail-android-update-download:'
 
 function isAndroidApp() {

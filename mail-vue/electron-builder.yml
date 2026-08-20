@@ -87,5 +87,5 @@ linux:
 publish:
   provider: github
   owner: WENSHAO521
-  repo: cloud-mail
+  repo: PSG-mail
   releaseType: draft

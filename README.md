@@ -5,7 +5,7 @@
 A self-hosted, Cloudflare-native email platform built for institutional deployment. Runs entirely on the Cloudflare edge (Workers · D1 · KV · R2) with a Vue 3 web client and a cross-platform Electron desktop application.
 
 [![License: Proprietary](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/WENSHAO521/cloud-mail)](https://github.com/WENSHAO521/cloud-mail/releases)
+[![Release](https://img.shields.io/github/v/release/WENSHAO521/PSG-mail)](https://github.com/WENSHAO521/PSG-mail/releases)
 
 ---
 
@@ -45,7 +45,7 @@ A self-hosted, Cloudflare-native email platform built for institutional deployme
 
 ## Desktop App
 
-Pre-built installers are published to [GitHub Releases](https://github.com/WENSHAO521/cloud-mail/releases) for every platform:
+Pre-built installers are published to [GitHub Releases](https://github.com/WENSHAO521/PSG-mail/releases) for every platform:
 
 | Platform | Format |
 |----------|--------|
@@ -60,7 +60,7 @@ The desktop app automatically checks for updates on launch and installs the new 
 ## Project Structure
 
 ```
-cloud-mail
+PSG-mail
 ├── mail-worker          # Cloudflare Workers backend
 │   ├── src
 │   │   ├── api          # API route handlers

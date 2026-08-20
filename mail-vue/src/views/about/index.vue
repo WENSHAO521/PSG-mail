@@ -99,7 +99,7 @@
           <!-- Web/other: GitHub link -->
           <div v-else class="about-row">
             <span class="about-label">{{ $t('updateStatus') }}</span>
-            <a class="about-link" href="https://github.com/WENSHAO521/cloud-mail/releases" target="_blank">
+            <a class="about-link" href="https://github.com/WENSHAO521/PSG-mail/releases" target="_blank">
               {{ $t('checkOnGitHub') }}
             </a>
           </div>
@@ -118,8 +118,8 @@
           </div>
           <div class="about-row">
             <span class="about-label">{{ $t('sourceCode') }}</span>
-            <a class="about-link" href="https://github.com/WENSHAO521/cloud-mail" target="_blank">
-              github.com/WENSHAO521/cloud-mail
+            <a class="about-link" href="https://github.com/WENSHAO521/PSG-mail" target="_blank">
+              github.com/WENSHAO521/PSG-mail
             </a>
           </div>
         </div>

@@ -186,8 +186,8 @@ import { formatBytes } from '@/utils/file-utils.js'
 
 const appVersion = __APP_VERSION__
 
-const RELEASES_URL = 'https://github.com/WENSHAO521/cloud-mail/releases'
-const GITHUB_API   = 'https://api.github.com/repos/WENSHAO521/cloud-mail/releases/latest'
+const RELEASES_URL = 'https://github.com/WENSHAO521/PSG-mail/releases'
+const GITHUB_API   = 'https://api.github.com/repos/WENSHAO521/PSG-mail/releases/latest'
 
 // Every architecture/ABI variant gets its own full-width button — platform → [{label, url, size}]
 const dlVariants = ref({ win: [], mac: [], linux: [], android: [] })
