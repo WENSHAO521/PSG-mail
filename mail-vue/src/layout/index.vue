@@ -110,9 +110,11 @@ import { useNotificationStore } from '@/store/notification.js'
 import { useEmailStore } from '@/store/email.js'
 import { useSettingStore } from '@/store/setting.js'
 import { useAccountStore } from '@/store/account.js'
-import { emailArchive, emailLatest, emailList } from '@/request/email.js'
-import { sleep } from '@/utils/time-utils.js'
+import { emailArchive } from '@/request/email.js'
 import { checkAndDownloadAndroidUpdate } from '@/utils/android-update-service.js'
+import {
+  resetSyncState, startFallbackPolling, stopFallbackPolling, installLifecycleSync,
+} from '@/utils/mail-sync-service.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -127,9 +129,6 @@ const showShortcuts = ref(false)
 const platform = window.electronAPI?.platform ?? 'web'
 let elNotification = null
 let noticeStyle = null
-let globalNotifyRunning = false
-let notificationCursor = 0
-let notificationScope = ''
 
 const actionsShortcuts = [
   { key: 'C',      label: 'shortcutCompose'  },
@@ -274,68 +273,12 @@ async function checkAndroidUpdates() {
   }
 }
 
-function currentNotificationScope() {
-  const accountId = Number(accountStore.currentAccountId || 0)
-  const allReceive = Number(accountStore.currentAccount?.allReceive || 0)
-  return accountId > 0 ? `${accountId}:${allReceive}` : ''
-}
-
-function resetNotificationCursor() {
-  notificationCursor = 0
-  notificationScope = ''
-}
-
-async function ensureNotificationCursor(accountId, allReceive, scope) {
-  if (notificationCursor > 0 && notificationScope === scope) return
-
-  const data = await emailList(accountId, allReceive, 0, 0, 1, 0)
-  notificationCursor = Number(data?.latestEmail?.emailId || data?.list?.[0]?.emailId || 0)
-  notificationScope = scope
-}
-
-async function runGlobalMailNotifications() {
-  if (globalNotifyRunning) return
-  globalNotifyRunning = true
-
-  // Poll for new mail every 30s (sleep is after each response, not before).
-  // Sleep briefly when the account isn't ready or on error.
-  while (globalNotifyRunning) {
-    if (!localStorage.getItem('token')) { await sleep(5000); continue }
-
-    const accountId = Number(accountStore.currentAccountId || 0)
-    const scope = currentNotificationScope()
-    if (!accountId || !scope) { await sleep(3000); continue }
-
-    const allReceive = Number(accountStore.currentAccount?.allReceive || 0)
-
-    try {
-      await ensureNotificationCursor(accountId, allReceive, scope)
-      if (!notificationCursor) { await sleep(3000); continue }
-
-      const list = await emailLatest(notificationCursor, accountId, allReceive)
-      if (!Array.isArray(list)) { await sleep(2000); continue }
-      if (list.length === 0) { await sleep(30000); continue }
-
-      const newestId = Math.max(...list.map(email => Number(email.emailId || 0)))
-      for (const email of [...list].reverse()) {
-        await notificationStore.notifyEmail(email)
-      }
-      if (Number.isFinite(newestId) && newestId > notificationCursor) {
-        notificationCursor = newestId
-      }
-    } catch (error) {
-      if (error?.code === 401 || error?.code === 403) {
-        settingStore.settings.autoRefresh = 0
-      }
-      await sleep(5000)
-    }
-  }
-}
-
+// Account switch must not let a new account's poll reuse the previous
+// account's cursor (see mail-sync-service.resetSyncState).
 watch([
   () => accountStore.currentAccountId,
   () => accountStore.currentAccount?.allReceive,
-], resetNotificationCursor)
+], resetSyncState)
 
 onMounted(async () => {
   uiStore.writerRef = writerRef
@@ -345,18 +288,13 @@ onMounted(async () => {
   handleResize()
   notificationStore.requestPermission()
 
-  // Initialize cursor immediately so the first polling cycle detects new emails
-  // (without this, first real check is delayed 60s: 30s sleep + cursor init + 30s sleep)
-  if (localStorage.getItem('token')) {
-    const scope = currentNotificationScope()
-    if (scope) {
-      const accountId = Number(accountStore.currentAccountId || 0)
-      const allReceive = Number(accountStore.currentAccount?.allReceive || 0)
-      try { await ensureNotificationCursor(accountId, allReceive, scope) } catch (e) {}
-    }
-  }
-
-  runGlobalMailNotifications()
+  // One fallback polling loop + visibility/focus/online catch-up +
+  // notification-click routing for the whole app (Firebase/native push is
+  // the primary real-time signal — this just fills gaps). See
+  // mail-sync-service.js for why this replaced two independently-polling
+  // loops that used to race on the same rate-limited endpoint.
+  installLifecycleSync()
+  startFallbackPolling()
   setTimeout(checkAndroidUpdates, 8000)
 })
 
@@ -383,7 +321,7 @@ function handlePopState(e) {
 }
 
 onBeforeUnmount(() => {
-  globalNotifyRunning = false
+  stopFallbackPolling()
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('popstate', handlePopState)

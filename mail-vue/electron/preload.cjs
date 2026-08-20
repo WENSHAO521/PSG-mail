@@ -1,9 +1,15 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Notifications
-  sendNotification: (title, body) => {
-    ipcRenderer.send('notify', { title, body })
+  // Notifications — invoke (not fire-and-forget) so the renderer can tell
+  // whether the OS actually supports/showed it, e.g. for the Settings
+  // "send test notification" diagnostic.
+  sendNotification: (title, body, emailId) => {
+    return ipcRenderer.invoke('notify', { title, body, emailId })
+  },
+  onNotificationOpenEmail: (cb) => {
+    ipcRenderer.removeAllListeners('notification-open-email')
+    ipcRenderer.on('notification-open-email', (_, data) => cb(data))
   },
 
   // Dock badge (macOS) / taskbar overlay badge (Windows)

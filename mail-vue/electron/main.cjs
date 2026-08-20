@@ -381,8 +381,13 @@ app.on('activate', () => {
 })
 
 // ── IPC: Native notifications ─────────────────────────────────
-function showNativeNotification(title, body) {
-  if (!Notification.isSupported()) return
+// Returns a diagnostic result instead of firing and forgetting, so the
+// renderer (Settings → Notifications) can tell "no OS support" apart from
+// "shown, but the OS may still be suppressing it" — see the invoke handler
+// below and notification-service.js's showMailNotification().
+function showNativeNotification(title, body, emailId) {
+  if (!Notification.isSupported()) return { supported: false, shown: false }
+
   const opts = {
     title: title || 'PSG Mail',
     body: body || '',
@@ -404,13 +409,15 @@ function showNativeNotification(title, body) {
       if (!win.isVisible()) win.show()
       if (isMac) app.focus({ steal: true })
       win.focus()
+      if (emailId) win.webContents.send('notification-open-email', { emailId })
     }
   })
   n.show()
+  return { supported: true, shown: true }
 }
 
-ipcMain.on('notify', (_event, { title, body }) => {
-  showNativeNotification(title, body)
+ipcMain.handle('notify', (_event, { title, body, emailId }) => {
+  return showNativeNotification(title, body, emailId)
 })
 
 // ── IPC: Badge / taskbar overlay ─────────────────────────────

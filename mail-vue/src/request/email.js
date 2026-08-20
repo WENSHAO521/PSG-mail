@@ -12,6 +12,13 @@ export function emailLatest(emailId, accountId, allReceive) {
     return http.get('/email/latest', {params: {emailId, accountId, allReceive}, noMsg: true, timeout: 35 * 1000})
 }
 
+// Single-email fetch used by the new-mail sync path — Firebase/native push
+// payloads only carry { emailId, accountId }, so the client fetches the full
+// row here before inserting it into the Inbox.
+export function emailDetail(emailId) {
+    return http.get('/email/detail', {params: {emailId}, noMsg: true})
+}
+
 export function emailRead(emailIds) {
     return http.put('/email/read', {emailIds})
 }

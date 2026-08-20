@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getMessaging, getToken, onMessage } from 'firebase/messaging'
 import { registerDevice } from '@/request/notification.js'
-import { useNotificationStore } from '@/store/notification.js'
+import { handleNewMailSignal } from '@/utils/mail-sync-service.js'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,42 +21,75 @@ function isSupported() {
     && !!firebaseConfig.apiKey
 }
 
-// Registers this browser/PWA install for FCM web push. No-op if Firebase
-// env vars aren't configured yet, or the browser lacks push support.
+// Registers this browser/PWA install for FCM web push. Returns a structured
+// { ok, stage, error } result instead of silently no-op'ing, so the Settings
+// UI can show *why* push isn't connected (permission denied vs. unsupported
+// vs. server misconfigured vs. token exchange failed) instead of just
+// "Notification.permission === 'granted'" — which used to be conflated with
+// "push is actually working" even when registration had failed downstream.
 export async function registerWebPush() {
-  if (!isSupported()) return
-
-  const permission = await Notification.requestPermission()
-  if (permission !== 'granted') return
-
-  if (!messaging) {
-    const app = initializeApp(firebaseConfig)
-    messaging = getMessaging(app)
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('Notification' in window)) {
+    return { ok: false, stage: 'unsupported' }
+  }
+  if (!firebaseConfig.apiKey) {
+    return { ok: false, stage: 'firebase_init', error: 'FIREBASE_NOT_CONFIGURED' }
   }
 
-  const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') {
+    return { ok: false, stage: 'permission' }
+  }
 
-  const token = await getToken(messaging, {
-    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-    serviceWorkerRegistration: registration,
-  })
+  try {
+    if (!messaging) {
+      const app = initializeApp(firebaseConfig)
+      messaging = getMessaging(app)
+    }
+  } catch (e) {
+    return { ok: false, stage: 'firebase_init', error: e?.message }
+  }
 
-  if (!token) return
+  let registration
+  try {
+    registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+  } catch (e) {
+    return { ok: false, stage: 'service_worker', error: e?.message }
+  }
 
-  await registerDevice({
-    platform: 'web',
-    targetKind: 'fcm_token',
-    target: token,
-  })
+  let token
+  try {
+    token = await getToken(messaging, {
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    })
+  } catch (e) {
+    return { ok: false, stage: 'get_token', error: e?.message }
+  }
+  if (!token) {
+    return { ok: false, stage: 'get_token', error: 'EMPTY_TOKEN' }
+  }
+
+  try {
+    await registerDevice({
+      platform: 'web',
+      targetKind: 'fcm_token',
+      target: token,
+    })
+  } catch (e) {
+    return { ok: false, stage: 'device_register', error: e?.message }
+  }
 
   // Foreground messages don't trigger the service worker's background
-  // handler, so surface them through the app's own notification panel.
+  // handler — route them through the same new-mail sync path as
+  // poll/Android/click so Inbox insert + notification + de-dupe all go
+  // through one place instead of just showing a notification-panel entry.
   onMessage(messaging, payload => {
-    const notificationStore = useNotificationStore()
-    notificationStore.notifyEmail({
+    handleNewMailSignal({
       emailId: payload.data?.emailId,
-      name: payload.data?.name || payload.notification?.title || '',
-      subject: payload.data?.subject || payload.notification?.body || '',
+      accountId: payload.data?.accountId,
+      source: 'firebase',
     })
   })
+
+  return { ok: true, stage: 'connected' }
 }

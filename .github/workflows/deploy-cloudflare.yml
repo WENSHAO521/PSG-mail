@@ -5,6 +5,12 @@ on:
     branches: [ main ]
     paths:
       - "mail-worker/**"
+      # mail-vue is built as part of the `[build] command` wrangler runs
+      # during deploy (see mail-worker/wrangler-action.toml) — without this,
+      # a mail-vue-only change (firebase.js, service worker, sync logic...)
+      # never triggers a redeploy and silently stays live on the old bundle.
+      - "mail-vue/**"
+      - ".github/workflows/deploy-cloudflare.yml"
   workflow_dispatch:
 
 jobs:

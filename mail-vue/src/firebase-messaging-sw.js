@@ -34,12 +34,24 @@ if (firebaseConfig.apiKey) {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close()
+  const emailId = event.notification.data?.emailId
+
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async clientList => {
       for (const client of clientList) {
-        if ('focus' in client) return client.focus()
+        if ('focus' in client) {
+          await client.focus()
+          // An existing tab handles routing itself — mail-sync-service
+          // listens for this on the page side (installLifecycleSync).
+          if (emailId) client.postMessage({ type: 'OPEN_EMAIL', emailId })
+          return
+        }
       }
-      if (self.clients.openWindow) return self.clients.openWindow('/')
+      // No open tab to postMessage into — deep-link a fresh one; the app
+      // reads ?openEmail= on boot (see mail-sync-service.installLifecycleSync).
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(emailId ? `/inbox?openEmail=${emailId}` : '/')
+      }
     })
   )
 })

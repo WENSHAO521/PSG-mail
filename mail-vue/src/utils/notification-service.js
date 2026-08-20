@@ -119,8 +119,10 @@ export async function requestNotificationPermission() {
 
 export async function showMailNotification(email) {
   if (isElectron()) {
-    window.electronAPI.sendNotification(notificationTitle(email), notificationBody(email))
-    return true
+    const result = await window.electronAPI.sendNotification(
+      notificationTitle(email), notificationBody(email), email.emailId
+    ).catch(() => ({ supported: false, shown: false }))
+    return !!result?.shown
   }
 
   if (isNativeCapacitor()) {

@@ -150,21 +150,21 @@
                 <div class="autoreply-toggle">
                   <div>
                     <div class="toggle-label">{{ $t('enableDesktopNotif') }}</div>
-                    <div class="card-desc" style="margin:0">
-                      {{ notifPermission === 'granted' ? $t('notifPermissionGranted') : notifPermission === 'denied' ? $t('notifDenied') : $t('notificationsDesc') }}
-                    </div>
+                    <div class="card-desc" style="margin:0">{{ notifStatusText }}</div>
                   </div>
                   <el-button
-                    v-if="notifPermission !== 'granted'"
+                    v-if="notifPermission !== 'granted' && !isElectronPlatform"
                     size="small" :disabled="notifPermission === 'denied'"
                     @click="requestNotifPermission"
                   >{{ $t('enable') }}</el-button>
                   <el-button v-else size="small" :loading="notifTestSending" @click="sendTestNotif">
-                    {{ $t('notifSendTest') }}
+                    {{ isElectronPlatform ? $t('notifTestNative') : $t('notifSendTest') }}
                   </el-button>
                 </div>
 
-                <div class="notif-devices">
+                <!-- Electron has no Firebase device registration (see mail-sync-service.js /
+                     init.js) — "registered device" is a web/Android push concept that doesn't apply. -->
+                <div class="notif-devices" v-if="!isElectronPlatform">
                   <div class="toggle-label" style="margin:16px 0 8px">{{ $t('notifDevices') }}</div>
                   <div v-if="!notifDevices.length" class="card-desc">{{ $t('notifNoDevices') }}</div>
                   <div v-for="d in notifDevices" :key="d.id" class="notif-device-row">
@@ -356,10 +356,28 @@ const autoReplyMessage = ref('')
 const autoReplySaving = ref(false)
 
 // ── Push notifications ──
+// Browser permission and "push actually connected" are two different facts:
+// permission can be granted while token exchange / device registration
+// failed downstream, so a device only counts as connected once the server
+// confirms it via GET /notification/devices — never from
+// Notification.permission alone.
 const notificationStore = useNotificationStore()
 const notifPermission = ref(notificationStore.permission)
 const notifDevices = ref([])
 const notifTestSending = ref(false)
+const isElectronPlatform = !!window.electronAPI?.sendNotification
+const pushRegisterError = ref('')
+
+const pushConnected = computed(() => notifDevices.value.some(d => d.enabled))
+
+const notifStatusText = computed(() => {
+  if (notifPermission.value === 'denied') return t('notifDenied')
+  if (isElectronPlatform) return t('notifTestNative')
+  if (notifPermission.value !== 'granted') return t('notificationsDesc')
+  if (pushConnected.value) return t('notifPermissionGranted')
+  if (pushRegisterError.value) return `${t('notifTestNoDevice')} (${pushRegisterError.value})`
+  return t('notifTestNoDevice')
+})
 
 function loadNotifDevices() {
   listDevices().then(data => { notifDevices.value = data || [] }).catch(() => {})
@@ -373,18 +391,43 @@ async function requestNotifPermission() {
       import('@/utils/push-service.js'),
       import('@/firebase.js'),
     ])
-    await Promise.allSettled([initNativePush(), registerWebPush()])
+    const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush()])
+    const webStatus = webResult.status === 'fulfilled' ? webResult.value : null
+    pushRegisterError.value = webStatus && !webStatus.ok ? (webStatus.stage || '') : ''
     loadNotifDevices()
   }
 }
 
+// Electron has no Firebase device registration (see mail-sync-service /
+// init.js) — its "test" must exercise the real native-notification IPC
+// path directly instead of calling the server FCM test endpoint, which
+// would always report "no registered device" for Electron.
 async function sendTestNotif() {
   notifTestSending.value = true
   try {
+    if (isElectronPlatform) {
+      const result = await window.electronAPI.sendNotification('PSG Mail', t('notifTestSent'))
+      if (!result?.supported) {
+        ElMessage({ message: t('notifTestNativeUnsupported'), type: 'error', plain: true })
+      } else if (!result.shown) {
+        ElMessage({ message: t('notifTestNativeFailed'), type: 'error', plain: true })
+      } else {
+        ElMessage({ message: t('notifTestSent'), type: 'success', plain: true })
+      }
+      return
+    }
+
     await sendTestNotification()
     ElMessage({ message: t('notifTestSent'), type: 'success', plain: true })
-  } catch {
-    ElMessage({ message: t('notifTestFailed'), type: 'error', plain: true })
+  } catch (e) {
+    const reason = e?.message || ''
+    const key = {
+      NO_REGISTERED_DEVICE: 'notifTestNoDevice',
+      FIREBASE_NOT_CONFIGURED: 'notifTestServerNotConfigured',
+      FIREBASE_AUTH_FAILED: 'notifTestServerNotConfigured',
+      FCM_SEND_FAILED: 'notifTestSendFailed',
+    }[reason]
+    ElMessage({ message: key ? t(key) : t('notifTestFailed'), type: 'error', plain: true })
   } finally {
     notifTestSending.value = false
   }
