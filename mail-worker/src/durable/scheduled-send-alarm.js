@@ -19,7 +19,22 @@ export class ScheduledSendAlarm {
 	}
 
 	async fetch(request) {
-		const { scheduledEmailId, whenMs } = await request.json();
+		const body = await request.json();
+
+		// Used by reschedule() when a row's new time no longer qualifies for
+		// the fast path (or the row was cancelled) — clears this instance's
+		// alarm so it can't fire at the stale time it was previously armed
+		// for. Setting a NEW alarm (the branch below) already implicitly
+		// replaces any previous one — setAlarm() overwrites, a DO instance
+		// can only ever hold one pending alarm — so disarm is only needed
+		// when no replacement alarm should exist at all.
+		if (body.action === 'disarm') {
+			await this.state.storage.deleteAlarm();
+			await this.state.storage.delete('scheduledEmailId');
+			return new Response('ok');
+		}
+
+		const { scheduledEmailId, whenMs } = body;
 		await this.state.storage.put('scheduledEmailId', scheduledEmailId);
 		await this.state.storage.setAlarm(whenMs);
 		return new Response('ok');

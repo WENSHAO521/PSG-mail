@@ -1,6 +1,6 @@
 import orm from '../entity/orm';
 import scheduledEmail from '../entity/scheduled-email';
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, desc, lte } from 'drizzle-orm';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
 import accountService from './account-service';
@@ -127,6 +127,25 @@ const scheduledEmailService = {
 		}
 	},
 
+	// Clears a previously-armed alarm for this row (reschedule() out of the
+	// fast path, or any other case where an existing alarm must not fire).
+	// Same swallow-errors reasoning as armAlarm(): claimAndProcessById()'s
+	// scheduledAt<=now guard means a stray alarm that fires anyway is a safe
+	// no-op, not an early send, so a failed disarm call is not a correctness
+	// problem, just a missed optimization.
+	async disarmAlarm(c, id) {
+		if (!c.env.SCHEDULED_SEND_ALARM) return;
+		try {
+			const stub = c.env.SCHEDULED_SEND_ALARM.get(c.env.SCHEDULED_SEND_ALARM.idFromName('scheduled-email-' + id));
+			await stub.fetch('https://scheduled-send-alarm/disarm', {
+				method: 'POST',
+				body: JSON.stringify({ action: 'disarm' }),
+			});
+		} catch (e) {
+			console.error('failed to disarm scheduled-send alarm', id, e.message);
+		}
+	},
+
 	// Claims the row (pending -> processing) then sends it, scoped only to
 	// the id — used by the DO alarm handler, which has no userId context of
 	// its own to also check against (sendNow()/cancel() etc. additionally
@@ -134,9 +153,22 @@ const scheduledEmailService = {
 	// request; the alarm is a purely internal trigger for a row that was
 	// already ownership-checked back when it was created).
 	async claimAndProcessById(c, id) {
+		// scheduledAt<=now is a defense-in-depth backstop, not the primary
+		// mechanism — reschedule() is responsible for keeping this row's DO
+		// alarm in sync with its current scheduledAt (re-arming to the new
+		// time, or disarming if the row left the fast path). This guard means
+		// that even if that ever falls out of sync (a disarm call silently
+		// failing, some other edge case), a stale alarm firing early can only
+		// ever be a no-op here, never an early send — same time filter
+		// processDue()'s cron path already applies.
+		const nowIso = new Date().toISOString().slice(0, 19).replace('T', ' ');
 		const claimed = await orm(c).update(scheduledEmail)
 			.set({ status: STATUS.PROCESSING, updateTime: new Date().toISOString() })
-			.where(and(eq(scheduledEmail.id, Number(id)), eq(scheduledEmail.status, STATUS.PENDING)))
+			.where(and(
+				eq(scheduledEmail.id, Number(id)),
+				eq(scheduledEmail.status, STATUS.PENDING),
+				lte(scheduledEmail.scheduledAt, nowIso)
+			))
 			.returning().get();
 		if (!claimed) return null;
 		return this.processOne(c, claimed);
@@ -180,6 +212,22 @@ const scheduledEmailService = {
 			))
 			.returning().get();
 		if (!result) throw new BizError(t('scheduleNotCancellable') || 'This scheduled email can no longer be edited', 400);
+
+		// Any DO alarm armed for the OLD scheduledAt (by create() or an
+		// earlier reschedule()) still targets that old time and, left alone,
+		// would fire then — the row is still 'pending', so without this it
+		// would be sent early instead of at the newly-chosen time. armAlarm()
+		// targets the same DO instance (idFromName is keyed on this row's id)
+		// so re-arming simply overwrites the stale alarm; moving out of the
+		// fast path disarms it instead so nothing fires before the cron
+		// backstop's next pass.
+		const delayMs = scheduledMs - Date.now();
+		if (delayMs <= FAST_PATH_THRESHOLD_MS) {
+			await this.armAlarm(c, id, Date.now() + delayMs);
+		} else {
+			await this.disarmAlarm(c, id);
+		}
+
 		return this.toClient(result);
 	},
 

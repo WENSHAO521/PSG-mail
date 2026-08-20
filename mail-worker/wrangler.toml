@@ -58,7 +58,11 @@ crons = ["* * * * *", "*/30 * * * *", "0 16 * * *"]	#每分钟处理定时发送
 #orm_log = false			#是否sql日志
 #domain = []				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
 #admin = ""				#管理员的邮箱	示例: admin@example.com
-#jwt_secret = ""			#jwt令牌的密钥,随便填一串字符串
+# jwt_secret 不要写在这里 —— 用 wrangler secret 存放（同 Firebase 三项密钥的方式）：
+#   cd mail-worker
+#   npx wrangler secret put jwt_secret
+# 它用于签发/校验每个用户的登录 JWT，也是 /init 与 /reset-admin 的引导密钥，
+# 明文写进 [vars] 意味着任何能读到这份配置文件的人都能拿到它。
 
 # ── 云端备份 OAuth（不填则对应入口不显示）────────────────────────
 # Google Drive: https://console.cloud.google.com/ → APIs & Services → Credentials

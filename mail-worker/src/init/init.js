@@ -1,14 +1,20 @@
 import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
+import timingSafeEqual from '../utils/secure-compare';
 
 const dbInit = {
 	async init(c) {
 
-		const secret = c.req.param('secret');
+		// Bearer token, not a URL path segment — a secret embedded in a URL
+		// (the old GET /init/:secret) can end up in request/proxy/observability
+		// logs even over HTTPS (logged by the server itself, not just visible
+		// in transit). See init-api.js for the route.
+		const auth = c.req.header('Authorization') || '';
+		const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
 
-		if (secret !== c.env.jwt_secret) {
-			return c.text('❌ JWT secret mismatch');
+		if (!secret || !timingSafeEqual(secret, c.env.jwt_secret)) {
+			return c.text('❌ JWT secret mismatch', 401);
 		}
 
 		await this.intDB(c);
