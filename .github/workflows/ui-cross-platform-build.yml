@@ -7,6 +7,12 @@ on:
     paths:
       - 'mail-vue/**'
       - '.github/workflows/ui-cross-platform-build.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'mail-vue/**'
+      - '.github/workflows/ui-cross-platform-build.yml'
   workflow_dispatch:
 
 permissions:
