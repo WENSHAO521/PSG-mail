@@ -61,13 +61,24 @@ img {
 button, input, select, textarea {
     font-family: inherit;
     font-size: inherit;
-    outline: none;
     border: none;
     background: none;
 }
 
-*:focus {
+/* Accessible focus indicator — visible only for keyboard navigation
+   (:focus-visible), never on mouse/touch interaction. Do not remove;
+   see PSG Mail accessibility requirements. */
+:focus {
     outline: none;
+}
+:focus-visible {
+    outline: 2px solid var(--psg-focus, #111111);
+    outline-offset: 2px;
+}
+.el-input__wrapper:focus-within,
+.el-textarea__inner:focus-visible {
+    outline: 2px solid var(--psg-focus, #111111);
+    outline-offset: 1px;
 }
 
 .el-message {
@@ -185,58 +196,89 @@ button, input, select, textarea {
        because Vite strips !important from custom properties during minification */
     --el-font-family: 'IBM Plex Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
 
-    /* PSG — Black / White / Graphite — matches the industrial logo mark (#121212 / #f9f9f9) */
-    --el-color-primary: #121212;
+    /* ══════════════════════════════════════════════════════════
+       PSG Mail Design Tokens — Institutional / Academic / Editorial.
+       Swiss International Style + Bauhaus rationalism: restrained,
+       not decorative, brutalism. Red is reserved for unread /
+       critical / destructive signals only — it is never a brand fill.
+       ══════════════════════════════════════════════════════════ */
+    --psg-bg: #F5F5F3;              /* app shell / sidebar ground   */
+    --psg-surface: #FFFFFF;         /* paper: cards, panes, dialogs */
+    --psg-surface-muted: #F5F5F3;   /* warm gray: inset panels      */
+    --psg-surface-active: #ECECEA;  /* selected row / active state  */
+    --psg-border: #D3D3CF;
+    --psg-border-strong: #111111;
+
+    --psg-text: #171717;            /* body copy — never pure black */
+    --psg-text-secondary: #686868;
+    --psg-text-muted: #9A9A95;
+
+    --psg-black: #111111;
+    --psg-white: #FFFFFF;
+
+    --psg-red: #C92020;             /* unread / critical / destructive ONLY */
+    --psg-red-dark: #A81919;
+    --psg-red-rgb: 201, 32, 32;
+    --psg-red-muted: rgba(201, 32, 32, 0.08);
+
+    --psg-focus: #111111;           /* visible 2px focus-ring color  */
+    --psg-selection: #ECECEA;
+
+    /* ── Element Plus — primary is ink black, never EP's default blue ── */
+    --el-color-primary: var(--psg-black);
     --el-color-primary-dark-2: #000000;
     --el-color-primary-light-3: #3d3d3d;
     --el-color-primary-light-5: #6e6e6e;
     --el-color-primary-light-7: #a3a3a3;
     --el-color-primary-light-9: #ececec;
+    --el-text-color-primary: var(--psg-text);
+    --el-text-color-regular: var(--psg-text-secondary);
+    --el-text-color-secondary: var(--psg-text-secondary);
+    --el-color-danger: var(--psg-red);
 
-    --red-accent: #121212;
+    /* ── Legacy "ink accent" — aliases the ~150 existing call sites that
+       use it for primary/active/hover/focus chrome across the app. It
+       intentionally equals --psg-black, NOT --psg-red: only genuinely
+       destructive/unread call sites reference --psg-red directly (see
+       components/email-scroll and views/content). ── */
+    --red-accent: var(--psg-black);
     --red-accent-dark: #000000;
-    --red-accent-rgb: 18, 18, 18;
-    --red-accent-subtle: rgba(18, 18, 18, 0.07);
+    --red-accent-rgb: 17, 17, 17;
+    --red-accent-subtle: rgba(17, 17, 17, 0.07);
     --on-accent: #ffffff;   /* text/icon color for content placed on top of --red-accent fills */
 
-    /* PSG explicit brand tokens */
-    --psg-red: #121212;
-    --psg-red-hover: #000000;
-    --psg-black: #000000;
-    --psg-white: #ffffff;
-    --psg-bg: #f9f9f9;
-    --psg-border: #000000;
-    --psg-text-primary: #1a1c1c;
-    --psg-text-secondary: #4c4546;
+    /* PSG legacy brand token names — aliased to the tokens above */
+    --psg-red-hover: var(--psg-red-dark);
+    --psg-text-primary: var(--psg-text);
 
     /* vfasky-compatible surface tokens */
-    --surface: #ffffff;
-    --surface-secondary: #f3f3f3;
-    --separator: #000000;
-    --muted: #7e7576;
+    --surface: var(--psg-surface);
+    --surface-secondary: var(--psg-surface-muted);
+    --separator: var(--psg-border);
+    --muted: var(--psg-text-muted);
 
     /* Light-mode surfaces */
-    --extra-light-fill: #f9f9f9;
-    --light-ill: #eeeeee;
-    --light-border: #e2e2e6;
-    --header-actions-border: inset 0 -1px 0 0 #e2e2e6;
-    --aside-backgound: #f9f9f9;
+    --extra-light-fill: var(--psg-surface-muted);
+    --light-ill: var(--psg-surface-active);
+    --light-border: var(--psg-border);
+    --header-actions-border: inset 0 -1px 0 0 var(--psg-border);
+    --aside-backgound: var(--psg-surface-muted);
     --loadding-background: rgba(255, 255, 255, 0.88);
-    --dark-border: #000000;
-    --base-fill: #f3f3f3;
-    --regular-text-color: #4c4546;
-    --light-border-color: #dcdcdc;
-    --aside-right-border: 1px 0 0 #e2e2e6;
-    --choose-account-background: #fdf2f2;
+    --dark-border: var(--psg-black);
+    --base-fill: var(--psg-surface-active);
+    --regular-text-color: var(--psg-text-secondary);
+    --light-border-color: var(--psg-border);
+    --aside-right-border: 1px 0 0 var(--psg-border);
+    --choose-account-background: var(--psg-red-muted);
     --el-text-color-regular: var(--el-text-color-primary);
-    --email-scroll-content-color: #4c4546;
-    --email-hover-background: #eeeeee;
-    --login-border: 1px solid #e2e2e6;
-    --form-desc-color: #4c4546;
-    --login-switch-color: #121212;
+    --email-scroll-content-color: var(--psg-text-secondary);
+    --email-hover-background: var(--psg-surface-active);
+    --login-border: 1px solid var(--psg-border);
+    --form-desc-color: var(--psg-text-secondary);
+    --login-switch-color: var(--psg-black);
     --scrollbar-track-color: #c0c0c0;
-    --base-border-color: #cfc4c5;
-    --secondary-text-color: #4c4546;
+    --base-border-color: var(--psg-border);
+    --secondary-text-color: var(--psg-text-secondary);
     --message-block-color: rgba(0, 0, 0, 0);
     --loading-hide-transition: all 200ms;
     --vt-x: 50%;
@@ -248,29 +290,23 @@ button, input, select, textarea {
     --card-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.09), 0 1px 3px rgba(0, 0, 0, 0.05);
     --compose-shadow: 0 8px 40px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.08);
 
-    /* Rounded-corner scale (2026 modernization pass — replaces the zero-radius
-       Brutalist Academic look; color tokens above are untouched) */
-    --radius-xs: 6px;
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
+    /* Restrained radius scale — "quiet brutalism", not zero-radius
+       brutalism: very slight rounding on interactive chrome. Elements
+       that are genuinely circular (avatars, status dots, pill badges)
+       use --radius-full instead. */
+    --radius-xs: 2px;
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 4px;
     --radius-full: 999px;
 
-    /* PSG Gradients — Black/White/Graphite palette only */
-    --psg-gradient-red:        #121212;
-    --psg-gradient-red-h:      #000000;
-    --psg-gradient-dark:       linear-gradient(180deg, #1c1c1c 0%, #0a0a0a 100%);
-    --psg-gradient-sidebar:    linear-gradient(180deg, #f9f9f9 0%, #f3f3f3 100%);
-    --psg-gradient-card-top:   linear-gradient(90deg, #121212 0%, #000000 100%);
-    --psg-gradient-header-bar: linear-gradient(90deg, #000000 0%, #000000 100%);
-    --psg-gradient-surface:    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
-
-    /* Motion — never use 'all', only specific properties */
+    /* Motion — never 'all', only specific properties. Fast and precise:
+       120–180ms, no spring/bounce/decorative motion on app chrome. */
     --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-    --transition-smooth: background 0.18s var(--ease-out), color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
-    --transition-spring: transform 0.28s var(--ease-spring), opacity 0.22s var(--ease-out);
+    --transition-smooth: background 0.15s var(--ease-out), color 0.15s var(--ease-out), border-color 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+    --transition-spring: transform 0.16s var(--ease-out), opacity 0.15s var(--ease-out);
 }
 
 .dark {
@@ -281,65 +317,93 @@ button, input, select, textarea {
      * Text: 3-tier legible hierarchy
      */
 
+    --psg-bg: #151515;
+    --psg-surface: #1C1C1C;
+    --psg-surface-muted: #1C1C1C;
+    --psg-surface-active: #242424;  /* "surface raised" doubles as active/selected */
+    --psg-border: #383838;
+    --psg-border-strong: #F2F2EE;
+
+    --psg-text: #F2F2EE;
+    --psg-text-secondary: #A9A9A5;
+    --psg-text-muted: #78788a;
+
+    --psg-black: #111111;
+    --psg-white: #FFFFFF;
+
+    --psg-red: #E04B4B;             /* unread / critical / destructive ONLY */
+    --psg-red-dark: #ff6b6b;
+    --psg-red-rgb: 224, 75, 75;
+    --psg-red-muted: rgba(224, 75, 75, 0.16);
+
+    --psg-focus: #F2F2EE;
+    --psg-selection: #242424;
+
     /* ── Surfaces (darkest → lightest) ─────────────────── */
-    --surface: #1c1c21;              /* card / panel face          */
-    --surface-secondary: #25252b;   /* slightly elevated surface  */
-    --separator: #2a2a32;           /* section dividers           */
-    --muted: #78788a;
+    --surface: var(--psg-surface);
+    --surface-secondary: #25252b;
+    --separator: var(--psg-border);
+    --muted: var(--psg-text-muted);
 
     /* ── Accent — inverted to light ink so it still pops on dark surfaces ── */
-    --el-color-primary: #f4f4f4;
+    --el-color-primary: var(--psg-text);
     --el-color-primary-dark-2: #ffffff;
     --el-color-primary-light-3: #d0d0d0;
     --el-color-primary-light-5: #8f8f8f;
     --el-color-primary-light-7: #3a3a3a;
     --el-color-primary-light-9: #232328;
+    --el-text-color-primary: var(--psg-text) !important;
+    --el-text-color-regular: var(--psg-text-secondary) !important;
+    --el-text-color-secondary: var(--psg-text-secondary) !important;
+    --el-color-danger: var(--psg-red);
 
-    --red-accent: #f4f4f4;
+    --red-accent: var(--psg-text);
     --red-accent-dark: #ffffff;
-    --red-accent-rgb: 244, 244, 244;
-    --red-accent-subtle: rgba(244, 244, 244, 0.14);
+    --red-accent-rgb: 242, 242, 238;
+    --red-accent-subtle: rgba(242, 242, 238, 0.14);
     --on-accent: #000000;   /* accent is inverted to light in dark mode, so its text/icons go dark */
+    --psg-red-hover: var(--psg-red-dark);
+    --psg-text-primary: var(--psg-text);
 
     /* ── Fill / hover / indent ───────────────────────────── */
-    --extra-light-fill: #18181e;    /* inset list backgrounds     */
-    --light-ill: #25252b;
-    --base-fill: #1c1c21;           /* hover backgrounds          */
-    --email-hover-background: #22222a;
-    --choose-account-background: #1e1018;
+    --extra-light-fill: var(--psg-surface-muted);
+    --light-ill: var(--psg-surface-active);
+    --base-fill: var(--psg-surface);
+    --email-hover-background: var(--psg-surface-active);
+    --choose-account-background: var(--psg-red-muted);
     --message-block-color: rgba(14, 14, 20, 0.55);
     --loadding-background: rgba(14, 14, 20, 0.90);
 
     /* ── Borders ─────────────────────────────────────────── */
-    --light-border: #30303a;        /* was #1c1c1c — clearly visible */
-    --light-border-color: #2c2c36;  /* was #141414 — was near-invisible */
-    --base-border-color: #2c2c36;
-    --dark-border: #46465a;
-    --header-actions-border: inset 0 -1px 0 0 #2a2a32;
+    --light-border: var(--psg-border);
+    --light-border-color: var(--psg-border);
+    --base-border-color: var(--psg-border);
+    --dark-border: var(--psg-text);
+    --header-actions-border: inset 0 -1px 0 0 var(--psg-border);
     --aside-right-border: 1px 0 0 rgba(0, 0, 0, 0.4);
-    --login-border: 1px solid #30303a;
-    --scrollbar-track-color: #30303a;
+    --login-border: 1px solid var(--psg-border);
+    --scrollbar-track-color: var(--psg-border);
 
     /* ── Text ────────────────────────────────────────────── */
-    --regular-text-color: #9898aa;   /* was #909090   — slightly warmer */
-    --secondary-text-color: #70707e; /* was #505050   — much more legible */
-    --form-desc-color: #9898aa;
+    --regular-text-color: var(--psg-text-secondary);
+    --secondary-text-color: var(--psg-text-secondary);
+    --form-desc-color: var(--psg-text-secondary);
     --email-scroll-content-color: rgba(220, 220, 232, 0.28);
 
     /* ── Misc ────────────────────────────────────────────── */
-    --aside-backgound: #141418;
-    --login-switch-color: #f4f4f4;
+    --aside-backgound: var(--psg-bg);
+    --login-switch-color: var(--psg-text);
     --brand-grid-line: #2a2a32;
     --brand-grid-mark: #9898aa;
 
     /* ── Element Plus overrides ──────────────────────────── */
-    --el-border-color: #30303a !important;       /* was #1c1c1c */
-    --el-bg-color: #141418 !important;           /* was #000000 */
-    --el-bg-color-overlay: #1c1c21 !important;   /* was #080808 */
-    --el-bg-color-page: #141418 !important;      /* was #000000 */
-    --el-fill-color-blank: #1c1c21 !important;   /* was #080808 */
-    --el-fill-color: #22222a !important;         /* was #0d0d0d */
-    --el-fill-color-light: #18181e !important;   /* was #0a0a0a */
+    --el-border-color: var(--psg-border) !important;
+    --el-bg-color: var(--psg-bg) !important;
+    --el-bg-color-overlay: var(--psg-surface) !important;
+    --el-bg-color-page: var(--psg-bg) !important;
+    --el-fill-color-blank: var(--psg-surface) !important;
+    --el-fill-color: var(--psg-surface-active) !important;
+    --el-fill-color-light: var(--psg-surface-muted) !important;
 
     /* ── Shadows ─────────────────────────────────────────── */
     --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 4px 16px rgba(0, 0, 0, 0.30);
@@ -356,31 +420,35 @@ button, input, select, textarea {
    don't bleed dark-mode colors onto the login page.
    ══════════════════════════════════════════════════════════════ */
 html.dark.login-light-lock {
-    --el-border-color: #DADADA !important;
+    /* NOTE: literal values, not var(--psg-*) — this element also carries
+       .dark, which redefines every --psg-* custom property to its dark
+       value at higher specificity than :root. Referencing var(--psg-*)
+       here would silently resolve to the dark palette. */
+    --el-border-color: #D3D3CF !important;
     --el-bg-color: #ffffff !important;
     --el-bg-color-overlay: #ffffff !important;
-    --el-bg-color-page: #F7F7F7 !important;
+    --el-bg-color-page: #F5F5F3 !important;
     --el-fill-color-blank: #ffffff !important;
-    --el-fill-color: #F5F5F5 !important;
+    --el-fill-color: #F5F5F3 !important;
     --el-fill-color-light: #FAFAFA !important;
-    --el-text-color-primary: #111111;
+    --el-text-color-primary: #171717;
     --el-text-color-regular: #444444;
-    --el-text-color-secondary: #666666;
+    --el-text-color-secondary: #686868;
     --el-text-color-placeholder: #999999;
-    --el-border-color-light: #DADADA;
+    --el-border-color-light: #D3D3CF;
     --el-border-color-lighter: #EEEEEE;
 
-    --el-color-primary: #121212;
+    --el-color-primary: #111111;
     --el-color-primary-dark-2: #000000;
     --el-color-primary-light-3: #3d3d3d;
     --el-color-primary-light-5: #6e6e6e;
     --el-color-primary-light-7: #a3a3a3;
     --el-color-primary-light-9: #ececec;
 
-    --red-accent: #121212;
+    --red-accent: #111111;
     --red-accent-dark: #000000;
-    --red-accent-rgb: 18, 18, 18;
-    --red-accent-subtle: rgba(18, 18, 18, 0.07);
+    --red-accent-rgb: 17, 17, 17;
+    --red-accent-subtle: rgba(17, 17, 17, 0.07);
     --on-accent: #ffffff;
 }
 
@@ -475,7 +543,7 @@ html.dark.login-light-lock {
     pointer-events: none;
 }
 .email-arriving {
-    animation: email-slide-in 0.22s var(--ease-spring, cubic-bezier(0.34,1.56,0.64,1)) both;
+    animation: email-slide-in 0.18s var(--ease-out, ease) both;
 }
 
 .el-input {

@@ -48,7 +48,7 @@
           <el-skeleton v-for="i in skeletonRows" :key="i" animated>
             <template #template>
               <div class="item" style="pointer-events:none">
-                <el-skeleton-item variant="image" style="width:36px;height:36px;border-radius:9px;flex-shrink:0"/>
+                <el-skeleton-item variant="image" style="width:36px;height:36px;border-radius: var(--radius-sm);flex-shrink:0"/>
                 <div style="flex:1;min-width:0">
                   <el-skeleton-item variant="p" style="width:75%;height:13px"/>
                 </div>
@@ -66,7 +66,7 @@
           <el-skeleton animated>
             <template #template>
               <div class="item" style="pointer-events:none">
-                <el-skeleton-item variant="image" style="width:36px;height:36px;border-radius:9px;flex-shrink:0"/>
+                <el-skeleton-item variant="image" style="width:36px;height:36px;border-radius: var(--radius-sm);flex-shrink:0"/>
                 <div style="flex:1;min-width:0">
                   <el-skeleton-item variant="p" style="width:75%;height:13px"/>
                 </div>

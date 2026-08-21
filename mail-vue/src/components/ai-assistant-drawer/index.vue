@@ -176,7 +176,7 @@ async function respondConfirm(approve) {
 .ai-msg-bubble {
   max-width: 85%;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 13px;
@@ -199,7 +199,7 @@ async function respondConfirm(approve) {
 .ai-confirm-card {
   border: 1px solid var(--el-color-warning-light-5);
   background: var(--el-color-warning-light-9);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 12px;
 }
 

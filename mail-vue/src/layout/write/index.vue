@@ -1231,8 +1231,16 @@ function close() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 10, 10, 0.62);
+  /* A quiet scrim, not a heavy dark modal backdrop — the composer reads
+     as a floating panel over the inbox, not a blocking full-screen dialog. */
+  background: rgba(17, 17, 17, 0.12);
   z-index: 2000;
+
+  @media (min-width: 768px) {
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 0 28px 28px 0;
+  }
 }
 
 /* ── Dialog box ──────────────────────────────── */
@@ -1251,8 +1259,11 @@ function close() {
     border-radius: var(--radius-lg);
   }
 
+  /* Desktop "Normal" composer — Gmail-style floating panel, not a
+     centered 1300px modal. */
   @media (min-width: 768px) {
-    height: min(840px, calc(100vh - 32px));
+    width: min(680px, calc(100vw - 56px));
+    height: min(680px, calc(100vh - 88px));
   }
 }
 
@@ -1782,7 +1793,7 @@ function close() {
   .wh-close {
     width: 42px;
     height: 42px;
-    border-radius: 14px;
+    border-radius: var(--radius-sm);
     color: var(--regular-text-color);
 
     &:active {
@@ -1801,7 +1812,7 @@ function close() {
     padding: 0 14px;
     gap: 8px;
     border-bottom: none;
-    border-radius: 18px;
+    border-radius: var(--radius-sm);
     background: rgba(247,246,243,0.86);
     border: 1px solid rgba(0,0,0,0.08);
     box-shadow: 0 8px 20px rgba(0,0,0,0.05);
@@ -1825,7 +1836,7 @@ function close() {
     display: inline-flex;
     align-items: center;
     padding: 0 9px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     background: rgba(0,0,0,0.05);
     font-size: 12px;
   }
@@ -1843,7 +1854,7 @@ function close() {
     flex: 1;
     min-height: 220px;
     overflow: hidden;
-    border-radius: 20px 20px 0 0;
+    border-radius: var(--radius-sm);
     background: rgba(247,246,243,0.90);
     border: 1px solid rgba(0,0,0,0.08);
     border-bottom: none;
@@ -1864,7 +1875,7 @@ function close() {
   .tb-btn {
     width: 40px;
     height: 40px;
-    border-radius: 14px;
+    border-radius: var(--radius-sm);
     background: rgba(0,0,0,0.04);
   }
 
@@ -1882,14 +1893,14 @@ function close() {
   .send-btn {
     height: 42px !important;
     min-width: 74px !important;
-    border-radius: 15px !important;
+    border-radius: var(--radius-sm) !important;
     padding: 0 18px !important;
   }
 
   .send-later-btn {
     width: 42px !important;
     height: 42px !important;
-    border-radius: 15px !important;
+    border-radius: var(--radius-sm) !important;
   }
 
   .schedule-picker {

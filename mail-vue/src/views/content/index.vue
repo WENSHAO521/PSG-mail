@@ -15,13 +15,6 @@
         <button class="icon-btn detail-back-btn" @click="handleBack">
           <Icon icon="solar:alt-arrow-left-linear" width="20" height="20" />
         </button>
-        <button v-perm="'email:delete'" class="icon-btn icon-danger" @click="handleDelete">
-          <Icon icon="solar:trash-bin-trash-linear" width="19" height="19" />
-        </button>
-        <button class="icon-btn" @click="changeStar" v-if="emailStore.contentData.showStar">
-          <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'solar:star-line-duotone'"
-                :width="email.isStar ? 20 : 18" :height="email.isStar ? 20 : 18" />
-        </button>
         <template v-if="emailStore.contentData.showReply">
           <button class="icon-btn" v-perm="'email:send'" @click="openReply">
             <Icon icon="solar:reply-linear" width="21" height="21" />
@@ -33,6 +26,15 @@
             <Icon icon="solar:arrow-right-up-linear" width="20" height="20" />
           </button>
         </template>
+        <button class="icon-btn" @click="changeStar" v-if="emailStore.contentData.showStar">
+          <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'solar:star-line-duotone'"
+                :width="email.isStar ? 20 : 18" :height="email.isStar ? 20 : 18" />
+        </button>
+        <!-- Destructive action: kept last (never adjacent to Back/Reply muscle-memory
+             position) and visually quiet at rest — only turns --psg-red on hover. -->
+        <button v-perm="'email:delete'" class="icon-btn icon-danger" @click="handleDelete" :title="$t('delete')">
+          <Icon icon="solar:trash-bin-trash-linear" width="19" height="19" />
+        </button>
       </div>
       <div class="header-right">
         <el-tooltip :content="$t('markAsUnread')" placement="bottom"
@@ -547,7 +549,7 @@ function handleDelete() {
 
   @media (hover: hover) {
     &:hover { background: rgba(0,0,0,0.07); color: var(--el-text-color-primary); }
-    &.icon-danger:hover { background: rgba(var(--red-accent-rgb), 0.08); color: var(--red-accent); }
+    &.icon-danger:hover { background: rgba(var(--psg-red-rgb), 0.08); color: var(--psg-red); }
   }
 }
 
@@ -582,6 +584,10 @@ function handleDelete() {
 .detail-scroll { flex: 1; min-height: 0; }
 
 .detail-content {
+  /* Editorial reading measure — the pane itself can stretch on wide
+     monitors, but prose stays capped at ~76ch for readability. */
+  max-width: 780px;
+  margin: 0 auto;
   padding: 28px 32px 48px;
   @media (max-width: 1280px) { padding: 24px 24px 40px; }
   @media (max-width: 1024px) { padding: 20px 20px 36px; }
@@ -591,9 +597,9 @@ function handleDelete() {
 
 /* ── Subject ─────────────────────────────────────────────── */
 .email-title {
-  font-size: 22px;
+  font-size: 30px;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.3;
   color: var(--el-text-color-primary);
   margin: 0 0 20px;
   word-break: break-word;
@@ -601,7 +607,7 @@ function handleDelete() {
   letter-spacing: -0.01em;
 
   @media (max-width: 768px) {
-    font-size: 18px;
+    font-size: 22px;
     margin-bottom: 14px;
   }
 }
@@ -803,7 +809,7 @@ function handleDelete() {
 
 /* ── Body ────────────────────────────────────────────────── */
 .email-body {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.75;
   color: var(--el-text-color-primary);
   word-break: break-word;
@@ -974,7 +980,7 @@ function handleDelete() {
   .icon-btn {
     width: 42px;
     height: 42px;
-    border-radius: 14px;
+    border-radius: var(--radius-sm);
     color: var(--regular-text-color);
 
     &:active {
@@ -1005,7 +1011,7 @@ function handleDelete() {
   .meta-card {
     border: 1px solid rgba(0,0,0,0.08);
     border-left: none;
-    border-radius: 22px;
+    border-radius: var(--radius-sm);
     background: rgba(247,246,243,0.86);
     box-shadow: 0 12px 28px rgba(0,0,0,0.07);
     padding: 14px;
@@ -1060,7 +1066,7 @@ function handleDelete() {
 
   .att-container,
   .translate-panel {
-    border-radius: 20px;
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(0,0,0,0.08);
     border-left: 1px solid rgba(0,0,0,0.08);
     background: rgba(247,246,243,0.84);
@@ -1073,7 +1079,7 @@ function handleDelete() {
   }
 
   .att-item {
-    border-radius: 14px;
+    border-radius: var(--radius-sm);
     border-color: rgba(0,0,0,0.08);
   }
 

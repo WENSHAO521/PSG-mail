@@ -67,7 +67,7 @@ function openSearch() {
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
   background: rgba(255,255,255,0.94);
   border: 1px solid rgba(0,0,0,0.10);
-  border-radius: 22px;
+  border-radius: var(--radius-sm);
   box-shadow: 0 18px 42px rgba(0,0,0,0.18);
   backdrop-filter: blur(18px);
 
@@ -94,7 +94,7 @@ function openSearch() {
   font-weight: 700;
   letter-spacing: 0;
   padding: 5px 2px;
-  border-radius: 16px;
+  border-radius: var(--radius-sm);
   transition: color 0.12s, background 0.12s;
 
   span {
@@ -126,7 +126,7 @@ function openSearch() {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 17px;
+  border-radius: var(--radius-sm);
   box-shadow: 0 12px 24px rgba(var(--red-accent-rgb),0.30);
   transition: transform 0.14s, background 0.14s;
 

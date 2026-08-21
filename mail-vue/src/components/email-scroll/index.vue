@@ -977,7 +977,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
     .toolbar-left {
       gap: 8px;
-      border-radius: 18px;
+      border-radius: var(--radius-sm);
       padding: 0 8px;
       /* Tinted to match .email-container's own cream gradient (#f6f5f3)
          instead of literal white — see content/index.vue for the same fix
@@ -1015,7 +1015,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .icon-btn {
     width: 38px;
     height: 38px;
-    border-radius: 13px;
+    border-radius: var(--radius-sm);
   }
 
   :deep(.el-checkbox) {
@@ -1040,7 +1040,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     padding: 12px 12px 10px 8px;
     border: 1px solid rgba(0,0,0,0.08);
     border-bottom: 1px solid rgba(0,0,0,0.08);
-    border-radius: 20px;
+    border-radius: var(--radius-sm);
     background: rgba(246,245,243,0.88);
     box-shadow: 0 10px 24px rgba(0,0,0,0.06);
     align-items: center;
@@ -1296,7 +1296,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     flex-shrink: 0;
     transition: background 0.1s;
 
-    &.visible { background: var(--red-accent); }
+    &.visible { background: var(--psg-red); }
   }
 }
 
@@ -1489,7 +1489,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   align-items: center;
   gap: 10px;
 
-  &.danger { color: var(--red-accent); }
+  &.danger { color: var(--psg-red); }
 }
 
 :deep(.el-dropdown-menu__item:last-child) { padding-bottom: 8px; }
@@ -1528,7 +1528,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   text-transform: none;
   transition: opacity 0.05s;
 
-  &--delete { right: 0; background: var(--red-accent); color: var(--on-accent); }
+  &--delete { right: 0; background: var(--psg-red); color: #fff; }
   &--star   { left: 0;  background: #c48c00; }
 }
 </style>

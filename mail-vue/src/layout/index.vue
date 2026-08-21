@@ -345,7 +345,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   background: #111;
   color: #fff;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
   box-shadow: 0 4px 20px rgba(0,0,0,.35);
   font-size: 13px;
@@ -356,7 +356,7 @@ onBeforeUnmount(() => {
   .update-text { opacity: .9; }
   .update-ready { color: #7ee2a8; font-weight: 600; }
   .update-progress { width: 100px; flex-shrink: 0; }
-  .update-btn { flex-shrink: 0; border-radius: 5px; }
+  .update-btn { flex-shrink: 0; border-radius: var(--radius-sm); }
   .update-close {
     background: none; border: none; color: rgba(255,255,255,.5);
     cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px;

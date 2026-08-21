@@ -118,7 +118,7 @@ function openDrawer() {
   color: var(--muted, #666666);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
 
   &:active { background: rgba(0, 0, 0, 0.08); }
 }
@@ -131,7 +131,7 @@ function openDrawer() {
   justify-content: center;
   cursor: pointer;
   color: var(--muted, #666666);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
 
