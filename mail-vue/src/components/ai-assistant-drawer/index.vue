@@ -1,6 +1,7 @@
 <template>
   <el-drawer
     v-model="show"
+    class="ai-assistant-drawer"
     :title="$t('aiAssistant')"
     direction="rtl"
     size="400px"
@@ -161,7 +162,7 @@ async function respondConfirm(approve) {
   align-items: center;
   gap: 10px;
   text-align: center;
-  color: var(--el-text-color-secondary);
+  color: var(--psg-text-secondary);
   padding: 32px 12px;
 }
 
@@ -176,30 +177,31 @@ async function respondConfirm(approve) {
 .ai-msg-bubble {
   max-width: 85%;
   padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 13px;
   line-height: 1.5;
-  background: var(--el-fill-color-light);
+  background: var(--psg-surface-muted);
+  color: var(--psg-text);
 }
 
 .ai-msg.user .ai-msg-bubble {
-  background: var(--el-color-primary);
-  color: #fff;
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
 }
 
 .ai-thinking {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--el-text-color-secondary);
+  color: var(--psg-text-secondary);
 }
 
 .ai-confirm-card {
-  border: 1px solid var(--el-color-warning-light-5);
-  background: var(--el-color-warning-light-9);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--psg-danger);
+  background: var(--psg-danger-muted);
+  border-radius: var(--psg-radius-sm);
   padding: 12px;
 }
 
@@ -207,11 +209,13 @@ async function respondConfirm(approve) {
   font-weight: 600;
   font-size: 13px;
   margin-bottom: 8px;
+  color: var(--psg-text);
 }
 
 .ai-confirm-action {
   font-size: 13px;
   margin-bottom: 6px;
+  color: var(--psg-text);
 }
 
 .ai-confirm-args {
@@ -225,7 +229,7 @@ async function respondConfirm(approve) {
   display: flex;
   gap: 6px;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--psg-text-secondary);
 }
 
 .ai-confirm-arg-key {
