@@ -6,6 +6,27 @@
  * itemHeight contract or the list will overlap/jump while scrolling.
  */
 
+/* ── Sidebar positioning / native window contract ───────────── */
+@media (min-width: 1025px) {
+  .mail-sidebar {
+    position: relative !important;
+  }
+
+  /* Electron's hiddenInset title bar places macOS traffic lights inside the
+   * sidebar. Preserve native clearance instead of letting the generic 72px
+   * brand block cover them. */
+  .sidebar-brand.sidebar-brand--mac {
+    min-height: 96px !important;
+    height: 96px !important;
+    padding: 44px 18px 16px !important;
+  }
+
+  .mail-sidebar:has(.sidebar-brand--mac) .sidebar-compose-button,
+  .mail-sidebar:has(.sidebar-brand--mac) .compose-icon-btn {
+    top: 156px !important;
+  }
+}
+
 /* ── Prevent generic toolbar rules from leaking between mail list / compose ── */
 .mail-toolbar .toolbar-left {
   display: flex !important;
