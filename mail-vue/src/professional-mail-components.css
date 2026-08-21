@@ -305,3 +305,71 @@
     font-weight: 500 !important;
   }
 }
+
+/* ── Legacy scoped-style neutralization ───────────────────────
+ * Several mature components predate the new design system and contain
+ * scoped !important rules. Use intentionally more-specific selectors here so
+ * those local declarations cannot leak old hard-coded light colours/radii
+ * back into dark mode or the mobile compose surface.
+ * ───────────────────────────────────────────────────────────── */
+.email-container .mail-row.is-unread .row-sender .mail-name,
+.email-container .mail-row.is-unread .row-subject-cell .subject-text,
+.email-container .mail-row.is-unread .row-meta .mail-time {
+  color: var(--pm-text) !important;
+}
+
+.email-container .mail-row:not(.is-unread) .row-sender .mail-name,
+.email-container .mail-row:not(.is-unread) .row-subject-cell .subject-text {
+  color: var(--pm-text-2) !important;
+  opacity: 1 !important;
+}
+
+.write-box .toolbar-bar .send-btn {
+  min-width: 88px !important;
+  height: 36px !important;
+  padding: 0 16px !important;
+  border-radius: var(--pm-radius-sm) !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+}
+
+.write-box .toolbar-bar .send-later-btn {
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  border-radius: var(--pm-radius-sm) !important;
+}
+
+.write-box .subject-row .subject-input .el-input__wrapper .el-input__inner {
+  color: var(--pm-text) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+
+.shadow-html-host blockquote,
+.psg-shadow-blockquote,
+.email-body blockquote {
+  border-left-color: var(--pm-brand) !important;
+  color: var(--pm-text-2) !important;
+}
+
+@media (max-width: 768px) {
+  .write-box .toolbar-bar .send-btn {
+    min-width: 78px !important;
+    height: 40px !important;
+    border-radius: var(--pm-radius-sm) !important;
+  }
+
+  .write-box .toolbar-bar .send-later-btn {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: var(--pm-radius-sm) !important;
+  }
+
+  .write-box .subject-row .subject-input .el-input__wrapper .el-input__inner {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+  }
+}
