@@ -78,7 +78,7 @@
       >
         <template #default="{ data: item }">
 
-          <!-- ── Mail row (Brutalist table layout) ── -->
+          <!-- ── Mail row ── -->
           <div class="mail-row-wrap" v-if="!item.expand"
             @touchstart.passive="swipeTouchStart($event, item)"
             @touchmove="swipeTouchMove($event, item)"
@@ -788,13 +788,9 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   grid-template-rows: auto 1fr;
   height: 100%;
   overflow: hidden;
-  background: #f9f9f9;
+  background: var(--psg-canvas);
   font-size: 14px;
-  color: var(--el-text-color-primary);
-}
-
-.dark .email-container {
-  background: #0a0a0a;
+  color: var(--psg-text);
 }
 
 /* ── Toolbar ──────────────────────────────────────────────── */
@@ -803,8 +799,8 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   display: flex;
   align-items: center;
   padding: 0 0 0 10px;
-  border-bottom: 1px solid var(--light-border, #e2e2e6);
-  background: var(--surface, #ffffff);
+  border-bottom: 1px solid var(--psg-border);
+  background: var(--psg-surface);
   flex-shrink: 0;
 
   .toolbar-left {
@@ -821,21 +817,16 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .mail-count {
     margin-left: auto;
     flex-shrink: 0;
-    font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+    font-family: var(--psg-font-sans);
     font-size: 12.5px;
     font-weight: 500;
     text-transform: none;
     letter-spacing: 0;
-    color: var(--secondary-text-color, #7e7576);
+    color: var(--psg-text-secondary);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     padding: 0 16px;
   }
-}
-
-.dark .mail-toolbar {
-  background: var(--surface);
-  border-bottom-color: var(--light-border);
 }
 
 /* ── Integrated search in toolbar ────────────────────────── */
@@ -850,7 +841,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   padding: 0 8px;
 
   .search-icon-inline {
-    color: var(--secondary-text-color, #7e7576);
+    color: var(--psg-text-secondary);
     flex-shrink: 0;
     opacity: 0.6;
   }
@@ -862,20 +853,20 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     outline: none;
     background: transparent;
     font-size: 13px;
-    color: var(--el-text-color-primary);
+    color: var(--psg-text);
 
     &::placeholder {
-      color: var(--secondary-text-color, #7e7576);
+      color: var(--psg-text-secondary);
       opacity: 0.6;
     }
   }
 
   .search-clear-inline {
-    color: var(--secondary-text-color, #7e7576);
+    color: var(--psg-text-secondary);
     cursor: pointer;
     flex-shrink: 0;
     opacity: 0.6;
-    &:hover { opacity: 1; color: var(--el-text-color-primary); }
+    &:hover { opacity: 1; color: var(--psg-text); }
   }
 }
 
@@ -887,8 +878,8 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   padding: 3px;
   margin-left: 4px;
   flex-shrink: 0;
-  background: var(--base-fill, #f3f3f3);
-  border-radius: var(--radius-full);
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-full);
 }
 
 .filter-pill {
@@ -899,22 +890,18 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   padding: 0 14px;
   font-size: 12.5px;
   font-weight: 500;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-  color: var(--secondary-text-color, #7e7576);
-  border-radius: var(--radius-full);
-  transition: background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+  font-family: var(--psg-font-sans);
+  color: var(--psg-text-secondary);
+  border-radius: var(--psg-radius-full);
+  transition: background 0.14s ease, color 0.14s ease;
   white-space: nowrap;
 
   &.active {
-    background: var(--surface, #ffffff);
-    color: var(--el-text-color-primary);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);
+    background: var(--psg-surface);
+    color: var(--psg-text);
+    border: 1px solid var(--psg-border);
     font-weight: 600;
   }
-}
-
-.dark .filter-pill.active {
-  background: var(--surface-secondary, #25252b);
 }
 
 /* ── Icon button ──────────────────────────────────────────── */
@@ -927,64 +914,33 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   height: 32px;
   border: 1px solid transparent;
   background: transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   cursor: pointer;
-  color: #7e7576;
+  color: var(--psg-text-secondary);
   transition: background 0.10s ease, color 0.10s ease, border-color 0.10s;
   flex-shrink: 0;
 
   @media (hover: hover) {
     &:hover {
-      background: var(--email-hover-background, #eeeeee);
-      color: #1a1a1a;
+      background: var(--psg-surface-muted);
+      color: var(--psg-text);
     }
 
     &.icon-danger:hover {
-      background: rgba(var(--red-accent-rgb), 0.08);
-      color: var(--red-accent);
-    }
-  }
-}
-
-.dark .icon-btn {
-  color: #555555;
-  @media (hover: hover) {
-    &:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #e8e8e8;
-    }
-    &.icon-danger:hover {
-      background: rgba(var(--red-accent-rgb), 0.16);
-      color: var(--red-accent);
+      background: var(--psg-danger-muted);
+      color: var(--psg-danger);
     }
   }
 }
 
 @media (max-width: 768px) {
-  .email-container {
-    background: linear-gradient(180deg, #f6f5f3 0%, #eeeeeb 100%);
-  }
-
-  .dark .email-container {
-    background: linear-gradient(180deg, #151519 0%, #101014 100%);
-  }
-
   .mail-toolbar {
     height: 58px;
     padding: 8px 12px;
-    border-bottom: none;
-    background: transparent;
 
     .toolbar-left {
       gap: 8px;
-      border-radius: var(--radius-sm);
       padding: 0 8px;
-      /* Tinted to match .email-container's own cream gradient (#f6f5f3)
-         instead of literal white — see content/index.vue for the same fix
-         applied to the email detail view. */
-      background: rgba(246,245,243,0.78);
-      border: 1px solid rgba(0,0,0,0.08);
-      box-shadow: 0 10px 24px rgba(0,0,0,0.06);
     }
 
     .mail-count {
@@ -994,11 +950,6 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     .unread-filter {
       display: none;
     }
-  }
-
-  .dark .mail-toolbar .toolbar-left {
-    background: rgba(28,28,33,0.86);
-    border-color: rgba(255,255,255,0.08);
   }
 
   .toolbar-search {
@@ -1015,7 +966,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .icon-btn {
     width: 38px;
     height: 38px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--psg-radius-sm);
   }
 
   :deep(.el-checkbox) {
@@ -1024,12 +975,11 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 
   .scroll {
-    padding: 0 12px 14px;
-    background: transparent;
+    padding: 0;
   }
 
   :deep(.mail-row-wrap) {
-    padding: 6px 0;
+    padding: 0;
   }
 
   :deep(.mail-row) {
@@ -1037,28 +987,13 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     grid-template-rows: 24px 28px 24px;
     gap: 2px 10px;
     min-height: 84px;
-    padding: 12px 12px 10px 8px;
-    border: 1px solid rgba(0,0,0,0.08);
-    border-bottom: 1px solid rgba(0,0,0,0.08);
-    border-radius: var(--radius-sm);
-    background: rgba(246,245,243,0.88);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+    padding: 12px 16px 10px 12px;
+    border-radius: 0;
     align-items: center;
-
-    &.is-unread {
-      border-color: rgba(var(--red-accent-rgb),0.24);
-      box-shadow: 0 12px 28px rgba(var(--red-accent-rgb),0.10);
-    }
 
     &.all-email {
       min-height: 94px;
     }
-  }
-
-  .dark :deep(.mail-row) {
-    background: rgba(28,28,33,0.90);
-    border-color: rgba(255,255,255,0.08);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.24);
   }
 
   :deep(.row-check) {
@@ -1084,7 +1019,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     .mail-name {
       font-size: 15px;
       font-weight: 800;
-      color: var(--el-text-color-primary);
+      color: var(--psg-text);
     }
   }
 
@@ -1097,7 +1032,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     .mail-time {
       font-size: 11px;
       font-weight: 700;
-      color: var(--muted, #7e7576);
+      color: var(--psg-text-muted);
     }
 
     .mail-actions {
@@ -1119,7 +1054,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
       font-size: 14px;
       font-weight: 700;
       line-height: 1.35;
-      color: var(--regular-text-color);
+      color: var(--psg-text-secondary);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -1130,7 +1065,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
       margin-top: 2px;
       font-size: 12px;
       line-height: 1.35;
-      color: var(--muted, #7e7576);
+      color: var(--psg-text-muted);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -1143,7 +1078,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 .scroll {
   height: 100%;
   overflow: hidden;
-  background: var(--extra-light-fill, #f9f9f9);
+  background: var(--psg-canvas);
 
   .virtual { will-change: scroll-position; }
 
@@ -1159,11 +1094,11 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     justify-content: center;
     align-items: center;
     padding: 12px 0;
-    font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+    font-family: var(--psg-font-sans);
     font-size: 12px;
     text-transform: none;
     letter-spacing: 0;
-    color: var(--muted, #7e7576);
+    color: var(--psg-text-muted);
   }
 }
 
@@ -1175,7 +1110,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   touch-action: pan-y;
 }
 
-/* ── Mail row: Brutalist table layout (Stitch) ────────────── */
+/* ── Mail row ──────────────────────────────────────────────── */
 :deep(.mail-row) {
   position: relative;
   display: grid;
@@ -1183,12 +1118,11 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   gap: 8px;
   min-height: 60px;
   padding: 10px 18px 10px 14px;
-  border-radius: var(--radius-md);
-  border-bottom: 1px solid var(--light-border-color, #dcdcdc);
-  background: var(--surface, #ffffff);
+  border-bottom: 1px solid var(--psg-border);
+  background: var(--psg-surface);
   cursor: pointer;
   align-items: center;
-  transition: background 120ms ease, transform 0.25s ease, box-shadow 120ms ease;
+  transition: background 120ms ease;
 
   &::before {
     content: '';
@@ -1197,8 +1131,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     top: 10%;
     bottom: 10%;
     width: 3px;
-    border-radius: var(--radius-full);
-    background: var(--red-accent);
+    background: var(--psg-primary);
     opacity: 0;
     transition: opacity 120ms ease;
   }
@@ -1212,7 +1145,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     grid-template-columns: 44px 140px 1fr 88px;
   }
 
-  /* ── Mobile: stacked 2-row card layout ── */
+  /* ── Mobile: stacked 2-row layout ── */
   @media (max-width: 768px) {
     grid-template-columns: 36px 1fr auto;
     grid-template-rows: auto auto;
@@ -1226,12 +1159,12 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
   @media (hover: hover) {
     &:hover {
-      background: var(--email-hover-background, #eeeeee);
+      background: var(--psg-surface-muted);
     }
   }
 
   &[data-active] {
-    background: rgba(var(--red-accent-rgb), 0.06);
+    background: var(--psg-surface-active);
 
     &::before { opacity: 1; }
   }
@@ -1272,14 +1205,6 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   :deep(.row-subject-cell .subject-text) { font-size: 15px; }
 }
 
-.dark :deep(.mail-row) {
-  background: var(--surface);
-  border-bottom-color: var(--light-border-color);
-
-  &:hover { background: var(--email-hover-background); }
-  &[data-active] { background: rgba(var(--red-accent-rgb), 0.14); }
-}
-
 /* ── Col 1: Checkbox + unread indicator ───────────────────── */
 :deep(.row-check) {
   display: flex;
@@ -1296,7 +1221,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     flex-shrink: 0;
     transition: background 0.1s;
 
-    &.visible { background: var(--psg-red); }
+    &.visible { background: var(--psg-danger); }
   }
 }
 
@@ -1313,7 +1238,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     width: 24px;
     height: 24px;
     flex-shrink: 0;
-    border-radius: var(--radius-full);
+    border-radius: var(--psg-radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1324,7 +1249,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
       font-size: 11px;
       font-weight: 700;
       line-height: 1;
-      font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+      font-family: var(--psg-font-sans);
     }
 
     .sender-avatar-img {
@@ -1339,7 +1264,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .mail-name {
     font-size: 14px;
     font-weight: 400;
-    color: #4c4546;
+    color: var(--psg-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1367,7 +1292,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .subject-text {
     font-size: 14px;
     font-weight: 400;
-    color: #4c4546;
+    color: var(--psg-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1377,7 +1302,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
   .mail-preview-inline {
     font-size: 13px;
-    color: #7e7576;
+    color: var(--psg-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1386,13 +1311,13 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 
   .code-tag {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--psg-font-mono);
     font-size: 11px;
-    color: var(--red-accent);
+    color: var(--psg-text);
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
-    border: 1px solid var(--red-accent);
+    border: 1px solid var(--psg-border);
     padding: 0 4px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -1413,9 +1338,9 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .user-info-inline {
     display: flex;
     gap: 8px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--psg-font-mono);
     font-size: 10px;
-    color: #7e7576;
+    color: var(--psg-text-muted);
     flex-shrink: 0;
     white-space: nowrap;
   }
@@ -1431,9 +1356,9 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   flex-shrink: 0;
 
   .mail-time {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--psg-font-mono);
     font-size: 11px;
-    color: #7e7576;
+    color: var(--psg-text-muted);
     white-space: nowrap;
     letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
@@ -1453,29 +1378,20 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   opacity: 1;
 }
 
-/* ── Unread state ─────────────────────────────────────────── */
+/* ── Unread state — stronger sender/subject, no separate row background ── */
 :deep(.mail-row.is-unread) {
-  background: #ffffff;
-
   .row-sender .mail-name {
     font-weight: 700 !important;
-    color: #1a1c1c !important;
+    color: var(--psg-text) !important;
   }
   .row-subject-cell .subject-text {
     font-weight: 700 !important;
-    color: #1a1c1c !important;
+    color: var(--psg-text) !important;
   }
   .row-meta .mail-time {
     font-weight: 700 !important;
-    color: #1a1c1c !important;
+    color: var(--psg-text) !important;
   }
-}
-
-.dark :deep(.mail-row.is-unread) {
-  background: #0f0f0f;
-  .row-sender .mail-name { color: #ffffff !important; }
-  .row-subject-cell .subject-text { color: #ffffff !important; }
-  .row-meta .mail-time { color: #cccccc !important; }
 }
 
 :deep(.mail-row:not(.is-unread)) {
@@ -1489,7 +1405,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   align-items: center;
   gap: 10px;
 
-  &.danger { color: var(--psg-red); }
+  &.danger { color: var(--psg-danger); }
 }
 
 :deep(.el-dropdown-menu__item:last-child) { padding-bottom: 8px; }
@@ -1502,8 +1418,8 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: var(--extra-light-fill, #f9f9f9);
-  color: var(--muted, #7e7576);
+  background: var(--psg-canvas);
+  color: var(--psg-text-muted);
   will-change: height;
 }
 
@@ -1521,14 +1437,14 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   padding: 0 20px;
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: var(--psg-on-primary);
   pointer-events: none;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   letter-spacing: 0;
   text-transform: none;
   transition: opacity 0.05s;
 
-  &--delete { right: 0; background: var(--psg-red); color: #fff; }
-  &--star   { left: 0;  background: #c48c00; }
+  &--delete { right: 0; background: var(--psg-danger); }
+  &--star   { left: 0;  background: var(--psg-primary); }
 }
 </style>
