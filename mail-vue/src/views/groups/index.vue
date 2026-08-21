@@ -216,10 +216,9 @@ async function deleteGroup(groupId) {
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border, #e2e2e6);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
   min-height: 52px;
 }
 
@@ -239,20 +238,20 @@ async function deleteGroup(groupId) {
   font-size: 22px;
   font-weight: 900;
   letter-spacing: -0.04em;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
 .stat-lbl {
   font-size: 11px;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   font-weight: 500;
 }
 
 .stat-sep {
   font-size: 16px;
-  color: var(--light-border-color);
+  color: var(--psg-border);
   font-weight: 300;
   line-height: 1;
 }
@@ -260,7 +259,7 @@ async function deleteGroup(groupId) {
 .add-btn {
   font-size: 13px; font-weight: 600;
   height: 34px; padding: 0 14px;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   flex-shrink: 0;
 
   :deep(svg) { margin-right: 6px; }
@@ -270,21 +269,20 @@ async function deleteGroup(groupId) {
   display: flex; flex-direction: column;
   align-items: flex-start; gap: 6px; padding: 32px 0;
 }
-.empty-icon { color: var(--secondary-text-color); opacity: 0.35; }
-.empty-title { font-size: 14px; font-weight: 700; color: var(--el-text-color-primary); }
-.empty-desc  { font-size: 12.5px; color: var(--secondary-text-color); }
+.empty-icon { color: var(--psg-text-secondary); opacity: 0.35; }
+.empty-title { font-size: 14px; font-weight: 700; color: var(--psg-text); }
+.empty-desc  { font-size: 12.5px; color: var(--psg-text-secondary); }
 
 /* Group list */
 .group-list {
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border, #e2e2e6);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
   overflow: hidden;
 }
 
 .group-card {
-  border-bottom: 1px solid var(--light-border-color);
+  border-bottom: 1px solid var(--psg-border);
   &:last-child { border-bottom: none; }
 }
 
@@ -297,7 +295,7 @@ async function deleteGroup(groupId) {
   @media (hover: hover) {
     .card-actions { opacity: 0; }
     &:hover {
-      background: var(--base-fill);
+      background: var(--psg-surface-muted);
       .card-actions { opacity: 1; }
     }
   }
@@ -313,10 +311,10 @@ async function deleteGroup(groupId) {
 }
 
 .group-avatar {
-  width: 32px; height: 32px; border-radius: var(--radius-sm);
-  background: rgba(var(--red-accent-rgb), 0.08);
-  border: 1px solid rgba(var(--red-accent-rgb), 0.15);
-  color: var(--red-accent); font-size: 13px; font-weight: 800;
+  width: 32px; height: 32px; border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  color: var(--psg-text); font-size: 13px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -325,11 +323,11 @@ async function deleteGroup(groupId) {
 
 .group-name {
   font-size: 13.5px; font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.group-count { font-size: 11.5px; color: var(--secondary-text-color); }
+.group-count { font-size: 11.5px; color: var(--psg-text-secondary); }
 
 .card-right {
   display: flex; align-items: center; gap: 2px;
@@ -345,18 +343,18 @@ async function deleteGroup(groupId) {
   display: flex; align-items: center; justify-content: center;
   min-width: 32px; height: 32px;
   border: none; background: transparent;
-  border-radius: var(--radius-sm); cursor: pointer;
-  color: var(--secondary-text-color);
+  border-radius: var(--psg-radius-sm); cursor: pointer;
+  color: var(--psg-text-secondary);
   transition: background 0.10s, color 0.10s;
 
-  &:hover { background: var(--base-fill); color: var(--el-text-color-primary); }
-  &.danger:hover { background: rgba(var(--red-accent-rgb), 0.08); color: var(--red-accent); }
+  &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
+  &.danger:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
 }
 
 .chevron {
   display: flex; align-items: center; justify-content: center;
   width: 22px; height: 22px;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   transition: transform 0.20s cubic-bezier(0.22,1,0.36,1);
   &.open { transform: rotate(180deg); }
 }
@@ -365,19 +363,19 @@ async function deleteGroup(groupId) {
 .member-list {
   padding: 8px 16px 12px 62px;
   display: flex; flex-direction: column; gap: 2px;
-  border-top: 1px solid var(--light-border-color);
-  background: var(--extra-light-fill);
+  border-top: 1px solid var(--psg-border);
+  background: var(--psg-canvas);
 }
 
-.member-empty { font-size: 12.5px; color: var(--secondary-text-color); padding: 4px 0; }
+.member-empty { font-size: 12.5px; color: var(--psg-text-secondary); padding: 4px 0; }
 
 .member-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
 
 .member-dot {
-  width: 24px; height: 24px; border-radius: var(--radius-sm);
-  background: var(--base-fill);
-  border: 1px solid var(--light-border-color);
-  color: var(--regular-text-color); font-size: 9.5px; font-weight: 800;
+  width: 24px; height: 24px; border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  color: var(--psg-text-secondary); font-size: 9.5px; font-weight: 800;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
@@ -385,14 +383,14 @@ async function deleteGroup(groupId) {
 
 .member-name {
   font-size: 12.5px; font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   flex-shrink: 0;
 }
 
 .member-email {
   font-size: 11.5px; font-family: 'IBM Plex Mono', monospace;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   &.solo { font-size: 13px; }
 }
@@ -412,7 +410,7 @@ async function deleteGroup(groupId) {
 .drawer-label {
   font-size: 10px; font-weight: 900;
   text-transform: uppercase; letter-spacing: 0.10em;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
 }
 
 .members-head {
@@ -422,16 +420,16 @@ async function deleteGroup(groupId) {
 .add-member-btn {
   display: flex; align-items: center; gap: 4px;
   background: transparent;
-  border: 1px solid var(--light-border-color);
-  border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm); cursor: pointer;
   font-size: 12px; font-weight: 700;
-  color: var(--regular-text-color); padding: 4px 10px;
+  color: var(--psg-text-secondary); padding: 4px 10px;
   transition: border-color 0.12s, color 0.12s; font-family: inherit;
-  &:hover { border-color: var(--el-border-color); color: var(--el-text-color-primary); }
+  &:hover { border-color: var(--psg-border); color: var(--psg-text); }
 }
 
 .members-empty {
-  font-size: 13px; color: var(--secondary-text-color);
+  font-size: 13px; color: var(--psg-text-secondary);
   padding: 12px 0; text-align: center;
 }
 
@@ -440,18 +438,18 @@ async function deleteGroup(groupId) {
 .editor-row {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px;
-  border: 1px solid var(--light-border-color);
-  border-radius: var(--radius-sm);
-  background: var(--extra-light-fill);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-canvas);
   transition: border-color 0.12s;
-  &:focus-within { border-color: var(--el-border-color-hover); }
+  &:focus-within { border-color: var(--psg-border-strong); }
 }
 
 .row-avatar {
-  width: 28px; height: 28px; border-radius: var(--radius-sm);
-  background: rgba(var(--red-accent-rgb), 0.07);
-  border: 1px solid rgba(var(--red-accent-rgb), 0.15);
-  color: var(--red-accent); font-size: 11px; font-weight: 800;
+  width: 28px; height: 28px; border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  color: var(--psg-text); font-size: 11px; font-weight: 800;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
@@ -469,7 +467,7 @@ async function deleteGroup(groupId) {
 .mono-input {
   :deep(.el-input__inner) {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px; color: var(--secondary-text-color);
+    font-size: 12px; color: var(--psg-text-secondary);
   }
 }
 
@@ -477,15 +475,15 @@ async function deleteGroup(groupId) {
   display: flex; align-items: center; justify-content: center;
   width: 24px; height: 24px;
   border: none; background: transparent;
-  border-radius: var(--radius-sm); cursor: pointer;
-  color: var(--secondary-text-color); flex-shrink: 0;
+  border-radius: var(--psg-radius-sm); cursor: pointer;
+  color: var(--psg-text-secondary); flex-shrink: 0;
   transition: background 0.10s, color 0.10s;
-  &:hover { background: rgba(var(--red-accent-rgb), 0.08); color: var(--red-accent); }
+  &:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
 }
 
 .drawer-footer {
   display: flex; justify-content: flex-end; gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid var(--light-border-color);
+  border-top: 1px solid var(--psg-border);
 }
 </style>

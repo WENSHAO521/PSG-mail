@@ -48,7 +48,7 @@
       <div style="display:flex;flex-direction:column;gap:10px">
         <el-input v-model="tplForm.name" :placeholder="$t('templateName')"/>
         <el-input v-model="tplForm.subject" :placeholder="$t('templateSubject')"/>
-        <div style="height:200px;border:1px solid var(--light-border-color);border-radius: var(--radius-sm);overflow:hidden">
+        <div style="height:200px;border:1px solid var(--psg-border);border-radius: var(--psg-radius-sm);overflow:hidden">
           <tinyEditor ref="tplEditorRef" :def-value="tplForm.content" editor-id="tools-tpl-editor"
             toolbar="bold italic underline | forecolor | link | code" height="200px"
             @change="(html) => tplForm.content = html"/>
@@ -181,8 +181,8 @@ async function deleteGroup(groupId) {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--regular-text-color);
-  border-bottom: 2px solid var(--red-accent);
+  color: var(--psg-text-secondary);
+  border-bottom: 2px solid var(--psg-primary);
   padding-bottom: 6px;
 }
 
@@ -193,8 +193,8 @@ async function deleteGroup(groupId) {
 }
 
 .item-list {
-  border: 1px solid var(--light-border-color);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
   overflow: hidden;
 }
 
@@ -203,10 +203,10 @@ async function deleteGroup(groupId) {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--light-border-color);
+  border-bottom: 1px solid var(--psg-border);
   transition: background 0.1s;
   &:last-child { border-bottom: none; }
-  &:hover { background: var(--base-fill); }
+  &:hover { background: var(--psg-surface-muted); }
 
   .item-info {
     flex: 1;
@@ -218,11 +218,11 @@ async function deleteGroup(groupId) {
     .item-name {
       font-size: 13px;
       font-weight: 600;
-      color: var(--el-text-color-primary);
+      color: var(--psg-text);
     }
     .item-sub {
       font-size: 12px;
-      color: var(--regular-text-color);
+      color: var(--psg-text-secondary);
       margin-left: 6px;
     }
   }
@@ -238,14 +238,14 @@ async function deleteGroup(groupId) {
 
 .empty-hint {
   font-size: 13px;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   padding: 4px 0;
 }
 
 .text-link {
   cursor: pointer;
-  color: var(--regular-text-color);
-  &:hover { color: var(--el-text-color-primary); }
-  &.remove:hover { color: var(--red-accent); }
+  color: var(--psg-text-secondary);
+  &:hover { color: var(--psg-text); }
+  &.remove:hover { color: var(--psg-danger); }
 }
 </style>

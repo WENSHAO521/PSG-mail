@@ -273,10 +273,9 @@ async function deleteTpl(templateId) {
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border, #e2e2e6);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
   min-height: 52px;
   flex-wrap: wrap;
 }
@@ -301,14 +300,14 @@ async function deleteTpl(templateId) {
   font-size: 22px;
   font-weight: 900;
   letter-spacing: -0.04em;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
 .stat-lbl {
   font-size: 11px;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   font-weight: 500;
 }
 
@@ -327,47 +326,47 @@ async function deleteTpl(templateId) {
   padding: 3px 10px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
-  color: var(--regular-text-color);
+  color: var(--psg-text-secondary);
   font-family: inherit;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
   white-space: nowrap;
 
-  &:hover { background: var(--base-fill); border-color: var(--light-border-color); }
+  &:hover { background: var(--psg-surface-muted); border-color: var(--psg-border); }
 
   &.active {
-    background: var(--el-color-primary-light-9);
-    border-color: var(--el-color-primary-light-5);
-    color: var(--el-color-primary);
+    background: var(--psg-surface-muted);
+    border-color: var(--psg-surface-active);
+    color: var(--psg-primary);
   }
 }
 
 .cat-count {
   font-size: 10px;
   font-weight: 700;
-  background: var(--base-fill);
-  border: 1px solid var(--light-border-color);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
   padding: 0 4px;
   min-width: 16px;
   height: 16px;
   line-height: 14px;
   text-align: center;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
 
   .cat-tab.active & {
-    background: var(--el-color-primary-light-7);
-    border-color: var(--el-color-primary-light-5);
-    color: var(--el-color-primary);
+    background: var(--psg-surface-active);
+    border-color: var(--psg-surface-active);
+    color: var(--psg-primary);
   }
 }
 
 .add-btn {
   font-size: 13px; font-weight: 600;
   height: 34px; padding: 0 14px;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   flex-shrink: 0;
 
   :deep(svg) { margin-right: 6px; }
@@ -379,16 +378,15 @@ async function deleteTpl(templateId) {
   align-items: flex-start; gap: 6px;
   padding: 32px 0;
 }
-.empty-icon { color: var(--secondary-text-color); opacity: 0.35; }
-.empty-title { font-size: 14px; font-weight: 700; color: var(--el-text-color-primary); }
-.empty-desc  { font-size: 12.5px; color: var(--secondary-text-color); }
+.empty-icon { color: var(--psg-text-secondary); opacity: 0.35; }
+.empty-title { font-size: 14px; font-weight: 700; color: var(--psg-text); }
+.empty-desc  { font-size: 12.5px; color: var(--psg-text-secondary); }
 
 /* Item list */
 .item-list {
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border, #e2e2e6);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
   overflow: hidden;
 }
 
@@ -397,7 +395,7 @@ async function deleteTpl(templateId) {
   align-items: center;
   gap: 12px;
   padding: 13px 16px;
-  border-bottom: 1px solid var(--light-border-color);
+  border-bottom: 1px solid var(--psg-border);
   transition: background 0.12s ease;
 
   &:last-child { border-bottom: none; }
@@ -405,17 +403,17 @@ async function deleteTpl(templateId) {
   @media (hover: hover) {
     .item-actions { opacity: 0; }
     &:hover {
-      background: var(--base-fill);
+      background: var(--psg-surface-muted);
       .item-actions { opacity: 1; }
     }
   }
 }
 
 .item-icon {
-  width: 32px; height: 32px; border-radius: var(--radius-sm);
-  background: rgba(var(--red-accent-rgb), 0.08);
-  border: 1px solid rgba(var(--red-accent-rgb), 0.15);
-  color: var(--red-accent);
+  width: 32px; height: 32px; border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  color: var(--psg-text);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -424,7 +422,7 @@ async function deleteTpl(templateId) {
 
 .item-name {
   font-size: 13.5px; font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -436,7 +434,7 @@ async function deleteTpl(templateId) {
 }
 
 .item-sub {
-  font-size: 12px; color: var(--secondary-text-color);
+  font-size: 12px; color: var(--psg-text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   flex: 1; min-width: 0;
   &.placeholder { font-style: italic; }
@@ -444,9 +442,9 @@ async function deleteTpl(templateId) {
 
 .item-cat {
   font-size: 10.5px; font-weight: 700;
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-  border: 1px solid var(--el-color-primary-light-5);
+  color: var(--psg-primary);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-surface-active);
   padding: 1px 7px;
   white-space: nowrap;
   flex-shrink: 0;
@@ -461,19 +459,19 @@ async function deleteTpl(templateId) {
   display: flex; align-items: center; justify-content: center;
   width: 28px; height: 28px;
   border: none; background: transparent;
-  border-radius: var(--radius-sm); cursor: pointer;
-  color: var(--secondary-text-color);
+  border-radius: var(--psg-radius-sm); cursor: pointer;
+  color: var(--psg-text-secondary);
   transition: background 0.10s, color 0.10s;
 
-  &:hover { background: var(--base-fill); color: var(--el-text-color-primary); }
-  &.danger:hover { background: rgba(var(--red-accent-rgb), 0.08); color: var(--red-accent); }
+  &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
+  &.danger:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
 }
 
 /* ── Editor mode ── */
 .editor-nav {
   display: flex; align-items: center; gap: 16px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--light-border-color);
+  border-bottom: 1px solid var(--psg-border);
   margin-bottom: 24px;
 }
 
@@ -481,16 +479,16 @@ async function deleteTpl(templateId) {
   display: flex; align-items: center; gap: 5px;
   background: transparent; border: none; cursor: pointer;
   font-size: 12.5px; font-weight: 700;
-  color: var(--secondary-text-color); padding: 0;
+  color: var(--psg-text-secondary); padding: 0;
   transition: color 0.12s; white-space: nowrap; font-family: inherit;
-  &:hover { color: var(--el-text-color-primary); }
+  &:hover { color: var(--psg-text); }
 }
 
 .editor-crumb {
-  flex: 1; font-size: 14px; font-weight: 700; color: var(--el-text-color-primary);
+  flex: 1; font-size: 14px; font-weight: 700; color: var(--psg-text);
 }
 
-.save-btn { border-radius: var(--radius-sm) !important; font-weight: 700 !important; }
+.save-btn { border-radius: var(--psg-radius-sm) !important; font-weight: 700 !important; }
 
 .editor-fields { display: flex; flex-direction: column; gap: 16px; }
 
@@ -512,17 +510,17 @@ async function deleteTpl(templateId) {
 .field-label {
   font-size: 10px; font-weight: 900;
   text-transform: uppercase; letter-spacing: 0.10em;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
 }
 
 .cat-select {
   width: 100%;
-  :deep(.el-select__wrapper) { border-radius: var(--radius-sm) !important; }
+  :deep(.el-select__wrapper) { border-radius: var(--psg-radius-sm) !important; }
 }
 
 .editor-frame {
   height: 320px;
-  border: 1px solid var(--light-border-color);
-  border-radius: var(--radius-sm); overflow: hidden;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm); overflow: hidden;
 }
 </style>

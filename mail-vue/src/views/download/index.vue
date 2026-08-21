@@ -258,7 +258,7 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .download-view {
   height: 100%;
-  background: var(--el-bg-color-page, #f5f5f5);
+  background: var(--psg-canvas);
 }
 
 .dl-body {
@@ -270,7 +270,7 @@ onMounted(async () => {
 /* ── Hero ── */
 .dl-hero {
   margin-bottom: 16px;
-  border-left: 4px solid var(--red-accent);
+  border-left: 4px solid var(--psg-primary);
   padding-left: 18px;
 }
 
@@ -280,7 +280,7 @@ onMounted(async () => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   margin-bottom: 4px;
 }
 
@@ -289,14 +289,14 @@ onMounted(async () => {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 0;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   line-height: 1.1;
 }
 
 .hero-sub {
   margin-top: 6px;
   font-size: 13px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
 }
 
 /* ── Release line ── */
@@ -304,13 +304,13 @@ onMounted(async () => {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   margin-bottom: 20px;
 }
 
 .dl-release-date {
   font-weight: 400;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   margin-left: 2px;
 }
 
@@ -333,31 +333,19 @@ onMounted(async () => {
   flex-direction: column;
   gap: 14px;
   padding: 22px 20px 20px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
-  background: var(--el-bg-color, #ffffff);
-  border: 1px solid var(--light-border, #e2e2e6);
-  transition: border-color 0.12s, box-shadow 0.12s;
+  border-radius: var(--psg-radius-md);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  transition: border-color 0.12s;
 
   &--web {
     opacity: 0.75;
   }
 
-  /* The card matching the visitor's own device. Despite the name,
-     --red-accent is this app's monochrome ink accent (black in light mode,
-     white in dark mode), not a literal red. */
+  /* The card matching the visitor's own device. */
   &--recommended {
-    border-color: var(--red-accent);
-    box-shadow: 0 8px 24px -12px var(--red-accent), var(--card-shadow);
-  }
-}
-
-:global(.dark) .dl-card {
-  background: var(--el-bg-color, #1c1c20);
-  border-color: rgba(255, 255, 255, 0.15);
-
-  &.dl-card--recommended {
-    border-color: var(--red-accent);
+    border-color: var(--psg-primary);
+    border-width: 2px;
   }
 }
 
@@ -367,8 +355,8 @@ onMounted(async () => {
   right: 16px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: var(--red-accent);
-  color: var(--on-accent, #fff);
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
   font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 10px;
   font-weight: 700;
@@ -376,7 +364,7 @@ onMounted(async () => {
 }
 
 .dl-card-icon {
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   opacity: 0.75;
 }
 
@@ -389,13 +377,13 @@ onMounted(async () => {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   margin-bottom: 4px;
 }
 
 .dl-card-desc {
   font-size: 12px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   line-height: 1.5;
   margin-bottom: 6px;
 }
@@ -403,7 +391,7 @@ onMounted(async () => {
 .dl-card-meta {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   letter-spacing: 0.04em;
 }
 
@@ -421,32 +409,32 @@ onMounted(async () => {
   gap: 10px;
   height: 38px;
   padding: 0 14px;
-  border-radius: var(--radius-sm);
-  background: #111111;
-  color: #ffffff;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
+  font-family: var(--psg-font-sans);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
   border: none;
-  transition: background 0.12s;
+  transition: opacity 0.12s;
 
   @media (hover: hover) {
-    &:hover { background: var(--red-accent); }
+    &:hover { opacity: .88; }
   }
 
-  &:active { background: var(--red-accent-dark); }
+  &:active { opacity: .88; }
 
   &--loading {
-    background: var(--el-bg-color-page, #ececec);
+    background: var(--psg-canvas);
     animation: dl-pulse 1.2s ease-in-out infinite;
   }
 
   &--current {
-    background: var(--el-bg-color-page, #f5f5f5);
-    color: var(--muted, #7e7576);
-    border: 1px solid var(--light-border-color, #cfc4c5);
+    background: var(--psg-canvas);
+    color: var(--psg-text-muted);
+    border: 1px solid var(--psg-border);
     cursor: default;
   }
 }
@@ -474,32 +462,13 @@ onMounted(async () => {
   50%       { opacity: 0.55; }
 }
 
-:global(.dark) .dl-btn-row {
-  background: rgba(255,255,255,0.88);
-  color: #111;
-
-  @media (hover: hover) {
-    &:hover { background: var(--red-accent); color: var(--on-accent); }
-  }
-
-  &--loading {
-    background: rgba(255,255,255,0.12);
-  }
-
-  &--current {
-    background: rgba(255,255,255,0.06);
-    color: rgba(255,255,255,0.4);
-    border-color: rgba(255,255,255,0.12);
-  }
-}
-
 /* ── Footer ── */
 .dl-footer {
   display: flex;
   align-items: center;
   gap: 16px;
   padding-top: 20px;
-  border-top: 1px solid var(--light-border-color, #dcdcdc);
+  border-top: 1px solid var(--psg-border);
 }
 
 .dl-releases-link {
@@ -508,19 +477,19 @@ onMounted(async () => {
   gap: 6px;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   text-decoration: none;
   font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
 
   @media (hover: hover) {
-    &:hover { color: var(--el-text-color-primary); }
+    &:hover { color: var(--psg-text); }
   }
 }
 
 .dl-version {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   margin-left: auto;
 }
 </style>

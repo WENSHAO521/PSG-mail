@@ -282,7 +282,7 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--el-bg-color-page, #f5f5f5);
+  background: var(--psg-canvas);
 }
 
 .about-body {
@@ -297,10 +297,10 @@ onUnmounted(() => {
 
 /* ── Hero ─────────────────────────────────────────── */
 .about-hero {
-  border-left: 3px solid var(--red-accent);
+  border-left: 3px solid var(--psg-primary);
   padding: 20px 24px;
-  background: var(--el-bg-color, #ffffff);
-  border-bottom: 1px solid var(--light-border-color, #e0e0e0);
+  background: var(--psg-surface);
+  border-bottom: 1px solid var(--psg-border);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -312,7 +312,7 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted, #888);
+  color: var(--psg-text-muted);
 }
 
 .hero-product {
@@ -321,7 +321,7 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   line-height: 1.2;
 }
 
@@ -331,8 +331,8 @@ onUnmounted(() => {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   font-weight: 600;
-  color: var(--red-accent);
-  border: 1px solid var(--red-accent);
+  color: var(--psg-text);
+  border: 1px solid var(--psg-border-strong);
   padding: 2px 8px;
   letter-spacing: 0.06em;
   align-self: flex-start;
@@ -340,10 +340,9 @@ onUnmounted(() => {
 
 /* ── Card ─────────────────────────────────────────── */
 .about-card {
-  background: var(--el-bg-color, #ffffff);
-  border: 1px solid var(--light-border-color, #e0e0e0);
-  border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
   padding: 0;
   overflow: hidden;
 }
@@ -354,10 +353,10 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted, #888);
+  color: var(--psg-text-muted);
   padding: 12px 20px 10px;
-  border-bottom: 1px solid var(--light-border-color, #e0e0e0);
-  background: var(--surface-secondary, #fafafa);
+  border-bottom: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
 }
 
 /* ── Row ──────────────────────────────────────────── */
@@ -367,20 +366,20 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 13px 20px;
   gap: 16px;
-  border-bottom: 1px solid var(--light-border-color, #f0f0f0);
+  border-bottom: 1px solid var(--psg-border);
 
   &:last-child { border-bottom: none; }
 }
 
 .about-label {
   font-size: 13px;
-  color: var(--muted, #666);
+  color: var(--psg-text-muted);
   flex-shrink: 0;
 }
 
 .about-value {
   font-size: 13px;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   text-align: right;
 
   &.mono {
@@ -390,14 +389,14 @@ onUnmounted(() => {
 }
 
 .about-link {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 13px;
-  color: var(--red-accent);
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.12s;
+  color: var(--psg-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.12s;
 
-  &:hover { border-bottom-color: var(--red-accent); }
+  &:hover { opacity: .7; }
 }
 
 /* ── Status badge ─────────────────────────────────── */
@@ -409,7 +408,7 @@ onUnmounted(() => {
   font-size: 12.5px;
   font-weight: 600;
   padding: 3px 10px;
-  border-radius: var(--radius-full);
+  border-radius: var(--psg-radius-full);
   border: 1px solid currentColor;
 
   .status-dot {
@@ -420,12 +419,12 @@ onUnmounted(() => {
     flex-shrink: 0;
   }
 
-  &.status--idle       { color: var(--muted, #999); }
-  &.status--checking   { color: #d97706; }
-  &.status--ok         { color: #16a34a; }
+  &.status--idle       { color: var(--psg-text-muted); }
+  &.status--checking   { color: var(--psg-text-secondary); }
+  &.status--ok         { color: var(--psg-text-secondary); }
   &.status--available,
-  &.status--ready      { color: var(--red-accent); }
-  &.status--error      { color: #dc2626; }
+  &.status--ready      { color: var(--psg-primary); }
+  &.status--error      { color: var(--psg-danger); }
 }
 
 /* ── Progress ─────────────────────────────────────── */
@@ -433,23 +432,23 @@ onUnmounted(() => {
   padding: 0 20px 12px;
 
   :deep(.el-progress-bar__outer) {
-    border-radius: var(--radius-sm);
-    background: var(--light-border-color, #e0e0e0);
+    border-radius: var(--psg-radius-sm);
+    background: var(--psg-border);
   }
 
   :deep(.el-progress-bar__inner) {
-    border-radius: var(--radius-sm);
-    background: var(--red-accent);
+    border-radius: var(--psg-radius-sm);
+    background: var(--psg-primary);
   }
 }
 
 .update-error-detail {
   margin: 0 20px 12px;
   padding: 8px 10px;
-  border: 1px solid rgba(220, 38, 38, .35);
-  background: rgba(220, 38, 38, .08);
-  color: #dc2626;
-  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid var(--psg-danger);
+  background: var(--psg-danger-muted);
+  color: var(--psg-danger);
+  font-family: var(--psg-font-mono);
   font-size: 11px;
   line-height: 1.5;
   word-break: break-word;
@@ -468,31 +467,18 @@ onUnmounted(() => {
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  border-radius: var(--radius-sm);
-  border-color: var(--light-border-color, #ccc);
+  border-radius: var(--psg-radius-sm);
+  border-color: var(--psg-border);
   display: flex;
   align-items: center;
   gap: 6px;
 
   &--install {
-    background: var(--red-accent);
-    border-color: var(--red-accent);
-    color: var(--on-accent);
+    background: var(--psg-primary);
+    border-color: var(--psg-primary);
+    color: var(--psg-on-primary);
 
-    &:hover { background: var(--red-accent-dark); border-color: var(--red-accent-dark); }
+    &:hover { opacity: .88; }
   }
-}
-
-/* ── Dark mode ────────────────────────────────────── */
-:global(.dark) {
-  .about-hero,
-  .about-card { border-color: rgba(255,255,255,0.10); }
-
-  .about-card-title {
-    background: rgba(255,255,255,0.04);
-    border-color: rgba(255,255,255,0.08);
-  }
-
-  .about-row { border-color: rgba(255,255,255,0.06); }
 }
 </style>

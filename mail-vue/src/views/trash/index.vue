@@ -68,7 +68,7 @@ function restoreAction(emailId) {
   align-items: center;
   gap: 5px;
   padding: 0 10px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;

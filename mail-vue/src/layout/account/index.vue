@@ -48,7 +48,7 @@
           <el-skeleton v-for="i in skeletonRows" :key="i" animated>
             <template #template>
               <div class="item" style="pointer-events:none">
-                <el-skeleton-item variant="image" style="width:36px;height:36px;border-radius: var(--radius-sm);flex-shrink:0"/>
+                <el-skeleton-item variant="image" style="width:36px;height:36px;border-radius: var(--psg-radius-sm);flex-shrink:0"/>
                 <div style="flex:1;min-width:0">
                   <el-skeleton-item variant="p" style="width:75%;height:13px"/>
                 </div>
@@ -66,7 +66,7 @@
           <el-skeleton animated>
             <template #template>
               <div class="item" style="pointer-events:none">
-                <el-skeleton-item variant="image" style="width:36px;height:36px;border-radius: var(--radius-sm);flex-shrink:0"/>
+                <el-skeleton-item variant="image" style="width:36px;height:36px;border-radius: var(--psg-radius-sm);flex-shrink:0"/>
                 <div style="flex:1;min-width:0">
                   <el-skeleton-item variant="p" style="width:75%;height:13px"/>
                 </div>
@@ -124,7 +124,7 @@
               data-callback="onTurnstileSuccess"
               data-error-callback="onTurnstileError"
           >
-            <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
+            <span style="font-size: 12px;color: var(--psg-danger)" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
           </div>
         </el-tab-pane>
 
@@ -588,8 +588,8 @@ path[fill="#ffdda1"] {
 </style>
 <style scoped lang="scss">
 .account-box {
-  border-right: 1px solid var(--light-border-color);
-  background: var(--el-bg-color);
+  border-right: 1px solid var(--psg-border);
+  background: var(--psg-surface);
   height: 100%;
   overflow: hidden;
 
@@ -599,26 +599,26 @@ path[fill="#ffdda1"] {
     align-items: center;
     justify-content: flex-end;
     height: 36px;
-    border-bottom: 2px solid #111111;
+    border-bottom: 2px solid var(--psg-border-strong);
     padding: 0 8px;
     gap: 2px;
-    background: var(--extra-light-fill);
+    background: var(--psg-canvas);
 
     .icon {
       cursor: pointer;
       width: 28px;
       height: 28px;
-      border-radius: var(--radius-sm);
+      border-radius: var(--psg-radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--secondary-text-color);
+      color: var(--psg-text-secondary);
       transition: background 0.12s, color 0.12s;
 
       @media (hover: hover) {
         &:hover {
-          background: var(--base-fill);
-          color: var(--el-text-color-primary);
+          background: var(--psg-surface-muted);
+          color: var(--psg-text);
         }
       }
     }
@@ -645,7 +645,7 @@ path[fill="#ffdda1"] {
       font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
       font-size: 12px;
       letter-spacing: 0;
-      color: var(--dark-border);
+      color: var(--psg-border-strong);
       text-transform: none;
     }
   }
@@ -662,7 +662,7 @@ path[fill="#ffdda1"] {
     gap: 10px;
     padding: 10px 10px 10px 10px;
     margin: 3px 6px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--psg-radius-sm);
     cursor: pointer;
     background: transparent;
     border: 1px solid transparent;
@@ -674,8 +674,8 @@ path[fill="#ffdda1"] {
 
     @media (hover: hover) {
       &:hover:not(.item-choose) {
-        background: var(--el-bg-color);
-        border-color: var(--light-border-color);
+        background: var(--psg-surface);
+        border-color: var(--psg-border);
       }
     }
   }
@@ -692,9 +692,9 @@ path[fill="#ffdda1"] {
     flex-shrink: 0;
     width: 32px;
     height: 32px;
-    border-radius: var(--radius-full);
-    background: #1a1a1a;
-    color: rgba(255,255,255,0.85);
+    border-radius: var(--psg-radius-full);
+    background: var(--psg-primary);
+    color: var(--psg-on-primary);
     font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
     font-weight: 700;
     font-size: 13px;
@@ -717,7 +717,7 @@ path[fill="#ffdda1"] {
     .item-name {
       font-size: 12.5px;
       font-weight: 600;
-      color: var(--el-text-color-primary);
+      color: var(--psg-text);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -728,7 +728,7 @@ path[fill="#ffdda1"] {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 10.5px;
       font-weight: 400;
-      color: var(--secondary-text-color);
+      color: var(--psg-text-secondary);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -748,25 +748,25 @@ path[fill="#ffdda1"] {
 
     .action-icon {
       cursor: pointer;
-      color: var(--secondary-text-color);
+      color: var(--psg-text-secondary);
       display: flex;
       align-items: center;
       justify-content: center;
       width: 24px;
       height: 24px;
-      border-radius: var(--radius-sm);
+      border-radius: var(--psg-radius-sm);
       transition: color 0.12s, background 0.12s;
 
       @media (hover: hover) {
         &:hover {
-          color: var(--el-text-color-primary);
-          background: var(--base-fill);
+          color: var(--psg-text);
+          background: var(--psg-surface-muted);
         }
       }
     }
 
     .action-active {
-      color: var(--red-accent);
+      color: var(--psg-primary);
     }
   }
 
@@ -780,15 +780,10 @@ path[fill="#ffdda1"] {
   .item-choose {
     border-color: transparent !important;
     box-shadow: none !important;
-    background: rgba(var(--red-accent-rgb), 0.08) !important;
+    background: var(--psg-surface-active) !important;
 
     .item-name {
       font-weight: 700;
-    }
-
-    .item-avatar {
-      background: #111111;
-      color: #ffffff;
     }
   }
 }
@@ -804,51 +799,51 @@ path[fill="#ffdda1"] {
 
   /* Input wrapper: only left/top/bottom border, no right */
   .el-input__wrapper {
-    border-top:    1px solid var(--base-border-color) !important;
-    border-bottom: 1px solid var(--base-border-color) !important;
-    border-left:   1px solid var(--base-border-color) !important;
+    border-top:    1px solid var(--psg-border) !important;
+    border-bottom: 1px solid var(--psg-border) !important;
+    border-left:   1px solid var(--psg-border) !important;
     border-right:  none !important;
-    border-radius: var(--radius-sm) !important;
+    border-radius: var(--psg-radius-sm) !important;
     box-shadow: none !important;
-    background: var(--el-bg-color) !important;
+    background: var(--psg-surface) !important;
     transition: border-color 0.15s !important;
   }
 
-  /* Focus: turn all visible borders red */
+  /* Focus: ink border ring */
   .el-input__wrapper.is-focus {
-    border-color: var(--red-accent) !important;
+    border-color: var(--psg-focus) !important;
     box-shadow: none !important;
   }
 
   /* Append: top/right/bottom border, left is the divider */
   .el-input-group__append {
-    border-top:    1px solid var(--base-border-color) !important;
-    border-right:  1px solid var(--base-border-color) !important;
-    border-bottom: 1px solid var(--base-border-color) !important;
-    border-left:   1px solid var(--light-border-color) !important;
-    border-radius: var(--radius-sm) !important;
+    border-top:    1px solid var(--psg-border) !important;
+    border-right:  1px solid var(--psg-border) !important;
+    border-bottom: 1px solid var(--psg-border) !important;
+    border-left:   1px solid var(--psg-border) !important;
+    border-radius: var(--psg-radius-sm) !important;
     box-shadow: none !important;
-    background: var(--extra-light-fill) !important;
+    background: var(--psg-canvas) !important;
     padding: 0 12px !important;
     font-size: 13px !important;
     font-weight: 500 !important;
-    color: var(--regular-text-color) !important;
+    color: var(--psg-text-secondary) !important;
     white-space: nowrap;
   }
 }
 
-/* Focus-within: red border on append too */
+/* Focus-within: ink border on append too */
 :deep(.el-input.el-input-group:focus-within) {
   .el-input-group__append {
-    border-top-color:    var(--red-accent) !important;
-    border-right-color:  var(--red-accent) !important;
-    border-bottom-color: var(--red-accent) !important;
+    border-top-color:    var(--psg-focus) !important;
+    border-right-color:  var(--psg-focus) !important;
+    border-bottom-color: var(--psg-focus) !important;
   }
 }
 
 :deep(.el-dialog) {
   width: 400px !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
 
   @media (max-width: 440px) {
     width: calc(100% - 40px) !important;
@@ -872,14 +867,14 @@ path[fill="#ffdda1"] {
   /* Standalone el-input (no append group) — match grouped input style */
   :deep(.el-input:not(.el-input-group)) {
     .el-input__wrapper {
-      border: 1px solid var(--base-border-color) !important;
-      border-radius: var(--radius-sm) !important;
+      border: 1px solid var(--psg-border) !important;
+      border-radius: var(--psg-radius-sm) !important;
       box-shadow: none !important;
-      background: var(--el-bg-color) !important;
+      background: var(--psg-surface) !important;
       transition: border-color 0.15s !important;
     }
     .el-input__wrapper.is-focus {
-      border-color: var(--red-accent) !important;
+      border-color: var(--psg-focus) !important;
       box-shadow: none !important;
     }
   }
@@ -895,7 +890,7 @@ path[fill="#ffdda1"] {
 
 :deep(.el-pagination .el-select) {
   width: 100px;
-  background: var(--el-bg-color);
+  background: var(--psg-surface);
 }
 
 .add-email-turnstile {
@@ -914,7 +909,7 @@ path[fill="#ffdda1"] {
 
 .bind-tip {
   font-size: 11.5px;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   line-height: 1.5;
   margin: -2px 0 0;
 }

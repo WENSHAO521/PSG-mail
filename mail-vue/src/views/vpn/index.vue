@@ -235,7 +235,7 @@ function formatDate(iso) {
 <style lang="scss" scoped>
 .download-view {
   height: 100%;
-  background: var(--el-bg-color-page, #f5f5f5);
+  background: var(--psg-canvas);
 }
 
 .dl-body {
@@ -247,7 +247,7 @@ function formatDate(iso) {
 /* ── Hero ── */
 .dl-hero {
   margin-bottom: 32px;
-  border-left: 4px solid var(--red-accent);
+  border-left: 4px solid var(--psg-primary);
   padding-left: 18px;
 }
 
@@ -257,7 +257,7 @@ function formatDate(iso) {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   margin-bottom: 4px;
 }
 
@@ -266,14 +266,14 @@ function formatDate(iso) {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 0;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   line-height: 1.1;
 }
 
 .hero-sub {
   margin-top: 6px;
   font-size: 13px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
 }
 
 /* ── Notice ── */
@@ -283,22 +283,16 @@ function formatDate(iso) {
   gap: 8px;
   padding: 10px 14px;
   margin-bottom: 24px;
-  background: var(--el-bg-color, #fff);
-  border: 1px solid var(--light-border-color, #e0d8d9);
-  border-left: 3px solid var(--red-accent);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-left: 3px solid var(--psg-primary);
   font-size: 12px;
-  color: var(--el-text-color-regular);
+  color: var(--psg-text-secondary);
   flex-wrap: wrap;
 }
 
-:global(.dark) .dl-notice {
-  background: var(--el-bg-color, #1c1c20);
-  border-color: rgba(255,255,255,0.1);
-  border-left-color: var(--red-accent);
-}
-
 .dl-notice-link {
-  color: var(--red-accent);
+  color: var(--psg-text);
   text-decoration: none;
   font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 12.5px;
@@ -321,13 +315,13 @@ function formatDate(iso) {
 .section-tag {
   font-size: 14px;
   font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
 }
 
 .section-date {
   font-size: 12px;
   font-family: 'IBM Plex Mono', monospace;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
 }
 
 /* ── Grid ── */
@@ -344,15 +338,14 @@ function formatDate(iso) {
   flex-direction: column;
   gap: 12px;
   padding: 22px 20px 18px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
-  background: var(--el-bg-color, #ffffff);
-  border: 1px solid var(--light-border, #e2e2e6);
-  border-top: 3px solid var(--light-border, #e2e2e6);
-  transition: border-top-color 0.12s, box-shadow 0.12s;
+  border-radius: var(--psg-radius-md);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-top: 3px solid var(--psg-border);
+  transition: border-top-color 0.12s;
 
   @media (hover: hover) {
-    &:hover { border-top-color: var(--red-accent); }
+    &:hover { border-top-color: var(--psg-primary); }
   }
 
   &--skeleton {
@@ -362,14 +355,8 @@ function formatDate(iso) {
   }
 }
 
-:global(.dark) .dl-card {
-  background: var(--el-bg-color, #1c1c20);
-  border-color: rgba(255, 255, 255, 0.15);
-  border-top-color: rgba(255, 255, 255, 0.3);
-}
-
 .dl-card-icon {
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   opacity: 0.75;
 }
 
@@ -380,13 +367,13 @@ function formatDate(iso) {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   margin-bottom: 4px;
 }
 
 .dl-card-desc {
   font-size: 12px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   line-height: 1.5;
   margin-bottom: 6px;
 }
@@ -394,7 +381,7 @@ function formatDate(iso) {
 .dl-card-meta {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   letter-spacing: 0.04em;
 }
 
@@ -411,10 +398,10 @@ function formatDate(iso) {
   gap: 7px;
   height: 32px;
   padding: 0 14px;
-  border-radius: var(--radius-sm);
-  background: #111111;
-  color: #ffffff;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
+  font-family: var(--psg-font-sans);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;
@@ -422,24 +409,15 @@ function formatDate(iso) {
   text-decoration: none;
   cursor: pointer;
   border: none;
-  transition: background 0.12s;
+  transition: opacity 0.12s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 
   @media (hover: hover) {
-    &:hover { background: var(--red-accent); }
+    &:hover { opacity: .88; }
   }
-  &:active { background: var(--red-accent-dark); }
-}
-
-:global(.dark) .dl-btn {
-  background: rgba(255,255,255,0.88);
-  color: #111;
-
-  @media (hover: hover) {
-    &:hover { background: var(--red-accent); color: var(--on-accent); }
-  }
+  &:active { opacity: .88; }
 }
 
 /* ── Error ── */
@@ -449,7 +427,7 @@ function formatDate(iso) {
   gap: 10px;
   padding: 24px 0;
   font-size: 13px;
-  color: var(--red-accent);
+  color: var(--psg-danger);
 }
 
 /* ── Footer ── */
@@ -458,7 +436,7 @@ function formatDate(iso) {
   align-items: center;
   gap: 16px;
   padding-top: 20px;
-  border-top: 1px solid var(--light-border-color, #dcdcdc);
+  border-top: 1px solid var(--psg-border);
 }
 
 .dl-releases-link {
@@ -467,19 +445,19 @@ function formatDate(iso) {
   gap: 6px;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   text-decoration: none;
   font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
 
   @media (hover: hover) {
-    &:hover { color: var(--el-text-color-primary); }
+    &:hover { color: var(--psg-text); }
   }
 }
 
 .dl-version {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   margin-left: auto;
 }
 
