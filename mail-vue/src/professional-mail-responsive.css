@@ -1,0 +1,79 @@
+/* PSG Mail — compact desktop geometry
+ *
+ * The mobile shell ends at 1024px. These ranges prevent the first desktop
+ * widths from inheriting a three-pane minimum wider than the viewport.
+ * This file is intentionally small and loaded after the component contracts.
+ */
+
+@media (min-width: 1025px) and (max-width: 1180px) {
+  :root {
+    --pm-sidebar-w: 204px;
+    --pm-list-w: 350px;
+  }
+
+  .app-shell[data-mode="mail"] {
+    grid-template-columns: var(--pm-sidebar-w) var(--pm-list-w) minmax(0, 1fr) !important;
+  }
+
+  .app-shell[data-mode="mail"][data-collapsed="true"] {
+    grid-template-columns: var(--pm-sidebar-collapsed-w) var(--pm-list-w) minmax(0, 1fr) !important;
+  }
+
+  .app-shell[data-mode="workspace"] {
+    grid-template-columns: var(--pm-sidebar-w) minmax(0, 1fr) !important;
+  }
+
+  .pro-sidebar[data-collapsed="false"] {
+    width: var(--pm-sidebar-w) !important;
+  }
+
+  .email-detail .detail-content {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  .email-detail .email-title {
+    font-size: clamp(22px, 2.2vw, 27px) !important;
+  }
+
+  .write-box {
+    width: min(680px, calc(100vw - 36px)) !important;
+    right: 18px !important;
+    bottom: 18px !important;
+  }
+}
+
+@media (min-width: 1181px) and (max-width: 1280px) {
+  :root {
+    --pm-sidebar-w: 218px;
+    --pm-list-w: 380px;
+  }
+
+  .app-shell[data-mode="mail"] {
+    grid-template-columns: var(--pm-sidebar-w) var(--pm-list-w) minmax(0, 1fr) !important;
+  }
+
+  .app-shell[data-mode="mail"][data-collapsed="true"] {
+    grid-template-columns: var(--pm-sidebar-collapsed-w) var(--pm-list-w) minmax(0, 1fr) !important;
+  }
+
+  .pro-sidebar[data-collapsed="false"] {
+    width: var(--pm-sidebar-w) !important;
+  }
+
+  .email-detail .detail-content {
+    padding-left: 28px !important;
+    padding-right: 28px !important;
+  }
+}
+
+/* Height-constrained desktop windows need the same hierarchy without a
+ * compose window covering the entire reading surface. */
+@media (min-width: 1025px) and (max-height: 700px) {
+  .write-box {
+    top: 14px !important;
+    bottom: 14px !important;
+    height: auto !important;
+    max-height: calc(100vh - 28px) !important;
+  }
+}
