@@ -1067,10 +1067,8 @@ function submitPwd() {
 /* ── Sidebar ── */
 .settings-sidebar,
 .settings-panel {
-  background: var(--surface, #ffffff);
-  border: 1px solid var(--light-border, #e2e2e6);
-  border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
   overflow: hidden;
 }
 
@@ -1100,10 +1098,10 @@ function submitPwd() {
   align-items: center;
   gap: 12px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-left: 3px solid transparent;
   background: transparent;
-  color: var(--psg-text-secondary, #666666);
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  color: var(--psg-text-secondary);
+  font-family: var(--psg-font-sans);
   font-size: 13.5px;
   font-weight: 600;
   letter-spacing: 0;
@@ -1112,13 +1110,14 @@ function submitPwd() {
   transition: background 160ms ease, color 160ms ease;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.04);
-    color: var(--el-text-color-primary);
+    background: var(--psg-surface-muted);
+    color: var(--psg-text);
   }
 
   &.active {
-    background: rgba(var(--red-accent-rgb), 0.08);
-    color: var(--el-text-color-primary);
+    background: var(--psg-surface-active);
+    border-left-color: var(--psg-primary);
+    color: var(--psg-primary);
     font-weight: 700;
   }
 
@@ -1131,8 +1130,8 @@ function submitPwd() {
     padding: 0 12px;
 
     &.active {
-      border-bottom-color: var(--red-accent);
-      background: rgba(var(--red-accent-rgb), 0.06);
+      border-bottom-color: var(--psg-primary);
+      background: var(--psg-surface-active);
     }
   }
 }
@@ -1150,12 +1149,12 @@ function submitPwd() {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--separator, #e5e5e5);
+  border-bottom: 1px solid var(--psg-border);
 
   h1 {
     margin: 0 0 4px;
-    color: var(--el-text-color-primary);
-    font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+    color: var(--psg-text);
+    font-family: var(--psg-font-sans);
     font-size: 20px;
     font-weight: 750;
     line-height: 1.2;
@@ -1165,7 +1164,7 @@ function submitPwd() {
   p {
     margin: 0;
     max-width: 38rem;
-    color: var(--psg-text-secondary, #666666);
+    color: var(--psg-text-secondary);
     font-size: 14px;
     font-weight: 500;
     line-height: 1.4;
@@ -1181,7 +1180,7 @@ function submitPwd() {
   flex: 0 0 auto;
   min-width: 68px;
   height: 42px !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   margin: 0 !important;
 }
 
@@ -1196,9 +1195,9 @@ function submitPwd() {
   gap: 8px;
   margin: 16px 20px 0;
   padding: 10px 14px;
-  background: rgba(var(--red-accent-rgb), 0.06);
-  border-left: 3px solid var(--red-accent);
-  color: var(--red-accent);
+  background: var(--psg-danger-muted);
+  border-left: 3px solid var(--psg-danger);
+  color: var(--psg-danger);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.4;
@@ -1210,7 +1209,7 @@ function submitPwd() {
   align-items: center;
   gap: 10px;
   padding: 16px;
-  border-bottom: 1px solid var(--light-border-color);
+  border-bottom: 1px solid var(--psg-border);
 }
 
 .label-color-swatches {
@@ -1227,7 +1226,7 @@ function submitPwd() {
   cursor: pointer;
   padding: 0;
 
-  &.active { border-color: var(--el-text-color-primary); }
+  &.active { border-color: var(--psg-text); }
 }
 
 .label-dot-lg {
@@ -1246,7 +1245,7 @@ function submitPwd() {
 .backup-empty-state {
   padding: 24px;
   font-size: 13px;
-  color: var(--text-secondary, #888);
+  color: var(--psg-text-secondary);
 }
 
 .backup-provider-row {
@@ -1255,7 +1254,7 @@ function submitPwd() {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 24px;
-  border-bottom: 1px solid var(--separator, #e5e5e5);
+  border-bottom: 1px solid var(--psg-border);
 
   &:last-child { border-bottom: 0; }
 
@@ -1283,7 +1282,7 @@ function submitPwd() {
 .backup-provider-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   margin-bottom: 3px;
 }
 
@@ -1293,14 +1292,14 @@ function submitPwd() {
   flex-wrap: wrap;
   gap: 4px;
   font-size: 12px;
-  color: var(--psg-text-secondary, #666);
+  color: var(--psg-text-secondary);
 }
 
 .backup-connected-dot {
   display: inline-block;
   width: 7px; height: 7px;
   border-radius: 50%;
-  background: #22a06b;
+  background: var(--psg-text);
   flex-shrink: 0;
 }
 
@@ -1308,12 +1307,12 @@ function submitPwd() {
   display: inline-block;
   width: 7px; height: 7px;
   border-radius: 50%;
-  background: var(--el-border-color, #ccc);
+  background: var(--psg-border);
   flex-shrink: 0;
 }
 
 .backup-stat {
-  color: var(--psg-text-secondary, #888);
+  color: var(--psg-text-secondary);
 }
 
 .backup-provider-actions {
@@ -1335,7 +1334,7 @@ function submitPwd() {
 .card-desc {
   font-size: 13px;
   line-height: 1.6;
-  color: var(--psg-text-secondary, #666666);
+  color: var(--psg-text-secondary);
   margin-bottom: 4px;
 }
 
@@ -1350,9 +1349,9 @@ function submitPwd() {
 .avatar-wrap {
   position: relative;
   width: 76px; height: 76px;
-  border-radius: var(--radius-sm); overflow: hidden;
+  border-radius: var(--psg-radius-sm); overflow: hidden;
   cursor: pointer; flex-shrink: 0;
-  background: #111;
+  background: var(--psg-primary);
   &:hover .avatar-lens { opacity: 1; }
 }
 
@@ -1362,7 +1361,7 @@ function submitPwd() {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; font-weight: 900;
-  letter-spacing: -0.04em; color: #fff; user-select: none;
+  letter-spacing: -0.04em; color: var(--psg-on-primary); user-select: none;
 }
 
 .avatar-lens {
@@ -1381,14 +1380,14 @@ function submitPwd() {
 .meta-name {
   font-size: 16px; font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .meta-email {
   font-size: 12px;
-  font-family: 'IBM Plex Mono', monospace;
-  color: var(--secondary-text-color);
+  font-family: var(--psg-font-mono);
+  color: var(--psg-text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -1396,9 +1395,9 @@ function submitPwd() {
   display: inline-flex; align-items: center;
   font-size: 9px; font-weight: 900;
   letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--red-accent); background: rgba(var(--red-accent-rgb),0.07);
-  border: 1px solid rgba(var(--red-accent-rgb),0.18);
-  padding: 2px 6px; border-radius: var(--radius-sm);
+  color: var(--psg-text); background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  padding: 2px 6px; border-radius: var(--psg-radius-sm);
   width: fit-content; margin-top: 4px;
 }
 
@@ -1419,7 +1418,7 @@ function submitPwd() {
   align-items: center;
   min-height: 52px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--separator, #e5e5e5);
+  border-bottom: 1px solid var(--psg-border);
   gap: 16px;
 
   &.last, &:last-child { border-bottom: none; }
@@ -1432,7 +1431,7 @@ function submitPwd() {
 
 .data-key {
   font-size: 13px; font-weight: 500;
-  color: var(--muted, #666666); flex-shrink: 0;
+  color: var(--psg-text-secondary); flex-shrink: 0;
 }
 
 .data-val {
@@ -1441,12 +1440,12 @@ function submitPwd() {
 }
 
 .val-str {
-  font-size: 13.5px; color: var(--el-text-color-primary);
+  font-size: 13.5px; color: var(--psg-text);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 
   &.mono {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px; color: var(--regular-text-color);
+    font-family: var(--psg-font-mono);
+    font-size: 12px; color: var(--psg-text-secondary);
   }
 }
 
@@ -1454,16 +1453,17 @@ function submitPwd() {
 .link-btn {
   background: transparent; border: none; cursor: pointer;
   font-size: 12px; font-weight: 700;
-  color: var(--red-accent); padding: 0;
+  color: var(--psg-text); padding: 0;
+  text-decoration: underline;
   transition: opacity 0.12s; user-select: none; font-family: inherit;
   &:hover { opacity: 0.65; }
-  &.dim { color: var(--secondary-text-color); font-weight: 600; }
+  &.dim { color: var(--psg-text-secondary); font-weight: 600; }
 }
 
 /* ── Editor shell ── */
 .editor-shell {
-  border: 1px solid var(--light-border-color);
-  border-radius: var(--radius-sm); overflow: hidden;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm); overflow: hidden;
   height: 200px;
 }
 
@@ -1475,7 +1475,7 @@ function submitPwd() {
 
 .toggle-label {
   font-size: 14px; font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   margin-bottom: 4px;
 }
 
@@ -1493,27 +1493,27 @@ function submitPwd() {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap;
   padding: 10px 0;
-  border-top: 1px solid var(--light-border-color);
+  border-top: 1px solid var(--psg-border);
 }
 .notif-device-main {
   display: flex; align-items: center; gap: 8px;
 }
 .notif-device-name {
   font-size: 13px; font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
 }
 .notif-device-platform {
-  font-size: 11px; color: var(--secondary-text-color);
+  font-size: 11px; color: var(--psg-text-secondary);
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .notif-device-tag {
-  font-size: 11px; color: #bc0000;
+  font-size: 11px; color: var(--psg-danger);
   border: 1px solid currentColor; border-radius: 3px;
   padding: 1px 6px;
 }
 .notif-device-meta {
   display: flex; align-items: center; gap: 12px;
-  font-size: 12px; color: var(--secondary-text-color);
+  font-size: 12px; color: var(--psg-text-secondary);
 }
 
 .expand-enter-active {
@@ -1543,8 +1543,8 @@ function submitPwd() {
 }
 
 .danger-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.danger-heading { font-size: 13.5px; font-weight: 700; color: var(--el-text-color-primary); }
-.danger-desc-text { font-size: 12.5px; line-height: 1.5; color: var(--regular-text-color); }
+.danger-heading { font-size: 13.5px; font-weight: 700; color: var(--psg-text); }
+.danger-desc-text { font-size: 12.5px; line-height: 1.5; color: var(--psg-text-secondary); }
 
 /* ── Password dialog ── */
 .pwd-form {
@@ -1557,6 +1557,6 @@ function submitPwd() {
 .pwd-label {
   font-size: 10px; font-weight: 900;
   text-transform: uppercase; letter-spacing: 0.10em;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
 }
 </style>
