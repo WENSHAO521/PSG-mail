@@ -2,12 +2,7 @@ import {createApp} from 'vue';
 import App from './App.vue';
 import router from './router';
 import './style.css';
-import './ui-redesign.css';
-import './ui-redesign-phase2.css';
-import './ui-redesign-phase3.css';
-import './ui-redesign-phase4.css';
-import './ui-redesign-phase5.css';
-import './ui-redesign-phase6.css';
+import './professional-mail.css';
 
 // Fonts — bundled locally so Electron works offline
 import '@fontsource/ibm-plex-sans/400.css'
@@ -35,9 +30,8 @@ app.config.devtools = true;
 
 app.mount('#app');
 
-// Vite's CSS minifier strips !important from custom property declarations,
-// so :root { --el-font-family: ... !important } in style.css loses to the
-// vendor-element-plus chunk (same :root specificity, later in document order).
-// Setting via inline style on <html> beats all external stylesheet rules.
+// Keep one explicit application font token. Setting it on <html> wins over
+// Element Plus' later-loaded root variable without forcing typography rules
+// into every component stylesheet.
 const PSG_FONT = "'IBM Plex Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif"
 document.documentElement.style.setProperty('--el-font-family', PSG_FONT, 'important')
