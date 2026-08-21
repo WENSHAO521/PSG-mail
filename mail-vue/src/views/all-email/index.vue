@@ -410,14 +410,14 @@ async function latest() {
   display: flex;
   align-items: stretch;
   height: 30px;
-  border: 1px solid var(--light-border, #d0d0d0);
+  border: 1px solid var(--psg-border);
   flex: 1 1 100px;
   min-width: 100px;
   max-width: 380px;
   overflow: hidden;
 
   &:focus-within {
-    border-color: var(--el-color-primary);
+    border-color: var(--psg-primary);
   }
 }
 
@@ -427,8 +427,8 @@ async function latest() {
   align-items: center;
   gap: 3px;
   padding: 0 8px;
-  border-right: 1px solid var(--light-border, #d0d0d0);
-  background: var(--base-fill, #f5f5f5);
+  border-right: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
   cursor: pointer;
   flex-shrink: 0;
   user-select: none;
@@ -436,15 +436,15 @@ async function latest() {
 
   .type-label {
     font-size: 12px;
-    color: var(--el-text-color-regular);
+    color: var(--psg-text-secondary);
   }
 
   .type-arrow {
-    color: var(--el-text-color-placeholder);
+    color: var(--psg-text-muted);
   }
 
   @media (hover: hover) {
-    &:hover { background: var(--email-hover-background, #f0f0f0); }
+    &:hover { background: var(--psg-surface-active); }
   }
 }
 
@@ -455,10 +455,10 @@ async function latest() {
   background: transparent;
   padding: 0 8px;
   font-size: 13px;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   outline: none;
 
-  &::placeholder { color: var(--el-text-color-placeholder); }
+  &::placeholder { color: var(--psg-text-muted); }
 }
 
 /* status-select: borderless inside the group, left separator only */
@@ -473,15 +473,15 @@ async function latest() {
   padding: 0 6px;
   box-shadow: none !important;
   border: none;
-  border-left: 1px solid var(--light-border, #d0d0d0);
-  border-radius: var(--radius-sm);
-  background: var(--base-fill, #f5f5f5);
+  border-left: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
 }
 
 .status-select :deep(.el-select__wrapper:hover),
 .status-select :deep(.el-select__wrapper.is-focused) {
   box-shadow: none !important;
-  background: var(--email-hover-background, #f0f0f0);
+  background: var(--psg-surface-active);
 }
 
 /* ── Action icon buttons ──────────────────────────────── */
@@ -492,44 +492,21 @@ async function latest() {
   width: 28px;
   height: 28px;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   transition: background 0.10s, color 0.10s;
 
   @media (hover: hover) {
-    &:hover { background: var(--email-hover-background, #eeeeee); color: #1a1a1a; }
-    &.icon-danger:hover { background: rgba(var(--red-accent-rgb), 0.08); color: var(--red-accent); }
+    &:hover { background: var(--psg-surface-active); color: var(--psg-text); }
+    &.icon-danger:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
   }
 }
 
 :deep(.el-date-editor.el-input__wrapper) {
   width: 303px;
-}
-
-/* ── Dark mode ────────────────────────────────────────── */
-.dark .search-group {
-  border-color: var(--light-border);
-}
-.dark .type-pill {
-  background: var(--surface-secondary);
-  border-right-color: var(--light-border);
-}
-.dark .content-input {
-  color: var(--el-text-color-primary);
-  &::placeholder { color: var(--el-text-color-placeholder); }
-}
-.dark .status-select :deep(.el-select__wrapper) {
-  border-left-color: var(--light-border) !important;
-  background: var(--surface-secondary) !important;
-}
-.dark .icon {
-  @media (hover: hover) {
-    &:hover { border-color: #ffffff; color: #ffffff; }
-    &.icon-danger:hover { border-color: var(--red-accent); color: var(--red-accent); }
-  }
 }
 
 /* ── Batch clear dialog ───────────────────────────────── */

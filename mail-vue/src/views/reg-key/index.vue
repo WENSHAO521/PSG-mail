@@ -44,7 +44,7 @@
             </div>
             <div class="info-right">
               <el-dropdown class="setting">
-                <Icon icon="solar:settings-bold" width="21" height="21" color="#909399"/>
+                <Icon icon="solar:settings-bold" width="21" height="21" style="color: var(--psg-text-secondary)"/>
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item @click="copyCode(item.code)">{{ $t('copy') }}</el-dropdown-item>
@@ -411,21 +411,20 @@ function openAdd() {
   gap: 4px;
   flex-wrap: nowrap;
   align-items: center;
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border, #e2e2e6);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
 
   :deep(.el-input__wrapper) {
     height: 30px;
     box-shadow: none !important;
-    border: 1px solid var(--light-border, #d0d0d0);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--psg-border);
+    border-radius: var(--psg-radius-sm);
     transition: border-color 0.12s;
-    &:hover { border-color: var(--el-border-color-hover); }
+    &:hover { border-color: var(--psg-border-strong); }
   }
   :deep(.el-input__wrapper.is-focus) {
-    border-color: var(--el-color-primary) !important;
+    border-color: var(--psg-primary) !important;
   }
 
   .search-input {
@@ -434,42 +433,29 @@ function openAdd() {
 
   .icon {
     cursor: pointer;
-    color: var(--muted, #666666);
+    color: var(--psg-text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 30px;
     height: 30px;
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--psg-radius-sm);
     flex-shrink: 0;
     transition: border-color 0.10s, color 0.10s;
 
     @media (hover: hover) {
       &:hover {
         border-color: transparent;
-        background: var(--email-hover-background, #eeeeee);
-        color: #000000;
+        background: var(--psg-surface-active);
+        color: var(--psg-text);
       }
       &.icon-danger:hover {
         border-color: transparent;
-        background: rgba(var(--red-accent-rgb), 0.08);
-        color: var(--red-accent);
+        background: var(--psg-danger-muted);
+        color: var(--psg-danger);
       }
     }
-  }
-}
-
-.dark .header-actions {
-  .icon {
-    @media (hover: hover) {
-      &:hover { border-color: transparent; background: rgba(255,255,255,0.08); color: #ffffff; }
-      &.icon-danger:hover { border-color: transparent; background: rgba(var(--red-accent-rgb), 0.16); color: var(--red-accent); }
-    }
-  }
-  :deep(.el-input__wrapper) {
-    border-color: var(--light-border) !important;
-    background: var(--surface) !important;
   }
 }
 
@@ -483,15 +469,14 @@ function openAdd() {
     gap: 16px;
 
     .code-item {
-      background: var(--surface, #fff);
-      border-radius: var(--radius-md);
-      border: 1px solid var(--light-border, #e2e2e6);
-      box-shadow: var(--card-shadow);
+      background: var(--psg-surface);
+      border-radius: var(--psg-radius-md);
+      border: 1px solid var(--psg-border);
       padding: 16px;
-      transition: box-shadow 0.16s ease;
+      transition: border-color 0.16s ease;
 
       @media (hover: hover) {
-        &:hover { box-shadow: var(--card-shadow-hover); }
+        &:hover { border-color: var(--psg-border-strong); }
       }
 
       .code-info {
@@ -572,7 +557,7 @@ function openAdd() {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: var(--loadding-background);
+  background: var(--psg-surface);
   z-index: 2;
 }
 
@@ -583,7 +568,7 @@ function openAdd() {
 
 .loading-hide {
   pointer-events: none;
-  transition: var(--loading-hide-transition);
+  transition: all 200ms;
   opacity: 0;
 }
 
@@ -607,13 +592,13 @@ function openAdd() {
 }
 
 .gen-code {
-  color: #606266;
+  color: var(--psg-text-secondary);
   cursor: pointer;
 }
 
 
 :deep(.el-table__inner-wrapper:before) {
-  background: var(--el-bg-color);
+  background: var(--psg-surface);
 }
 
 </style>

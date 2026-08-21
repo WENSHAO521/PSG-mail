@@ -179,11 +179,17 @@ const topic = computed(() => ({
   axisColor: uiStore.dark ? '#A3A6AD' : '#909399',
   splitLineColor: uiStore.dark ? '#58585B' : '#D4D7DE',
   gaugeSplitLine: uiStore.dark ? '#CFD3DC' : '#606266',
-  containerBackground: uiStore.dark ? '#6C6E72' : '#E6EBF8',
-  // Brand accent for echarts (canvas-rendered — cannot resolve CSS var(),
-  // so mirror style.css's --red-accent light/dark values here directly)
-  accent: uiStore.dark ? '#f4f4f4' : '#121212',
-  accentRgb: uiStore.dark ? '244, 244, 244' : '18, 18, 18'
+  containerBackground: uiStore.dark ? '#282828' : '#ECECEA',
+  // Ink accent for echarts (canvas-rendered — cannot resolve CSS var(),
+  // so mirror tokens.css's --psg-primary light/dark values here directly)
+  accent: uiStore.dark ? '#F2F2EE' : '#111111',
+  accentRgb: uiStore.dark ? '242, 242, 238' : '17, 17, 17',
+  // Secondary series color — grayscale only, per the admin chart spec
+  // (no decorative hues; red is reserved for warning/critical series)
+  accentSecondary: uiStore.dark ? '#8A8A85' : '#A3A3A3',
+  categoryPalette: uiStore.dark
+    ? ['#F2F2EE', '#C7C7C2', '#9C9C97', '#727270', '#4D4D4B', '#2E2E2C']
+    : ['#111111', '#3D3D3D', '#666666', '#8C8C8C', '#B3B3B3', '#D9D9D9'],
 }))
 let daySendTotal = 0
 let leaveWidth = 0
@@ -352,7 +358,7 @@ function createSenderPie() {
           show: false,
           position: 'outside', // 标签显示在外部
           formatter: '{d}%',  // 显示名称和占比
-          color: '#333',
+          color: topic.value.color,
           fontSize: 14  // 设置字体大小
         },
         emphasis: {
@@ -365,7 +371,7 @@ function createSenderPie() {
         labelLine: {
           show: true
         },
-        color: [topic.value.accent, '#8B0000', '#E57373', '#333333', '#666666', '#A0A0A0']
+        color: topic.value.categoryPalette
       }
     ]
   }
@@ -630,7 +636,7 @@ function createEmailColumnChart() {
         },
         data: emailColumnData.sendData,
         itemStyle: {
-          color: '#333333',
+          color: topic.value.accentSecondary,
         }
       }
     ]
@@ -755,15 +761,14 @@ function createSendGauge() {
 }
 
 .stat-card {
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border-color, #dcdcdc);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
   padding: 24px;
-  transition: box-shadow 0.16s ease;
+  transition: border-color 0.16s ease;
 
   @media (hover: hover) {
-    &:hover { box-shadow: var(--card-shadow-hover); }
+    &:hover { border-color: var(--psg-border-strong); }
   }
 
   .stat-body {
@@ -786,7 +791,7 @@ function createSendGauge() {
     font-weight: 500;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: var(--muted, #666666);
+    color: var(--psg-text-muted);
   }
 
   .stat-value {
@@ -801,7 +806,7 @@ function createSendGauge() {
   .stat-icon {
     width: 48px;
     height: 48px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--psg-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -813,15 +818,11 @@ function createSendGauge() {
     gap: 12px;
     margin-top: 14px;
     font-size: 12px;
-    color: var(--secondary-text-color, #666666);
+    color: var(--psg-text-secondary);
   }
 
-  .bd-normal { color: var(--secondary-text-color, #666666); }
-  .bd-del { color: var(--muted, #666666); }
-}
-
-.dark .stat-card {
-  border-color: var(--light-border-color, #30303a);
+  .bd-normal { color: var(--psg-text-secondary); }
+  .bd-del { color: var(--psg-text-muted); }
 }
 
 /* ── Chart cards ── */
@@ -833,19 +834,18 @@ function createSendGauge() {
 }
 
 .chart-card {
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border-color, #dcdcdc);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
   padding: 20px;
 
   .chart-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--el-text-color-primary);
+    color: var(--psg-text);
     margin: 0 0 16px;
     padding-bottom: 14px;
-    border-bottom: 1px solid var(--light-border-color, #dcdcdc);
+    border-bottom: 1px solid var(--psg-border);
   }
 
   .chart-area {
@@ -853,12 +853,6 @@ function createSendGauge() {
     @media (max-width: 640px) { height: 220px; }
     @media (max-width: 420px) { height: 180px; }
   }
-}
-
-.dark .chart-card {
-  border-color: var(--light-border-color, #30303a);
-
-  .chart-title { border-bottom-color: var(--light-border-color, #30303a); }
 }
 </style>
 

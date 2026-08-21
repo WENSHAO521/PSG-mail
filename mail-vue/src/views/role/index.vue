@@ -431,10 +431,9 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
 .table-card {
   width: 100%;
   overflow: hidden;
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border, #e2e2e6);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
 }
 
 .send-num {
@@ -456,38 +455,31 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
   display: flex;
   align-items: center;
   gap: 4px;
-  background: var(--surface, #fff);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--light-border, #e2e2e6);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
+  border: 1px solid var(--psg-border);
   flex-shrink: 0;
 
   .icon {
     cursor: pointer;
-    color: var(--muted, #666666);
+    color: var(--psg-text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 30px;
     height: 30px;
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--psg-radius-sm);
     flex-shrink: 0;
     transition: border-color 0.10s, color 0.10s, background 0.10s;
 
     @media (hover: hover) {
       &:hover {
         border-color: transparent;
-        background: var(--email-hover-background, #eeeeee);
-        color: #000000;
+        background: var(--psg-surface-active);
+        color: var(--psg-text);
       }
     }
-  }
-}
-
-.dark .header-actions .icon {
-  @media (hover: hover) {
-    &:hover { border-color: transparent; background: rgba(255,255,255,0.08); color: #ffffff; }
   }
 }
 
@@ -514,7 +506,7 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--loadding-background);
+  background: var(--psg-surface);
   z-index: 2;
 }
 
@@ -525,7 +517,7 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
 
 .loading-hide {
   pointer-events: none;
-  transition: var(--loading-hide-transition);
+  transition: all 200ms;
   opacity: 0;
 }
 
@@ -543,7 +535,7 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
 
 
 :deep(.el-segmented--small .el-segmented__item) {
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   overflow: hidden;
 }
 
