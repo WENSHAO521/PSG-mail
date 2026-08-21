@@ -2,43 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="theme-color" content="#F1F1F1" id="theme-color-meta">
-  <meta name="description" content="Cloud Mail 是一个 Serverless 响应式邮箱服务，支持邮件发送，可部署到 Cloudflare 平台，降低服务器成本。Cloud Mail is a serverless responsive email service that supports email sending and can be deployed on Cloudflare to reduce server costs.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#F4F5F7" id="theme-color-meta">
+  <meta name="description" content="PSG Mail — Panorama Scholarly Group institutional email client for web, desktop and mobile.">
   <title>PSG Mail</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script>
-    const uiStoreStr =  localStorage.getItem('ui')
+    const uiStoreStr = localStorage.getItem('ui')
+    const settingStoreStr = localStorage.getItem('setting')
+    let dark = false
     if (uiStoreStr) {
-      const uiStore =  JSON.parse(uiStoreStr)
-      const root = document.documentElement
-      root.setAttribute('class', uiStore.dark ? 'dark' : '');
-      const metaTag = document.getElementById('theme-color-meta');
-      const isMobile =  !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
-      metaTag.setAttribute('content', uiStore.dark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#FFFFFF' : '#F1F1F1'));
+      try {
+        const uiStore = JSON.parse(uiStoreStr)
+        dark = !!uiStore.dark
+        document.documentElement.setAttribute('class', dark ? 'dark' : '')
+      } catch {}
     }
+    if (settingStoreStr) {
+      try {
+        const settingStore = JSON.parse(settingStoreStr)
+        document.documentElement.lang = settingStore.lang === 'zh' ? 'zh-CN' : 'en'
+      } catch {}
+    }
+    const metaTag = document.getElementById('theme-color-meta')
+    metaTag.setAttribute('content', dark ? '#111317' : '#F4F5F7')
   </script>
 </head>
 <style>
   html {
-    background: #F4F4F0;
+    background: #F4F5F7;
   }
-  .dark {
-    background: #111111;
+  html.dark {
+    background: #111317;
   }
   #loading-first {
     position: fixed;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: 100%;
+    inset: 0;
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 500;
-    background: var(--el-bg-color);
+    background: #F4F5F7;
+    transition: opacity 180ms ease;
+  }
+
+  html.dark #loading-first {
+    background: #111317;
   }
 
   .loading-hide {
@@ -51,12 +63,12 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 12px;
   }
 
   .loading-image {
-    width: 70px;
-    height: 70px;
+    width: 64px;
+    height: 64px;
     object-fit: contain;
   }
 
@@ -64,28 +76,25 @@
     filter: invert(1);
   }
 
-  html.dark .loading-progress {
-    filter: invert(1);
-  }
-
   .loading-progress {
     position: relative;
-    width: 64px;
-    height: 4px;
+    width: 72px;
+    height: 3px;
     overflow: hidden;
     border-radius: 999px;
-    background: rgba(18, 18, 18, 0.12);
+    background: rgba(25, 27, 32, 0.10);
+  }
+
+  html.dark .loading-progress {
+    background: rgba(255, 255, 255, 0.10);
   }
 
   .loading-progress::before {
     content: "";
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     border-radius: inherit;
-    background: #121212;
+    background: #B4232D;
     transform: scaleX(0);
     transform-origin: left center;
     animation: loading-progress-grow 2.4s linear forwards;
@@ -98,7 +107,7 @@
     width: 24px;
     height: 100%;
     border-radius: inherit;
-    background: rgba(18, 18, 18, 0.3);
+    background: rgba(180, 35, 45, 0.32);
     filter: blur(4px);
     transform: translateX(-24px);
     animation: loading-progress-peg 2.4s linear forwards;
@@ -112,30 +121,29 @@
 
   .loading-complete .loading-progress::after {
     animation: none;
-    transform: translateX(60px);
+    transform: translateX(68px);
     transition: transform 200ms linear;
   }
 
   @keyframes loading-progress-grow {
-    0% {
-      transform: scaleX(0);
-    }
-    100% {
-      transform: scaleX(1);
-    }
+    0% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
   }
 
   @keyframes loading-progress-peg {
-    0% {
-      transform: translateX(-24px);
-    }
-    100% {
-      transform: translateX(60px);
+    0% { transform: translateX(-24px); }
+    100% { transform: translateX(68px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loading-progress::before,
+    .loading-progress::after {
+      animation-duration: .01ms;
     }
   }
 </style>
 <body>
-<div id="loading-first" >
+<div id="loading-first">
   <div class="loading-icon">
     <img class="loading-image" src="/image/psg-logo.png" alt="PSG Mail">
     <div class="loading-progress" aria-hidden="true"></div>
