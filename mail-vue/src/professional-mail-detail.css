@@ -1,6 +1,8 @@
-/* PSG Mail — Message detail professional layout
- * Targeted component module: preserves every existing action while keeping
- * the reading toolbar usable on narrow Android/PWA widths.
+/* PSG Mail — Message detail targeted polish
+ *
+ * Secondary reader actions now live behind ReaderActionMenu. The old mobile
+ * horizontal-scrolling toolbar workaround is intentionally removed: it clipped
+ * the More popover and was only necessary when every action lived inline.
  */
 
 .meta-date,
@@ -14,37 +16,33 @@
   font-weight: 600 !important;
 }
 
+.detail-header {
+  overflow: visible !important;
+}
+
 @media (max-width: 768px) {
   .detail-header {
     display: flex !important;
     align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 0 !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    justify-content: space-between !important;
+    gap: 4px !important;
   }
 
-  .detail-header::-webkit-scrollbar { display: none; }
-
-  .detail-header .header-left,
-  .detail-header .header-right {
+  .detail-header .header-left {
     display: flex !important;
     align-items: center !important;
-    flex: 0 0 auto !important;
-    gap: 0 !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    gap: 1px !important;
   }
 
-  .detail-header .header-right {
-    margin-left: auto !important;
-  }
-
+  /* header-right is presentation-controlled by ReaderActionMenu. Do not force
+     it visible here; its original controls remain mounted with original handlers. */
   .detail-header .icon-btn {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    border-radius: 7px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    border-radius: 8px !important;
   }
 
   .detail-header .page-counter {
@@ -63,11 +61,15 @@
 @media (max-width: 360px) {
   .detail-header {
     padding-left: 4px !important;
-    padding-right: 4px !important;
+    padding-right: 56px !important;
+  }
+
+  .detail-header .header-left {
+    gap: 0 !important;
   }
 
   .detail-header .icon-btn {
-    width: 31px !important;
-    min-width: 31px !important;
+    width: 34px !important;
+    min-width: 34px !important;
   }
 }
