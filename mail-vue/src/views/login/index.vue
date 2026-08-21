@@ -7,7 +7,7 @@
     <div class="brand-panel">
       <!-- Precise structural grid / registration marks (Bauhaus restraint) -->
       <svg class="brand-grid" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <g stroke="var(--brand-grid-line, #E5E5E5)" stroke-width="1">
+        <g stroke="var(--psg-border)" stroke-width="1">
           <line x1="80" y1="0" x2="80" y2="800"/>
           <line x1="220" y1="0" x2="220" y2="800"/>
           <line x1="360" y1="0" x2="360" y2="800"/>
@@ -16,12 +16,12 @@
           <line x1="0" y1="400" x2="600" y2="400"/>
           <line x1="0" y1="640" x2="600" y2="640"/>
         </g>
-        <g stroke="var(--brand-grid-mark, #111111)" stroke-width="1">
+        <g stroke="var(--psg-border-strong)" stroke-width="1">
           <path d="M40 40 H70 M40 40 V70" fill="none"/>
           <path d="M560 760 H530 M560 760 V730" fill="none"/>
         </g>
-        <rect x="500" y="160" width="14" height="14" fill="var(--red-accent)"/>
-        <circle cx="80" cy="640" r="6" fill="none" stroke="var(--brand-grid-mark, #111111)" stroke-width="1"/>
+        <rect x="500" y="160" width="14" height="14" fill="var(--psg-primary)"/>
+        <circle cx="80" cy="640" r="6" fill="none" stroke="var(--psg-border-strong)" stroke-width="1"/>
       </svg>
 
       <div class="brand-editorial">
@@ -70,7 +70,7 @@
                       :value="item"
                   />
                 </el-select>
-                <div style="color: var(--el-text-color-primary)">
+                <div style="color: var(--psg-text)">
                   <span>{{ suffix }}</span>
                   <Icon class="setting-icon" icon="solar:alt-arrow-down-linear" width="20" height="20"/>
                 </div>
@@ -142,7 +142,7 @@
                data-after-interactive-callback="loadAfter"
                data-before-interactive-callback="loadBefore"
           >
-            <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
+            <span style="font-size: 12px;color: var(--psg-danger)" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
           </div>
           <el-button class="btn" style="margin: 0" type="primary" @click="submitRegister" :loading="registerLoading"
           >{{ $t('regBtn') }}
@@ -232,7 +232,7 @@
 
 <script setup>
 import router from "@/router";
-import {computed, nextTick, reactive, ref, onMounted, onUnmounted} from "vue";
+import {computed, nextTick, reactive, ref} from "vue";
 import {login} from "@/request/login.js";
 import {register} from "@/request/login.js";
 import {websiteConfig} from "@/request/setting.js";
@@ -251,18 +251,6 @@ import {initPushNotifications} from "@/init/init.js";
 
 const {t} = useI18n();
 
-// This page is a fixed light "editorial" surface by design (see style block
-// below) regardless of the app's own dark-mode toggle. Element Plus popper
-// components (dropdowns, selects) teleport to <body>, outside #login-box, so
-// scoping a CSS override to #login-box alone can't reach them — pin the
-// light-mode Element Plus + accent tokens on <html> for the lifetime of this
-// page instead, overriding .dark's redefinitions via class specificity.
-onMounted(() => {
-  document.documentElement.classList.add('login-light-lock')
-})
-onUnmounted(() => {
-  document.documentElement.classList.remove('login-light-lock')
-})
 const accountStore = useAccountStore();
 const userStore = useUserStore();
 const uiStore = useUiStore();
@@ -742,17 +730,18 @@ function submitRegister() {
 <style lang="scss" scoped>
 /* ═══════════════════════════════════════════════════════════
    PSG Institutional Mail — Sign in
-   German minimalist · light · black / white / deep red
+   Swiss/editorial, monochrome. Supports Light and Dark via
+   --psg-* tokens — no fixed-light lock.
    ═══════════════════════════════════════════════════════════ */
 
 #login-box {
   height: 100%;
   width: 100%;
   display: flex;
-  background: #F7F7F7;
+  background: var(--psg-canvas);
   overflow: hidden;
   position: relative;
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--psg-font-sans);
 }
 
 .custom-bg {
@@ -770,8 +759,8 @@ function submitRegister() {
   flex-direction: column;
   justify-content: space-between;
   padding: 60px 64px;
-  background: #FFFFFF;
-  border-right: 1px solid #E5E5E5;
+  background: var(--psg-surface);
+  border-right: 1px solid var(--psg-border);
   overflow: hidden;
 
   @media (max-width: 980px) { display: none; }
@@ -793,28 +782,28 @@ function submitRegister() {
 }
 
 .brand-eyebrow {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #666666;
+  color: var(--psg-text-secondary);
 }
 
 .brand-wordmark {
   margin: 14px 0 0;
-  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: clamp(28px, 3.0vw, 42px);
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: #111111;
+  color: var(--psg-text);
 }
 
 .brand-divider {
   width: 48px;
   height: 3px;
-  background: var(--red-accent);
+  background: var(--psg-primary);
   margin: 30px 0 22px;
 }
 
@@ -823,17 +812,17 @@ function submitRegister() {
   max-width: 380px;
   font-size: 15px;
   line-height: 1.62;
-  color: #666666;
+  color: var(--psg-text-secondary);
 }
 
 .brand-footnote {
   position: relative;
   z-index: 1;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #B3B3B3;
+  color: var(--psg-text-muted);
 }
 
 /* ── Right auth column ──────────────────────────────────────── */
@@ -856,11 +845,9 @@ function submitRegister() {
 .container {
   width: 100%;
   max-width: 408px;
-  background: #FFFFFF;
-  border: 1px solid #000000;
-  border-top: 3px solid var(--red-accent);
-  border-radius: var(--radius-sm);
-  box-shadow: none;
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border-strong);
+  border-top: 3px solid var(--psg-primary);
   padding: 40px 36px 26px;
   display: flex;
   flex-direction: column;
@@ -879,19 +866,19 @@ function submitRegister() {
   gap: 12px;
   padding-bottom: 22px;
   margin-bottom: 24px;
-  border-bottom: 1px solid #EEEEEE;
+  border-bottom: 1px solid var(--psg-border);
 
   @media (max-width: 980px) { display: flex; }
 }
 
 .card-brand-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .card-brand-name {
-  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #111111;
+  color: var(--psg-text);
 
   @media (max-width: 420px) {
     font-size: 11px;
@@ -899,20 +886,20 @@ function submitRegister() {
   }
 }
 .card-brand-sub {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #666666;
+  color: var(--psg-text-secondary);
 }
 
 .form-eyebrow {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--red-accent);
+  color: var(--psg-text-secondary);
   margin-bottom: 12px;
 }
 
@@ -921,13 +908,13 @@ function submitRegister() {
   font-size: 26px;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: #111111;
+  color: var(--psg-text);
 }
 
 .form-desc {
   margin-top: 10px;
   margin-bottom: 28px;
-  color: #666666;
+  color: var(--psg-text-secondary);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -936,7 +923,7 @@ function submitRegister() {
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #111111;
+  color: var(--psg-text);
   letter-spacing: 0.01em;
   margin: 2px 0 7px;
 }
@@ -948,58 +935,58 @@ function submitRegister() {
 }
 
 :deep(.el-input__wrapper) {
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   height: 46px;
-  background: #FFFFFF !important;
-  box-shadow: 0 0 0 1px #DADADA !important;
+  background: var(--psg-surface) !important;
+  box-shadow: 0 0 0 1px var(--psg-border) !important;
   transition: box-shadow 0.15s ease !important;
 }
 :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #666666 !important;
+  box-shadow: 0 0 0 1px var(--psg-text-secondary) !important;
 }
 :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--red-accent), 0 0 0 3px rgba(var(--red-accent-rgb), 0.10) !important;
+  box-shadow: 0 0 0 1px var(--psg-focus), 0 0 0 3px var(--psg-surface-active) !important;
 }
 :deep(.el-input__inner) {
   font-size: 14px !important;
-  color: #111111 !important;
+  color: var(--psg-text) !important;
 }
 
 /* ── Email + domain group ───────────────────────────────────── */
 .email-input :deep(.el-input__wrapper) {
   box-shadow: none !important;
-  border-top:    1px solid #DADADA !important;
-  border-bottom: 1px solid #DADADA !important;
-  border-left:   1px solid #DADADA !important;
+  border-top:    1px solid var(--psg-border) !important;
+  border-bottom: 1px solid var(--psg-border) !important;
+  border-left:   1px solid var(--psg-border) !important;
   border-right:  none !important;
-  border-radius: var(--radius-sm) !important;
-  background: #FFFFFF !important;
+  border-radius: var(--psg-radius-sm) !important;
+  background: var(--psg-surface) !important;
   height: 46px;
   transition: border-color 0.15s !important;
 }
 .email-input :deep(.el-input__wrapper.is-focus) {
-  border-color: var(--red-accent) !important;
+  border-color: var(--psg-focus) !important;
   box-shadow: none !important;
 }
 .email-input :deep(.el-input-group__append) {
   box-shadow: none !important;
-  border-top:    1px solid #DADADA !important;
-  border-right:  1px solid #DADADA !important;
-  border-bottom: 1px solid #DADADA !important;
-  border-left:   1px solid #EBEBEB !important;
-  border-radius: var(--radius-sm) !important;
-  background: #F5F5F5 !important;
+  border-top:    1px solid var(--psg-border) !important;
+  border-right:  1px solid var(--psg-border) !important;
+  border-bottom: 1px solid var(--psg-border) !important;
+  border-left:   1px solid var(--psg-border) !important;
+  border-radius: var(--psg-radius-sm) !important;
+  background: var(--psg-surface-muted) !important;
   padding: 0 12px !important;
   height: 46px;
   font-size: 13px !important;
   font-weight: 500 !important;
   white-space: nowrap;
-  color: #555555 !important;
+  color: var(--psg-text-secondary) !important;
 }
 .email-input:focus-within :deep(.el-input-group__append) {
-  border-top-color:    var(--red-accent) !important;
-  border-right-color:  var(--red-accent) !important;
-  border-bottom-color: var(--red-accent) !important;
+  border-top-color:    var(--psg-focus) !important;
+  border-right-color:  var(--psg-focus) !important;
+  border-bottom-color: var(--psg-focus) !important;
 }
 
 /* ── Options row ────────────────────────────────────────────── */
@@ -1011,23 +998,23 @@ function submitRegister() {
 }
 .remember-check :deep(.el-checkbox__label) {
   font-size: 13px;
-  color: #444444;
+  color: var(--psg-text-secondary);
   padding-left: 7px;
 }
 .text-link {
   font-size: 13px;
   font-weight: 500;
-  color: var(--red-accent);
+  color: var(--psg-text);
   cursor: pointer;
-  transition: color 0.12s;
+  transition: opacity 0.12s;
 }
-.text-link:hover { color: var(--red-accent-dark); text-decoration: underline; }
+.text-link:hover { opacity: .7; text-decoration: underline; }
 
 /* ── Buttons ────────────────────────────────────────────────── */
 .btn {
   height: 46px;
   width: 100%;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
   font-size: 14px;
@@ -1035,16 +1022,15 @@ function submitRegister() {
 .btn-oauth { margin-top: 12px; }
 
 :deep(.el-button--primary) {
-  background: var(--red-accent) !important;
-  border-color: var(--red-accent) !important;
-  color: var(--on-accent) !important;
+  background: var(--psg-primary) !important;
+  border-color: var(--psg-primary) !important;
+  color: var(--psg-on-primary) !important;
   font-weight: 600 !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   letter-spacing: 0.02em !important;
 
   &:hover, &:focus {
-    background: var(--red-accent-dark) !important;
-    border-color: var(--red-accent-dark) !important;
+    opacity: .88;
   }
   &.is-loading { opacity: 0.75; }
 }
@@ -1058,20 +1044,20 @@ function submitRegister() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #FFFFFF;
-  border: 1px solid #DADADA;
-  border-radius: var(--radius-sm);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.01em;
-  color: #111111;
+  color: var(--psg-text);
   transition: border-color 0.15s, background 0.15s;
 
-  svg { color: var(--red-accent); }
+  svg { color: var(--psg-text-secondary); }
 
-  &:hover { border-color: #111111; background: #FAFAFA; }
+  &:hover { border-color: var(--psg-border-strong); background: var(--psg-surface-muted); }
 }
 
 /* ── Switch + note ──────────────────────────────────────────── */
@@ -1079,24 +1065,25 @@ function submitRegister() {
   margin-top: 22px;
   text-align: center;
   font-size: 13px;
-  color: #666666;
+  color: var(--psg-text-secondary);
   cursor: pointer;
 
   span {
-    color: var(--red-accent);
+    color: var(--psg-text);
     cursor: pointer;
     font-weight: 600;
+    text-decoration: underline;
   }
 }
 
 .authorized-note {
   margin-top: 26px;
   padding-top: 18px;
-  border-top: 1px solid #EEEEEE;
+  border-top: 1px solid var(--psg-border);
   font-size: 11px;
   line-height: 1.6;
   letter-spacing: 0.01em;
-  color: #999999;
+  color: var(--psg-text-muted);
   text-align: center;
 }
 
@@ -1162,12 +1149,12 @@ function submitRegister() {
   }
 
   .psg-link-text {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--psg-font-mono);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--red-accent);
+    color: var(--psg-text-secondary);
     text-decoration: none;
   }
 }
@@ -1186,16 +1173,16 @@ function submitRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #cccccc;
-  background: #ffffff;
+  border: 1px solid var(--psg-border);
+  background: var(--psg-surface);
   cursor: pointer;
-  color: #555555;
+  color: var(--psg-text-secondary);
   transition: border-color 0.1s, color 0.1s;
 
   @media (hover: hover) {
     &:hover {
-      border-color: #000000;
-      color: #000000;
+      border-color: var(--psg-border-strong);
+      color: var(--psg-text);
     }
   }
 }
@@ -1204,22 +1191,22 @@ function submitRegister() {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 13px;
 }
 
 .lang-mark {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   padding: 1px 4px;
-  border: 1px solid #dddddd;
-  color: #999999;
+  border: 1px solid var(--psg-border);
+  color: var(--psg-text-muted);
 
   &.active {
-    border-color: var(--red-accent);
-    color: var(--red-accent);
+    border-color: var(--psg-primary);
+    color: var(--psg-text);
   }
 }
 </style>
