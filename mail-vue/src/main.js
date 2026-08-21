@@ -4,6 +4,7 @@ import router from './router';
 import './style.css';
 import './professional-mail.css';
 import './professional-mail-components.css';
+import './professional-mail-detail.css';
 
 // Fonts — bundled locally so Electron works offline
 import '@fontsource/ibm-plex-sans/400.css'
