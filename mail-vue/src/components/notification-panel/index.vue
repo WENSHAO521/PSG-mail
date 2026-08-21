@@ -62,7 +62,7 @@ const notifStore = useNotificationStore()
 <style>
 .notif-popper {
   padding: 0 !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   overflow: hidden;
 }
 </style>
@@ -78,8 +78,8 @@ const notifStore = useNotificationStore()
   justify-content: center;
 
   :deep(.el-badge__content) {
-    background: var(--red-accent);
-    color: var(--on-accent);
+    background: var(--psg-danger);
+    color: var(--psg-on-primary);
     border-color: transparent;
     font-size: 10px;
     height: 16px;
@@ -100,13 +100,13 @@ const notifStore = useNotificationStore()
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--light-border-color);
+  border-bottom: 1px solid var(--psg-border);
   flex-shrink: 0;
 
   .notif-title {
     font-size: 13px;
     font-weight: 700;
-    color: var(--el-text-color-primary);
+    color: var(--psg-text);
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
@@ -116,9 +116,9 @@ const notifStore = useNotificationStore()
     border: none;
     cursor: pointer;
     font-size: 11.5px;
-    color: var(--regular-text-color);
+    color: var(--psg-text-secondary);
     padding: 0;
-    &:hover { color: var(--red-accent); }
+    &:hover { color: var(--psg-text); }
   }
 }
 
@@ -130,16 +130,16 @@ const notifStore = useNotificationStore()
 
 .notif-item {
   padding: 10px 14px;
-  border-bottom: 1px solid var(--light-border-color);
+  border-bottom: 1px solid var(--psg-border);
   cursor: default;
 
   &:last-child { border-bottom: none; }
-  &:hover { background: var(--base-fill); }
+  &:hover { background: var(--psg-surface-muted); }
 
   .notif-sender {
     font-size: 12.5px;
     font-weight: 700;
-    color: var(--el-text-color-primary);
+    color: var(--psg-text);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -147,7 +147,7 @@ const notifStore = useNotificationStore()
 
   .notif-subject {
     font-size: 12px;
-    color: var(--regular-text-color);
+    color: var(--psg-text-secondary);
     margin-top: 2px;
     overflow: hidden;
     white-space: nowrap;
@@ -156,7 +156,7 @@ const notifStore = useNotificationStore()
 
   .notif-time {
     font-size: 11px;
-    color: var(--secondary-text-color);
+    color: var(--psg-text-muted);
     margin-top: 3px;
   }
 }

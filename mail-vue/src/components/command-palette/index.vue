@@ -218,29 +218,18 @@ defineExpose({ open, close })
   justify-content: center;
   padding-top: 12vh;
   background: rgba(0, 0, 0, 0.40);
-  backdrop-filter: blur(6px) saturate(160%);
-  -webkit-backdrop-filter: blur(6px) saturate(160%);
 }
 
-/* ── Palette box ── */
+/* ── Palette box — opaque, no glass ── */
 .palette-box {
   width: min(580px, calc(100vw - 32px));
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  border-radius: var(--radius-sm);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
   box-shadow: 0 8px 40px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   max-height: 70vh;
-}
-
-.dark .palette-box {
-  background: rgba(24, 24, 24, 0.92);
-  border-color: rgba(255,255,255,0.08);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.60), 0 2px 8px rgba(0,0,0,0.40);
 }
 
 /* ── Input row ── */
@@ -252,7 +241,7 @@ defineExpose({ open, close })
 }
 
 .palette-search-icon {
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   flex-shrink: 0;
 }
 
@@ -263,18 +252,18 @@ defineExpose({ open, close })
   outline: none;
   font-size: 16px;
   font-weight: 500;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   font-family: inherit;
-  &::placeholder { color: var(--secondary-text-color); }
+  &::placeholder { color: var(--psg-text-secondary); }
 }
 
 .esc-badge {
   font-size: 10px;
-  font-family: 'IBM Plex Mono', monospace;
-  color: var(--secondary-text-color);
-  background: var(--base-fill);
-  border: 1px solid var(--light-border-color);
-  border-radius: var(--radius-sm);
+  font-family: var(--psg-font-mono);
+  color: var(--psg-text-secondary);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
   padding: 2px 6px;
   flex-shrink: 0;
   cursor: default;
@@ -283,12 +272,8 @@ defineExpose({ open, close })
 
 .palette-divider {
   height: 1px;
-  background: rgba(0,0,0,0.06);
+  background: var(--psg-border);
   flex-shrink: 0;
-}
-
-.dark .palette-divider {
-  background: rgba(255,255,255,0.06);
 }
 
 /* ── Results ── */
@@ -304,7 +289,7 @@ defineExpose({ open, close })
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   padding: 8px 10px 4px;
   user-select: none;
 }
@@ -317,20 +302,20 @@ defineExpose({ open, close })
   padding: 9px 10px;
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   cursor: pointer;
   text-align: left;
   transition: background 0.10s;
   font-family: inherit;
 
   &.active, &:hover {
-    background: rgba(var(--red-accent-rgb), 0.07);
+    background: var(--psg-surface-active);
   }
-  &.active .result-icon { color: var(--red-accent); }
+  &.active .result-icon { color: var(--psg-primary); }
 }
 
 .result-icon {
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -341,7 +326,7 @@ defineExpose({ open, close })
   flex: 1;
   font-size: 14px;
   font-weight: 500;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -349,11 +334,11 @@ defineExpose({ open, close })
 
 .result-shortcut {
   font-size: 10px;
-  font-family: 'IBM Plex Mono', monospace;
-  color: var(--secondary-text-color);
-  background: var(--base-fill);
-  border: 1px solid var(--light-border-color);
-  border-radius: var(--radius-sm);
+  font-family: var(--psg-font-mono);
+  color: var(--psg-text-secondary);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
   padding: 2px 6px;
   flex-shrink: 0;
   user-select: none;
@@ -363,7 +348,7 @@ defineExpose({ open, close })
   padding: 24px 10px;
   text-align: center;
   font-size: 13.5px;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
 }
 
 /* ── Animation ── */
