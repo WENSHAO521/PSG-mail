@@ -2,7 +2,7 @@ import {createApp} from 'vue';
 import App from './App.vue';
 import router from './router';
 
-// PSG Mail full-rebuild architecture (target: main.js imports only these four).
+// PSG Mail design system — the entire app's presentation layer.
 import './styles/tokens.css';
 import './styles/base.css';
 // element-plus's own dark css-vars must load before ours, or its
@@ -11,17 +11,6 @@ import './styles/base.css';
 import 'element-plus/theme-chalk/dark/css-vars.css';
 import './styles/element-plus.css';
 import './styles/platform.css';
-
-// Legacy presentation layer — kept as a safety net while each area of the
-// app is rebuilt on scoped component styles. Deleted at the final legacy
-// deletion gate; do not add new rules to any of these files.
-import './style.css';
-import './ui-redesign.css';
-import './ui-redesign-phase2.css';
-import './ui-redesign-phase3.css';
-import './ui-redesign-phase4.css';
-import './ui-redesign-phase5.css';
-import './ui-redesign-phase6.css';
 
 // Fonts — bundled locally so Electron works offline
 import '@fontsource/ibm-plex-sans/400.css'
@@ -48,9 +37,8 @@ app.config.devtools = true;
 
 app.mount('#app');
 
-// Vite's CSS minifier strips !important from custom property declarations,
-// so :root { --el-font-family: ... !important } in style.css loses to the
-// vendor-element-plus chunk (same :root specificity, later in document order).
-// Setting via inline style on <html> beats all external stylesheet rules.
+// Belt-and-suspenders: force the font past Element Plus's own vendor
+// chunk regardless of build-specific chunk/cascade ordering. An inline
+// style on <html> beats any external stylesheet rule.
 const PSG_FONT = "'IBM Plex Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif"
 document.documentElement.style.setProperty('--el-font-family', PSG_FONT, 'important')
