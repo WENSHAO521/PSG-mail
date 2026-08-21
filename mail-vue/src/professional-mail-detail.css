@@ -1,0 +1,73 @@
+/* PSG Mail — Message detail professional layout
+ * Targeted component module: preserves every existing action while keeping
+ * the reading toolbar usable on narrow Android/PWA widths.
+ */
+
+.meta-date,
+.page-counter {
+  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-label-chip {
+  border-radius: 5px !important;
+  font-weight: 600 !important;
+}
+
+@media (max-width: 768px) {
+  .detail-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .detail-header::-webkit-scrollbar { display: none; }
+
+  .detail-header .header-left,
+  .detail-header .header-right {
+    display: flex !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+    gap: 0 !important;
+  }
+
+  .detail-header .header-right {
+    margin-left: auto !important;
+  }
+
+  .detail-header .icon-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 7px !important;
+  }
+
+  .detail-header .page-counter {
+    display: none !important;
+  }
+
+  .detail-content {
+    padding-top: 22px !important;
+  }
+
+  .meta-date {
+    font-size: 10.5px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .detail-header {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .detail-header .icon-btn {
+    width: 31px !important;
+    min-width: 31px !important;
+  }
+}
