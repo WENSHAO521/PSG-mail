@@ -267,7 +267,7 @@ function destroyEditor() {
 
 :deep(.tox-tinymce) {
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
 }
 
 :deep(.tox-toolbar__group) {
