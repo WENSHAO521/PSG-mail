@@ -1,0 +1,286 @@
+/* PSG Mail — Professional component contracts
+ *
+ * These rules intentionally mirror component/runtime geometry that cannot be
+ * treated as arbitrary decoration. In particular, email-scroll uses a
+ * virtualized list with fixed item heights. Visual row heights MUST match its
+ * itemHeight contract or the list will overlap/jump while scrolling.
+ */
+
+/* ── Prevent generic toolbar rules from leaking between mail list / compose ── */
+.mail-toolbar .toolbar-left {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 8px !important;
+}
+
+.write-box .toolbar-bar .toolbar-left {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  gap: 6px !important;
+  overflow: hidden !important;
+}
+
+.write-box .toolbar-bar .toolbar-right {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-left: auto !important;
+}
+
+/* ── Virtualized message row contract ─────────────────────────
+ * email-scroll/index.vue currently computes:
+ *   >1366: default 60 / all-email 68
+ *   769–1366: default 64 / all-email 72
+ *   <=768: default 104 / all-email 112
+ * Keep CSS exactly in sync with those values.
+ * ───────────────────────────────────────────────────────────── */
+.mail-row-wrap,
+.mail-row {
+  min-height: 60px !important;
+  height: 60px !important;
+}
+
+.mail-row.all-email {
+  min-height: 68px !important;
+  height: 68px !important;
+}
+
+/* Desktop three-pane density: compact two-line row. */
+@media (min-width: 1367px) {
+  .mail-row {
+    grid-template-columns: 30px minmax(0, 1fr) auto !important;
+    grid-template-rows: 27px 25px !important;
+    grid-template-areas:
+      'check sender meta'
+      'check subject meta' !important;
+    column-gap: 7px !important;
+    padding: 4px 10px 4px 7px !important;
+  }
+
+  .mail-row.all-email {
+    grid-template-rows: 29px 31px !important;
+    padding-block: 4px !important;
+  }
+
+  .sender-avatar {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+  }
+
+  .row-sender { height: 27px !important; }
+  .row-subject-cell { height: 25px !important; line-height: 23px !important; }
+  .mail-name { font-size: 12.5px !important; }
+  .subject-text { font-size: 12px !important; }
+  .mail-preview-inline { font-size: 11.5px !important; }
+  .mail-time { font-size: 10px !important; }
+}
+
+/* Small laptops / compact desktop: runtime allocates 64/72. */
+@media (min-width: 769px) and (max-width: 1366px) {
+  .mail-row-wrap,
+  .mail-row {
+    min-height: 64px !important;
+    height: 64px !important;
+  }
+
+  .mail-row.all-email {
+    min-height: 72px !important;
+    height: 72px !important;
+  }
+
+  .mail-row {
+    grid-template-columns: 30px minmax(0, 1fr) auto !important;
+    grid-template-rows: 29px 27px !important;
+    grid-template-areas:
+      'check sender meta'
+      'check subject meta' !important;
+    column-gap: 7px !important;
+    padding: 4px 9px 4px 7px !important;
+  }
+
+  .sender-avatar {
+    width: 27px !important;
+    height: 27px !important;
+    min-width: 27px !important;
+  }
+}
+
+/* Mobile list: use the runtime's 104/112px deliberately as a readable
+ * three-line mail item instead of fighting the virtual list with CSS-only
+ * compression. This remains flat (not card-per-message) and touch-friendly.
+ */
+@media (max-width: 768px) {
+  .mail-row-wrap,
+  .mail-row {
+    min-height: 104px !important;
+    height: 104px !important;
+  }
+
+  .mail-row.all-email {
+    min-height: 112px !important;
+    height: 112px !important;
+  }
+
+  .mail-row-wrap {
+    padding: 0 !important;
+    border-bottom: 1px solid var(--pm-border) !important;
+    background: var(--pm-surface) !important;
+  }
+
+  .mail-row {
+    grid-template-columns: 40px minmax(0, 1fr) 54px !important;
+    grid-template-rows: 32px 28px 28px !important;
+    grid-template-areas:
+      'check sender meta'
+      'check subject subject'
+      'check subject subject' !important;
+    column-gap: 9px !important;
+    row-gap: 0 !important;
+    padding: 8px 10px 8px 8px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: var(--pm-surface) !important;
+    box-shadow: none !important;
+  }
+
+  .mail-row:hover,
+  .mail-row.is-unread,
+  .mail-row.is-unread:hover {
+    background: var(--pm-surface) !important;
+  }
+
+  .mail-row[data-active],
+  .mail-row.is-unread[data-active] {
+    background: var(--pm-surface-selected) !important;
+    box-shadow: inset 3px 0 0 var(--pm-brand) !important;
+  }
+
+  .row-check {
+    grid-area: check !important;
+    width: 40px !important;
+    align-self: stretch !important;
+    justify-content: flex-start !important;
+    padding-top: 7px !important;
+  }
+
+  .row-sender {
+    grid-area: sender !important;
+    height: 32px !important;
+    padding: 0 !important;
+  }
+
+  .sender-avatar {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+  }
+
+  .mail-name {
+    font-size: 13.5px !important;
+    line-height: 20px !important;
+  }
+
+  .row-meta {
+    grid-area: meta !important;
+    align-self: start !important;
+    justify-self: end !important;
+    min-width: 48px !important;
+    padding-top: 5px !important;
+  }
+
+  .mail-time {
+    font-size: 10.5px !important;
+    line-height: 18px !important;
+  }
+
+  .row-subject-cell {
+    grid-area: subject !important;
+    display: block !important;
+    height: 56px !important;
+    line-height: 23px !important;
+    overflow: hidden !important;
+    white-space: normal !important;
+  }
+
+  .subject-text {
+    display: block !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: var(--pm-text) !important;
+    font-size: 13px !important;
+    line-height: 23px !important;
+  }
+
+  .mail-preview-inline {
+    display: block !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: var(--pm-text-3) !important;
+    font-size: 12px !important;
+    line-height: 22px !important;
+  }
+
+  .user-info-inline {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    font-size: 10.5px !important;
+    line-height: 18px !important;
+    color: var(--pm-text-3) !important;
+  }
+
+  .mail-cb { opacity: .28 !important; }
+  .mail-row[data-active] .mail-cb,
+  .mail-cb.is-checked { opacity: 1 !important; }
+
+  .mail-actions { display: none !important; }
+}
+
+/* The professional toolbar owns the mobile search surface. Remove the legacy
+ * cream/glass card treatment from the component's scoped mobile rules.
+ */
+@media (max-width: 768px) {
+  .mail-toolbar {
+    min-height: 92px !important;
+    height: 92px !important;
+    padding: 10px 10px 8px !important;
+    border-bottom: 1px solid var(--pm-border) !important;
+    background: var(--pm-surface) !important;
+  }
+
+  .mail-toolbar .toolbar-left {
+    height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .mail-toolbar .toolbar-search {
+    flex: 1 0 calc(100% - 34px) !important;
+    max-width: none !important;
+    height: 38px !important;
+    padding: 0 10px !important;
+    border: 1px solid var(--pm-border) !important;
+    border-radius: 9px !important;
+    background: var(--pm-surface-subtle) !important;
+  }
+
+  .mail-toolbar .search-input-inline {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+  }
+}
