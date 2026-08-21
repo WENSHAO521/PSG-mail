@@ -1,29 +1,29 @@
 <template>
   <nav class="m-tabbar">
     <button class="m-tab" :class="{ active: isActive('email') }" @click="go('email')">
-      <Icon icon="psg:inbox" width="22" height="22"/>
+      <Icon icon="psg:inbox" width="21" height="21"/>
       <span>{{ $t('inbox') }}</span>
     </button>
 
-    <button class="m-tab" @click="openSearch">
-      <Icon icon="solar:magnifer-linear" width="22" height="22"/>
+    <button class="m-tab" :class="{ active: isActive('search') }" @click="openSearch">
+      <Icon icon="solar:magnifer-linear" width="21" height="21"/>
       <span>{{ $t('search') }}</span>
     </button>
 
-    <!-- Center: compose -->
     <button class="m-tab m-tab-compose" :aria-label="$t('compose')" @click="openCompose">
       <span class="m-compose-fab">
-        <Icon icon="psg:compose" width="22" height="22"/>
+        <Icon icon="psg:compose" width="20" height="20"/>
       </span>
+      <span class="m-compose-label">{{ $t('compose') }}</span>
     </button>
 
     <button class="m-tab" :class="{ active: isActive('send') }" @click="go('send')">
-      <Icon icon="psg:send" width="22" height="22"/>
+      <Icon icon="psg:send" width="21" height="21"/>
       <span>{{ $t('sent') }}</span>
     </button>
 
     <button class="m-tab" :class="{ active: isActive('setting') }" @click="go('setting')">
-      <Icon icon="psg:settings" width="22" height="22"/>
+      <Icon icon="psg:settings" width="21" height="21"/>
       <span>{{ $t('settings') }}</span>
     </button>
   </nav>
@@ -59,23 +59,14 @@ function openSearch() {
 <style scoped lang="scss">
 .m-tabbar {
   display: flex;
-  width: calc(100% - 24px);
+  width: 100%;
   align-items: stretch;
   justify-content: space-around;
   height: calc(62px + env(safe-area-inset-bottom, 0px));
-  margin: 0 12px 10px;
-  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255,255,255,0.94);
-  border: 1px solid rgba(0,0,0,0.10);
-  border-radius: 22px;
-  box-shadow: 0 18px 42px rgba(0,0,0,0.18);
-  backdrop-filter: blur(18px);
-
-  :global(.dark) & {
-    background: rgba(22,22,26,0.94);
-    border-color: rgba(255,255,255,0.10);
-    box-shadow: 0 18px 42px rgba(0,0,0,0.46);
-  }
+  margin: 0;
+  padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px));
+  background: var(--pm-surface, #fff);
+  border-top: 1px solid var(--pm-border, #e3e7ed);
 }
 
 .m-tab {
@@ -85,54 +76,58 @@ function openSearch() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  border: none;
+  gap: 2px;
+  padding: 3px 2px;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
+  color: var(--pm-text-3, #7d8797);
   cursor: pointer;
-  color: var(--muted, #666666);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0;
-  padding: 5px 2px;
-  border-radius: 16px;
-  transition: color 0.12s, background 0.12s;
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 550;
+  transition: color .12s ease, background .12s ease;
 
-  span {
-    white-space: nowrap;
+  > span {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
+    white-space: nowrap;
   }
 
-  &:active { color: #000000; }
+  &:active { background: var(--pm-surface-hover, #f3f5f8); }
 
   &.active {
-    color: var(--red-accent);
-    background: rgba(var(--red-accent-rgb),0.07);
-    :global(.dark) & { color: var(--red-accent); }
+    color: var(--pm-brand, #b4233d);
+    font-weight: 650;
   }
 }
 
 .m-tab-compose {
-  flex: 0 0 58px;
-  padding: 0 4px;
+  flex: 0 0 66px;
+  gap: 1px;
 }
 
 .m-compose-fab {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(180deg, var(--red-accent) 0%, var(--red-accent-dark) 100%);
-  color: var(--on-accent);
+  width: 38px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 17px;
-  box-shadow: 0 12px 24px rgba(var(--red-accent-rgb),0.30);
-  transition: transform 0.14s, background 0.14s;
+  border-radius: 9px;
+  background: var(--pm-brand, #b4233d);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(180, 35, 61, .18);
+  transition: transform .12s ease, background .12s ease;
+}
 
-  .m-tab-compose:active & {
-    transform: scale(0.96);
-    background: var(--red-accent-dark);
-  }
+.m-compose-label {
+  color: var(--pm-brand, #b4233d);
+  font-weight: 650;
+}
+
+.m-tab-compose:active .m-compose-fab {
+  transform: scale(.97);
+  background: var(--pm-brand-hover, #971c32);
 }
 </style>
