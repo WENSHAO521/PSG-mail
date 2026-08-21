@@ -194,7 +194,7 @@
             </el-table-column>
             <el-table-column width="44">
               <template #default>
-                <Icon icon="solar:user-linear" width="20" height="20" style="color:var(--secondary-text-color)"/>
+                <Icon icon="solar:user-linear" width="20" height="20" style="color:var(--psg-text-secondary)"/>
               </template>
             </el-table-column>
           </el-table>
@@ -238,10 +238,10 @@
           </div>
           <div v-else style="display:flex;flex-direction:column;gap:6px;height:380px;overflow-y:auto;padding:4px 0">
             <div v-for="g in groupsList" :key="g.groupId"
-                 style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px;border-bottom:1px solid var(--light-border-color)">
+                 style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px;border-bottom:1px solid var(--psg-border)">
               <div>
                 <div style="font-weight:600;font-size:13px">{{ g.name }}</div>
-                <div style="font-size:11.5px;color:var(--regular-text-color)">{{ g.contacts.map(c => c.name || c.email).join(', ') }}</div>
+                <div style="font-size:11.5px;color:var(--psg-text-secondary)">{{ g.contacts.map(c => c.name || c.email).join(', ') }}</div>
               </div>
               <el-button size="small" type="primary" @click="insertGroup(g)">{{ $t('insertGroup') }}</el-button>
             </div>
@@ -1236,6 +1236,10 @@ function close() {
   background: rgba(17, 17, 17, 0.12);
   z-index: 2000;
 
+  html.dark & {
+    background: rgba(0, 0, 0, 0.45);
+  }
+
   @media (min-width: 768px) {
     align-items: flex-end;
     justify-content: flex-end;
@@ -1245,40 +1249,37 @@ function close() {
 
 /* ── Dialog box ──────────────────────────────── */
 .write-box {
-  background: var(--el-bg-color);
+  background: var(--psg-surface);
   width: min(1300px, calc(100% - 16px));
   display: grid;
   grid-template-rows: auto 1fr;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.40), 0 4px 16px rgba(0,0,0,0.18);
-  border-radius: var(--radius-lg);
   overflow: hidden;
 
   @media (max-width: 767px) {
     width: 100%;
     height: 100%;
-    border-radius: var(--radius-lg);
   }
 
-  /* Desktop "Normal" composer — Gmail-style floating panel, not a
-     centered 1300px modal. */
+  /* Desktop "Normal" composer — a productivity panel, not a centered
+     1300px modal. */
   @media (min-width: 768px) {
     width: min(680px, calc(100vw - 56px));
     height: min(680px, calc(100vh - 88px));
   }
 }
 
-/* ── Header — flat editorial bar ──────── */
+/* ── Header — ink bar, adapts with theme like the rest of the app's
+   ink accent (compose buttons, active nav) ──────── */
 .wh {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px 0 20px;
-  background: #111111;
+  background: var(--psg-primary);
   height: 52px;
   flex-shrink: 0;
-  /* .wh is a fixed dark bar in both themes, so its accent must stay the
-     dark-surface (light) tone regardless of --red-accent's current theme value */
-  border-bottom: 2px solid #f4f4f4;
+  border-bottom: 2px solid var(--psg-primary);
 }
 
 .wh-left {
@@ -1289,12 +1290,12 @@ function close() {
 }
 
 .wh-badge {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: #f4f4f4; /* .wh is always a dark bar — see note above */
+  color: var(--psg-on-primary);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1305,8 +1306,8 @@ function close() {
   gap: 9px;
   min-width: 0;
   padding-left: 14px;
-  border-left: 1px solid rgba(255,255,255,0.10);
-  border-radius: var(--radius-sm);
+  border-left: 1px solid color-mix(in srgb, var(--psg-on-primary) 15%, transparent);
+  border-radius: var(--psg-radius-sm);
   padding: 4px 8px 4px 14px;
   transition: background 0.14s;
   outline: none;
@@ -1314,12 +1315,12 @@ function close() {
 
   &.selectable {
     cursor: pointer;
-    &:hover { background: rgba(255,255,255,0.07); }
+    &:hover { background: color-mix(in srgb, var(--psg-on-primary) 8%, transparent); }
   }
 }
 
 .sender-chevron {
-  color: rgba(255,255,255,0.35);
+  color: color-mix(in srgb, var(--psg-on-primary) 40%, transparent);
   flex-shrink: 0;
   margin-left: 2px;
   transition: transform 0.18s cubic-bezier(0.22,1,0.36,1);
@@ -1337,10 +1338,10 @@ function close() {
 .sender-opt-avatar {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm);
-  background: rgba(var(--red-accent-rgb),0.10);
-  border: 1px solid rgba(var(--red-accent-rgb),0.20);
-  color: var(--red-accent);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  color: var(--psg-text-secondary);
   font-size: 11px;
   font-weight: 800;
   display: flex;
@@ -1355,7 +1356,7 @@ function close() {
   height: 28px;
   object-fit: cover;
   display: block;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
 }
 
 .sender-opt-info {
@@ -1369,7 +1370,7 @@ function close() {
 .sender-opt-name {
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1377,28 +1378,28 @@ function close() {
 
 .sender-opt-email {
   font-size: 11.5px;
-  font-family: 'IBM Plex Mono', monospace;
-  color: var(--secondary-text-color);
+  font-family: var(--psg-font-mono);
+  color: var(--psg-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .sender-opt-check {
-  color: var(--red-accent);
+  color: var(--psg-primary);
   flex-shrink: 0;
 }
 
 :deep(.is-active-sender) {
-  background: rgba(var(--red-accent-rgb),0.05) !important;
+  background: var(--psg-surface-active) !important;
 }
 
 .wh-avatar {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm);
-  background: var(--red-accent);
-  color: var(--on-accent);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-on-primary);
+  color: var(--psg-primary);
   font-size: 12px;
   font-weight: 700;
   display: flex;
@@ -1424,7 +1425,7 @@ function close() {
 .wh-name {
   font-size: 12.5px;
   font-weight: 600;
-  color: rgba(255,255,255,0.90);
+  color: color-mix(in srgb, var(--psg-on-primary) 90%, transparent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1432,8 +1433,8 @@ function close() {
 
 .wh-email {
   font-size: 10.5px;
-  font-family: 'IBM Plex Mono', monospace;
-  color: rgba(255,255,255,0.38);
+  font-family: var(--psg-font-mono);
+  color: color-mix(in srgb, var(--psg-on-primary) 45%, transparent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1442,19 +1443,19 @@ function close() {
 .wh-close {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: rgba(255,255,255,0.55);
+  color: color-mix(in srgb, var(--psg-on-primary) 60%, transparent);
   flex-shrink: 0;
   transition: background 0.12s, color 0.12s;
 
   @media (hover: hover) {
     &:hover {
-      background: rgba(255,255,255,0.10);
-      color: rgba(255,255,255,0.90);
+      background: color-mix(in srgb, var(--psg-on-primary) 12%, transparent);
+      color: var(--psg-on-primary);
     }
   }
 }
@@ -1472,7 +1473,7 @@ function close() {
   align-items: center;
   min-height: 46px;
   padding: 0 20px;
-  border-bottom: 1px solid var(--light-border-color);
+  border-bottom: 1px solid var(--psg-border);
   flex-shrink: 0;
   gap: 0;
 }
@@ -1484,7 +1485,7 @@ function close() {
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
 }
 
 .field-tag {
@@ -1503,18 +1504,18 @@ function close() {
 .field-toggle {
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   cursor: pointer;
   letter-spacing: 0.03em;
   user-select: none;
   padding: 3px 6px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   transition: background 0.12s, color 0.12s;
 
   @media (hover: hover) {
     &:hover {
-      background: var(--base-fill);
-      color: var(--el-text-color-primary);
+      background: var(--psg-surface-muted);
+      color: var(--psg-text);
     }
   }
 }
@@ -1522,18 +1523,18 @@ function close() {
 .icon-btn-sm {
   width: 26px;
   height: 26px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   transition: background 0.12s, color 0.12s;
 
   @media (hover: hover) {
     &:hover {
-      background: var(--base-fill);
-      color: var(--el-text-color-primary);
+      background: var(--psg-surface-muted);
+      color: var(--psg-text);
     }
   }
 }
@@ -1541,7 +1542,7 @@ function close() {
 /* Subject row */
 .subject-row {
   min-height: 50px;
-  border-bottom: 1px solid var(--separator, #e5e5e5);
+  border-bottom: 1px solid var(--psg-border);
 }
 
 /* Editor fills remaining height */
@@ -1557,8 +1558,8 @@ function close() {
   align-items: center;
   justify-content: space-between;
   padding: 9px 16px 10px;
-  border-top: 1px solid var(--light-border-color);
-  background: var(--extra-light-fill);
+  border-top: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
   flex-shrink: 0;
   gap: 12px;
 }
@@ -1574,19 +1575,19 @@ function close() {
 .tb-btn {
   height: 30px;
   min-width: 30px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--regular-text-color);
+  color: var(--psg-text-secondary);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
 
   @media (hover: hover) {
     &:hover {
-      background: var(--base-fill);
-      color: var(--red-accent);
+      background: var(--psg-surface-active);
+      color: var(--psg-text);
     }
   }
 }
@@ -1614,9 +1615,9 @@ function close() {
     height: 26px;
     font-size: 11.5px;
     padding: 0 8px;
-    background: var(--el-bg-color);
-    border: 1px solid var(--light-border-color);
-    border-radius: var(--radius-sm);
+    background: var(--psg-surface);
+    border: 1px solid var(--psg-border);
+    border-radius: var(--psg-radius-sm);
     white-space: nowrap;
     flex-shrink: 0;
     max-width: 200px;
@@ -1630,9 +1631,9 @@ function close() {
     }
 
     .att-size {
-      font-family: 'IBM Plex Mono', monospace;
+      font-family: var(--psg-font-mono);
       font-size: 10px;
-      color: var(--secondary-text-color);
+      color: var(--psg-text-secondary);
     }
   }
 }
@@ -1646,7 +1647,7 @@ function close() {
   font-weight: 600 !important;
   letter-spacing: 0 !important;
   text-transform: none !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   display: inline-flex !important;
   align-items: center !important;
 }
@@ -1655,7 +1656,7 @@ function close() {
   height: 34px !important;
   width: 34px !important;
   padding: 0 !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -1664,13 +1665,13 @@ function close() {
 
 .schedule-picker {
   width: 200px !important;
-  :deep(.el-input__wrapper) { border-radius: var(--radius-sm) !important; }
+  :deep(.el-input__wrapper) { border-radius: var(--psg-radius-sm) !important; }
 }
 
 .schedule-confirm-btn,
 .schedule-cancel-btn {
   height: 28px !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   font-size: 12px !important;
   font-weight: 600 !important;
 }
@@ -1678,7 +1679,7 @@ function close() {
 /* El overrides — flat field inputs */
 :deep(.field-tag .el-input-tag),
 :deep(.field-tag .el-input__wrapper) {
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   box-shadow: none !important;
   border: none !important;
   background: transparent !important;
@@ -1686,7 +1687,7 @@ function close() {
 }
 
 :deep(.subject-input .el-input__wrapper) {
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   box-shadow: none !important;
   border: none !important;
   background: transparent !important;
@@ -1695,7 +1696,7 @@ function close() {
   .el-input__inner {
     font-size: 15px !important;
     font-weight: 600 !important;
-    color: var(--el-text-color-primary) !important;
+    color: var(--psg-text) !important;
     letter-spacing: 0.01em !important;
   }
 }
@@ -1728,12 +1729,12 @@ function close() {
 
 .dir-name {
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
 }
 
 .email-row {
   font-size: 13px;
-  color: var(--regular-text-color);
+  color: var(--psg-text-secondary);
 }
 
 .write-select {
@@ -1749,26 +1750,23 @@ function close() {
   .send {
     align-items: stretch;
     justify-content: stretch;
-    background: var(--el-bg-color);
+    background: var(--psg-canvas);
   }
 
   .write-box {
     width: 100%;
     height: 100dvh;
     box-shadow: none;
-    background: linear-gradient(180deg, #f7f6f3 0%, #efeeeb 100%);
+    background: var(--psg-canvas);
   }
 
+  /* Mobile fullscreen composer: header switches from the desktop ink bar
+     to a flat surface bar with a large badge, matching mobile-header. */
   .wh {
     height: 64px;
     padding: 8px 10px 8px 16px;
-    /* Tinted to match .write-box's own cream gradient (#f7f6f3) instead of
-       literal white — see mail-vue/src/views/content/index.vue for the same
-       fix applied to the email detail view. */
-    background: rgba(247,246,243,0.94);
-    border-bottom: 1px solid rgba(0,0,0,0.08);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.06);
-    backdrop-filter: blur(18px);
+    background: var(--psg-surface);
+    border-bottom: 1px solid var(--psg-border);
   }
 
   .wh-left {
@@ -1783,7 +1781,7 @@ function close() {
     font-weight: 800;
     letter-spacing: 0;
     text-transform: none;
-    color: var(--el-text-color-primary);
+    color: var(--psg-text);
   }
 
   .wh-sender {
@@ -1793,12 +1791,11 @@ function close() {
   .wh-close {
     width: 42px;
     height: 42px;
-    border-radius: var(--radius-sm);
-    color: var(--regular-text-color);
+    border-radius: var(--psg-radius-sm);
+    color: var(--psg-text-secondary);
 
     &:active {
-      background: rgba(0,0,0,0.08);
-      color: var(--red-accent);
+      background: var(--psg-surface-muted);
     }
   }
 
@@ -1811,11 +1808,7 @@ function close() {
     min-height: 54px;
     padding: 0 14px;
     gap: 8px;
-    border-bottom: none;
-    border-radius: var(--radius-sm);
-    background: rgba(247,246,243,0.86);
-    border: 1px solid rgba(0,0,0,0.08);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    border-bottom: 1px solid var(--psg-border);
     margin-bottom: 8px;
   }
 
@@ -1836,8 +1829,8 @@ function close() {
     display: inline-flex;
     align-items: center;
     padding: 0 9px;
-    border-radius: var(--radius-sm);
-    background: rgba(0,0,0,0.05);
+    border-radius: var(--psg-radius-sm);
+    background: var(--psg-surface-muted);
     font-size: 12px;
   }
 
@@ -1854,17 +1847,10 @@ function close() {
     flex: 1;
     min-height: 220px;
     overflow: hidden;
-    border-radius: var(--radius-sm);
-    background: rgba(247,246,243,0.90);
-    border: 1px solid rgba(0,0,0,0.08);
-    border-bottom: none;
-    box-shadow: 0 12px 28px rgba(0,0,0,0.06);
   }
 
   .toolbar-bar {
     padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid rgba(0,0,0,0.08);
-    background: rgba(247,246,243,0.94);
     gap: 8px;
   }
 
@@ -1875,8 +1861,8 @@ function close() {
   .tb-btn {
     width: 40px;
     height: 40px;
-    border-radius: var(--radius-sm);
-    background: rgba(0,0,0,0.04);
+    border-radius: var(--psg-radius-sm);
+    background: var(--psg-surface);
   }
 
   .tb-btn--label {
@@ -1893,14 +1879,14 @@ function close() {
   .send-btn {
     height: 42px !important;
     min-width: 74px !important;
-    border-radius: var(--radius-sm) !important;
+    border-radius: var(--psg-radius-sm) !important;
     padding: 0 18px !important;
   }
 
   .send-later-btn {
     width: 42px !important;
     height: 42px !important;
-    border-radius: var(--radius-sm) !important;
+    border-radius: var(--psg-radius-sm) !important;
   }
 
   .schedule-picker {
@@ -1910,19 +1896,6 @@ function close() {
     bottom: calc(70px + env(safe-area-inset-bottom, 0px));
     width: auto !important;
     z-index: 5;
-  }
-
-  .dark .write-box {
-    background: linear-gradient(180deg, #151519 0%, #101014 100%);
-  }
-
-  .dark .wh,
-  .dark .field-row,
-  .dark .editor-wrap,
-  .dark .toolbar-bar {
-    background: rgba(28,28,33,0.92);
-    border-color: rgba(255,255,255,0.08);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.24);
   }
 }
 </style>
