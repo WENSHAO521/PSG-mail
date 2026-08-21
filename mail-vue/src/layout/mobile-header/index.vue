@@ -50,19 +50,9 @@ function openDrawer() {
   justify-content: space-between;
   height: 64px;
   padding: 8px 12px 8px 8px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,248,248,0.96));
-  border-bottom: 1px solid rgba(0,0,0,0.10);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+  background: var(--psg-surface);
+  border-bottom: 1px solid var(--psg-border);
   gap: 10px;
-  backdrop-filter: blur(18px);
-
-  :global(.dark) & {
-    background:
-      linear-gradient(180deg, rgba(20,20,24,0.96), rgba(16,16,20,0.96));
-    border-bottom-color: rgba(255,255,255,0.08);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.28);
-  }
 }
 
 .m-left {
@@ -91,14 +81,14 @@ function openDrawer() {
   flex-shrink: 0;
   font-size: 13px;
   font-weight: 800;
-  color: var(--red-accent);
+  color: var(--psg-text-muted);
   line-height: 1.1;
 }
 
 .m-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -115,12 +105,12 @@ function openDrawer() {
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--muted, #666666);
+  color: var(--psg-text-secondary);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
 
-  &:active { background: rgba(0, 0, 0, 0.08); }
+  &:active { background: var(--psg-surface-active); }
 }
 
 .m-notif :deep(.icon-btn) {
@@ -130,12 +120,12 @@ function openDrawer() {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--muted, #666666);
-  border-radius: var(--radius-sm);
+  color: var(--psg-text-secondary);
+  border-radius: var(--psg-radius-sm);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
 
-  &:active { background: rgba(0, 0, 0, 0.08); }
+  &:active { background: var(--psg-surface-active); }
 }
 
 </style>

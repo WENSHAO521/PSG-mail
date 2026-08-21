@@ -343,24 +343,25 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #111;
-  color: #fff;
-  border-radius: var(--radius-sm);
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
+  border-radius: var(--psg-radius-sm);
   padding: 10px 14px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.35);
+  box-shadow: 0 2px 10px rgba(0,0,0,.20);
   font-size: 13px;
   white-space: nowrap;
   max-width: calc(100vw - 40px);
 
   .update-icon { opacity: .75; flex-shrink: 0; }
   .update-text { opacity: .9; }
-  .update-ready { color: #7ee2a8; font-weight: 600; }
+  .update-ready { font-weight: 600; }
   .update-progress { width: 100px; flex-shrink: 0; }
-  .update-btn { flex-shrink: 0; border-radius: var(--radius-sm); }
+  .update-btn { flex-shrink: 0; border-radius: var(--psg-radius-sm); }
   .update-close {
-    background: none; border: none; color: rgba(255,255,255,.5);
+    background: none; border: none; color: var(--psg-on-primary);
+    opacity: .55;
     cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px;
-    &:hover { color: #fff; }
+    &:hover { opacity: 1; }
   }
 }
 
@@ -369,12 +370,12 @@ onBeforeUnmount(() => {
 
 .shortcuts-body { display: flex; flex-direction: column; gap: 0; }
 .sc-section-title {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   margin-bottom: 10px;
   &--mt { margin-top: 20px; }
 }
@@ -389,22 +390,22 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 .sc-key {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 11px;
   font-weight: 700;
-  background: var(--base-fill, #f5f5f5);
-  border: 1px solid var(--light-border-color, #ccc);
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
   padding: 3px 10px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   min-width: 72px;
   text-align: center;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
 .sc-desc {
   font-size: 13px;
-  color: var(--regular-text-color, #555);
+  color: var(--psg-text-secondary);
 }
 </style>
 
@@ -419,16 +420,16 @@ onBeforeUnmount(() => {
 
   /* Mail mode: sidebar | list | detail */
   &[data-mode="mail"] {
-    grid-template-columns: 260px minmax(380px, 600px) minmax(380px, 1fr);
+    grid-template-columns: 256px minmax(380px, 420px) minmax(380px, 1fr);
 
     &[data-collapsed="true"] {
-      grid-template-columns: 72px minmax(380px, 600px) minmax(380px, 1fr);
+      grid-template-columns: 72px minmax(380px, 420px) minmax(380px, 1fr);
     }
   }
 
   /* Workspace mode: sidebar | content */
   &[data-mode="workspace"] {
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: 256px minmax(0, 1fr);
 
     &[data-collapsed="true"] {
       grid-template-columns: 72px minmax(0, 1fr);
@@ -438,9 +439,9 @@ onBeforeUnmount(() => {
   /* Tablet: reduce list width */
   @media (max-width: 1280px) {
     &[data-mode="mail"] {
-      grid-template-columns: 260px minmax(340px, 480px) minmax(0, 1fr);
+      grid-template-columns: 256px minmax(340px, 380px) minmax(0, 1fr);
       &[data-collapsed="true"] {
-        grid-template-columns: 72px minmax(340px, 480px) minmax(0, 1fr);
+        grid-template-columns: 72px minmax(340px, 380px) minmax(0, 1fr);
       }
     }
   }
@@ -477,7 +478,7 @@ onBeforeUnmount(() => {
 
     &[data-open="true"] {
       pointer-events: auto;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.35);
       opacity: 1;
     }
   }
@@ -487,8 +488,8 @@ onBeforeUnmount(() => {
 .mail-list-pane {
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid var(--light-border, #e2e2e6);
-  background: var(--extra-light-fill, #f9f9f9);
+  border-right: 1px solid var(--psg-border);
+  background: var(--psg-surface);
 
   /* Mobile: sit between the fixed header and the bottom tab bar */
   @media (max-width: 1024px) {
@@ -507,7 +508,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  background: var(--extra-light-fill, #f9f9f9);
+  background: var(--psg-canvas);
   padding: 0;
 
   /* Mobile: a full-screen reading page (its own back button + actions) */
@@ -530,7 +531,7 @@ onBeforeUnmount(() => {
 .workspace-pane {
   min-height: 0;
   overflow: hidden;
-  background: var(--extra-light-fill, #f9f9f9);
+  background: var(--psg-canvas);
   display: flex;
   flex-direction: column;
 

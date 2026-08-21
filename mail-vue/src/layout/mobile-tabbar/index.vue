@@ -59,23 +59,13 @@ function openSearch() {
 <style scoped lang="scss">
 .m-tabbar {
   display: flex;
-  width: calc(100% - 24px);
+  width: 100%;
   align-items: stretch;
   justify-content: space-around;
   height: calc(62px + env(safe-area-inset-bottom, 0px));
-  margin: 0 12px 10px;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255,255,255,0.94);
-  border: 1px solid rgba(0,0,0,0.10);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 18px 42px rgba(0,0,0,0.18);
-  backdrop-filter: blur(18px);
-
-  :global(.dark) & {
-    background: rgba(22,22,26,0.94);
-    border-color: rgba(255,255,255,0.10);
-    box-shadow: 0 18px 42px rgba(0,0,0,0.46);
-  }
+  background: var(--psg-surface);
+  border-top: 1px solid var(--psg-border);
 }
 
 .m-tab {
@@ -89,12 +79,12 @@ function openSearch() {
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--muted, #666666);
+  color: var(--psg-text-secondary);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0;
   padding: 5px 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   transition: color 0.12s, background 0.12s;
 
   span {
@@ -104,12 +94,10 @@ function openSearch() {
     max-width: 100%;
   }
 
-  &:active { color: #000000; }
+  &:active { background: var(--psg-surface-active); }
 
   &.active {
-    color: var(--red-accent);
-    background: rgba(var(--red-accent-rgb),0.07);
-    :global(.dark) & { color: var(--red-accent); }
+    color: var(--psg-primary);
   }
 }
 
@@ -119,20 +107,19 @@ function openSearch() {
 }
 
 .m-compose-fab {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(180deg, var(--red-accent) 0%, var(--red-accent-dark) 100%);
-  color: var(--on-accent);
+  width: 44px;
+  height: 44px;
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
-  box-shadow: 0 12px 24px rgba(var(--red-accent-rgb),0.30);
-  transition: transform 0.14s, background 0.14s;
+  border-radius: var(--psg-radius-sm);
+  transition: transform 0.14s, opacity 0.14s;
 
   .m-tab-compose:active & {
     transform: scale(0.96);
-    background: var(--red-accent-dark);
+    opacity: .85;
   }
 }
 </style>
