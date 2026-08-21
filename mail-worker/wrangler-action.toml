@@ -90,5 +90,14 @@ linuxdo_switch = "${LINUXDO_SWITCH}"
 # inside this exact subprocess, so it doubles as direct proof that
 # wrangler's [build] command actually inherits the job-level env set in
 # .github/workflows/deploy-cloudflare.yml, rather than an assumption.
+#
+# scripts/build-mail-vue.sh then does the actual `vite build --mode
+# release`, but first writes those same 7 vars into a short-lived
+# mail-vue/.env.release.local (loadEnv() in mail-vue/vite.config.js reads
+# it) and afterwards runs check-built-firebase-env.mjs against the real
+# built output in mail-worker/dist — proof the values reached the bundle
+# itself, not just this subprocess's env. See both scripts for why: a
+# passing check-vite-env.sh only proves the env vars exist here, not that
+# Vite's define/import.meta.env replacement actually picked them up.
 [build]
-command = "ELECTRON_SKIP_BINARY_DOWNLOAD=1 NODE_ENV=development npm --prefix ../mail-vue install --legacy-peer-deps && sh ./scripts/check-vite-env.sh && npm --prefix ../mail-vue run build"
+command = "ELECTRON_SKIP_BINARY_DOWNLOAD=1 NODE_ENV=development npm --prefix ../mail-vue install --legacy-peer-deps && sh ./scripts/check-vite-env.sh && sh ./scripts/build-mail-vue.sh"
