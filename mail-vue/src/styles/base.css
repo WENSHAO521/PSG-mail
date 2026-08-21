@@ -1,0 +1,80 @@
+/*
+ * PSG Mail — Base
+ * Reset, typography defaults, focus ring, text selection.
+ * Everything here consumes tokens.css custom properties only.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--psg-canvas);
+  color: var(--psg-text);
+  font-family: var(--psg-font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+svg {
+  max-width: 100%;
+  display: block;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+code,
+kbd,
+pre,
+.psg-mono {
+  font-family: var(--psg-font-mono);
+}
+
+:focus-visible {
+  outline: 2px solid var(--psg-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--psg-border);
+  border-radius: var(--psg-radius-full);
+  border: 2px solid var(--psg-canvas);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--psg-text-muted);
+}

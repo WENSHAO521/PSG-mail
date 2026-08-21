@@ -1,6 +1,20 @@
 import {createApp} from 'vue';
 import App from './App.vue';
 import router from './router';
+
+// PSG Mail full-rebuild architecture (target: main.js imports only these four).
+import './styles/tokens.css';
+import './styles/base.css';
+// element-plus's own dark css-vars must load before ours, or its
+// `html.dark { --el-color-primary: #409eff; ... }` (same selector,
+// same specificity) would win by import order and reintroduce EP blue.
+import 'element-plus/theme-chalk/dark/css-vars.css';
+import './styles/element-plus.css';
+import './styles/platform.css';
+
+// Legacy presentation layer — kept as a safety net while each area of the
+// app is rebuilt on scoped component styles. Deleted at the final legacy
+// deletion gate; do not add new rules to any of these files.
 import './style.css';
 import './ui-redesign.css';
 import './ui-redesign-phase2.css';
@@ -23,7 +37,6 @@ import '@fontsource/noto-sans-sc/chinese-simplified-700.css'
 import { init } from '@/init/init.js';
 import { createPinia } from 'pinia';
 import piniaPersistedState from 'pinia-plugin-persistedstate';
-import 'element-plus/theme-chalk/dark/css-vars.css';
 import 'nprogress/nprogress.css';
 import perm from "@/perm/perm.js";
 const pinia = createPinia().use(piniaPersistedState)

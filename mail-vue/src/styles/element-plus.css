@@ -1,0 +1,38 @@
+/*
+ * PSG Mail — Element Plus theme
+ * Maps EP's own CSS variables onto PSG tokens so no default EP blue
+ * survives. tokens.css already flips --psg-* under html.dark, so these
+ * derived --el-* vars adapt automatically — no separate dark block needed.
+ *
+ * This is the foundation only. Per-component overrides (Button, Input,
+ * Table, Dialog, Drawer, ...) are added incrementally as each area of the
+ * app is rebuilt; see migration stage "17. Element Plus".
+ */
+
+:root {
+  --el-color-primary: var(--psg-primary);
+  --el-color-danger: var(--psg-danger);
+  --el-color-error: var(--psg-danger);
+
+  --el-font-family: var(--psg-font-sans);
+  --el-border-radius-base: var(--psg-radius-md);
+  --el-border-radius-small: var(--psg-radius-sm);
+
+  --el-border-color: var(--psg-border);
+  --el-border-color-light: var(--psg-border);
+  --el-border-color-lighter: var(--psg-border);
+
+  --el-text-color-primary: var(--psg-text);
+  --el-text-color-regular: var(--psg-text-secondary);
+  --el-text-color-secondary: var(--psg-text-muted);
+
+  --el-bg-color: var(--psg-surface);
+  --el-bg-color-page: var(--psg-canvas);
+  --el-fill-color-blank: var(--psg-surface);
+
+  --el-mask-color: rgba(17, 17, 17, .45);
+}
+
+html.dark {
+  --el-mask-color: rgba(0, 0, 0, .6);
+}

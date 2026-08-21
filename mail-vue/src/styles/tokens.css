@@ -1,0 +1,65 @@
+/*
+ * PSG Mail — Design Tokens
+ * Single source of truth for the Light / Dark palette.
+ * No other stylesheet may define a raw color value — reference these
+ * custom properties instead. Component styles live in their own
+ * .vue <style scoped> blocks and consume these tokens.
+ */
+
+:root {
+  color-scheme: light;
+
+  --psg-canvas: #F5F5F3;
+  --psg-surface: #FFFFFF;
+  --psg-surface-muted: #F1F1EF;
+  --psg-surface-active: #ECECEA;
+
+  --psg-border: #D3D3CF;
+  --psg-border-strong: #111111;
+
+  --psg-text: #171717;
+  --psg-text-secondary: #686868;
+  --psg-text-muted: #92928C;
+
+  --psg-primary: #111111;
+  --psg-on-primary: #FFFFFF;
+
+  --psg-danger: #C92020;
+  --psg-danger-hover: #A81919;
+  --psg-danger-muted: rgba(201, 32, 32, .08);
+
+  --psg-focus: #111111;
+
+  --psg-radius-xs: 2px;
+  --psg-radius-sm: 3px;
+  --psg-radius-md: 4px;
+  --psg-radius-full: 999px;
+
+  --psg-font-sans: 'IBM Plex Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  --psg-font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --psg-canvas: #151515;
+  --psg-surface: #1B1B1B;
+  --psg-surface-muted: #202020;
+  --psg-surface-active: #282828;
+
+  --psg-border: #383838;
+  --psg-border-strong: #F2F2EE;
+
+  --psg-text: #F2F2EE;
+  --psg-text-secondary: #AAAAA5;
+  --psg-text-muted: #7D7D78;
+
+  --psg-primary: #F2F2EE;
+  --psg-on-primary: #111111;
+
+  --psg-danger: #E04B4B;
+  --psg-danger-hover: #F15D5D;
+  --psg-danger-muted: rgba(224, 75, 75, .14);
+
+  --psg-focus: #F2F2EE;
+}

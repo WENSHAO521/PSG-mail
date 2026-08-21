@@ -1,0 +1,23 @@
+/*
+ * PSG Mail — Platform
+ * Safe-area insets, responsive breakpoints, and platform-specific globals
+ * shared across Web/PWA, Electron, and Android. Component-level layout
+ * for each breakpoint lives in the owning component.
+ */
+
+:root {
+  --psg-safe-top: env(safe-area-inset-top, 0px);
+  --psg-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --psg-safe-left: env(safe-area-inset-left, 0px);
+  --psg-safe-right: env(safe-area-inset-right, 0px);
+
+  --psg-bp-mobile: 768px;
+  --psg-bp-tablet: 1199px;
+  --psg-bp-desktop: 1200px;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
