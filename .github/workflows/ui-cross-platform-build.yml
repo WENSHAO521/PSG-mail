@@ -1,0 +1,185 @@
+name: UI Cross-Platform Build Validation
+
+on:
+  push:
+    branches:
+      - ui/unified-redesign-2026
+    paths:
+      - 'mail-vue/**'
+      - '.github/workflows/ui-cross-platform-build.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'mail-vue/**'
+      - '.github/workflows/ui-cross-platform-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  VITE_WEB_PUSH_VAPID_PUBLIC_KEY: ${{ vars.VITE_WEB_PUSH_VAPID_PUBLIC_KEY }}
+
+jobs:
+  web-pwa:
+    name: Web / PWA
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mail-vue/package-lock.json
+      - name: Install dependencies
+        working-directory: mail-vue
+        run: npm ci --legacy-peer-deps
+      - name: Build Web / PWA
+        working-directory: mail-vue
+        run: npm run build
+      - name: Upload Web / PWA bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-web-pwa
+          if-no-files-found: error
+          path: mail-worker/dist/
+
+  desktop:
+    name: Desktop (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact: ui-windows-installer
+          - os: macos-latest
+            platform: mac
+            artifact: ui-macos-installer
+          - os: ubuntu-22.04
+            platform: linux
+            artifact: ui-linux-installer
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mail-vue/package-lock.json
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools libopenjp2-tools rpm fakeroot
+      - name: Install dependencies
+        working-directory: mail-vue
+        run: npm ci --legacy-peer-deps
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
+      - name: Generate desktop theme icons
+        working-directory: mail-vue
+        run: node scripts/generate-desktop-icons.cjs
+      - name: Generate icon.icns (macOS only)
+        if: matrix.platform == 'mac'
+        working-directory: mail-vue
+        shell: bash
+        run: |
+          make_icns() {
+            src="$1"
+            dest="$2"
+            iconset="$(mktemp -d)/icon.iconset"
+            mkdir -p "$iconset"
+            sips -z 16   16   "$src" --out "$iconset/icon_16x16.png"
+            sips -z 32   32   "$src" --out "$iconset/icon_16x16@2x.png"
+            sips -z 32   32   "$src" --out "$iconset/icon_32x32.png"
+            sips -z 64   64   "$src" --out "$iconset/icon_32x32@2x.png"
+            sips -z 128  128  "$src" --out "$iconset/icon_128x128.png"
+            sips -z 256  256  "$src" --out "$iconset/icon_128x128@2x.png"
+            sips -z 256  256  "$src" --out "$iconset/icon_256x256.png"
+            sips -z 512  512  "$src" --out "$iconset/icon_256x256@2x.png"
+            sips -z 512  512  "$src" --out "$iconset/icon_512x512.png"
+            sips -z 1024 1024 "$src" --out "$iconset/icon_512x512@2x.png"
+            iconutil -c icns "$iconset" -o "$dest"
+            rm -rf "$(dirname "$iconset")"
+          }
+          make_icns build/icon.png build/icon.icns
+          make_icns build/desktop-icon.png build/desktop-icon.icns
+      - name: Build installer
+        working-directory: mail-vue
+        run: npm run electron:build -- --${{ matrix.platform }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          USE_HARD_LINKS: false
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          if-no-files-found: error
+          path: |
+            mail-vue/dist-electron/*.exe
+            mail-vue/dist-electron/*.dmg
+            mail-vue/dist-electron/*.zip
+            mail-vue/dist-electron/*.deb
+            mail-vue/dist-electron/*.AppImage
+            mail-vue/dist-electron/*.rpm
+            mail-vue/dist-electron/latest*.yml
+            mail-vue/dist-electron/*.blockmap
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mail-vue/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install dependencies
+        working-directory: mail-vue
+        run: npm ci --legacy-peer-deps
+      - name: Restore Firebase google-services.json
+        shell: bash
+        working-directory: mail-vue
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > android/app/google-services.json
+            echo "Firebase Android configuration restored."
+          else
+            echo "::notice::Android Firebase secret is absent; build will continue if project configuration permits."
+          fi
+      - name: Sync Android project
+        working-directory: mail-vue
+        run: npm run android:sync
+      - name: Build Android APK
+        working-directory: mail-vue/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-android-apk
+          if-no-files-found: error
+          path: mail-vue/android/app/build/outputs/apk/release/*.apk

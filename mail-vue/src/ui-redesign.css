@@ -1,0 +1,428 @@
+/* PSG Mail — Unified Cross‑Platform UI 2026
+ * Shared presentation layer for Web/PWA, Electron desktop and Capacitor Android.
+ * Business logic stays in the existing Vue components; this file normalises
+ * visual language, density, focus, surfaces and platform-safe touch targets.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --psg-brand: #b4232d;
+  --psg-brand-hover: #941c25;
+  --psg-brand-soft: rgba(180, 35, 45, 0.09);
+  --psg-brand-soft-strong: rgba(180, 35, 45, 0.14);
+  --psg-brand-rgb: 180, 35, 45;
+
+  /* Neutral system */
+  --psg-canvas: #f4f5f7;
+  --psg-sidebar: #f8f8fa;
+  --psg-panel: #ffffff;
+  --psg-panel-muted: #f7f7f9;
+  --psg-panel-hover: #f0f1f3;
+  --psg-border: #e2e4e8;
+  --psg-border-strong: #d5d8de;
+  --psg-text: #191b20;
+  --psg-text-2: #555b66;
+  --psg-text-3: #848b97;
+  --psg-focus: rgba(180, 35, 45, 0.26);
+
+  /* Geometry */
+  --psg-r-xs: 8px;
+  --psg-r-sm: 10px;
+  --psg-r-md: 14px;
+  --psg-r-lg: 18px;
+  --psg-r-xl: 24px;
+  --psg-r-pill: 999px;
+
+  /* Elevation */
+  --psg-shadow-1: 0 1px 2px rgba(19, 24, 32, 0.04), 0 1px 5px rgba(19, 24, 32, 0.035);
+  --psg-shadow-2: 0 8px 28px rgba(19, 24, 32, 0.08), 0 2px 8px rgba(19, 24, 32, 0.05);
+  --psg-shadow-float: 0 18px 56px rgba(19, 24, 32, 0.15), 0 4px 16px rgba(19, 24, 32, 0.08);
+
+  /* Motion */
+  --psg-ease: cubic-bezier(.22, 1, .36, 1);
+  --psg-fast: 140ms;
+  --psg-normal: 220ms;
+
+  /* Bridge old tokens to the new system */
+  --el-color-primary: var(--psg-brand);
+  --el-color-primary-dark-2: var(--psg-brand-hover);
+  --el-color-primary-light-3: #c9535b;
+  --el-color-primary-light-5: #d9898e;
+  --el-color-primary-light-7: #edc5c8;
+  --el-color-primary-light-9: #faeeee;
+  --red-accent: var(--psg-brand);
+  --red-accent-dark: var(--psg-brand-hover);
+  --red-accent-rgb: var(--psg-brand-rgb);
+  --red-accent-subtle: var(--psg-brand-soft);
+  --on-accent: #ffffff;
+  --psg-red: var(--psg-brand);
+  --psg-red-hover: var(--psg-brand-hover);
+  --psg-bg: var(--psg-canvas);
+  --surface: var(--psg-panel);
+  --surface-secondary: var(--psg-panel-muted);
+  --separator: var(--psg-border);
+  --muted: var(--psg-text-3);
+  --extra-light-fill: var(--psg-canvas);
+  --light-ill: var(--psg-panel-hover);
+  --light-border: var(--psg-border);
+  --light-border-color: var(--psg-border);
+  --base-border-color: var(--psg-border-strong);
+  --aside-backgound: var(--psg-sidebar);
+  --base-fill: var(--psg-panel-muted);
+  --regular-text-color: var(--psg-text-2);
+  --secondary-text-color: var(--psg-text-3);
+  --email-hover-background: var(--psg-panel-hover);
+  --card-shadow: var(--psg-shadow-1);
+  --card-shadow-hover: var(--psg-shadow-2);
+  --compose-shadow: var(--psg-shadow-float);
+  --radius-xs: var(--psg-r-xs);
+  --radius-sm: var(--psg-r-sm);
+  --radius-md: var(--psg-r-md);
+  --radius-lg: var(--psg-r-lg);
+  --radius-full: var(--psg-r-pill);
+}
+
+.dark {
+  color-scheme: dark;
+  --psg-brand: #f07178;
+  --psg-brand-hover: #ff8c91;
+  --psg-brand-soft: rgba(240, 113, 120, 0.12);
+  --psg-brand-soft-strong: rgba(240, 113, 120, 0.18);
+  --psg-brand-rgb: 240, 113, 120;
+
+  --psg-canvas: #111317;
+  --psg-sidebar: #15181d;
+  --psg-panel: #191c22;
+  --psg-panel-muted: #1f232a;
+  --psg-panel-hover: #252a32;
+  --psg-border: #2b3039;
+  --psg-border-strong: #383f4a;
+  --psg-text: #f2f3f5;
+  --psg-text-2: #b8bec8;
+  --psg-text-3: #858d99;
+  --psg-focus: rgba(240, 113, 120, 0.32);
+
+  --surface: var(--psg-panel);
+  --surface-secondary: var(--psg-panel-muted);
+  --separator: var(--psg-border);
+  --muted: var(--psg-text-3);
+  --extra-light-fill: var(--psg-canvas);
+  --light-ill: var(--psg-panel-hover);
+  --light-border: var(--psg-border);
+  --light-border-color: var(--psg-border);
+  --base-border-color: var(--psg-border-strong);
+  --aside-backgound: var(--psg-sidebar);
+  --base-fill: var(--psg-panel-muted);
+  --regular-text-color: var(--psg-text-2);
+  --secondary-text-color: var(--psg-text-3);
+  --email-hover-background: var(--psg-panel-hover);
+
+  --el-bg-color: var(--psg-canvas) !important;
+  --el-bg-color-overlay: var(--psg-panel) !important;
+  --el-bg-color-page: var(--psg-canvas) !important;
+  --el-fill-color-blank: var(--psg-panel) !important;
+  --el-fill-color: var(--psg-panel-muted) !important;
+  --el-fill-color-light: var(--psg-panel-muted) !important;
+  --el-border-color: var(--psg-border) !important;
+}
+
+html,
+body,
+#app {
+  background: var(--psg-canvas);
+  color: var(--psg-text);
+}
+
+body {
+  letter-spacing: -0.006em;
+}
+
+::selection {
+  background: var(--psg-brand-soft-strong);
+  color: inherit;
+}
+
+/* Accessible focus is deliberately visible on keyboard navigation. */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--psg-focus) !important;
+  outline-offset: 2px;
+}
+
+/* Element Plus — one product language */
+.el-button {
+  min-height: 36px;
+  border-radius: var(--psg-r-sm) !important;
+  font-weight: 600;
+  transition: background var(--psg-fast) ease, border-color var(--psg-fast) ease,
+              color var(--psg-fast) ease, box-shadow var(--psg-fast) ease,
+              transform var(--psg-fast) ease;
+}
+.el-button:active { transform: translateY(1px); }
+.el-button--primary { box-shadow: 0 5px 14px rgba(var(--psg-brand-rgb), .16); }
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: var(--psg-r-sm) !important;
+  box-shadow: 0 0 0 1px var(--psg-border) inset !important;
+  background: var(--psg-panel) !important;
+  transition: box-shadow var(--psg-fast) ease, background var(--psg-fast) ease !important;
+}
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--psg-brand) inset, 0 0 0 3px var(--psg-brand-soft) !important;
+}
+.el-dialog,
+.el-message-box,
+.el-popover.el-popper,
+.el-dropdown__popper .el-popper__arrow::before {
+  border-radius: var(--psg-r-lg) !important;
+}
+.el-dialog,
+.el-message-box,
+.el-popover.el-popper,
+.el-dropdown__popper {
+  border-color: var(--psg-border) !important;
+  box-shadow: var(--psg-shadow-float) !important;
+}
+.el-dropdown-menu { padding: 6px !important; }
+.el-dropdown-menu__item { min-height: 36px; border-radius: var(--psg-r-sm); }
+.el-tag { border-radius: var(--psg-r-pill) !important; }
+
+/* App shell surfaces. This intentionally uses no business-specific state. */
+.app-shell {
+  background: var(--psg-canvas);
+}
+.mail-list-pane,
+.mail-detail-pane,
+.workspace-pane {
+  background: var(--psg-canvas) !important;
+}
+.mail-list-pane {
+  border-right-color: var(--psg-border) !important;
+}
+
+/* Sidebar: quiet navigation, strong compose action, readable hierarchy. */
+.mail-sidebar {
+  background: var(--psg-sidebar) !important;
+  border-right-color: var(--psg-border) !important;
+}
+.mail-sidebar .sidebar-brand,
+.mail-sidebar .sidebar-header,
+.mail-sidebar .sidebar-footer {
+  border-color: var(--psg-border) !important;
+}
+.mail-sidebar .brand-name,
+.mail-sidebar .brand-sub,
+.mail-sidebar .sidebar-section-title {
+  letter-spacing: .025em !important;
+}
+.mail-sidebar .sidebar-nav-link {
+  border-radius: var(--psg-r-sm) !important;
+  margin-inline: 8px !important;
+  transition: background var(--psg-fast) ease, color var(--psg-fast) ease,
+              transform var(--psg-fast) ease !important;
+}
+.mail-sidebar .sidebar-nav-link:hover {
+  background: var(--psg-panel-hover) !important;
+}
+.mail-sidebar .sidebar-nav-link.active {
+  background: var(--psg-brand-soft) !important;
+  color: var(--psg-brand) !important;
+}
+.mail-sidebar .sidebar-nav-link.active .nav-icon {
+  color: var(--psg-brand) !important;
+}
+.mail-sidebar .sidebar-compose-button,
+.mail-sidebar .compose-icon-btn {
+  background: var(--psg-brand) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 20px rgba(var(--psg-brand-rgb), .18) !important;
+}
+.mail-sidebar .sidebar-compose-button:hover,
+.mail-sidebar .compose-icon-btn:hover {
+  background: var(--psg-brand-hover) !important;
+}
+
+/* Inbox/list: denser desktop, tactile mobile. */
+.email-container {
+  background: var(--psg-panel) !important;
+}
+.mail-toolbar {
+  min-height: 50px !important;
+  background: color-mix(in srgb, var(--psg-panel) 94%, transparent) !important;
+  border-bottom-color: var(--psg-border) !important;
+  backdrop-filter: blur(14px);
+}
+.toolbar-search {
+  height: 34px !important;
+  border-radius: var(--psg-r-pill);
+  background: var(--psg-panel-muted);
+  padding-inline: 10px !important;
+}
+.filter-pill.active {
+  color: var(--psg-text) !important;
+  box-shadow: var(--psg-shadow-1) !important;
+}
+.mail-row {
+  transition: background var(--psg-fast) ease, box-shadow var(--psg-fast) ease,
+              border-color var(--psg-fast) ease, transform var(--psg-fast) ease !important;
+}
+.mail-row:hover {
+  background: var(--psg-panel-hover) !important;
+}
+.mail-row[data-active="true"] {
+  background: var(--psg-brand-soft) !important;
+  box-shadow: inset 3px 0 0 var(--psg-brand) !important;
+}
+.unread-indicator.visible {
+  background: var(--psg-brand) !important;
+}
+
+/* Reading pane: treat message as a document, not another grey panel. */
+.mail-detail-pane {
+  background: var(--psg-canvas) !important;
+}
+.mail-detail-pane :is(.content-container, .email-content, .content-main, .message-content) {
+  background: var(--psg-panel);
+}
+
+/* Workspace pages and settings become cards on a quiet canvas. */
+.workspace-body {
+  background: var(--psg-canvas);
+}
+.workspace-body :is(.setting-container, .settings-container, .analysis-container, .about-container) {
+  color: var(--psg-text);
+}
+
+/* Floating updater uses the product palette rather than a detached black toast. */
+.update-bar {
+  background: color-mix(in srgb, var(--psg-panel) 96%, transparent) !important;
+  color: var(--psg-text) !important;
+  border: 1px solid var(--psg-border) !important;
+  border-radius: var(--psg-r-md) !important;
+  box-shadow: var(--psg-shadow-float) !important;
+  backdrop-filter: blur(18px);
+}
+.update-bar .update-ready { color: var(--psg-brand) !important; }
+.update-bar .update-close { color: var(--psg-text-3) !important; }
+.update-bar .update-close:hover { color: var(--psg-text) !important; }
+
+/* Mobile/PWA/Android */
+@media (max-width: 1024px) {
+  .app-shell {
+    background: var(--psg-canvas);
+  }
+
+  .m-header {
+    height: 60px !important;
+    padding: max(7px, env(safe-area-inset-top, 0px)) 12px 7px !important;
+    background: color-mix(in srgb, var(--psg-panel) 91%, transparent) !important;
+    border-bottom: 1px solid var(--psg-border) !important;
+    box-shadow: 0 4px 18px rgba(19, 24, 32, .06) !important;
+    backdrop-filter: blur(20px) saturate(1.15) !important;
+  }
+
+  .m-brand-name { color: var(--psg-brand) !important; }
+
+  .m-tabbar {
+    width: calc(100% - 20px) !important;
+    margin: 0 10px max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    background: color-mix(in srgb, var(--psg-panel) 92%, transparent) !important;
+    border-color: var(--psg-border) !important;
+    border-radius: var(--psg-r-xl) !important;
+    box-shadow: 0 14px 38px rgba(19, 24, 32, .16) !important;
+    backdrop-filter: blur(20px) saturate(1.15) !important;
+  }
+  .m-tab.active {
+    color: var(--psg-brand) !important;
+    background: var(--psg-brand-soft) !important;
+  }
+  .m-compose-fab {
+    background: var(--psg-brand) !important;
+    box-shadow: 0 10px 22px rgba(var(--psg-brand-rgb), .26) !important;
+  }
+
+  .mail-sidebar {
+    width: min(88vw, 320px) !important;
+    box-shadow: 24px 0 60px rgba(19, 24, 32, .20);
+  }
+
+  .email-container {
+    background: var(--psg-canvas) !important;
+  }
+  .mail-toolbar {
+    background: transparent !important;
+    min-height: 58px !important;
+  }
+  .mail-toolbar .toolbar-left {
+    background: color-mix(in srgb, var(--psg-panel) 88%, transparent) !important;
+    border-color: var(--psg-border) !important;
+    box-shadow: var(--psg-shadow-1) !important;
+    backdrop-filter: blur(16px);
+  }
+  .scroll { background: transparent !important; }
+  .mail-row {
+    background: var(--psg-panel) !important;
+    border-color: var(--psg-border) !important;
+    border-radius: var(--psg-r-lg) !important;
+    box-shadow: var(--psg-shadow-1) !important;
+  }
+  .mail-row:active { transform: scale(.992); }
+  .mail-row[data-active="true"] {
+    background: color-mix(in srgb, var(--psg-panel) 88%, var(--psg-brand-soft)) !important;
+    box-shadow: inset 3px 0 0 var(--psg-brand), var(--psg-shadow-1) !important;
+  }
+
+  /* Touch targets shared by PWA/Capacitor. */
+  .m-icon-btn,
+  .m-tab,
+  .mail-toolbar .icon-btn,
+  .mail-sidebar .util-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .el-dialog {
+    width: calc(100vw - 24px) !important;
+    max-width: none !important;
+    border-radius: var(--psg-r-lg) !important;
+  }
+
+  .el-message-box {
+    width: calc(100vw - 32px) !important;
+    max-width: 420px;
+  }
+}
+
+/* Desktop-specific density: preserve three-pane efficiency. */
+@media (min-width: 1025px) {
+  .mail-sidebar { width: 248px !important; }
+  .app-shell[data-mode="mail"] {
+    grid-template-columns: 248px minmax(380px, 520px) minmax(420px, 1fr) !important;
+  }
+  .app-shell[data-mode="workspace"] {
+    grid-template-columns: 248px minmax(0, 1fr) !important;
+  }
+  .app-shell[data-collapsed="true"][data-mode="mail"] {
+    grid-template-columns: 72px minmax(380px, 520px) minmax(420px, 1fr) !important;
+  }
+  .app-shell[data-collapsed="true"][data-mode="workspace"] {
+    grid-template-columns: 72px minmax(0, 1fr) !important;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
