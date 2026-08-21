@@ -2,6 +2,7 @@ import {createApp} from 'vue';
 import App from './App.vue';
 import router from './router';
 import './style.css';
+import './ui-redesign.css';
 
 // Fonts — bundled locally so Electron works offline
 import '@fontsource/ibm-plex-sans/400.css'
