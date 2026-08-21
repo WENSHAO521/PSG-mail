@@ -34,6 +34,10 @@
      canvas — transparent in light, a dark scrim in dark mode. */
   --psg-html-dim: rgba(0, 0, 0, 0);
 
+  /* Flips single-color logo marks (dark ink on transparent) so they read
+     against a dark surface — no-op in light, inverted in dark. */
+  --psg-logo-invert: none;
+
   --psg-radius-xs: 2px;
   --psg-radius-sm: 3px;
   --psg-radius-md: 4px;
@@ -68,4 +72,5 @@ html.dark {
   --psg-focus: #F2F2EE;
 
   --psg-html-dim: rgba(14, 14, 20, .55);
+  --psg-logo-invert: invert(1);
 }

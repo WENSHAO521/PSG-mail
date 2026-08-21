@@ -374,10 +374,7 @@ function clickLogout() {
   width: 36px;
   height: 36px;
   object-fit: contain;
-}
-
-:global(html.dark) .brand-abbr {
-  filter: invert(1);
+  filter: var(--psg-logo-invert, none);
 }
 
 /* ── Header ──────────────────────────────────────────────── */
