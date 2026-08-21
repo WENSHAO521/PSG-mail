@@ -1,22 +1,18 @@
 <template>
   <header class="m-header">
-    <!-- Left: menu + brand / section title -->
     <div class="m-left">
       <button class="m-icon-btn" :aria-label="$t('menu')" @click="openDrawer">
-        <Icon icon="solar:hamburger-menu-linear" width="24" height="24"/>
+        <Icon icon="solar:hamburger-menu-linear" width="22" height="22"/>
       </button>
-      <div class="m-brand">
-        <div class="m-title-block">
-          <span class="m-brand-name">PSG Mail</span>
-          <span class="m-title">{{ title }}</span>
-        </div>
+      <div class="m-title-block">
+        <span class="m-title">{{ title }}</span>
+        <span class="m-brand-name">PSG Mail</span>
       </div>
     </div>
 
     <div class="m-notif">
       <NotificationPanel />
     </div>
-
   </header>
 </template>
 
@@ -48,94 +44,67 @@ function openDrawer() {
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  padding: 8px 12px 8px 8px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,248,248,0.96));
-  border-bottom: 1px solid rgba(0,0,0,0.10);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+  height: 58px;
+  padding: 7px 10px 7px 8px;
   gap: 10px;
-  backdrop-filter: blur(18px);
-
-  :global(.dark) & {
-    background:
-      linear-gradient(180deg, rgba(20,20,24,0.96), rgba(16,16,20,0.96));
-    border-bottom-color: rgba(255,255,255,0.08);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.28);
-  }
+  background: var(--pm-surface, #fff);
+  border-bottom: 1px solid var(--pm-border, #e3e7ed);
 }
 
 .m-left {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
   flex: 1;
-}
-
-.m-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
 }
 
 .m-title-block {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 1px;
-}
-
-.m-brand-name {
-  flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--red-accent);
-  line-height: 1.1;
+  gap: 0;
 }
 
 .m-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--el-text-color-primary);
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
+  white-space: nowrap;
+  color: var(--pm-text, #172033);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 650;
 }
 
-/* 44px touch targets */
-.m-icon-btn {
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: var(--muted, #666666);
-  transition: background 0.12s, color 0.12s;
-  flex-shrink: 0;
-  border-radius: 14px;
-
-  &:active { background: rgba(0, 0, 0, 0.08); }
+.m-brand-name {
+  color: var(--pm-text-3, #7d8797);
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 550;
+  letter-spacing: .02em;
 }
 
+.m-icon-btn,
 .m-notif :deep(.icon-btn) {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  color: var(--muted, #666666);
-  border-radius: 14px;
-  transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
-
-  &:active { background: rgba(0, 0, 0, 0.08); }
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pm-text-2, #4f5b6e);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
 }
 
+.m-icon-btn:active,
+.m-notif :deep(.icon-btn:active) {
+  background: var(--pm-surface-hover, #f3f5f8);
+  color: var(--pm-text, #172033);
+}
 </style>
