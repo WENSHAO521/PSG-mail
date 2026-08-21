@@ -55,27 +55,35 @@ jobs:
       LINUXDO_CLIENT_SECRET: ${{ secrets.LINUXDO_CLIENT_SECRET || vars.LINUXDO_CLIENT_SECRET }}
       LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL || vars.LINUXDO_CALLBACK_URL }}
       LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH || vars.LINUXDO_SWITCH }}
-      # Firebase web config (public client identifiers) — feeds the mail-vue
-      # build that runs as part of the wrangler deploy [build] command below.
+      # Standards Web Push (RFC 8291/8292) for Web/PWA — replaces Firebase as
+      # the browser transport (Android keeps FCM, see the Firebase trio
+      # below). VAPID_PUBLIC_KEY is public by design (shipped to browsers as
+      # applicationServerKey) and must be byte-identical between the frontend
+      # build var and the backend secret — see
+      # mail-worker/scripts/generate-vapid-keys.mjs.
+      VITE_WEB_PUSH_VAPID_PUBLIC_KEY: ${{ vars.VITE_WEB_PUSH_VAPID_PUBLIC_KEY }}
+      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY || vars.VITE_WEB_PUSH_VAPID_PUBLIC_KEY }}
+      # Secrets only — the private half must never be a plain Variable.
+      VAPID_PRIVATE_KEY_JWK: ${{ secrets.VAPID_PRIVATE_KEY_JWK }}
+      VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || vars.VAPID_SUBJECT }}
+      # Legacy Firebase web SDK config — dormant since mail-vue/src/firebase.js
+      # is no longer imported (standards Web Push replaced it, see above).
+      # Kept only so the still-present-but-unreferenced firebase.js /
+      # firebase-messaging-sw.js files would still build if someone
+      # re-wired them; safe to remove once that migration window closes.
       VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
       VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
       VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
       VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
       VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
       VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
-      # MUST come from Firebase Console -> Project Settings -> Cloud Messaging
-      # -> Web Push certificates -> "Key pair" (generate one if none exists).
-      # That key is ~87 base64url characters starting with "B". This is NOT
-      # the Analytics Measurement ID shown elsewhere in the console (format
-      # "G-XXXXXXXXXX") — that value silently breaks getToken() in
-      # mail-vue/src/firebase.js (wrong key type, no useful error). The
-      # "🛠️ 设置环境" step below fails the deploy early if this looks like a
-      # Measurement ID instead of a VAPID key.
       VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
-      # Firebase Admin service account — secrets only, never falls back to
-      # vars, and (when all three are set) is uploaded via the same
-      # `wrangler deploy --secrets-file` call as jwt_secret/maintenance_secret
-      # below — not written into any .toml, not pushed with `secret put`.
+      # Firebase Admin service account — still required, for Android FCM
+      # only now (native Capacitor push, fully independent of the web SDK
+      # above). Secrets only, never falls back to vars, and (when all three
+      # are set) is uploaded via the same `wrangler deploy --secrets-file`
+      # call as jwt_secret/maintenance_secret below — not written into any
+      # .toml, not pushed with `secret put`.
       FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
       FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
       FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
@@ -145,39 +153,38 @@ jobs:
             exit 1
           fi
 
-          # VITE_FIREBASE_VAPID_KEY is optional (push stays disabled if unset),
-          # but if it IS set it must be a real Web Push certificate key, not
-          # the Analytics Measurement ID (format "G-XXXXXXXXXX") from a
-          # different part of the Firebase console — that mistake builds
-          # successfully but silently breaks getToken() with no useful error
-          # until someone opens devtools. See the env var comment above.
-          if [ -n "$VITE_FIREBASE_VAPID_KEY" ]; then
-            if [[ "$VITE_FIREBASE_VAPID_KEY" == G-* ]]; then
-              echo "❌ VITE_FIREBASE_VAPID_KEY looks like a Measurement ID (starts with 'G-'), not a VAPID key."
-              echo "   Get the real key from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates."
-              exit 1
-            fi
-            if [ "${#VITE_FIREBASE_VAPID_KEY}" -lt 60 ]; then
-              echo "❌ VITE_FIREBASE_VAPID_KEY is too short to be a real VAPID key (expected ~87 characters)."
+          # VITE_WEB_PUSH_VAPID_PUBLIC_KEY is optional (Web Push stays
+          # disabled if unset, same graceful-degradation pattern as every
+          # other optional integration here) — but if it IS set it must
+          # look like a real raw P-256 VAPID public key (base64url, ~87
+          # chars, starts with "B" — see generate-vapid-keys.mjs), not a
+          # typo'd/truncated value that would build successfully but
+          # silently break pushManager.subscribe() with no useful error
+          # until someone opens devtools.
+          if [ -n "$VITE_WEB_PUSH_VAPID_PUBLIC_KEY" ]; then
+            if [ "${VITE_WEB_PUSH_VAPID_PUBLIC_KEY:0:1}" != "B" ] || [ "${#VITE_WEB_PUSH_VAPID_PUBLIC_KEY}" -lt 80 ]; then
+              echo "❌ VITE_WEB_PUSH_VAPID_PUBLIC_KEY doesn't look like a raw P-256 VAPID public key (expected ~87 base64url characters starting with 'B')."
+              echo "   Generate one with: cd mail-worker && node scripts/generate-vapid-keys.mjs"
               exit 1
             fi
           fi
-          
+
+          # VAPID_PUBLIC_KEY (backend) must be byte-identical to
+          # VITE_WEB_PUSH_VAPID_PUBLIC_KEY (frontend) — a mismatch here means
+          # browsers subscribe against one key while the server signs pushes
+          # with another, and every push silently 401s.
+          if [ -n "$VITE_WEB_PUSH_VAPID_PUBLIC_KEY" ] && [ -n "$VAPID_PUBLIC_KEY" ] && [ "$VITE_WEB_PUSH_VAPID_PUBLIC_KEY" != "$VAPID_PUBLIC_KEY" ]; then
+            echo "❌ VITE_WEB_PUSH_VAPID_PUBLIC_KEY and VAPID_PUBLIC_KEY are set but don't match — they must be the same value."
+            exit 1
+          fi
+
           if [ -z "$CUSTOM_DOMAIN" ]; then
             echo "::warning:: CUSTOM_DOMAIN variable is not set."
           fi
 
-          # Preflight for the mail-vue production build: these 7 vars are
-          # read by mail-vue/src/firebase.js via import.meta.env at Vite
-          # build time. Presence-only check (values are never printed) —
-          # GitHub Repository Variables existing is not the same as them
-          # actually reaching this job's env (wrong scope, wrong
-          # environment, typo'd name, ...), and a missing one used to only
-          # surface much later as "Firebase 应用初始化失败" in production
-          # with nothing pointing back at the actual cause. Runs before the
-          # deploy step below, which is what invokes the real `vite build`
-          # via wrangler-action.toml's [build] command.
-          echo "🔎 Checking Firebase frontend variables are present..."
+          # Legacy Firebase web SDK vars — dormant now that nothing imports
+          # mail-vue/src/firebase.js (standards Web Push replaced it, see
+          # above). No longer required; only reported for visibility.
           MISSING_VITE_VARS=""
           for VAR_NAME in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID \
                           VITE_FIREBASE_STORAGE_BUCKET VITE_FIREBASE_MESSAGING_SENDER_ID \
@@ -187,10 +194,8 @@ jobs:
             fi
           done
           if [ -n "$MISSING_VITE_VARS" ]; then
-            echo "❌ Missing required frontend Firebase variable(s):$MISSING_VITE_VARS"
-            exit 1
+            echo "::notice:: legacy VITE_FIREBASE_* var(s) not set (expected — dormant):$MISSING_VITE_VARS"
           fi
-          echo "✅ All 7 VITE_FIREBASE_* variables are present."
 
           CONFIG_FILE="wrangler-action.toml"
           
@@ -359,28 +364,35 @@ jobs:
           [ -n "$FIREBASE_CLIENT_EMAIL" ] && FIREBASE_SET=$((FIREBASE_SET + 1))
           [ -n "$FIREBASE_PRIVATE_KEY" ] && FIREBASE_SET=$((FIREBASE_SET + 1))
 
+          # Same all-or-nothing pattern as Firebase above, for standards Web
+          # Push's VAPID trio (Android's Firebase secrets stay independent —
+          # a site can have either, both, or neither configured).
+          VAPID_SET=0
+          [ -n "$VAPID_PUBLIC_KEY" ] && VAPID_SET=$((VAPID_SET + 1))
+          [ -n "$VAPID_PRIVATE_KEY_JWK" ] && VAPID_SET=$((VAPID_SET + 1))
+          [ -n "$VAPID_SUBJECT" ] && VAPID_SET=$((VAPID_SET + 1))
+
+          SECRETS_JSON='{jwt_secret: env.JWT_SECRET, maintenance_secret: env.MAINTENANCE_SECRET}'
+
           if [ "$FIREBASE_SET" -eq 3 ]; then
-            jq -n '{
-              jwt_secret: env.JWT_SECRET,
-              maintenance_secret: env.MAINTENANCE_SECRET,
-              FIREBASE_PROJECT_ID: env.FIREBASE_PROJECT_ID,
-              FIREBASE_CLIENT_EMAIL: env.FIREBASE_CLIENT_EMAIL,
-              FIREBASE_PRIVATE_KEY: env.FIREBASE_PRIVATE_KEY
-            }' > "$SECRETS_FILE"
-            echo "✅ jwt_secret + maintenance_secret + Firebase secrets included — push notifications enabled."
+            SECRETS_JSON="$SECRETS_JSON + {FIREBASE_PROJECT_ID: env.FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL: env.FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY: env.FIREBASE_PRIVATE_KEY}"
+            echo "✅ Firebase secrets included — Android FCM push enabled."
           elif [ "$FIREBASE_SET" -eq 0 ]; then
-            jq -n '{
-              jwt_secret: env.JWT_SECRET,
-              maintenance_secret: env.MAINTENANCE_SECRET
-            }' > "$SECRETS_FILE"
-            echo "::notice:: FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY not set. FCM sending disabled."
+            echo "::notice:: FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY not set. Android FCM sending disabled."
           else
-            jq -n '{
-              jwt_secret: env.JWT_SECRET,
-              maintenance_secret: env.MAINTENANCE_SECRET
-            }' > "$SECRETS_FILE"
-            echo "::warning:: Only $FIREBASE_SET of 3 Firebase secrets are set (need FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY together, or none). FCM sending disabled."
+            echo "::warning:: Only $FIREBASE_SET of 3 Firebase secrets are set (need all three, or none). Android FCM sending disabled."
           fi
+
+          if [ "$VAPID_SET" -eq 3 ]; then
+            SECRETS_JSON="$SECRETS_JSON + {VAPID_PUBLIC_KEY: env.VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY_JWK: env.VAPID_PRIVATE_KEY_JWK, VAPID_SUBJECT: env.VAPID_SUBJECT}"
+            echo "✅ VAPID secrets included — standards Web Push enabled."
+          elif [ "$VAPID_SET" -eq 0 ]; then
+            echo "::notice:: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY_JWK / VAPID_SUBJECT not set. Standards Web Push sending disabled."
+          else
+            echo "::warning:: Only $VAPID_SET of 3 VAPID secrets are set (need all three, or none). Standards Web Push sending disabled."
+          fi
+
+          jq -n "$SECRETS_JSON" > "$SECRETS_FILE"
 
           echo "🚀 Starting deployment..."
           pnpm wrangler deploy -c wrangler-action.toml --secrets-file "$SECRETS_FILE" 2>&1 \

@@ -22,12 +22,14 @@ export default defineConfig(({mode}) => {
         plugins: [
             vue(),
             VitePWA({
-                // Custom SW (src/firebase-messaging-sw.js) replaces the auto-generated
-                // one so it can also handle Firebase background push messages —
-                // a site can only run one service worker per scope.
+                // Custom SW (src/psg-mail-sw.js) replaces the auto-generated one so
+                // it can also handle standards Web Push background messages — a site
+                // can only run one service worker per scope. The old
+                // firebase-messaging-sw.js stays in the repo, unreferenced, until the
+                // Firebase web push path is fully retired (see web-push.js's header).
                 strategies: 'injectManifest',
                 srcDir: 'src',
-                filename: 'firebase-messaging-sw.js',
+                filename: 'psg-mail-sw.js',
                 injectRegister: 'script-defer',
                 manifest: {
                     name: 'Panorama Scholarly Group Mail',

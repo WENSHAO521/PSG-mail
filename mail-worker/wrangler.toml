@@ -82,7 +82,19 @@ crons = ["* * * * *", "*/30 * * * *", "0 16 * * *"]	#每分钟处理定时发送
 #microsoft_client_id = ""
 #microsoft_client_secret = ""
 
-# ── Firebase 推送通知（新邮件到达提醒，不填则推送静默跳过）────────
+# ── 标准 Web Push 推送（Web/PWA 新邮件提醒，RFC 8291/8292，不填则该
+#    路径静默跳过）──────────────────────────────────────────────────
+# 不要把私钥写进本文件——用 wrangler secret 存放，避免明文进 git：
+#   cd mail-worker
+#   node scripts/generate-vapid-keys.mjs   # 生成一次性密钥对，按提示操作
+#   npx wrangler secret put VAPID_PUBLIC_KEY
+#   npx wrangler secret put VAPID_PRIVATE_KEY_JWK
+#   npx wrangler secret put VAPID_SUBJECT          # 例如 mailto:you@example.com
+# VAPID_PUBLIC_KEY 同时也要设置为前端构建变量 VITE_WEB_PUSH_VAPID_PUBLIC_KEY
+# （值必须完全一致——见 .github/workflows/deploy-cloudflare.yml）。
+
+# ── Firebase 推送通知（Android FCM，不填则该路径静默跳过；Web/PWA 已改用
+#    上面的标准 Web Push，不再需要 Firebase）──────────────────────────
 # 不要把这三项写进本文件——用 wrangler secret 存放，避免明文进 git：
 #   cd mail-worker
 #   npx wrangler secret put FIREBASE_PROJECT_ID

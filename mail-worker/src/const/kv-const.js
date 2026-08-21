@@ -5,7 +5,8 @@ const KvConst = {
 	ANALYSIS_ECHARTS: 'analysis_echarts:',
 	PUBLIC_KEY: "public_key:",
 	FIREBASE_ACCESS_TOKEN: 'firebase_access_token:',
-	NOTIFICATION_TEST_LIMIT: 'notification_test_limit:'
+	NOTIFICATION_TEST_LIMIT: 'notification_test_limit:',
+	WEB_PUSH_TEST_LIMIT: 'web_push_test_limit:'
 }
 
 export default KvConst;

@@ -59,12 +59,13 @@ export async function init() {
     }
 }
 
-// Fire-and-forget: registers this device for FCM push after a successful
-// login. Never blocks app boot — permission prompts and network calls run
-// in the background. Electron keeps its own native notifications + polling.
+// Fire-and-forget: registers this device for push after a successful login.
+// Never blocks app boot — permission prompts and network calls run in the
+// background. Electron keeps its own native notifications + polling.
 //
-// registerWebPush() is idempotent (the backend UPSERTs on (userId,
-// targetKind, targetValue)) and, when Notification.permission is already
+// registerWebPush() is idempotent (standards Web Push's subscribe() returns
+// the existing subscription if one is already active, and the backend
+// UPSERTs on endpoint) and, when Notification.permission is already
 // 'granted', calling it never re-prompts — Notification.requestPermission()
 // resolves immediately with the existing decision. So this is safe to call
 // on every app boot/login, and is exactly what repairs a device that has
@@ -78,7 +79,7 @@ export function initPushNotifications() {
         .then(({ initNativePush }) => initNativePush())
         .catch(e => console.error('Native push init failed', e));
 
-    import('@/firebase.js')
+    import('@/web-push.js')
         .then(({ registerWebPush }) => registerWebPush())
         .catch(e => console.error('Web push init failed', e));
 }

@@ -1,4 +1,5 @@
 import firebasePushService from './firebase-push-service';
+import webPushSubscriptionService from './web-push-subscription-service';
 import BizError from '../error/biz-error';
 import kvConst from '../const/kv-const';
 
@@ -98,13 +99,11 @@ const notificationService = {
 		}
 	},
 
-	// Fans a new-mail push out to every enabled device for the user. Never
-	// throws into the caller — a push failure must not affect mail receipt.
-	// Returns delivery stats so callers that DO care (sendTest) can tell a
-	// real send apart from "nobody was listening" or "FCM rejected it" —
-	// swallowing every outcome into a bare success used to let the Settings
-	// "Test notification" button say "sent" when nothing was delivered.
-	async dispatchNewMail(c) {
+	// Fans a new-mail push out to every enabled notification_device row
+	// (Android FCM + any still-registered legacy web FCM tokens — see
+	// migrations/README.md's migration-strategy note). Never throws into the
+	// caller — a push failure must not affect mail receipt.
+	async dispatchToFirebaseDevices(c) {
 		const { env, userId, accountId, email } = c;
 		const stats = { attempted: 0, succeeded: 0, failed: 0, reason: null };
 
@@ -155,8 +154,40 @@ const notificationService = {
 				}
 			}));
 		} catch (e) {
-			console.error('dispatchNewMail failed', e);
+			console.error('dispatchToFirebaseDevices failed', e);
 			stats.reason = stats.reason || 'FCM_SEND_FAILED';
+		}
+
+		return stats;
+	},
+
+	// Fans a new-mail push out across BOTH device pools — notification_device
+	// (Android FCM + legacy web FCM tokens) and web_push_subscription
+	// (standards Web Push for browser/PWA, see web-push-subscription-service.js)
+	// — and merges the delivery stats. A pool with zero rows never masks a
+	// real failure in the other pool: NO_REGISTERED_DEVICE only wins when both
+	// pools attempted zero sends.
+	async dispatchNewMail(c) {
+		const { env, userId, accountId, email } = c;
+
+		const [firebaseStats, webPushStats] = await Promise.all([
+			this.dispatchToFirebaseDevices(c),
+			webPushSubscriptionService.dispatchNewMail({ env, userId, accountId, email })
+		]);
+
+		const stats = {
+			attempted: firebaseStats.attempted + webPushStats.attempted,
+			succeeded: firebaseStats.succeeded + webPushStats.succeeded,
+			failed: firebaseStats.failed + webPushStats.failed,
+			reason: null
+		};
+
+		if (stats.attempted === 0) {
+			stats.reason = 'NO_REGISTERED_DEVICE';
+		} else if (stats.succeeded === 0) {
+			stats.reason = firebaseStats.reason && firebaseStats.reason !== 'NO_REGISTERED_DEVICE'
+				? firebaseStats.reason
+				: webPushStats.reason;
 		}
 
 		return stats;
@@ -169,7 +200,11 @@ const notificationService = {
 		}
 		await c.env.kv.put(limitKey, '1', { expirationTtl: TEST_COOLDOWN_SECONDS });
 
-		const stats = await this.dispatchNewMail({
+		// Scoped to notification_device only (Android FCM + legacy web FCM) —
+		// web_push_subscription has its own /web-push/test endpoint (see
+		// web-push-subscription-service.js#sendTest) so a test click for one
+		// platform never fires a push at the other.
+		const stats = await this.dispatchToFirebaseDevices({
 			env: c.env,
 			userId,
 			accountId: 0,

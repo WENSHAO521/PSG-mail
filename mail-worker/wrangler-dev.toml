@@ -55,11 +55,16 @@ admin = "admin@example.com"
 jwt_secret = "b7f29a1d-18e2-4d3b-941f-f6b2c97c02fd"
 maintenance_secret = "dev-only-maintenance-secret-do-not-use-in-prod"
 
-# Firebase 推送：本地 `wrangler dev` 不读 wrangler secret，而是读同目录下的
+# 推送通知：本地 `wrangler dev` 不读 wrangler secret，而是读同目录下的
 # .dev.vars 文件（已加入 .gitignore）。新建 mail-worker/.dev.vars，内容：
-#   FIREBASE_PROJECT_ID=...
+#   VAPID_PUBLIC_KEY=...              # 标准 Web Push（Web/PWA）—— 见
+#   VAPID_PRIVATE_KEY_JWK=...         # scripts/generate-vapid-keys.mjs
+#   VAPID_SUBJECT=mailto:you@example.com
+#   FIREBASE_PROJECT_ID=...           # Android FCM
 #   FIREBASE_CLIENT_EMAIL=...
 #   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+# 前端本地开发同时需要 mail-vue/.env.dev.local 里的
+# VITE_WEB_PUSH_VAPID_PUBLIC_KEY（值需与上面的 VAPID_PUBLIC_KEY 完全一致）。
 # 部署环境不写在这里：CI（.github/workflows/deploy-cloudflare.yml）用一次性
 # `wrangler deploy --secrets-file` 随代码一起上传；人工手动补一个/轮换单个
 # 密钥时才用 `npx wrangler secret put FIREBASE_PRIVATE_KEY` 这类命令。

@@ -147,41 +147,77 @@
             <!-- ── Push notification section ── -->
             <div v-show="activeSection === 'notification'" class="settings-card">
               <div class="card-body">
-                <div class="autoreply-toggle">
+
+                <!-- 桌面通知 permission — web/PWA only; Electron and Android have their
+                     own OS-level permission flows surfaced by the rows below instead. -->
+                <div class="autoreply-toggle" v-if="!isElectronPlatform && !isAndroidPlatform">
                   <div>
-                    <div class="toggle-label">{{ $t('enableDesktopNotif') }}</div>
+                    <div class="toggle-label">{{ $t('notifDesktopPermission') }}</div>
+                    <div class="card-desc" style="margin:0">
+                      {{ notifPermission === 'granted' ? $t('notifAllowed') : (notifPermission === 'denied' ? $t('notifDenied') : $t('notifNotAllowed')) }}
+                    </div>
+                  </div>
+                  <el-button
+                    v-if="notifPermission !== 'granted'"
+                    size="small" :disabled="notifPermission === 'denied'"
+                    @click="requestNotifPermission"
+                  >{{ $t('enable') }}</el-button>
+                </div>
+
+                <!-- Web 后台通知 — standards Web Push connection status. -->
+                <div class="autoreply-toggle" v-if="!isElectronPlatform && !isAndroidPlatform">
+                  <div>
+                    <div class="toggle-label">{{ $t('notifWebBackground') }}</div>
                     <div class="card-desc" style="margin:0">{{ notifStatusText }}</div>
                     <div v-if="pushRegisterErrorCode" class="card-desc" style="margin:0">{{ $t('notifErrorCode') }}: {{ pushRegisterErrorCode }}</div>
                   </div>
                   <el-button
-                    v-if="notifPermission !== 'granted' && !isElectronPlatform"
-                    size="small" :disabled="notifPermission === 'denied'"
-                    @click="requestNotifPermission"
-                  >{{ $t('enable') }}</el-button>
-                  <el-button
-                    v-else-if="pushGrantedButDisconnected"
+                    v-if="pushGrantedButDisconnected"
                     size="small" :loading="notifReconnecting"
                     @click="reconnectPush"
                   >{{ $t('notifReconnect') }}</el-button>
-                  <el-button v-else size="small" :loading="notifTestSending" @click="sendTestNotif">
+                </div>
+
+                <!-- Android — FCM stays Android's transport, unchanged. -->
+                <div class="autoreply-toggle" v-if="isAndroidPlatform">
+                  <div>
+                    <div class="toggle-label">{{ $t('notifAndroidPush') }}</div>
+                    <div class="card-desc" style="margin:0">{{ androidPushConnected ? $t('notifConnected') : $t('notifNotConnected') }}</div>
+                  </div>
+                </div>
+
+                <!-- Electron — native OS notifications, no Firebase/Web Push concept. -->
+                <div class="autoreply-toggle" v-if="isElectronPlatform">
+                  <div>
+                    <div class="toggle-label">{{ $t('notifSystemNotifications') }}</div>
+                    <div class="card-desc" style="margin:0">{{ $t('notifElectronOn') }}</div>
+                  </div>
+                </div>
+
+                <!-- Test actions -->
+                <div class="notif-test-actions" v-if="isElectronPlatform || isAndroidPlatform || notifPermission === 'granted'">
+                  <el-button size="small" :loading="notifTestSending" @click="sendTestNotif">
                     {{ isElectronPlatform ? $t('notifTestNative') : $t('notifSendTest') }}
+                  </el-button>
+                  <el-button v-if="!isElectronPlatform && !isAndroidPlatform" size="small" @click="sendLocalTestNotif">
+                    {{ $t('notifLocalTest') }}
                   </el-button>
                 </div>
 
-                <!-- Electron has no Firebase device registration (see mail-sync-service.js /
-                     init.js) — "registered device" is a web/Android push concept that doesn't apply. -->
+                <!-- Registered devices — web push subscriptions + Android FCM devices,
+                     merged. Electron has no server-side device concept at all. -->
                 <div class="notif-devices" v-if="!isElectronPlatform">
                   <div class="toggle-label" style="margin:16px 0 8px">{{ $t('notifDevices') }}</div>
-                  <div v-if="!notifDevices.length" class="card-desc">{{ $t('notifNoDevices') }}</div>
-                  <div v-for="d in notifDevices" :key="d.id" class="notif-device-row">
+                  <div v-if="!allNotifDevices.length" class="card-desc">{{ $t('notifNoDevices') }}</div>
+                  <div v-for="d in allNotifDevices" :key="d.key" class="notif-device-row">
                     <div class="notif-device-main">
-                      <span class="notif-device-name">{{ d.deviceName || d.platform }}</span>
-                      <span class="notif-device-platform">{{ d.platform }}</span>
+                      <span class="notif-device-name">{{ d.deviceName || d.platformLabel }}</span>
+                      <span class="notif-device-platform">{{ d.platformLabel }}</span>
                       <span v-if="!d.enabled" class="notif-device-tag">{{ $t('notifDisabled') }}</span>
                     </div>
                     <div class="notif-device-meta">
-                      <span>{{ $t('notifLastSeen') }}: {{ d.lastSeenAt ? dayjs(d.lastSeenAt).format('YYYY-MM-DD HH:mm') : $t('notifNever') }}</span>
-                      <button class="link-btn dim" @click="removeNotifDevice(d.id)">{{ $t('notifRemoveDevice') }}</button>
+                      <span>{{ $t('notifLastSeen') }}: {{ d.lastSeenTime ? dayjs(d.lastSeenTime).format('YYYY-MM-DD HH:mm') : $t('notifNever') }}</span>
+                      <button class="link-btn dim" @click="removeNotifDeviceRow(d)">{{ $t('notifRemoveDevice') }}</button>
                     </div>
                   </div>
                 </div>
@@ -397,7 +433,9 @@ import { hasPerm } from "@/perm/perm.js"
 import { backupProviders, backupConnectUrl, backupStatus, backupDisconnect, backupStart } from "@/request/backup.js"
 import { apikeyList as fetchApiKeyList, apikeyCreate, apikeyRevoke } from "@/request/apikey.js"
 import { listDevices, removeDevice, sendTestNotification } from "@/request/notification.js"
+import { listWebPushSubscriptions, removeWebPushSubscription, sendWebPushTest } from "@/request/web-push.js"
 import { useNotificationStore } from "@/store/notification.js"
+import { Capacitor } from "@capacitor/core"
 import dayjs from "dayjs"
 
 const { t } = useI18n()
@@ -421,67 +459,67 @@ const autoReplySaving = ref(false)
 
 // ── Push notifications ──
 // Browser permission and "push actually connected" are two different facts:
-// permission can be granted while token exchange / device registration
-// failed downstream, so a device only counts as connected once the server
-// confirms it via GET /notification/devices — never from
-// Notification.permission alone.
+// permission can be granted while subscribe()/registration failed
+// downstream, so a device only counts as connected once the server confirms
+// it via GET /web-push/subscriptions (web) or GET /notification/devices
+// (Android) — never from Notification.permission alone.
 const notificationStore = useNotificationStore()
 const notifPermission = ref(notificationStore.permission)
-const notifDevices = ref([])
+const notifDevices = ref([])           // Android FCM + any legacy web FCM tokens (/notification/devices)
+const webPushSubscriptions = ref([])   // standards Web Push subscriptions (/web-push/subscriptions)
 const notifDevicesLoaded = ref(false)
 const notifTestSending = ref(false)
 const notifReconnecting = ref(false)
 const isElectronPlatform = !!window.electronAPI?.sendNotification
-// Split from the previous single pushRegisterError so the Settings UI can
-// show both the failure stage AND the safe error identifier (e.code/e.name/
-// FIREBASE_NOT_CONFIGURED — never e.message, see firebase.js#errorId) —
-// stage alone ("firebase_app_init") wasn't enough to tell a missing config
-// apart from a bad API key without opening devtools.
+const isAndroidPlatform = !isElectronPlatform && Capacitor?.isNativePlatform?.() === true && Capacitor.getPlatform?.() === 'android'
+// Split from a single pushRegisterError so the Settings UI can show both the
+// failure stage AND the safe error identifier (e.name/WEB_PUSH_NOT_CONFIGURED
+// — never e.message, see web-push.js#errorId) — stage alone ("subscribe")
+// wasn't enough to tell a missing config apart from a browser-level failure
+// without opening devtools.
 const pushRegisterStage = ref('')
 const pushRegisterErrorCode = ref('')
 
-const pushConnected = computed(() => notifDevices.value.some(d => d.enabled))
+const pushConnected = computed(() => webPushSubscriptions.value.some(d => d.enabled))
+const androidPushConnected = computed(() => notifDevices.value.some(d => d.platform === 'android' && d.enabled))
 
-// permission granted, device list has actually loaded (not just its initial
-// empty [] before the first fetch resolves), and it came back with nothing —
-// distinct from pushConnected === false while still loading, and from a
-// fetch that simply failed (loadNotifDevices only flips notifDevicesLoaded
-// on success, so a network error leaves this false rather than showing a
-// misleading "disconnected" state).
+// permission granted, subscription list has actually loaded (not just its
+// initial empty [] before the first fetch resolves), and it came back with
+// nothing — distinct from pushConnected === false while still loading, and
+// from a fetch that simply failed (loadNotifDevices only flips
+// notifDevicesLoaded on success, so a network error leaves this false rather
+// than showing a misleading "disconnected" state).
 const pushGrantedButDisconnected = computed(() =>
   !isElectronPlatform &&
+  !isAndroidPlatform &&
   notifPermission.value === 'granted' &&
   notifDevicesLoaded.value &&
-  notifDevices.value.length === 0
+  webPushSubscriptions.value.length === 0
 )
 
 const STAGE_LABEL_KEYS = {
-  firebase_app_init: 'notifStageFirebaseAppInit',
-  messaging_init: 'notifStageMessagingInit',
   service_worker: 'notifStageServiceWorker',
-  get_token: 'notifStageGetToken',
+  subscribe: 'notifStageSubscribe',
   device_register: 'notifStageDeviceRegister',
   permission: 'notifStagePermission',
   unsupported: 'notifStageUnsupported',
   unknown: 'notifStageUnknown',
 }
 
-// Never surface the raw FCM token or a verbose SDK error string here — only
-// the named stage the failure happened at (see firebase.js#registerWebPush).
+// Never surface the raw subscription keys or a verbose error string here —
+// only the named stage the failure happened at (see web-push.js#registerWebPush).
 function stageLabel(stage) {
   const key = STAGE_LABEL_KEYS[stage]
   return key ? t(key) : stage
 }
 
-// Order matters: a failed reconnect attempt still leaves notifDevices empty
-// (pushGrantedButDisconnected would also be true), so pushRegisterStage must
-// be checked FIRST — otherwise a real firebase_app_init/messaging_init/
-// service_worker/get_token/device_register failure silently reads as the
-// generic "granted but never tried" message and the user has no way to see
-// what actually broke.
+// Order matters: a failed reconnect attempt still leaves webPushSubscriptions
+// empty (pushGrantedButDisconnected would also be true), so pushRegisterStage
+// must be checked FIRST — otherwise a real service_worker/subscribe/
+// device_register failure silently reads as the generic "granted but never
+// tried" message and the user has no way to see what actually broke.
 const notifStatusText = computed(() => {
   if (notifPermission.value === 'denied') return t('notifDenied')
-  if (isElectronPlatform) return t('notifTestNative')
   if (notifPermission.value !== 'granted') return t('notificationsDesc')
   if (pushConnected.value) return t('notifPushConnected')
   if (pushRegisterStage.value) return `${t('notifReconnectFailed')}: ${stageLabel(pushRegisterStage.value)}`
@@ -489,32 +527,80 @@ const notifStatusText = computed(() => {
   return t('notifTestNoDevice')
 })
 
+// Cosmetic "Chrome on Windows" style label for the registered-devices list —
+// simple UA sniffing, no new dependency (ua-parser-js is a backend-only dep).
+function formatDevicePlatformLabel(userAgent, fallback) {
+  if (!userAgent) return fallback
+  const browser = /Edg\//.test(userAgent) ? 'Edge'
+    : /Chrome\//.test(userAgent) ? 'Chrome'
+    : /Firefox\//.test(userAgent) ? 'Firefox'
+    : /Safari\//.test(userAgent) ? 'Safari'
+    : fallback
+  const os = /Windows/.test(userAgent) ? 'Windows'
+    : /Mac OS X/.test(userAgent) ? 'macOS'
+    : /Android/.test(userAgent) ? 'Android'
+    : /Linux/.test(userAgent) ? 'Linux'
+    : ''
+  return os ? `${browser} on ${os}` : browser
+}
+
+// Merges both device pools into one list for the Settings UI — web push
+// subscriptions and Android FCM devices are stored in separate tables
+// (web_push_subscription vs notification_device) but shown together here.
+const allNotifDevices = computed(() => {
+  const webRows = webPushSubscriptions.value.map(d => ({
+    key: `web-${d.id}`,
+    id: d.id,
+    kind: 'web',
+    deviceName: d.deviceName,
+    platformLabel: formatDevicePlatformLabel(d.userAgent, 'Web'),
+    enabled: d.enabled,
+    lastSeenTime: d.lastSeenTime,
+  }))
+  const androidRows = notifDevices.value
+    .filter(d => d.platform === 'android')
+    .map(d => ({
+      key: `android-${d.id}`,
+      id: d.id,
+      kind: 'android',
+      deviceName: d.deviceName,
+      platformLabel: 'Android',
+      enabled: d.enabled,
+      lastSeenTime: d.lastSeenAt,
+    }))
+  return [...webRows, ...androidRows]
+})
+
 function loadNotifDevices() {
-  return listDevices().then(data => {
-    notifDevices.value = data || []
+  return Promise.all([
+    listDevices().catch(() => []),
+    listWebPushSubscriptions().catch(() => []),
+  ]).then(([devices, subscriptions]) => {
+    notifDevices.value = devices || []
+    webPushSubscriptions.value = subscriptions || []
     notifDevicesLoaded.value = true
-  }).catch(() => {})
+  })
 }
 
 // Shared by "Enable" (permission just granted) and "Reconnect push"
-// (permission already granted, device missing) — both end in the same
-// getToken() + POST /notification/device round trip, which is idempotent
-// (backend UPSERTs on (userId, targetKind, targetValue)), so calling it
-// again never creates a duplicate device row.
+// (permission already granted, subscription missing) — both end in the same
+// subscribe() + POST /web-push/subscription round trip, which is idempotent
+// (pushManager.subscribe() returns the existing subscription if one is
+// already active, and the backend UPSERTs on endpoint), so calling it again
+// never creates a duplicate row.
 async function registerPushDevices() {
   const [{ initNativePush }, { registerWebPush }] = await Promise.all([
     import('@/utils/push-service.js'),
-    import('@/firebase.js'),
+    import('@/web-push.js'),
   ])
   const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush()])
   if (webResult.status === 'fulfilled') {
     const webStatus = webResult.value
     const failed = webStatus && !webStatus.ok
     pushRegisterStage.value = failed ? (webStatus.stage || 'unknown') : ''
-    // webStatus.error is already restricted to e.code/e.name/a known
-    // constant like FIREBASE_NOT_CONFIGURED by firebase.js#errorId — never
-    // e.message, an API key, VAPID key, FCM token, or credential — so it's
-    // safe to store and render as-is.
+    // webStatus.error is already restricted to e.name/a known constant like
+    // WEB_PUSH_NOT_CONFIGURED by web-push.js#errorId — never e.message, a
+    // subscription key, or credential — so it's safe to store and render as-is.
     pushRegisterErrorCode.value = failed ? (webStatus.error || '') : ''
   } else {
     // registerWebPush() itself is supposed to catch everything into a
@@ -522,7 +608,7 @@ async function registerPushDevices() {
     // outside that (e.g. a dynamic import failure), which used to silently
     // read as "success" and left the user staring at the generic
     // "not connected" message with zero indication anything went wrong.
-    console.error('[push] registerWebPush rejected', webResult.reason)
+    console.error('[web-push] registerWebPush rejected', webResult.reason)
     pushRegisterStage.value = 'unknown'
     pushRegisterErrorCode.value = ''
   }
@@ -538,7 +624,7 @@ async function requestNotifPermission() {
 }
 
 // Manual repair path for a device that has notification permission granted
-// but no server-side registration (Settings' onMounted only *detects* this
+// but no server-side subscription (Settings' onMounted only *detects* this
 // via loadNotifDevices — it doesn't retry on its own, so this button is the
 // explicit way to retrigger registerWebPush() without asking the user to
 // revoke and re-grant browser permission first).
@@ -551,10 +637,25 @@ async function reconnectPush() {
   }
 }
 
-// Electron has no Firebase device registration (see mail-sync-service /
-// init.js) — its "test" must exercise the real native-notification IPC
-// path directly instead of calling the server FCM test endpoint, which
-// would always report "no registered device" for Electron.
+function removeNotifDeviceRow(d) {
+  const request = d.kind === 'android' ? removeDevice(d.id) : removeWebPushSubscription(d.id)
+  return request.then(loadNotifDevices).catch(() => {})
+}
+
+// "本地测试" — direct Notification API call, no server round trip. Distinct
+// from the real backend-delivery test below.
+async function sendLocalTestNotif() {
+  const { showLocalTestNotification } = await import('@/web-push.js')
+  const shown = await showLocalTestNotification()
+  ElMessage({ message: shown ? t('notifTestSent') : t('notifTestFailed'), type: shown ? 'success' : 'error', plain: true })
+}
+
+// Electron has no server-side device registration — its "test" must exercise
+// the real native-notification IPC path directly instead of calling a server
+// test endpoint, which would always report "no registered device" for
+// Electron. Android keeps calling the existing FCM /notification/test.
+// Web/PWA calls the standards Web Push /web-push/test, scoped to its own
+// subscription pool so a web test click never fires an Android device's push.
 async function sendTestNotif() {
   notifTestSending.value = true
   try {
@@ -570,7 +671,11 @@ async function sendTestNotif() {
       return
     }
 
-    await sendTestNotification()
+    if (isAndroidPlatform) {
+      await sendTestNotification()
+    } else {
+      await sendWebPushTest()
+    }
     ElMessage({ message: t('notifTestSent'), type: 'success', plain: true })
   } catch (e) {
     const reason = e?.message || ''
@@ -579,6 +684,9 @@ async function sendTestNotif() {
       FIREBASE_NOT_CONFIGURED: 'notifTestServerNotConfigured',
       FIREBASE_AUTH_FAILED: 'notifTestServerNotConfigured',
       FCM_SEND_FAILED: 'notifTestSendFailed',
+      WEB_PUSH_NOT_CONFIGURED: 'notifTestServerNotConfigured',
+      WEB_PUSH_AUTH_FAILED: 'notifTestServerNotConfigured',
+      WEB_PUSH_SEND_FAILED: 'notifTestSendFailed',
     }[reason]
     ElMessage({ message: key ? t(key) : t('notifTestFailed'), type: 'error', plain: true })
   } finally {
@@ -633,12 +741,6 @@ function deleteLabel(l) {
       ElMessage({ message: t('labelDeleted'), type: 'success', plain: true })
     })
     .catch((e) => { if (e !== 'cancel') ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true }) })
-}
-
-function removeNotifDevice(id) {
-  removeDevice(id).then(() => {
-    notifDevices.value = notifDevices.value.filter(d => d.id !== id)
-  }).catch(() => {})
 }
 
 // ── Cloud backup ──
@@ -1383,6 +1485,10 @@ function submitPwd() {
 }
 
 /* ── Push notification devices ── */
+.notif-test-actions {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px;
+}
 .notif-device-row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap;
