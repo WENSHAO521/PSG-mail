@@ -17,7 +17,7 @@
   width: min(1180px, calc(100vw - 36px)) !important;
   background: var(--psg-panel) !important;
   border: 1px solid color-mix(in srgb, var(--psg-border) 82%, transparent) !important;
-  border-radius: 20px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: 0 28px 90px rgba(18, 22, 28, .24), 0 8px 24px rgba(18, 22, 28, .10) !important;
 }
 
@@ -39,7 +39,7 @@
   align-items: center;
   height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: var(--psg-r-sm);
   background: var(--psg-brand-soft) !important;
   color: var(--psg-brand) !important;
   font-size: 12px !important;
@@ -50,7 +50,7 @@
   min-height: 42px;
   padding: 5px 9px !important;
   border-left: 0 !important;
-  border-radius: 12px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .write-box .wh-sender.selectable:hover {
@@ -75,7 +75,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: var(--psg-r-sm);
   color: var(--psg-text-3) !important;
   cursor: pointer;
   transition: background var(--psg-fast) ease, color var(--psg-fast) ease;
@@ -140,7 +140,7 @@
 
 .write-box .tb-btn {
   min-height: 38px !important;
-  border-radius: 10px !important;
+  border-radius: var(--psg-r-sm) !important;
   color: var(--psg-text-2) !important;
 }
 
@@ -152,20 +152,20 @@
 .write-box .att-item {
   border-color: var(--psg-border) !important;
   background: var(--psg-panel) !important;
-  border-radius: 10px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .write-box .send-later-btn {
   width: 42px !important;
   min-width: 42px !important;
   height: 42px !important;
-  border-radius: 12px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .write-box .send-btn,
 .write-box .schedule-confirm-btn {
   min-height: 42px !important;
-  border-radius: 12px !important;
+  border-radius: var(--psg-r-sm) !important;
   padding-inline: 18px !important;
   font-weight: 700 !important;
 }
@@ -213,7 +213,7 @@
 .search-page .search-input-wrap {
   height: 50px !important;
   border-color: var(--psg-border) !important;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-panel) !important;
   box-shadow: var(--psg-shadow-1) !important;
   transition: border-color var(--psg-fast) ease, box-shadow var(--psg-fast) ease;
@@ -233,7 +233,7 @@
 .search-page .search-go-btn {
   height: 50px !important;
   min-width: 88px;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   font-weight: 700 !important;
 }
 
@@ -268,7 +268,7 @@
 
 .search-page .result-list {
   border-color: var(--psg-border) !important;
-  border-radius: 16px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-panel) !important;
   box-shadow: var(--psg-shadow-1) !important;
 }
@@ -307,7 +307,7 @@
   width: min(620px, calc(100vw - 32px)) !important;
   background: color-mix(in srgb, var(--psg-panel) 96%, transparent) !important;
   border: 1px solid var(--psg-border) !important;
-  border-radius: 18px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: var(--psg-shadow-float) !important;
   backdrop-filter: blur(24px) saturate(1.08) !important;
 }
@@ -335,7 +335,7 @@
 
 .result-item {
   min-height: 44px;
-  border-radius: 11px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .result-item.active,
@@ -362,7 +362,7 @@
   width: min(360px, calc(100vw - 20px)) !important;
   padding: 0 !important;
   border: 1px solid var(--psg-border) !important;
-  border-radius: 16px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: var(--psg-shadow-float) !important;
   overflow: hidden;
 }
@@ -389,7 +389,7 @@
 .notif-head .notif-clear-btn {
   min-height: 32px;
   padding: 0 8px !important;
-  border-radius: 8px;
+  border-radius: var(--psg-r-sm);
   color: var(--psg-text-3) !important;
 }
 
@@ -453,7 +453,7 @@
     var(--psg-panel-muted) 63%
   ) !important;
   background-size: 400% 100% !important;
-  border-radius: 8px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .is-loading .loading-path circle,
@@ -467,7 +467,7 @@
    ───────────────────────────────────────────────────────────── */
 .el-notification {
   border: 1px solid var(--psg-border) !important;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: color-mix(in srgb, var(--psg-panel) 96%, transparent) !important;
   box-shadow: var(--psg-shadow-float) !important;
   backdrop-filter: blur(18px);
@@ -481,14 +481,14 @@
 
 .el-message {
   min-height: 44px;
-  border-radius: 12px !important;
+  border-radius: var(--psg-r-sm) !important;
   border-color: var(--psg-border) !important;
   box-shadow: var(--psg-shadow-2) !important;
   backdrop-filter: blur(16px);
 }
 
 .message-bottom {
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -513,7 +513,7 @@
 
   .app-shell[data-platform="win32"] .write-box,
   .app-shell[data-platform="linux"] .write-box {
-    border-radius: 16px !important;
+    border-radius: var(--psg-r-sm) !important;
   }
 }
 
@@ -531,7 +531,7 @@
     height: 100dvh !important;
     max-height: 100dvh !important;
     border: 0 !important;
-    border-radius: 0 !important;
+    border-radius: var(--psg-r-sm) !important;
     box-shadow: none !important;
   }
 
@@ -552,7 +552,7 @@
   .write-box .wh-close {
     width: 44px;
     height: 44px;
-    border-radius: 14px;
+    border-radius: var(--psg-r-sm);
   }
 
   .write-box .toolbar-bar {
@@ -588,7 +588,7 @@
 
   .search-page .search-input-wrap {
     height: 46px !important;
-    border-radius: 14px !important;
+    border-radius: var(--psg-r-sm) !important;
   }
 
   .search-page .search-go-btn {
@@ -619,7 +619,7 @@
     border-left: 0 !important;
     border-right: 0 !important;
     border-bottom: 0 !important;
-    border-radius: 22px 22px 0 0 !important;
+    border-radius: var(--psg-r-sm) !important;
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 

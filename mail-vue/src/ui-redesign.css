@@ -7,32 +7,39 @@
 :root {
   color-scheme: light;
 
-  /* Brand */
-  --psg-brand: #b4232d;
-  --psg-brand-hover: #941c25;
-  --psg-brand-soft: rgba(180, 35, 45, 0.09);
-  --psg-brand-soft-strong: rgba(180, 35, 45, 0.14);
-  --psg-brand-rgb: 180, 35, 45;
+  /* Brand — this is the "ink" accent (primary/active/hover chrome), NOT
+     danger. PSG Mail's brief reserves red for unread/critical/destructive
+     signals only; primary UI stays black. See --psg-red-true below for the
+     one genuinely red token, aliased to style.css's --psg-red. */
+  --psg-brand: #111111;
+  --psg-brand-hover: #000000;
+  --psg-brand-soft: rgba(17, 17, 17, 0.08);
+  --psg-brand-soft-strong: rgba(17, 17, 17, 0.14);
+  --psg-brand-rgb: 17, 17, 17;
+  /* The one genuinely red token — unread / critical / destructive only.
+     Hardcoded (not var(--psg-red)) to avoid a self-reference cycle with
+     the --psg-red redeclaration below. */
+  --psg-red-true: #C92020;
 
   /* Neutral system */
-  --psg-canvas: #f4f5f7;
-  --psg-sidebar: #f8f8fa;
+  --psg-canvas: #f5f5f3;
+  --psg-sidebar: #f5f5f3;
   --psg-panel: #ffffff;
-  --psg-panel-muted: #f7f7f9;
-  --psg-panel-hover: #f0f1f3;
-  --psg-border: #e2e4e8;
-  --psg-border-strong: #d5d8de;
-  --psg-text: #191b20;
-  --psg-text-2: #555b66;
-  --psg-text-3: #848b97;
-  --psg-focus: rgba(180, 35, 45, 0.26);
+  --psg-panel-muted: #f5f5f3;
+  --psg-panel-hover: #ececea;
+  --psg-border: #d3d3cf;
+  --psg-border-strong: #b0b0aa;
+  --psg-text: #171717;
+  --psg-text-2: #686868;
+  --psg-text-3: #9a9a95;
+  --psg-focus: #111111;
 
-  /* Geometry */
-  --psg-r-xs: 8px;
-  --psg-r-sm: 10px;
-  --psg-r-md: 14px;
-  --psg-r-lg: 18px;
-  --psg-r-xl: 24px;
+  /* Geometry — restrained brutalism: very slight rounding, never decorative */
+  --psg-r-xs: 2px;
+  --psg-r-sm: 3px;
+  --psg-r-md: 4px;
+  --psg-r-lg: 4px;
+  --psg-r-xl: 4px;
   --psg-r-pill: 999px;
 
   /* Elevation */
@@ -48,17 +55,17 @@
   /* Bridge old tokens to the new system */
   --el-color-primary: var(--psg-brand);
   --el-color-primary-dark-2: var(--psg-brand-hover);
-  --el-color-primary-light-3: #c9535b;
-  --el-color-primary-light-5: #d9898e;
-  --el-color-primary-light-7: #edc5c8;
-  --el-color-primary-light-9: #faeeee;
+  --el-color-primary-light-3: #3d3d3d;
+  --el-color-primary-light-5: #6e6e6e;
+  --el-color-primary-light-7: #a3a3a3;
+  --el-color-primary-light-9: #ececec;
   --red-accent: var(--psg-brand);
   --red-accent-dark: var(--psg-brand-hover);
   --red-accent-rgb: var(--psg-brand-rgb);
   --red-accent-subtle: var(--psg-brand-soft);
   --on-accent: #ffffff;
-  --psg-red: var(--psg-brand);
-  --psg-red-hover: var(--psg-brand-hover);
+  --psg-red: var(--psg-red-true);
+  --psg-red-hover: #A81919;
   --psg-bg: var(--psg-canvas);
   --surface: var(--psg-panel);
   --surface-secondary: var(--psg-panel-muted);
@@ -86,23 +93,24 @@
 
 .dark {
   color-scheme: dark;
-  --psg-brand: #f07178;
-  --psg-brand-hover: #ff8c91;
-  --psg-brand-soft: rgba(240, 113, 120, 0.12);
-  --psg-brand-soft-strong: rgba(240, 113, 120, 0.18);
-  --psg-brand-rgb: 240, 113, 120;
+  --psg-brand: #f2f2ee;
+  --psg-brand-hover: #ffffff;
+  --psg-brand-soft: rgba(242, 242, 238, 0.12);
+  --psg-brand-soft-strong: rgba(242, 242, 238, 0.18);
+  --psg-brand-rgb: 242, 242, 238;
+  --psg-red-true: #E04B4B;
 
-  --psg-canvas: #111317;
-  --psg-sidebar: #15181d;
-  --psg-panel: #191c22;
-  --psg-panel-muted: #1f232a;
-  --psg-panel-hover: #252a32;
-  --psg-border: #2b3039;
-  --psg-border-strong: #383f4a;
-  --psg-text: #f2f3f5;
-  --psg-text-2: #b8bec8;
-  --psg-text-3: #858d99;
-  --psg-focus: rgba(240, 113, 120, 0.32);
+  --psg-canvas: #151515;
+  --psg-sidebar: #151515;
+  --psg-panel: #1c1c1c;
+  --psg-panel-muted: #1c1c1c;
+  --psg-panel-hover: #242424;
+  --psg-border: #383838;
+  --psg-border-strong: #56564f;
+  --psg-text: #f2f2ee;
+  --psg-text-2: #a9a9a5;
+  --psg-text-3: #78788a;
+  --psg-focus: #f2f2ee;
 
   --surface: var(--psg-panel);
   --surface-secondary: var(--psg-panel-muted);
@@ -279,7 +287,9 @@ body {
   box-shadow: inset 3px 0 0 var(--psg-brand) !important;
 }
 .unread-indicator.visible {
-  background: var(--psg-brand) !important;
+  /* Unread is a status signal, not brand chrome — stays genuinely red
+     even where --psg-brand is ink black. */
+  background: var(--psg-red-true) !important;
 }
 
 /* Reading pane: treat message as a document, not another grey panel. */

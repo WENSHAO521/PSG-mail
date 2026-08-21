@@ -111,7 +111,7 @@
 
   .m-tabbar {
     min-height: 52px !important;
-    border-radius: 18px !important;
+    border-radius: var(--psg-r-sm) !important;
     padding-top: 3px !important;
   }
 

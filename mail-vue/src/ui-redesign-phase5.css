@@ -47,7 +47,7 @@
   padding: 11px;
   width: 48px !important;
   height: 48px !important;
-  border-radius: 14px;
+  border-radius: var(--psg-r-sm);
   background: var(--psg-brand-soft);
 }
 
@@ -60,7 +60,7 @@
 .ai-msg-bubble {
   max-width: 88% !important;
   padding: 10px 13px !important;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-panel-muted) !important;
   color: var(--psg-text) !important;
   border: 1px solid var(--psg-border);
@@ -85,7 +85,7 @@
 .ai-confirm-card {
   padding: 14px !important;
   border: 1px solid color-mix(in srgb, #d59b1e 38%, var(--psg-border)) !important;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: color-mix(in srgb, #d59b1e 7%, var(--psg-panel)) !important;
 }
 
@@ -113,12 +113,12 @@
 
 .ai-chat-input .el-input__wrapper {
   min-height: 44px;
-  border-radius: 13px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .ai-chat-input .el-button {
   min-height: 44px;
-  border-radius: 13px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@
   --el-table-border-color: var(--psg-border);
   --el-table-text-color: var(--psg-text-2);
   --el-table-header-text-color: var(--psg-text-3);
-  border-radius: 14px;
+  border-radius: var(--psg-r-sm);
   overflow: hidden;
   border: 1px solid var(--psg-border);
   box-shadow: var(--psg-shadow-1);
@@ -189,7 +189,7 @@
 
 .workspace-pane .el-card {
   border-color: var(--psg-border) !important;
-  border-radius: 16px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-panel) !important;
   box-shadow: var(--psg-shadow-1) !important;
 }
@@ -218,7 +218,7 @@
   min-width: 34px !important;
   height: 34px !important;
   border: 1px solid var(--psg-border) !important;
-  border-radius: 9px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-panel) !important;
   color: var(--psg-text-2) !important;
 }
@@ -296,7 +296,7 @@
   }
 
   .workspace-pane .el-table {
-    border-radius: 12px;
+    border-radius: var(--psg-r-sm);
   }
 
   .workspace-pane .el-table th.el-table__cell {
@@ -313,7 +313,7 @@
     width: calc(100vw - 20px) !important;
     max-height: calc(100dvh - 24px);
     margin: 12px auto !important;
-    border-radius: 18px !important;
+    border-radius: var(--psg-r-sm) !important;
   }
 
   .el-dialog__header {

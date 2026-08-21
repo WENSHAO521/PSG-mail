@@ -20,7 +20,7 @@
 .settings-container .settings-panel {
   background: var(--psg-panel) !important;
   border: 1px solid var(--psg-border) !important;
-  border-radius: 18px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: var(--psg-shadow-1) !important;
 }
 
@@ -31,7 +31,7 @@
 .settings-container .settings-nav-item {
   min-height: 42px !important;
   padding: 0 12px !important;
-  border-radius: 10px !important;
+  border-radius: var(--psg-r-sm) !important;
   color: var(--psg-text-2) !important;
   font-size: 13.5px !important;
   font-weight: 560 !important;
@@ -93,13 +93,13 @@
 }
 
 .settings-container .avatar-wrap {
-  border-radius: 18px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: 0 0 0 1px var(--psg-border), var(--psg-shadow-1) !important;
 }
 
 .settings-container .avatar-init,
 .settings-container .avatar-img {
-  border-radius: 18px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .settings-container .meta-name,
@@ -115,7 +115,7 @@
 
 .settings-container .data-table {
   border: 1px solid var(--psg-border) !important;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   overflow: hidden;
   background: var(--psg-panel-muted) !important;
 }
@@ -137,7 +137,7 @@
 
 .settings-container .link-btn {
   color: var(--psg-brand) !important;
-  border-radius: 8px;
+  border-radius: var(--psg-r-sm);
 }
 
 .settings-container .link-btn.dim {
@@ -164,7 +164,7 @@
 }
 
 .settings-container .notif-device-tag {
-  border-radius: 999px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-panel-hover) !important;
   color: var(--psg-text-3) !important;
   border: 1px solid var(--psg-border) !important;
@@ -174,13 +174,13 @@
   margin-top: 20px !important;
   padding: 12px 14px !important;
   border: 1px solid rgba(217, 119, 6, .22) !important;
-  border-radius: 12px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: rgba(217, 119, 6, .075) !important;
 }
 
 .settings-container .editor-shell {
   border: 1px solid var(--psg-border) !important;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   overflow: hidden;
 }
 
@@ -191,7 +191,7 @@
 .settings-container .label-swatch {
   width: 28px !important;
   height: 28px !important;
-  border-radius: 9px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: 0 0 0 1px rgba(0,0,0,.08) inset;
 }
 
@@ -227,7 +227,7 @@
     overflow-x: auto !important;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
-    border-radius: 16px !important;
+    border-radius: var(--psg-r-sm) !important;
     background: color-mix(in srgb, var(--psg-panel) 94%, transparent) !important;
     backdrop-filter: blur(18px);
   }
@@ -240,7 +240,7 @@
     min-height: 38px !important;
     padding: 0 11px !important;
     border: 0 !important;
-    border-radius: 10px !important;
+    border-radius: var(--psg-r-sm) !important;
     white-space: nowrap !important;
   }
 
@@ -250,7 +250,7 @@
   }
 
   .settings-container .settings-panel {
-    border-radius: 16px !important;
+    border-radius: var(--psg-r-sm) !important;
   }
 
   .settings-container .settings-panel-header {
@@ -282,7 +282,7 @@
 
   .settings-container .settings-sidebar,
   .settings-container .settings-panel {
-    border-radius: 14px !important;
+    border-radius: var(--psg-r-sm) !important;
   }
 
   .settings-container .settings-panel-header {

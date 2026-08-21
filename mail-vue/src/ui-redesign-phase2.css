@@ -47,7 +47,7 @@
 #login-box .brand-divider {
   width: 42px !important;
   height: 4px !important;
-  border-radius: 999px;
+  border-radius: var(--psg-r-sm);
   background: var(--psg-brand) !important;
   margin: 26px 0 20px !important;
 }
@@ -72,7 +72,7 @@
   background: rgba(255, 255, 255, .96) !important;
   border: 1px solid var(--psg-border) !important;
   border-top: 1px solid var(--psg-border) !important;
-  border-radius: 22px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: var(--psg-shadow-2) !important;
 }
 
@@ -101,7 +101,7 @@
 #login-box .btn.el-button--primary,
 #login-box .btn:not(.btn-oauth) {
   min-height: 44px !important;
-  border-radius: 12px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-brand) !important;
   border-color: var(--psg-brand) !important;
   box-shadow: 0 8px 20px rgba(var(--psg-brand-rgb), .18) !important;
@@ -117,7 +117,7 @@
 #login-box .btn-oauth,
 #login-box .twofactor-entry {
   min-height: 42px !important;
-  border-radius: 12px !important;
+  border-radius: var(--psg-r-sm) !important;
   border-color: var(--psg-border) !important;
   background: var(--psg-panel) !important;
 }
@@ -148,7 +148,7 @@
   height: 100%;
   background: var(--psg-panel) !important;
   border: 1px solid var(--psg-border) !important;
-  border-radius: 18px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: var(--psg-shadow-1) !important;
   overflow: hidden;
 }
@@ -173,7 +173,7 @@
 .mail-detail-pane .detail-header .icon-btn {
   width: 36px !important;
   height: 36px !important;
-  border-radius: 10px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .mail-detail-pane .detail-content {
@@ -194,7 +194,7 @@
 .mail-detail-pane .meta-card {
   padding: 16px !important;
   border: 1px solid var(--psg-border) !important;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-panel-muted) !important;
   box-shadow: none !important;
 }
@@ -202,7 +202,7 @@
 .mail-detail-pane .meta-avatar {
   width: 42px !important;
   height: 42px !important;
-  border-radius: 12px !important;
+  border-radius: var(--psg-r-sm) !important;
 }
 
 .mail-detail-pane .meta-sender-name {
@@ -228,7 +228,7 @@
 .mail-detail-pane .att-container,
 .mail-detail-pane .translate-panel {
   border: 1px solid var(--psg-border) !important;
-  border-radius: 14px !important;
+  border-radius: var(--psg-r-sm) !important;
   background: var(--psg-panel-muted) !important;
   overflow: hidden;
 }
@@ -259,7 +259,7 @@
 
 .workspace-body :is(.setting-card, .settings-card, .panel, .card, .section-card) {
   border-color: var(--psg-border) !important;
-  border-radius: 16px !important;
+  border-radius: var(--psg-r-sm) !important;
   box-shadow: var(--psg-shadow-1) !important;
 }
 
@@ -306,7 +306,7 @@
 
   .mail-detail-pane .surface-card {
     border: 0 !important;
-    border-radius: 0 !important;
+    border-radius: var(--psg-r-sm) !important;
     box-shadow: none !important;
   }
 
@@ -321,7 +321,7 @@
   .mail-detail-pane .detail-header .icon-btn {
     width: 42px !important;
     height: 42px !important;
-    border-radius: 13px !important;
+    border-radius: var(--psg-r-sm) !important;
   }
 
   .mail-detail-pane .detail-content {
@@ -335,7 +335,7 @@
   }
 
   .mail-detail-pane .meta-card {
-    border-radius: 16px !important;
+    border-radius: var(--psg-r-sm) !important;
     padding: 14px !important;
   }
 
@@ -358,7 +358,7 @@
   #login-box .container {
     max-width: 460px !important;
     padding: 30px 24px 24px !important;
-    border-radius: 20px !important;
+    border-radius: var(--psg-r-sm) !important;
     box-shadow: 0 14px 42px rgba(19, 24, 32, .12) !important;
   }
 }
@@ -370,7 +370,7 @@
 
   #login-box .container {
     padding: 26px 18px 20px !important;
-    border-radius: 18px !important;
+    border-radius: var(--psg-r-sm) !important;
   }
 
   .mail-detail-pane .detail-content {
