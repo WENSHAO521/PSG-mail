@@ -8,20 +8,26 @@ const publicDir = path.join(root, 'public')
 const buildDir  = path.join(root, 'build')
 
 // ── Full icon (legacy ic_launcher.png / ic_launcher_round.png) ───────────────
-// Brutalist "Z"-block mark (light) with punched accent square, on dark ground.
+// Turned-letter mark on the brand-green tile: a portrait card with a folded
+// top-right corner (the letter cue) and a punched accent square bottom-left
+// (the brand's read/unread pixel). Both accents are painted the same green
+// as the tile so they read as cut-through notches, not separate shapes.
+const TILE_BG = '#1E5940'
+
 const MARK = `<g transform="translate(100 100) scale(1.6) translate(-50 -50)">
-    <path d="M20 20 H80 V40 H40 V60 H80 V80 H20 V20 Z" fill="#f4f4f4"/>
-    <path d="M45 45 H55 V55 H45 Z" fill="#0d0d0d"/>
+    <rect x="22" y="16" width="56" height="68" fill="#F4F4F0"/>
+    <path d="M58 16 L78 16 L78 36 Z" fill="${TILE_BG}"/>
+    <rect x="30" y="66" width="12" height="12" fill="${TILE_BG}"/>
   </g>`
 
 const SVG = `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <rect x="12" y="12" width="176" height="176" rx="38" fill="#0d0d0d"/>
+  <rect x="12" y="12" width="176" height="176" rx="38" fill="${TILE_BG}"/>
   ${MARK}
 </svg>`
 
 // ── Adaptive icon foreground (artwork inset to safe zone of 108dp canvas) ─────
 // Mark centered at (100,100) in 200×200 viewport. No background fill —
-// background comes from ic_launcher_background color (#0d0d0d).
+// background comes from ic_launcher_background color (must match TILE_BG).
 const FOREGROUND_SVG = `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
   ${MARK}
 </svg>`
