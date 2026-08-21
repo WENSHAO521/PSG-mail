@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-  <meta name="theme-color" content="#F4F5F7" id="theme-color-meta">
+  <meta name="theme-color" content="#F3F5F7" id="theme-color-meta">
   <meta name="description" content="PSG Mail — Panorama Scholarly Group institutional email client for web, desktop and mobile.">
   <title>PSG Mail</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -27,15 +27,15 @@
       } catch {}
     }
     const metaTag = document.getElementById('theme-color-meta')
-    metaTag.setAttribute('content', dark ? '#111317' : '#F4F5F7')
+    metaTag.setAttribute('content', dark ? '#11151B' : '#F3F5F7')
   </script>
 </head>
 <style>
   html {
-    background: #F4F5F7;
+    background: #F3F5F7;
   }
   html.dark {
-    background: #111317;
+    background: #11151B;
   }
   #loading-first {
     position: fixed;
@@ -45,12 +45,12 @@
     justify-content: center;
     align-items: center;
     z-index: 500;
-    background: #F4F5F7;
+    background: #F3F5F7;
     transition: opacity 180ms ease;
   }
 
   html.dark #loading-first {
-    background: #111317;
+    background: #11151B;
   }
 
   .loading-hide {
@@ -94,7 +94,7 @@
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: #B4232D;
+    background: #B4233D;
     transform: scaleX(0);
     transform-origin: left center;
     animation: loading-progress-grow 2.4s linear forwards;
@@ -107,7 +107,7 @@
     width: 24px;
     height: 100%;
     border-radius: inherit;
-    background: rgba(180, 35, 45, 0.32);
+    background: rgba(180, 35, 61, 0.32);
     filter: blur(4px);
     transform: translateX(-24px);
     animation: loading-progress-peg 2.4s linear forwards;
