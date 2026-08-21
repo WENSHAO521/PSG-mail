@@ -4,6 +4,7 @@ import router from './router';
 import './style.css';
 import './ui-redesign.css';
 import './ui-redesign-phase2.css';
+import './ui-redesign-phase3.css';
 
 // Fonts — bundled locally so Electron works offline
 import '@fontsource/ibm-plex-sans/400.css'
