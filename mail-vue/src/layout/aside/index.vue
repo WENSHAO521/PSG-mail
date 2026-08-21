@@ -297,15 +297,15 @@ function clickLogout() {
 
 <style lang="scss" scoped>
 /* ══════════════════════════════════════════════════════════
-   Sidebar — PSG Brutalist Academic (light / dark adaptive)
+   Sidebar — PSG institutional shell (light / dark adaptive)
    ══════════════════════════════════════════════════════════ */
 .mail-sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
-  width: 260px;
-  background: var(--aside-backgound, #f9f9f9);
-  border-right: 1px solid var(--light-border, #e2e2e6);
+  width: 256px;
+  background: var(--psg-surface);
+  border-right: 1px solid var(--psg-border);
   overflow: hidden;
   transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -327,8 +327,8 @@ function clickLogout() {
   align-items: flex-start;
   padding: 18px 20px 14px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--light-border, #e2e2e6);
-  border-left: 3px solid var(--red-accent);
+  border-bottom: 1px solid var(--psg-border);
+  border-left: 3px solid var(--psg-primary);
   -webkit-app-region: drag;
 
   /* macOS hiddenInset: trafficLightPosition y=18, button h≈14px → bottom≈32px.
@@ -348,26 +348,24 @@ function clickLogout() {
 }
 
 .brand-name {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: #111111;
+  color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-
-  :global(.dark) & { color: #f0f0f0; }
 }
 
 .brand-sub {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--red-accent);
+  color: var(--psg-text-muted);
   white-space: nowrap;
 }
 
@@ -390,7 +388,7 @@ function clickLogout() {
   padding: 14px 12px 14px 20px;
   flex-shrink: 0;
   gap: 8px;
-  border-bottom: 1px solid var(--light-border-color, #cfc4c5);
+  border-bottom: 1px solid var(--psg-border);
 }
 
 .acct-section {
@@ -410,7 +408,7 @@ function clickLogout() {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-full);
+  border-radius: var(--psg-radius-full);
 
   .acct-fallback {
     color: #fff;
@@ -436,25 +434,21 @@ function clickLogout() {
   flex-direction: column;
   gap: 2px;
 
-  @media (hover: hover) {
-    &:hover .acct-name { color: var(--red-accent); }
-  }
 }
 
 .acct-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 0.12s;
 }
 
 .acct-email {
-  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 10px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -474,16 +468,16 @@ function clickLogout() {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   cursor: pointer;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-secondary);
   transition: background 0.14s ease, color 0.14s ease, transform 0.1s ease;
   flex-shrink: 0;
 
   @media (hover: hover) {
     &:hover {
-      background: #ffffff;
-      color: var(--el-text-color-primary);
+      background: var(--psg-surface-active);
+      color: var(--psg-text);
     }
   }
   &:active { transform: scale(0.92); }
@@ -497,17 +491,17 @@ function clickLogout() {
   width: 44px;
   height: 44px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   background: transparent;
   cursor: pointer;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-secondary);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
 
   @media (hover: hover) {
     &:hover {
-      background: var(--email-hover-background, #eeeeee);
-      color: var(--el-text-color-primary);
+      background: var(--psg-surface-active);
+      color: var(--psg-text);
     }
   }
 }
@@ -546,26 +540,26 @@ function clickLogout() {
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   cursor: pointer;
-  color: var(--psg-text-secondary, #4c4546);
-  border-radius: var(--radius-sm);
+  color: var(--psg-text-secondary);
+  border-radius: var(--psg-radius-sm);
   transition: background 0.10s ease, color 0.10s ease, border-color 0.10s ease;
   user-select: none;
 
   @media (hover: hover) {
     &:not(.active):hover {
-      background: var(--email-hover-background, #eeeeee);
-      color: var(--el-text-color-primary);
+      background: var(--psg-surface-muted);
+      color: var(--psg-text);
     }
   }
 
-  /* Strong, quiet indicator — a black left rule + flat light-gray fill,
-     never a solid black row. */
+  /* Strong, quiet indicator — an ink left rule + flat neutral fill,
+     never a solid ink row. */
   &.active {
-    background: var(--psg-surface-active, #ececea);
-    border-left-color: var(--psg-black, #111111);
-    color: var(--psg-black, #111111);
+    background: var(--psg-surface-active);
+    border-left-color: var(--psg-primary);
+    color: var(--psg-primary);
     font-weight: 700;
   }
 }
@@ -591,11 +585,11 @@ function clickLogout() {
   flex-shrink: 0;
   :deep(.el-badge__content) {
     font-size: 10px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--psg-font-mono);
     font-weight: 700;
-    background: var(--red-accent);
+    background: var(--psg-danger);
     border: none;
-    border-radius: var(--radius-full);
+    border-radius: var(--psg-radius-full);
     padding: 0 4px;
     min-width: 18px;
     height: 16px;
@@ -606,19 +600,19 @@ function clickLogout() {
 /* ── Admin separator + title ─────────────────────────────── */
 .sidebar-section-separator {
   height: 1px;
-  background: var(--light-border-color, #cfc4c5);
+  background: var(--psg-border);
   margin: 10px 16px;
 }
 
 .sidebar-section-title {
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   padding: 0 20px;
   margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
 }
 
 .label-section-title {
@@ -635,12 +629,12 @@ function clickLogout() {
   height: 18px;
   border: none;
   background: transparent;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   transition: background 0.1s, color 0.1s;
 
-  &:hover { background: var(--base-fill); color: var(--el-text-color-primary); }
+  &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
 }
 
 .label-dot {
@@ -654,7 +648,7 @@ function clickLogout() {
   margin-left: auto;
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -662,7 +656,7 @@ function clickLogout() {
 .sidebar-footer {
   padding: 14px 16px;
   flex-shrink: 0;
-  border-top: 1px solid var(--light-border-color, #cfc4c5);
+  border-top: 1px solid var(--psg-border);
 }
 
 .sidebar-bottom-actions {
@@ -681,21 +675,21 @@ function clickLogout() {
   gap: 8px;
   height: 36px;
   border: none;
-  border-radius: var(--radius-sm);
-  background: var(--red-accent);
-  color: var(--on-accent);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
   font-size: 13.5px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   cursor: pointer;
-  transition: background 0.14s ease, transform 0.1s ease;
+  transition: opacity 0.14s ease, transform 0.1s ease;
 
   @media (hover: hover) {
-    &:hover { background: var(--red-accent-dark); }
+    &:hover { opacity: .88; }
   }
-  &:active { background: var(--red-accent-dark); transform: scale(0.97); }
+  &:active { opacity: .88; transform: scale(0.97); }
 }
 
 /* Secondary actions grouped into one quiet surface, distinct from the
@@ -707,9 +701,9 @@ function clickLogout() {
   height: 36px;
   padding: 0 3px;
   flex-shrink: 0;
-  border: 1px solid var(--light-border, #e2e2e6);
-  border-radius: var(--radius-sm);
-  background: var(--email-hover-background, #eeeeee);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
 }
 
 .util-btn {
@@ -720,16 +714,16 @@ function clickLogout() {
   height: 28px;
   flex-shrink: 0;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   background: transparent;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   cursor: pointer;
   transition: background 0.14s ease, color 0.14s ease, transform 0.1s ease;
 
   @media (hover: hover) {
     &:hover {
-      background: #ffffff;
-      color: var(--el-text-color-primary);
+      background: var(--psg-surface);
+      color: var(--psg-text);
     }
   }
   &:active { transform: scale(0.92); }
@@ -757,16 +751,16 @@ function clickLogout() {
   height: 36px;
   flex-shrink: 0;
   border: none;
-  border-radius: var(--radius-sm);
-  background: var(--red-accent);
-  color: var(--on-accent);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
   cursor: pointer;
-  transition: background 0.14s ease, transform 0.1s ease;
+  transition: opacity 0.14s ease, transform 0.1s ease;
 
   @media (hover: hover) {
-    &:hover { background: var(--red-accent-dark); }
+    &:hover { opacity: .88; }
   }
-  &:active { background: var(--red-accent-dark); transform: scale(0.94); }
+  &:active { opacity: .88; transform: scale(0.94); }
 }
 
 /* Dropdown items */
@@ -774,56 +768,6 @@ function clickLogout() {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-:deep(.logout-item) {
-  color: var(--red-accent) !important;
-}
-
-/* ══════════════════════════════════════════════════════════
-   Dark mode overrides
-   ══════════════════════════════════════════════════════════ */
-:global(.dark) {
-  .sidebar-nav-link {
-    color: rgba(255, 255, 255, 0.55);
-
-    @media (hover: hover) {
-      &:not(.active):hover {
-        background: rgba(255, 255, 255, 0.06);
-        color: rgba(255, 255, 255, 0.90);
-      }
-    }
-
-    &.active {
-      background: rgba(var(--red-accent-rgb), 0.16);
-      color: rgba(255, 255, 255, 0.95);
-    }
-  }
-
-  .sidebar-util-cluster {
-    border-color: rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .util-btn,
-  .notif-trigger-wrap :deep(.icon-btn) {
-    color: rgba(255, 255, 255, 0.55);
-
-    @media (hover: hover) {
-      &:hover {
-        background: rgba(255, 255, 255, 0.10);
-        color: rgba(255, 255, 255, 0.92);
-      }
-    }
-  }
-
-  .icon-button {
-    color: rgba(255, 255, 255, 0.40);
-    &:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: rgba(255, 255, 255, 0.88);
-    }
-  }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -866,7 +810,7 @@ function clickLogout() {
     margin-inline: 8px;
     padding-inline: 0;
     border-left: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--psg-radius-sm);
   }
 
   .sidebar-nav-content {
