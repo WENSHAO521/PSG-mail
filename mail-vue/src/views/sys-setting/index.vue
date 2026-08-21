@@ -1635,7 +1635,7 @@ function editSetting(settingForm, refreshStatus = true) {
 <style scoped lang="scss">
 .settings-container {
   height: 100%;
-  background: var(--psg-bg, #f7f7f7) !important;
+  background: var(--psg-canvas) !important;
   position: relative;
 
   .loading {
@@ -1656,7 +1656,7 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 
   .loading-hide {
-    transition: var(--loading-hide-transition);
+    transition: all 200ms;
     pointer-events: none;
     opacity: 0;
   }
@@ -1694,10 +1694,9 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .settings-sidebar,
 .settings-panel {
-  background: var(--surface, #ffffff);
-  border: 1px solid var(--light-border, #e2e2e6);
-  border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
   overflow: hidden;
 }
 
@@ -1715,7 +1714,7 @@ function editSetting(settingForm, refreshStatus = true) {
     min-height: 0;
     flex-direction: row;
     overflow-x: auto;
-    border-radius: var(--radius-sm);
+    border-radius: var(--psg-radius-sm);
   }
 }
 
@@ -1726,27 +1725,24 @@ function editSetting(settingForm, refreshStatus = true) {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-radius: var(--radius-sm);
-  color: var(--psg-text-secondary, #666666);
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  border-radius: var(--psg-radius-sm);
+  color: var(--psg-text-secondary);
+  font-family: var(--psg-font-sans);
   font-size: 13.5px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
-  transition: background 160ms var(--ease-out, ease), color 160ms var(--ease-out, ease);
+  transition: background 160ms ease, color 160ms ease;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.04);
-    color: var(--el-text-color-primary);
-    :global(.dark) & {
-      background: rgba(255, 255, 255, 0.06);
-    }
+    background: var(--psg-surface-muted);
+    color: var(--psg-text);
   }
 
   &.active {
-    background: rgba(var(--red-accent-rgb), 0.08);
-    color: var(--el-text-color-primary);
+    background: var(--psg-surface-active);
+    color: var(--psg-text);
     font-weight: 700;
   }
 
@@ -1758,8 +1754,8 @@ function editSetting(settingForm, refreshStatus = true) {
     padding: 0 12px;
 
     &.active {
-      border-bottom-color: var(--red-accent);
-      background: rgba(var(--red-accent-rgb), 0.06);
+      border-bottom-color: var(--psg-primary);
+      background: var(--psg-surface-active);
     }
   }
 }
@@ -1776,11 +1772,11 @@ function editSetting(settingForm, refreshStatus = true) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--separator, #e5e5e5);
+  border-bottom: 1px solid var(--psg-border);
 
   h1 {
     margin: 0 0 4px;
-    color: var(--el-text-color-primary);
+    color: var(--psg-text);
     font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
     font-size: 20px;
     font-weight: 750;
@@ -1792,7 +1788,7 @@ function editSetting(settingForm, refreshStatus = true) {
   p {
     margin: 0;
     max-width: 38rem;
-    color: var(--psg-text-secondary, #666666);
+    color: var(--psg-text-secondary);
     font-size: 14px;
     font-weight: 500;
     line-height: 1.4;
@@ -1808,7 +1804,7 @@ function editSetting(settingForm, refreshStatus = true) {
   flex: 0 0 auto;
   min-width: 68px;
   height: 42px !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--psg-radius-sm) !important;
   margin: 0 !important;
 }
 
@@ -1819,8 +1815,8 @@ function editSetting(settingForm, refreshStatus = true) {
 .background {
   width: 249px;
   height: 140px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--light-border);
+  border-radius: var(--psg-radius-sm);
+  border: 1px solid var(--psg-border);
   @media (max-width: 500px) {
     width: 160px;
     height: 90px;
@@ -1840,7 +1836,7 @@ function editSetting(settingForm, refreshStatus = true) {
 .settings-card {
   background: transparent;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   box-shadow: none;
 }
 
@@ -1861,7 +1857,7 @@ function editSetting(settingForm, refreshStatus = true) {
   gap: 20px;
   padding: 14px 20px;
   align-items: center;
-  border-bottom: 1px solid var(--separator, #e5e5e5);
+  border-bottom: 1px solid var(--psg-border);
   font-weight: 600;
 
   > div:first-child {
@@ -1872,7 +1868,7 @@ function editSetting(settingForm, refreshStatus = true) {
     min-width: 0;
 
     span {
-      color: var(--el-text-color-primary);
+      color: var(--psg-text);
       font-size: 14px;
       line-height: 1.35;
     }
@@ -1880,13 +1876,13 @@ function editSetting(settingForm, refreshStatus = true) {
     p {
       flex-basis: 100%;
       margin: 1px 0 0;
-      color: var(--psg-text-secondary, #666666);
+      color: var(--psg-text-secondary);
       font-size: 13px;
       font-weight: 550;
       line-height: 1.35;
 
       &.danger-warn {
-        color: var(--red-accent);
+        color: var(--psg-danger);
         font-weight: 600;
         margin-top: 6px;
       }
@@ -1898,7 +1894,7 @@ function editSetting(settingForm, refreshStatus = true) {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    color: var(--el-text-color-primary);
+    color: var(--psg-text);
     font-weight: 600;
     text-align: right;
   }
@@ -1930,7 +1926,7 @@ function editSetting(settingForm, refreshStatus = true) {
   grid-template-columns: minmax(190px, 1fr) minmax(150px, auto);
   gap: 20px;
   align-items: center;
-  border-bottom: 1px solid var(--separator, #e5e5e5);
+  border-bottom: 1px solid var(--psg-border);
 
   > div:first-child {
     display: flex;
@@ -1939,7 +1935,7 @@ function editSetting(settingForm, refreshStatus = true) {
     gap: 6px;
 
     span {
-      color: var(--el-text-color-primary);
+      color: var(--psg-text);
       font-size: 14px;
       font-weight: 600;
       line-height: 1.35;
@@ -1974,8 +1970,8 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 .cropper {
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--light-border, #e2e2e6);
+  border-radius: var(--psg-radius-sm);
+  border: 1px solid var(--psg-border);
   height: 397px;
   width: 705px;
   @media (max-width: 767px) {
@@ -2050,7 +2046,7 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 :deep(.el-table__inner-wrapper:before) {
-  background: var(--el-bg-color);
+  background: var(--psg-surface);
 }
 
 :deep(.cut-dialog.el-dialog) {
@@ -2084,7 +2080,7 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 .error-image {
-  background: var(--light-ill);
+  background: var(--psg-surface-active);
   height: 100%;
   display: flex;
   align-items: center;
@@ -2244,7 +2240,7 @@ function editSetting(settingForm, refreshStatus = true) {
   padding: 16px 20px;
   align-items: center;
   gap: 20px;
-  border-bottom: 1px solid var(--separator, #e5e5e5);
+  border-bottom: 1px solid var(--psg-border);
 
   &:last-child { border-bottom: none; }
 }
@@ -2255,7 +2251,7 @@ function editSetting(settingForm, refreshStatus = true) {
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--psg-text-secondary, #666666);
+  color: var(--psg-text-secondary);
   white-space: nowrap;
 }
 
