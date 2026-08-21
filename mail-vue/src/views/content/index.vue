@@ -31,7 +31,7 @@
                 :width="email.isStar ? 20 : 18" :height="email.isStar ? 20 : 18" />
         </button>
         <!-- Destructive action: kept last (never adjacent to Back/Reply muscle-memory
-             position) and visually quiet at rest — only turns --psg-red on hover. -->
+             position) and visually quiet at rest — only turns --psg-danger on hover. -->
         <button v-perm="'email:delete'" class="icon-btn icon-danger" @click="handleDelete" :title="$t('delete')">
           <Icon icon="solar:trash-bin-trash-linear" width="19" height="19" />
         </button>
@@ -468,51 +468,25 @@ function handleDelete() {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  height: calc(100% - 24px);
-  margin: 12px;
-  border-radius: var(--radius-lg);
-  background: var(--surface, #ffffff);
-  border: 1px solid var(--light-border-color, #dcdcdc);
-  box-shadow: var(--card-shadow);
+  background: var(--psg-canvas);
 
-  @media (max-width: 1024px) {
-    height: 100%;
-    margin: 0;
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
-  }
-
-  .empty-icon { color: var(--muted, #666666); opacity: 0.5; }
+  .empty-icon { color: var(--psg-text-muted); opacity: 0.5; }
 
   .empty-text {
     font-size: 14px;
-    font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+    font-family: var(--psg-font-sans);
     letter-spacing: 0;
     text-transform: none;
-    color: var(--muted, #666666);
+    color: var(--psg-text-muted);
   }
 }
 
-/* ── surface-card ────────────────────────────────────────── */
+/* ── Document-first reading pane: flush, not a floating card ── */
 .email-detail {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: calc(100% - 24px);
-  margin: 12px;
-  border-radius: var(--radius-lg);
-  background: var(--surface, #ffffff);
-  border: 1px solid var(--light-border-color, #dcdcdc);
-  box-shadow: var(--card-shadow-hover);
-
-  @media (max-width: 1024px) {
-    height: 100%;
-    margin: 0;
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
-  }
+  background: var(--psg-canvas);
 }
 
 /* ── Header ──────────────────────────────────────────────── */
@@ -522,7 +496,8 @@ function handleDelete() {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  border-bottom: 1px solid var(--light-border-color, #dcdcdc);
+  background: var(--psg-surface);
+  border-bottom: 1px solid var(--psg-border);
   flex-shrink: 0;
 }
 
@@ -543,13 +518,13 @@ function handleDelete() {
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--muted, #666666);
+  color: var(--psg-text-secondary);
   transition: background 0.12s ease, color 0.12s ease;
   flex-shrink: 0;
 
   @media (hover: hover) {
-    &:hover { background: rgba(0,0,0,0.07); color: var(--el-text-color-primary); }
-    &.icon-danger:hover { background: rgba(var(--psg-red-rgb), 0.08); color: var(--psg-red); }
+    &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
+    &.icon-danger:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
   }
 }
 
@@ -562,19 +537,19 @@ function handleDelete() {
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--muted, #666666);
+  color: var(--psg-text-secondary);
   text-decoration: none;
   transition: background 0.12s ease, color 0.12s ease;
 
   @media (hover: hover) {
-    &:hover { background: rgba(0,0,0,0.07); color: var(--el-text-color-primary); }
+    &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
   }
 }
 
 .page-counter {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 12px;
-  color: var(--muted, #666666);
+  color: var(--psg-text-muted);
   white-space: nowrap;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
@@ -600,10 +575,10 @@ function handleDelete() {
   font-size: 30px;
   font-weight: 700;
   line-height: 1.3;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   margin: 0 0 20px;
   word-break: break-word;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   letter-spacing: -0.01em;
 
   @media (max-width: 768px) {
@@ -623,7 +598,7 @@ function handleDelete() {
   font-size: 11px;
   font-weight: 700;
   padding: 2px 9px;
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--psg-radius-full);
   color: var(--chip-color);
   background: color-mix(in srgb, var(--chip-color) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--chip-color) 30%, transparent);
@@ -640,7 +615,7 @@ function handleDelete() {
 .label-popover-empty {
   padding: 10px 4px;
   font-size: 12.5px;
-  color: var(--secondary-text-color);
+  color: var(--psg-text-secondary);
 }
 
 .label-popover-item {
@@ -648,10 +623,10 @@ function handleDelete() {
   align-items: center;
   gap: 8px;
   padding: 7px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--psg-radius-sm);
   cursor: pointer;
 
-  &:hover { background: var(--base-fill); }
+  &:hover { background: var(--psg-surface-muted); }
 }
 
 .label-popover-name {
@@ -681,10 +656,10 @@ function handleDelete() {
   align-items: flex-start;
   gap: 14px;
   padding: 14px 16px;
-  border: 1px solid var(--light-border-color, #dcdcdc);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
   margin-bottom: 0;
-  background: var(--surface-secondary, #f9f9f9);
+  background: var(--psg-surface);
 
   @media (max-width: 767px) {
     padding: 12px 14px;
@@ -702,7 +677,7 @@ function handleDelete() {
   position: relative;
   overflow: hidden;
   margin-top: 2px;
-  border-radius: var(--radius-full);
+  border-radius: var(--psg-radius-full);
 
   .meta-initial { color: #fff; font-size: 15px; font-weight: 700; line-height: 1; }
   .meta-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -732,7 +707,7 @@ function handleDelete() {
 .meta-sender-name {
   font-size: 14px;
   font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -741,18 +716,18 @@ function handleDelete() {
 }
 
 .meta-date {
-  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 11px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
 .meta-sender-email {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--psg-font-mono);
   font-size: 11px;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -764,7 +739,7 @@ function handleDelete() {
   gap: 2px;
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid var(--light-border-color, #dcdcdc);
+  border-top: 1px solid var(--psg-border);
 }
 
 .meta-field {
@@ -776,18 +751,18 @@ function handleDelete() {
 }
 
 .meta-field-label {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--muted, #7e7576);
+  color: var(--psg-text-muted);
   flex-shrink: 0;
   min-width: 28px;
 }
 
 .meta-field-value {
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   word-break: break-word;
   font-size: 12.5px;
   line-height: 1.5;
@@ -795,13 +770,13 @@ function handleDelete() {
 
 .email-status-alert {
   margin-top: 10px;
-  :deep(.el-alert) { border-radius: var(--radius-sm) !important; }
+  :deep(.el-alert) { border-radius: var(--psg-radius-sm) !important; }
 }
 
 /* ── Divider between meta and body ───────────────────────── */
 .body-divider {
   height: 1px;
-  background: var(--light-border-color, #dcdcdc);
+  background: var(--psg-border);
   margin: 24px 0;
 
   @media (max-width: 767px) { margin: 16px 0; }
@@ -811,63 +786,63 @@ function handleDelete() {
 .email-body {
   font-size: 16px;
   line-height: 1.75;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   word-break: break-word;
 }
 
 .shadow-html::after {
   content: ""; position: absolute; inset: 0;
-  background: var(--message-block-color); pointer-events: none;
+  background: var(--psg-html-dim); pointer-events: none;
 }
 
 .email-text {
-  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-family: var(--psg-font-mono);
   white-space: pre-wrap; word-break: break-word;
-  margin: 0; font-size: 14px; line-height: 1.8; color: var(--muted, #666666);
+  margin: 0; font-size: 14px; line-height: 1.8; color: var(--psg-text-secondary);
 }
 
 /* ── Attachments ─────────────────────────────────────────── */
 .att-container {
   margin-top: 40px; max-width: min(100%, 560px);
-  border: 1px solid var(--light-border-color, #dcdcdc); border-radius: var(--radius-md); padding: 16px;
+  border: 1px solid var(--psg-border); border-radius: var(--psg-radius-md); padding: 16px;
 }
 .att-header {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
 }
 .att-title-text {
-  font-size: 13px; font-weight: 700; color: var(--el-text-color-primary);
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif; text-transform: none; letter-spacing: 0;
+  font-size: 13px; font-weight: 700; color: var(--psg-text);
+  font-family: var(--psg-font-sans); text-transform: none; letter-spacing: 0;
 }
 .att-count {
-  font-size: 12.5px; color: var(--muted, #666666);
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-size: 12.5px; color: var(--psg-text-muted);
+  font-family: var(--psg-font-sans);
 }
 .att-list { display: flex; flex-direction: column; gap: 4px; }
 
 .att-item {
   display: flex; align-items: center; gap: 10px;
-  border: 1px solid var(--light-border-color, #dcdcdc);
-  border-radius: var(--radius-sm);
-  background: var(--surface-secondary, #f3f3f3);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
   padding: 8px 12px; cursor: pointer; transition: background 0.12s ease;
 
   @media (hover: hover) {
-    &:hover { background: var(--email-hover-background, #eeeeee); }
+    &:hover { background: var(--psg-surface-active); }
   }
 
-  .att-icon-file { flex-shrink: 0; color: var(--muted, #666666); }
-  .att-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--el-text-color-primary); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .att-size { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted, #666666); flex-shrink: 0; white-space: nowrap; }
+  .att-icon-file { flex-shrink: 0; color: var(--psg-text-muted); }
+  .att-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--psg-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .att-size { font-family: var(--psg-font-mono); font-size: 11px; color: var(--psg-text-muted); flex-shrink: 0; white-space: nowrap; }
   .att-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 }
 
 /* ── Translation panel ─────────────────────────────── */
 .translate-panel {
   margin: 16px 0 8px;
-  border: 1px solid var(--light-border-color, #dcdcdc);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
   overflow: hidden;
-  background: var(--surface-secondary, #f3f3f3);
+  background: var(--psg-surface-muted);
 }
 
 .translate-panel-header {
@@ -875,28 +850,28 @@ function handleDelete() {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--light-border-color, #e0e0e0);
+  border-bottom: 1px solid var(--psg-border);
 }
 
 .translate-panel-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--muted, #666666);
+  color: var(--psg-text-muted);
 }
 
 .translate-lang-tag {
-  background: var(--red-accent);
-  color: var(--on-accent);
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
   font-size: 10.5px;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: var(--radius-full);
+  border-radius: var(--psg-radius-full);
   letter-spacing: 0;
 }
 
@@ -907,59 +882,48 @@ function handleDelete() {
 }
 
 .translate-switch-btn {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--red-accent);
-  border: 1px solid var(--red-accent);
-  border-radius: var(--radius-full);
+  color: var(--psg-text);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-full);
   background: transparent;
   padding: 3px 10px;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
-  &:hover { background: var(--red-accent); color: var(--on-accent); }
+  &:hover { background: var(--psg-primary); color: var(--psg-on-primary); border-color: var(--psg-primary); }
 }
 
 .translate-loading {
   display: flex;
   justify-content: center;
   padding: 24px;
-  color: var(--muted, #999);
+  color: var(--psg-text-muted);
 }
 
 .translate-body {
   padding: 12px 16px;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--psg-font-sans);
   font-size: 14px;
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--el-text-color-primary);
+  color: var(--psg-text);
   background: transparent;
   margin: 0;
 }
 
 .icon-btn--active {
-  color: var(--red-accent) !important;
+  color: var(--psg-primary) !important;
 }
 
 @media (max-width: 768px) {
-  .email-detail {
-    background: linear-gradient(180deg, #f7f6f3 0%, #efeeeb 100%);
-  }
-
   .detail-header {
     min-height: 64px;
     padding: 8px 10px;
-    border-bottom: 1px solid rgba(0,0,0,0.08);
-    /* Tinted to match the page's own cream gradient (#f7f6f3) instead of
-       literal white, so the translucent header reads as "elevated" rather
-       than "a different, whiter material sitting on top of the page." */
-    background: rgba(247,246,243,0.92);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.06);
-    backdrop-filter: blur(18px);
   }
 
   .header-left,
@@ -980,21 +944,16 @@ function handleDelete() {
   .icon-btn {
     width: 42px;
     height: 42px;
-    border-radius: var(--radius-sm);
-    color: var(--regular-text-color);
+    border-radius: var(--psg-radius-sm);
+    color: var(--psg-text-secondary);
 
     &:active {
-      background: rgba(var(--red-accent-rgb), 0.10);
-      color: var(--red-accent);
+      background: var(--psg-surface-muted);
     }
   }
 
   .page-counter {
     display: none;
-  }
-
-  .detail-scroll {
-    background: transparent;
   }
 
   .detail-content {
@@ -1009,11 +968,8 @@ function handleDelete() {
   }
 
   .meta-card {
-    border: 1px solid rgba(0,0,0,0.08);
     border-left: none;
-    border-radius: var(--radius-sm);
-    background: rgba(247,246,243,0.86);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.07);
+    border-radius: var(--psg-radius-sm);
     padding: 14px;
   }
 
@@ -1038,10 +994,6 @@ function handleDelete() {
     letter-spacing: 0;
   }
 
-  .meta-fields {
-    border-top-color: rgba(0,0,0,0.08);
-  }
-
   .meta-field {
     display: grid;
     grid-template-columns: 42px minmax(0, 1fr);
@@ -1050,7 +1002,6 @@ function handleDelete() {
 
   .body-divider {
     margin: 18px 4px;
-    background: rgba(0,0,0,0.08);
   }
 
   .email-body {
@@ -1066,11 +1017,7 @@ function handleDelete() {
 
   .att-container,
   .translate-panel {
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(0,0,0,0.08);
-    border-left: 1px solid rgba(0,0,0,0.08);
-    background: rgba(247,246,243,0.84);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+    border-radius: var(--psg-radius-sm);
   }
 
   .att-container {
@@ -1079,21 +1026,7 @@ function handleDelete() {
   }
 
   .att-item {
-    border-radius: var(--radius-sm);
-    border-color: rgba(0,0,0,0.08);
-  }
-
-  .dark .email-detail {
-    background: linear-gradient(180deg, #151519 0%, #101014 100%);
-  }
-
-  .dark .detail-header,
-  .dark .meta-card,
-  .dark .att-container,
-  .dark .translate-panel {
-    background: rgba(28,28,33,0.90);
-    border-color: rgba(255,255,255,0.08);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.26);
+    border-radius: var(--psg-radius-sm);
   }
 }
 </style>
@@ -1103,9 +1036,9 @@ function handleDelete() {
 .psg-shadow-blockquote,
 .shadow-html-host blockquote,
 blockquote {
-  border-left: 3px solid var(--red-accent) !important;
+  border-left: 3px solid var(--psg-border-strong) !important;
   padding-left: 16px !important;
   margin: 16px 0 !important;
-  color: #666666 !important;
+  color: var(--psg-text-secondary) !important;
 }
 </style>

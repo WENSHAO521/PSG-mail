@@ -30,6 +30,10 @@
 
   --psg-focus: #111111;
 
+  /* Dims bright HTML email content so it doesn't glare against the dark
+     canvas — transparent in light, a dark scrim in dark mode. */
+  --psg-html-dim: rgba(0, 0, 0, 0);
+
   --psg-radius-xs: 2px;
   --psg-radius-sm: 3px;
   --psg-radius-md: 4px;
@@ -62,4 +66,6 @@ html.dark {
   --psg-danger-muted: rgba(224, 75, 75, .14);
 
   --psg-focus: #F2F2EE;
+
+  --psg-html-dim: rgba(14, 14, 20, .55);
 }
