@@ -4,14 +4,18 @@
 
 /* ─────────────────────────────────────────────────────────────
    AI ASSISTANT DRAWER
+   Scoped to .ai-assistant-drawer (set via `class` on the <el-drawer> in
+   components/ai-assistant-drawer/index.vue) — a bare .el-drawer selector
+   here would also restyle unrelated drawers (e.g. views/groups/index.vue's
+   contact-group drawer).
    ───────────────────────────────────────────────────────────── */
-.el-drawer {
+.el-drawer.ai-assistant-drawer {
   background: var(--psg-panel) !important;
   border-left: 1px solid var(--psg-border) !important;
   box-shadow: -18px 0 56px rgba(18, 22, 28, .14) !important;
 }
 
-.el-drawer__header {
+.ai-assistant-drawer .el-drawer__header {
   min-height: 62px;
   margin-bottom: 0 !important;
   padding: 14px 16px !important;
@@ -20,7 +24,7 @@
   font-weight: 700;
 }
 
-.el-drawer__body {
+.ai-assistant-drawer .el-drawer__body {
   padding: 0 !important;
 }
 
@@ -291,7 +295,7 @@
    MOBILE
    ───────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .el-drawer {
+  .el-drawer.ai-assistant-drawer {
     width: min(92vw, 420px) !important;
   }
 

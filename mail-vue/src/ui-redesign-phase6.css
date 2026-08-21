@@ -28,7 +28,9 @@
   }
 }
 
-/* Large desktop / ultrawide: stop the list from becoming visually detached. */
+/* Large desktop / ultrawide: the list column and workspace pages may use
+   the extra width, but the reading measure stays fixed at 780px (owned by
+   views/content/index.vue) — the pane is free to grow, prose is not. */
 @media (min-width: 1680px) {
   .app-shell[data-mode="mail"] {
     grid-template-columns: 260px minmax(420px, 540px) minmax(0, 1fr) !important;
@@ -36,17 +38,11 @@
   .app-shell[data-mode="mail"][data-collapsed="true"] {
     grid-template-columns: 72px minmax(420px, 540px) minmax(0, 1fr) !important;
   }
-  .mail-detail-pane .detail-content {
-    max-width: 980px !important;
-  }
 }
 
 @media (min-width: 2200px) {
   .workspace-body > * {
     max-width: 1480px !important;
-  }
-  .mail-detail-pane .detail-content {
-    max-width: 1040px !important;
   }
 }
 

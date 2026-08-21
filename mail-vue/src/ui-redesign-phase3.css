@@ -16,12 +16,13 @@
   gap: 20px !important;
 }
 
+/* Border does the edge-definition work; no shadow layered on top of it. */
 .settings-container .settings-sidebar,
 .settings-container .settings-panel {
   background: var(--psg-panel) !important;
   border: 1px solid var(--psg-border) !important;
   border-radius: var(--psg-r-sm) !important;
-  box-shadow: var(--psg-shadow-1) !important;
+  box-shadow: none !important;
 }
 
 .settings-container .settings-sidebar {
@@ -94,7 +95,7 @@
 
 .settings-container .avatar-wrap {
   border-radius: var(--psg-r-sm) !important;
-  box-shadow: 0 0 0 1px var(--psg-border), var(--psg-shadow-1) !important;
+  box-shadow: 0 0 0 1px var(--psg-border) !important;
 }
 
 .settings-container .avatar-init,

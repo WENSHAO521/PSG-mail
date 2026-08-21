@@ -207,7 +207,7 @@ button, input, select, textarea {
     --psg-surface-muted: #F5F5F3;   /* warm gray: inset panels      */
     --psg-surface-active: #ECECEA;  /* selected row / active state  */
     --psg-border: #D3D3CF;
-    --psg-border-strong: #111111;
+    --psg-border-strong: #B0B0AA;
 
     --psg-text: #171717;            /* body copy — never pure black */
     --psg-text-secondary: #686868;
@@ -322,7 +322,7 @@ button, input, select, textarea {
     --psg-surface-muted: #1C1C1C;
     --psg-surface-active: #242424;  /* "surface raised" doubles as active/selected */
     --psg-border: #383838;
-    --psg-border-strong: #F2F2EE;
+    --psg-border-strong: #56564F;
 
     --psg-text: #F2F2EE;
     --psg-text-secondary: #A9A9A5;

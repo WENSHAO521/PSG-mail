@@ -4,45 +4,52 @@
  * visual language, density, focus, surfaces and platform-safe touch targets.
  */
 
+/* ═══════════════════════════════════════════════════════════════
+   Token layer — CONSOLIDATED onto style.css's canonical --psg-*
+   design tokens (the Phase 1 source of truth) instead of maintaining
+   a second, independently-valued token namespace. Every name below
+   is a thin alias; the actual light/dark values live in style.css's
+   :root / .dark blocks. Only the local --psg-r-*/--psg-shadow-*/
+   --psg-ease-* names stay literal, since ~2000 lines across the
+   phase*.css files already reference them and renaming that surface
+   is out of scope for this pass.
+   ═══════════════════════════════════════════════════════════════ */
 :root {
   color-scheme: light;
 
-  /* Brand — this is the "ink" accent (primary/active/hover chrome), NOT
-     danger. PSG Mail's brief reserves red for unread/critical/destructive
-     signals only; primary UI stays black. See --psg-red-true below for the
-     one genuinely red token, aliased to style.css's --psg-red. */
-  --psg-brand: #111111;
-  --psg-brand-hover: #000000;
-  --psg-brand-soft: rgba(17, 17, 17, 0.08);
-  --psg-brand-soft-strong: rgba(17, 17, 17, 0.14);
-  --psg-brand-rgb: 17, 17, 17;
-  /* The one genuinely red token — unread / critical / destructive only.
-     Hardcoded (not var(--psg-red)) to avoid a self-reference cycle with
-     the --psg-red redeclaration below. */
-  --psg-red-true: #C92020;
+  /* Brand — the "ink" accent (primary/active/hover chrome), NOT danger.
+     Aliased to --red-accent, which already flips black<->near-white
+     between light/dark in style.css. Red is reserved for unread /
+     critical / destructive signals only — see --psg-red usage below,
+     which now resolves straight from style.css (no local override). */
+  --psg-brand: var(--red-accent);
+  --psg-brand-hover: var(--red-accent-dark);
+  --psg-brand-soft: var(--red-accent-subtle);
+  --psg-brand-soft-strong: rgba(var(--red-accent-rgb), 0.14);
+  --psg-brand-rgb: var(--red-accent-rgb);
 
-  /* Neutral system */
-  --psg-canvas: #f5f5f3;
-  --psg-sidebar: #f5f5f3;
-  --psg-panel: #ffffff;
-  --psg-panel-muted: #f5f5f3;
-  --psg-panel-hover: #ececea;
-  --psg-border: #d3d3cf;
-  --psg-border-strong: #b0b0aa;
-  --psg-text: #171717;
-  --psg-text-2: #686868;
-  --psg-text-3: #9a9a95;
-  --psg-focus: #111111;
+  /* Neutral system — aliased to style.css surfaces */
+  --psg-canvas: var(--psg-bg);
+  --psg-sidebar: var(--psg-bg);
+  --psg-panel: var(--psg-surface);
+  --psg-panel-muted: var(--psg-surface-muted);
+  --psg-panel-hover: var(--psg-surface-active);
+  --psg-text-2: var(--psg-text-secondary);
+  --psg-text-3: var(--psg-text-muted);
+  /* --psg-border, --psg-border-strong, --psg-text, --psg-focus, --psg-red
+     share style.css's exact token names, so they are intentionally NOT
+     redeclared here — the style.css value passes through unchanged. */
 
-  /* Geometry — restrained brutalism: very slight rounding, never decorative */
-  --psg-r-xs: 2px;
-  --psg-r-sm: 3px;
-  --psg-r-md: 4px;
-  --psg-r-lg: 4px;
-  --psg-r-xl: 4px;
-  --psg-r-pill: 999px;
+  /* Geometry — aliased to style.css's restrained 2-4px radius scale */
+  --psg-r-xs: var(--radius-xs);
+  --psg-r-sm: var(--radius-sm);
+  --psg-r-md: var(--radius-md);
+  --psg-r-lg: var(--radius-lg);
+  --psg-r-xl: var(--radius-lg);
+  --psg-r-pill: var(--radius-full);
 
-  /* Elevation */
+  /* Elevation — kept local: a deliberately softer/cooler-tinted shadow
+     recipe than style.css's own --card-shadow, used narrowly below. */
   --psg-shadow-1: 0 1px 2px rgba(19, 24, 32, 0.04), 0 1px 5px rgba(19, 24, 32, 0.035);
   --psg-shadow-2: 0 8px 28px rgba(19, 24, 32, 0.08), 0 2px 8px rgba(19, 24, 32, 0.05);
   --psg-shadow-float: 0 18px 56px rgba(19, 24, 32, 0.15), 0 4px 16px rgba(19, 24, 32, 0.08);
@@ -52,88 +59,16 @@
   --psg-fast: 140ms;
   --psg-normal: 220ms;
 
-  /* Bridge old tokens to the new system */
-  --el-color-primary: var(--psg-brand);
-  --el-color-primary-dark-2: var(--psg-brand-hover);
-  --el-color-primary-light-3: #3d3d3d;
-  --el-color-primary-light-5: #6e6e6e;
-  --el-color-primary-light-7: #a3a3a3;
-  --el-color-primary-light-9: #ececec;
-  --red-accent: var(--psg-brand);
-  --red-accent-dark: var(--psg-brand-hover);
-  --red-accent-rgb: var(--psg-brand-rgb);
-  --red-accent-subtle: var(--psg-brand-soft);
-  --on-accent: #ffffff;
-  --psg-red: var(--psg-red-true);
-  --psg-red-hover: #A81919;
-  --psg-bg: var(--psg-canvas);
-  --surface: var(--psg-panel);
-  --surface-secondary: var(--psg-panel-muted);
-  --separator: var(--psg-border);
-  --muted: var(--psg-text-3);
-  --extra-light-fill: var(--psg-canvas);
-  --light-ill: var(--psg-panel-hover);
-  --light-border: var(--psg-border);
-  --light-border-color: var(--psg-border);
-  --base-border-color: var(--psg-border-strong);
-  --aside-backgound: var(--psg-sidebar);
-  --base-fill: var(--psg-panel-muted);
-  --regular-text-color: var(--psg-text-2);
-  --secondary-text-color: var(--psg-text-3);
-  --email-hover-background: var(--psg-panel-hover);
-  --card-shadow: var(--psg-shadow-1);
-  --card-shadow-hover: var(--psg-shadow-2);
   --compose-shadow: var(--psg-shadow-float);
-  --radius-xs: var(--psg-r-xs);
-  --radius-sm: var(--psg-r-sm);
-  --radius-md: var(--psg-r-md);
-  --radius-lg: var(--psg-r-lg);
-  --radius-full: var(--psg-r-pill);
 }
 
+/* Nothing else to redeclare: every --psg-* alias above resolves per-theme
+   already (style.css's .dark block flips --red-accent, --psg-bg,
+   --psg-surface*, --psg-text*, --psg-border etc.), and style.css's own
+   .dark block already sets --el-bg-color/--el-fill-color*/--el-border-color
+   with the same values these used to re-derive. */
 .dark {
   color-scheme: dark;
-  --psg-brand: #f2f2ee;
-  --psg-brand-hover: #ffffff;
-  --psg-brand-soft: rgba(242, 242, 238, 0.12);
-  --psg-brand-soft-strong: rgba(242, 242, 238, 0.18);
-  --psg-brand-rgb: 242, 242, 238;
-  --psg-red-true: #E04B4B;
-
-  --psg-canvas: #151515;
-  --psg-sidebar: #151515;
-  --psg-panel: #1c1c1c;
-  --psg-panel-muted: #1c1c1c;
-  --psg-panel-hover: #242424;
-  --psg-border: #383838;
-  --psg-border-strong: #56564f;
-  --psg-text: #f2f2ee;
-  --psg-text-2: #a9a9a5;
-  --psg-text-3: #78788a;
-  --psg-focus: #f2f2ee;
-
-  --surface: var(--psg-panel);
-  --surface-secondary: var(--psg-panel-muted);
-  --separator: var(--psg-border);
-  --muted: var(--psg-text-3);
-  --extra-light-fill: var(--psg-canvas);
-  --light-ill: var(--psg-panel-hover);
-  --light-border: var(--psg-border);
-  --light-border-color: var(--psg-border);
-  --base-border-color: var(--psg-border-strong);
-  --aside-backgound: var(--psg-sidebar);
-  --base-fill: var(--psg-panel-muted);
-  --regular-text-color: var(--psg-text-2);
-  --secondary-text-color: var(--psg-text-3);
-  --email-hover-background: var(--psg-panel-hover);
-
-  --el-bg-color: var(--psg-canvas) !important;
-  --el-bg-color-overlay: var(--psg-panel) !important;
-  --el-bg-color-page: var(--psg-canvas) !important;
-  --el-fill-color-blank: var(--psg-panel) !important;
-  --el-fill-color: var(--psg-panel-muted) !important;
-  --el-fill-color-light: var(--psg-panel-muted) !important;
-  --el-border-color: var(--psg-border) !important;
 }
 
 html,
@@ -288,8 +223,9 @@ body {
 }
 .unread-indicator.visible {
   /* Unread is a status signal, not brand chrome — stays genuinely red
-     even where --psg-brand is ink black. */
-  background: var(--psg-red-true) !important;
+     even where --psg-brand is ink black. Reads style.css's canonical
+     --psg-red directly (no local red token here anymore). */
+  background: var(--psg-red) !important;
 }
 
 /* Reading pane: treat message as a document, not another grey panel. */

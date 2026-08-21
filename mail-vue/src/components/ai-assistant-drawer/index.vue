@@ -5,6 +5,7 @@
     direction="rtl"
     size="400px"
     :close-on-click-modal="false"
+    class="ai-assistant-drawer"
   >
     <div class="ai-chat">
       <div ref="scrollRef" class="ai-chat-body">

@@ -9,12 +9,12 @@
    Replace the legacy fixed black editorial bar with a quiet, document-first
    mail composer. TinyMCE stays untouched to avoid input/compositing regressions.
    ───────────────────────────────────────────────────────────── */
-.send {
-  background: rgba(18, 22, 28, .42) !important;
-}
-
+/* Overlay scrim and desktop footprint (width/position) are owned by
+   layout/write/index.vue's own Phase 1 rules — a quiet 12% scrim and a
+   ~680px bottom-right floating panel, not a centered 1180px modal with a
+   42% dark backdrop. Only surface finish (background/border/shadow) is
+   layered here. */
 .write-box {
-  width: min(1180px, calc(100vw - 36px)) !important;
   background: var(--psg-panel) !important;
   border: 1px solid color-mix(in srgb, var(--psg-border) 82%, transparent) !important;
   border-radius: var(--psg-r-sm) !important;

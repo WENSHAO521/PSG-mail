@@ -8,21 +8,18 @@
    Move the legacy editorial/Bauhaus page into the same calm-productivity
    language as the mailbox while keeping the institutional identity.
    ───────────────────────────────────────────────────────────── */
-#login-box {
-  background:
-    radial-gradient(circle at 14% 18%, rgba(var(--psg-brand-rgb), .055), transparent 34%),
-    linear-gradient(180deg, #f7f7f9 0%, #f2f3f5 100%) !important;
-}
-
+/* Flat institutional split-layout: no decorative gradient, no glass/blur —
+   the component's own #F7F7F7 flat background already matches the brief.
+   .custom-bg (admin-configurable background image, opt-in via v-if) is
+   untouched: that is a site-owner setting, not decoration we added. */
 #login-box .custom-bg {
   filter: saturate(.72) contrast(.96);
 }
 
 #login-box .brand-panel {
   padding: clamp(40px, 5vw, 68px) !important;
-  background: rgba(255, 255, 255, .78) !important;
+  background: var(--psg-panel) !important;
   border-right: 1px solid var(--psg-border) !important;
-  backdrop-filter: blur(20px) saturate(1.05);
 }
 
 #login-box .brand-grid {
@@ -62,14 +59,12 @@
 #login-box .form-wrapper {
   flex-basis: min(520px, 46vw) !important;
   padding: clamp(20px, 4vw, 44px) !important;
-  background: rgba(244, 245, 247, .68);
-  backdrop-filter: blur(18px);
 }
 
 #login-box .container {
   max-width: 420px !important;
   padding: 38px 36px 28px !important;
-  background: rgba(255, 255, 255, .96) !important;
+  background: var(--psg-panel) !important;
   border: 1px solid var(--psg-border) !important;
   border-top: 1px solid var(--psg-border) !important;
   border-radius: var(--psg-r-sm) !important;
@@ -130,7 +125,7 @@
 #login-box .lang-btn,
 #login-box .psg-link {
   border-color: var(--psg-border) !important;
-  background: rgba(255, 255, 255, .88) !important;
+  background: var(--psg-panel) !important;
   box-shadow: var(--psg-shadow-1) !important;
 }
 
@@ -176,8 +171,9 @@
   border-radius: var(--psg-r-sm) !important;
 }
 
+/* Reading measure (max-width: 780px) is owned by views/content/index.vue's
+   Phase 1 rule — the pane itself may be wide, but prose does not follow. */
 .mail-detail-pane .detail-content {
-  width: min(100%, 920px) !important;
   margin: 0 auto !important;
   padding: 34px clamp(26px, 4vw, 56px) 56px !important;
 }
@@ -219,10 +215,10 @@
   opacity: 1 !important;
 }
 
+/* font-size/line-height are owned by views/content/index.vue (16px / 1.75
+   Phase 1 spec) — only recolor here. */
 .mail-detail-pane .email-body {
   color: var(--psg-text) !important;
-  font-size: 15px !important;
-  line-height: 1.72 !important;
 }
 
 .mail-detail-pane .att-container,
