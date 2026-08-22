@@ -1,5 +1,8 @@
 const en = {
 	IncorrectPwd: 'Incorrect password',
+	passwordChangeInvalid: 'The email or current password is incorrect',
+	passwordChangeSame: 'The new password must be different from the current password',
+	passwordChangeRateLimit: 'Too many attempts. Please try again later',
 	addAccountDisabled: 'Add Email Address feature is disabled',
 	regDisabled: 'Sign up is disabled',
 	emptyEmail: 'Email cannot be empty',

@@ -68,7 +68,7 @@
 
           <div class="form-options">
             <el-checkbox v-model="rememberMe" class="remember-check">{{ $t('rememberMe') }}</el-checkbox>
-            <span class="text-link" @click="forgotPassword">{{ $t('forgotPassword') }}</span>
+            <button type="button" class="text-link" @click="openChangePassword">{{ $t('changePassword') }}</button>
           </div>
 
           <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
@@ -177,6 +177,67 @@
         <el-button class="btn" type="primary" @click="bind" :loading="bindLoading">{{ $t('bind') }}</el-button>
       </div>
     </el-dialog>
+    <el-dialog
+      class="password-dialog"
+      v-model="changePasswordShow"
+      :title="$t('changePassword')"
+      width="420"
+      :close-on-click-modal="!changePasswordLoading"
+      :close-on-press-escape="!changePasswordLoading"
+      @closed="resetChangePassword"
+    >
+      <div class="password-dialog-content">
+        <p class="password-dialog-hint">{{ $t('changePasswordLoginHint') }}</p>
+
+        <label class="field-label">{{ $t('emailAccount') }}</label>
+        <el-input
+          v-model="changeForm.email"
+          type="email"
+          :placeholder="$t('emailAccount')"
+          autocomplete="username"
+          @keyup.enter="submitChangePassword"
+        />
+
+        <label class="field-label">{{ $t('currentPassword') }}</label>
+        <el-input
+          v-model="changeForm.currentPassword"
+          type="password"
+          :placeholder="$t('currentPassword')"
+          autocomplete="current-password"
+          show-password
+          @keyup.enter="submitChangePassword"
+        />
+
+        <label class="field-label">{{ $t('newPassword') }}</label>
+        <el-input
+          v-model="changeForm.newPassword"
+          type="password"
+          :placeholder="$t('newPassword')"
+          autocomplete="new-password"
+          show-password
+          @keyup.enter="submitChangePassword"
+        />
+
+        <label class="field-label">{{ $t('confirmPassword') }}</label>
+        <el-input
+          v-model="changeForm.confirmPassword"
+          type="password"
+          :placeholder="$t('confirmPassword')"
+          autocomplete="new-password"
+          show-password
+          @keyup.enter="submitChangePassword"
+        />
+
+        <div class="password-security-note">
+          <Icon icon="solar:info-circle-bold-duotone" width="17" height="17" aria-hidden="true" />
+          <span>{{ $t('forgotPasswordMsg') }}</span>
+        </div>
+
+        <el-button class="btn" type="primary" :loading="changePasswordLoading" @click="submitChangePassword">
+          {{ $t('changePwdBtn') }}
+        </el-button>
+      </div>
+    </el-dialog>
     <!-- Language switcher — fixed top-right -->
     <el-dropdown class="lang-switcher" placement="bottom-end" trigger="click">
       <button class="lang-btn" :title="settingStore.lang === 'zh' ? '切换语言' : 'Switch Language'">
@@ -217,8 +278,7 @@
 <script setup>
 import router from "@/router";
 import {computed, nextTick, reactive, ref} from "vue";
-import {login} from "@/request/login.js";
-import {register} from "@/request/login.js";
+import {changePassword, login, register} from "@/request/login.js";
 import {websiteConfig} from "@/request/setting.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -243,8 +303,17 @@ const loginLoading = ref(false)
 const bindLoading = ref(false)
 const oauthLoading = ref(false);
 const showBindForm = ref(false);
+const changePasswordShow = ref(false);
+const changePasswordLoading = ref(false);
 const show = ref('login')
 const rememberMe = ref(false)
+
+const changeForm = reactive({
+  email: '',
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
 
 function persistRemember() {
   if (rememberMe.value && form.email) {
@@ -262,10 +331,66 @@ function changeLang(lang) {
 }
 
 function forgotPassword() {
+  changePasswordShow.value = false
   ElMessageBox.alert(t('forgotPasswordMsg'), t('forgotPassword'), {
     confirmButtonText: t('confirm'),
     type: 'info',
   }).catch(() => {})
+}
+
+function openChangePassword() {
+  const rawEmail = String(form.email || '').trim()
+  const candidate = isEmail(rawEmail) ? rawEmail : getFullEmail(rawEmail)
+  changeForm.email = isEmail(candidate) ? candidate : ''
+  changePasswordShow.value = true
+}
+
+function resetChangePassword() {
+  changeForm.email = ''
+  changeForm.currentPassword = ''
+  changeForm.newPassword = ''
+  changeForm.confirmPassword = ''
+}
+
+function submitChangePassword() {
+  const email = String(changeForm.email || '').trim()
+  if (!isEmail(email)) {
+    ElMessage({ message: t('notEmailMsg'), type: 'error', plain: true })
+    return
+  }
+  if (!changeForm.currentPassword) {
+    ElMessage({ message: t('emptyCurrentPwdMsg'), type: 'error', plain: true })
+    return
+  }
+  if (!changeForm.newPassword) {
+    ElMessage({ message: t('emptyPwdMsg'), type: 'error', plain: true })
+    return
+  }
+  if (changeForm.newPassword.length < 6) {
+    ElMessage({ message: t('pwdLengthMsg'), type: 'error', plain: true })
+    return
+  }
+  if (changeForm.newPassword.length > 30) {
+    ElMessage({ message: t('passwordMaxLengthMsg'), type: 'error', plain: true })
+    return
+  }
+  if (changeForm.newPassword === changeForm.currentPassword) {
+    ElMessage({ message: t('passwordSameMsg'), type: 'error', plain: true })
+    return
+  }
+  if (changeForm.newPassword !== changeForm.confirmPassword) {
+    ElMessage({ message: t('confirmPwdFailMsg'), type: 'error', plain: true })
+    return
+  }
+
+  changePasswordLoading.value = true
+  changePassword(email, changeForm.currentPassword, changeForm.newPassword)
+    .then(() => {
+      changePasswordShow.value = false
+      ElMessage({ message: t('passwordChangeSuccess'), type: 'success', plain: true })
+    })
+    .catch(() => {})
+    .finally(() => { changePasswordLoading.value = false })
 }
 
 function twoFactor() {
@@ -1009,11 +1134,16 @@ function submitRegister() {
   padding-left: 7px;
 }
 .text-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   color: var(--psg-text);
   cursor: pointer;
   transition: opacity 0.12s;
+  text-align: right;
 }
 .text-link:hover { opacity: .7; text-decoration: underline; }
 
@@ -1137,6 +1267,48 @@ function submitRegister() {
     width: calc(100% - 40px) !important;
     margin-right: 20px !important;
     margin-left: 20px !important;
+  }
+}
+
+:deep(.password-dialog) {
+  width: min(420px, calc(100% - 32px)) !important;
+
+  .el-dialog__body {
+    max-height: min(70vh, 560px);
+    overflow-y: auto;
+  }
+
+  @media (max-width: 440px) {
+    width: calc(100% - 24px) !important;
+    margin: 12px auto !important;
+  }
+}
+
+.password-dialog-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.password-dialog-hint {
+  margin: 0 0 20px;
+  color: var(--psg-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.password-security-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 18px;
+  color: var(--psg-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+
+  svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--psg-primary);
   }
 }
 

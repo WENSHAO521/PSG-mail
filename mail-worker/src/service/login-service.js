@@ -21,6 +21,10 @@ import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
 import telegramService from './telegram-service';
+import reqUtils from '../utils/req-utils';
+
+const PASSWORD_CHANGE_LIMIT = 8;
+const PASSWORD_CHANGE_WINDOW_SECONDS = 15 * 60;
 
 const loginService = {
 
@@ -260,6 +264,48 @@ const loginService = {
 		await c.env.kv.put(loginKey, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
 		kvCache.set(loginKey, authInfo, TTL.AUTH);  // warm cache immediately after login
 		return jwt;
+	},
+
+	async changePassword(c, params = {}) {
+		const email = typeof params.email === 'string' ? params.email.trim().toLowerCase() : '';
+		const currentPassword = typeof params.currentPassword === 'string' ? params.currentPassword : '';
+		const newPassword = typeof params.newPassword === 'string' ? params.newPassword : '';
+
+		if (!verifyUtils.isEmail(email) || !currentPassword || !newPassword) {
+			throw new BizError(t('passwordChangeInvalid'), 400);
+		}
+
+		if (newPassword.length < 6) {
+			throw new BizError(t('pwdMinLength'), 400);
+		}
+
+		if (newPassword.length > 30) {
+			throw new BizError(t('pwdLengthLimit'), 400);
+		}
+
+		if (newPassword === currentPassword) {
+			throw new BizError(t('passwordChangeSame'), 400);
+		}
+
+		const attemptKey = `${KvConst.PASSWORD_CHANGE_ATTEMPT}${reqUtils.getIp(c)}:${email}`;
+		const attempts = Number(await c.env.kv.get(attemptKey) || 0);
+		if (attempts >= PASSWORD_CHANGE_LIMIT) {
+			throw new BizError(t('passwordChangeRateLimit'), 429);
+		}
+
+		const userRow = await userService.selectByEmailIncludeDel(c, email);
+		const validUser = userRow
+			&& userRow.isDel !== isDel.DELETE
+			&& userRow.status !== userConst.status.BAN
+			&& await cryptoUtils.verifyPassword(currentPassword, userRow.salt, userRow.password);
+
+		if (!validUser) {
+			await c.env.kv.put(attemptKey, String(attempts + 1), { expirationTtl: PASSWORD_CHANGE_WINDOW_SECONDS });
+			throw new BizError(t('passwordChangeInvalid'), 400);
+		}
+
+		await userService.setPwd(c, { password: newPassword, userId: userRow.userId });
+		await c.env.kv.delete(attemptKey);
 	},
 
 	async logout(c, userId) {

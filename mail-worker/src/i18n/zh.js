@@ -1,5 +1,8 @@
 const zh = {
 	IncorrectPwd: '密码输入错误',
+	passwordChangeInvalid: '邮箱或当前密码不正确',
+	passwordChangeSame: '新密码不能与当前密码相同',
+	passwordChangeRateLimit: '尝试次数过多，请稍后再试',
 	addAccountDisabled: '添加邮箱功能已关闭',
 	regDisabled: '注册功能已关闭',
 	emptyEmail: '邮箱不能为空',
