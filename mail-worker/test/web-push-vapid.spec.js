@@ -66,4 +66,24 @@ describe('web-push-vapid-service (RFC 8292)', () => {
 		await expect(webPushVapidService.buildAuthorizationHeader(unconfiguredEnv, 'https://fcm.googleapis.com/wp/x'))
 			.rejects.toThrow(/VAPID keys are not configured/);
 	});
+
+	it('rejects a VAPID public/private key mismatch before sending', async () => {
+		const privatePair = await crypto.subtle.generateKey(
+			{ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']
+		);
+		const unrelatedPair = await crypto.subtle.generateKey(
+			{ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']
+		);
+		const privateKeyJwk = JSON.stringify(await crypto.subtle.exportKey('jwk', privatePair.privateKey));
+		const unrelatedPublic = new Uint8Array(await crypto.subtle.exportKey('raw', unrelatedPair.publicKey));
+		const unrelatedPublicB64Url = btoa(String.fromCharCode(...unrelatedPublic))
+			.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+		await expect(webPushVapidService.buildAuthorizationHeader({
+			...env,
+			VAPID_PRIVATE_KEY_JWK: privateKeyJwk,
+			VAPID_PUBLIC_KEY: unrelatedPublicB64Url,
+			VAPID_SUBJECT: 'mailto:test@example.com'
+		}, 'https://fcm.googleapis.com/wp/x')).rejects.toThrow(/public\/private key mismatch/);
+	});
 });

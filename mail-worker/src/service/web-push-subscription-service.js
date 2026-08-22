@@ -127,8 +127,11 @@ const webPushSubscriptionService = {
 				} catch (e) {
 					stats.failed++;
 					if (!stats.reason) {
-						stats.reason = /VAPID keys are not configured/.test(e.message)
+						const errorMessage = String(e?.message || '');
+						stats.reason = /VAPID keys are not configured/.test(errorMessage)
 							? 'WEB_PUSH_NOT_CONFIGURED'
+							: /VAPID (?:private key is invalid|public\/private key mismatch)/.test(errorMessage)
+								? 'WEB_PUSH_CONFIG_MISMATCH'
 							: (e.status === 401 || e.status === 403)
 								? 'WEB_PUSH_AUTH_FAILED'
 								: e.invalidDevice

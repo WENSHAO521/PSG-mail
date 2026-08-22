@@ -13,8 +13,47 @@ function base64UrlFromBytes(bytes) {
 	return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function importVapidPrivateKey(jwkJson) {
-	const jwk = JSON.parse(jwkJson);
+function base64UrlToBytes(value) {
+	const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+	const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+	const binary = atob(padded);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+	return bytes;
+}
+
+function normalizeBase64Url(value) {
+	return String(value || '').replace(/=+$/, '');
+}
+
+function parseVapidPrivateJwk(jwkJson, publicKey) {
+	let jwk;
+	try {
+		jwk = JSON.parse(jwkJson);
+		if (jwk?.kty !== 'EC' || jwk?.crv !== 'P-256' || !jwk.x || !jwk.y || !jwk.d) {
+			throw new Error('invalid shape');
+		}
+
+		const x = base64UrlToBytes(jwk.x);
+		const y = base64UrlToBytes(jwk.y);
+		if (x.length !== 32 || y.length !== 32) throw new Error('invalid coordinates');
+
+		const rawPublicKey = new Uint8Array(65);
+		rawPublicKey[0] = 0x04;
+		rawPublicKey.set(x, 1);
+		rawPublicKey.set(y, 33);
+		const derivedPublicKey = base64UrlFromBytes(rawPublicKey);
+		if (normalizeBase64Url(derivedPublicKey) !== normalizeBase64Url(publicKey)) {
+			throw new Error('VAPID public/private key mismatch');
+		}
+	} catch (error) {
+		if (error?.message === 'VAPID public/private key mismatch') throw error;
+		throw new Error('VAPID private key is invalid');
+	}
+	return jwk;
+}
+
+async function importVapidPrivateKey(jwk) {
 	return crypto.subtle.importKey(
 		'jwk', jwk,
 		{ name: 'ECDSA', namedCurve: 'P-256' },
@@ -55,7 +94,8 @@ const webPushVapidService = {
 			throw new Error('VAPID keys are not configured');
 		}
 
-		const privateKey = await importVapidPrivateKey(privateKeyJwk);
+		const jwk = parseVapidPrivateJwk(privateKeyJwk, publicKey);
+		const privateKey = await importVapidPrivateKey(jwk);
 		const aud = new URL(endpointUrl).origin;
 		const now = Math.floor(Date.now() / 1000);
 		const jwt = await signVapidJwt(privateKey, {

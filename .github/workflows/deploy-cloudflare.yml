@@ -178,6 +178,29 @@ jobs:
             exit 1
           fi
 
+          # The public key can still match the frontend while the private JWK
+          # belongs to a different generated pair. Validate the JWK's x/y
+          # coordinates before deployment so a bad secret cannot reach a live
+          # Worker and turn every push into an opaque 401/403 rejection.
+          if [ -n "$VAPID_PUBLIC_KEY" ] && [ -n "$VAPID_PRIVATE_KEY_JWK" ]; then
+            if ! node <<'NODE'
+          const publicKey = (process.env.VAPID_PUBLIC_KEY || '').replace(/=+$/, '');
+          const jwk = JSON.parse(process.env.VAPID_PRIVATE_KEY_JWK || '{}');
+          if (jwk.kty !== 'EC' || jwk.crv !== 'P-256' || !jwk.x || !jwk.y || !jwk.d) process.exit(1);
+          const raw = Buffer.concat([
+            Buffer.from([0x04]),
+            Buffer.from(jwk.x, 'base64url'),
+            Buffer.from(jwk.y, 'base64url')
+          ]);
+          const derived = raw.toString('base64url').replace(/=+$/, '');
+          if (derived !== publicKey) process.exit(1);
+          NODE
+            then
+              echo "❌ VAPID_PRIVATE_KEY_JWK does not match VAPID_PUBLIC_KEY — upload the same generated key pair."
+              exit 1
+            fi
+          fi
+
           if [ -z "$CUSTOM_DOMAIN" ]; then
             echo "::warning:: CUSTOM_DOMAIN variable is not set."
           fi

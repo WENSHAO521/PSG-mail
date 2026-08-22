@@ -553,6 +553,7 @@ function stageLabel(stage) {
 const notifStatusText = computed(() => {
   if (notifPermission.value === 'denied') return t('notifDenied')
   if (notifPermission.value !== 'granted') return t('notificationsDesc')
+  if (pushRepairNeeded.value) return t('notifPushReconnectNeeded')
   if (pushConnected.value) return t('notifPushConnected')
   if (pushRegisterStage.value) return `${t('notifReconnectFailed')}: ${stageLabel(pushRegisterStage.value)}`
   if (pushGrantedButDisconnected.value) return t('notifGrantedNoDevice')
@@ -714,7 +715,7 @@ async function sendTestNotif() {
     const reason = e?.message || ''
     const isWebPush = !isElectronPlatform && !isAndroidPlatform
 
-    if (isWebPush && ['WEB_PUSH_AUTH_FAILED', 'WEB_PUSH_SUBSCRIPTION_EXPIRED'].includes(reason)) {
+    if (isWebPush && !['WEB_PUSH_NOT_CONFIGURED', 'WEB_PUSH_CONFIG_MISMATCH', 'WEB_PUSH_RATE_LIMITED'].includes(reason)) {
       pushRepairNeeded.value = true
     }
 
@@ -749,6 +750,7 @@ async function sendTestNotif() {
       FIREBASE_AUTH_FAILED: 'notifTestServerNotConfigured',
       FCM_SEND_FAILED: 'notifTestSendFailed',
       WEB_PUSH_NOT_CONFIGURED: 'notifTestServerNotConfigured',
+      WEB_PUSH_CONFIG_MISMATCH: 'notifTestConfigMismatch',
       WEB_PUSH_AUTH_FAILED: 'notifTestAuthFailed',
       WEB_PUSH_SUBSCRIPTION_EXPIRED: 'notifTestSubscriptionExpired',
       WEB_PUSH_RATE_LIMITED: 'notifTestRateLimited',
