@@ -506,13 +506,6 @@
                 </div>
               </div>
               <div class="setting-item">
-                <div><span>{{ $t('aiAssistant') }}</span></div>
-                <div>
-                  <el-switch @change="changeField('aiAssistantStatus', $event)" :before-change="beforeChange" :active-value="0" :inactive-value="1"
-                             v-model="setting.aiAssistantStatus"/>
-                </div>
-              </div>
-              <div class="setting-item">
                 <div><span>默认模型</span><p>留空时使用部署的 ai_model 或系统默认模型。</p></div>
                 <div><el-input v-model="setting.aiDefaultModel" size="small" placeholder="可选" style="width:220px" /></div>
               </div>

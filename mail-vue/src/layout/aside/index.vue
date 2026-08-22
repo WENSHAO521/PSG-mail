@@ -158,13 +158,6 @@
             <NotificationPanel />
           </div>
 
-          <!-- AI mail assistant -->
-          <el-tooltip v-if="aiAssistantEnabled" :content="$t('aiAssistantOpen')" placement="right">
-            <button type="button" class="util-btn" :aria-label="$t('aiAssistantOpen')" @click="uiStore.aiAssistantShow = true">
-              <Icon icon="solar:magic-stick-3-bold-duotone" width="18" height="18" />
-            </button>
-          </el-tooltip>
-
           <!-- ··· dropdown -->
           <el-dropdown placement="top-end" trigger="click">
             <button type="button" class="util-btn util-more-btn" :aria-label="$t('more')">
@@ -248,8 +241,6 @@
     </div>
 
   </aside>
-
-  <AiAssistantDrawer />
 </template>
 
 <script setup>
@@ -268,7 +259,6 @@ import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { avatarBg, avatarLetter } from "@/utils/avatar.js";
 import NotificationPanel from '@/components/notification-panel/index.vue'
-import AiAssistantDrawer from '@/components/ai-assistant-drawer/index.vue'
 import { useNotificationStore } from '@/store/notification.js'
 
 const { t } = useI18n();
@@ -300,9 +290,6 @@ async function promptCreateLabel() {
     ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true })
   }
 }
-
-/* ── AI assistant availability (admin-gated) ── */
-const aiAssistantEnabled = computed(() => Number(settingStore.settings.aiAssistantStatus) === 0);
 
 /* ── macOS traffic-light detection ── */
 const isMac = !!window.electronAPI?.isMac;

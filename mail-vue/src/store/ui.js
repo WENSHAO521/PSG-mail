@@ -29,7 +29,6 @@ export const useUiStore = defineStore('ui', {
         // `null` keeps compatibility with the older persisted `dark` boolean.
         // The first applyTheme() call migrates that value to an explicit mode.
         themeMode: null,
-        aiAssistantShow: false,
         // Undo Send grace period, seconds (0 = off). Purely a client-side
         // preference for how long a delay to request when scheduling a
         // just-clicked "Send" — the actual delayed delivery is enforced
