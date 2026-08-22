@@ -32,7 +32,7 @@ function errorId(e) {
 // former registerWebPush() so the Settings UI needs no shape change — only a
 // different import. Stages: unsupported, permission, service_worker,
 // subscribe, device_register, connected.
-export async function registerWebPush() {
+export async function registerWebPush({ requestPermission = true } = {}) {
   const diag = {
     permission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
     serviceWorkerSupported: typeof window !== 'undefined' && 'serviceWorker' in navigator,
@@ -60,7 +60,10 @@ export async function registerWebPush() {
     return finish({ ok: false, stage: 'unsupported', error: 'WEB_PUSH_NOT_CONFIGURED' })
   }
 
-  const permission = await Notification.requestPermission()
+  let permission = Notification.permission
+  if (permission !== 'granted' && requestPermission) {
+    permission = await Notification.requestPermission()
+  }
   diag.permission = permission
   if (permission !== 'granted') {
     return finish({ ok: false, stage: 'permission' })

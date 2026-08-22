@@ -173,7 +173,7 @@ function updateContent() {
 
       a {
         text-decoration: none;
-        color: #0E70DF;
+        color: var(--psg-primary, #1E5940);
       }
 
       .shadow-content {

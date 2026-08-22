@@ -39,6 +39,12 @@ textarea {
   font-family: inherit;
 }
 
+/* Shared surface primitive. Structural rows stay flat; actual cards and
+   reading surfaces use the same compact corner as every ordinary control. */
+.surface-card {
+  border-radius: var(--psg-radius-xs);
+}
+
 a {
   color: inherit;
 }

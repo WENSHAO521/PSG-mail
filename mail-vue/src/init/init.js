@@ -1,11 +1,15 @@
 import {useUserStore} from "@/store/user.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useAccountStore} from "@/store/account.js";
+import {useUiStore} from "@/store/ui.js";
 import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter, preloadAdminRoutes} from "@/perm/perm.js";
 import router from "@/router";
 import {websiteConfig} from "@/request/setting.js";
 import i18n from "@/i18n/index.js";
+
+let systemThemeMediaQuery = null;
+let systemThemeListener = null;
 
 export async function init() {
     document.title = '\u200B'
@@ -13,6 +17,12 @@ export async function init() {
     const settingStore = useSettingStore();
     const userStore = useUserStore();
     const accountStore = useAccountStore();
+    const uiStore = useUiStore();
+
+    // Apply the persisted theme before the first render. This also migrates
+    // the legacy persisted `dark` boolean to the new explicit theme mode.
+    uiStore.applyTheme();
+    watchSystemTheme(uiStore);
 
     const token = localStorage.getItem('token');
     if (!settingStore.lang) {
@@ -59,27 +69,41 @@ export async function init() {
     }
 }
 
-// Fire-and-forget: registers this device for push after a successful login.
-// Never blocks app boot — permission prompts and network calls run in the
-// background. Electron keeps its own native notifications + polling.
+function watchSystemTheme(uiStore) {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+
+    if (systemThemeMediaQuery && systemThemeListener) {
+        if (typeof systemThemeMediaQuery.removeEventListener === 'function') {
+            systemThemeMediaQuery.removeEventListener('change', systemThemeListener);
+        } else {
+            systemThemeMediaQuery.removeListener?.(systemThemeListener);
+        }
+    }
+
+    systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    systemThemeListener = () => uiStore.syncSystemTheme();
+    if (typeof systemThemeMediaQuery.addEventListener === 'function') {
+        systemThemeMediaQuery.addEventListener('change', systemThemeListener);
+    } else {
+        systemThemeMediaQuery.addListener?.(systemThemeListener);
+    }
+}
+
+// Fire-and-forget: repairs an already-authorized push registration after a
+// successful login. Initial app boot must not trigger an OS/browser permission
+// prompt; the Settings page owns the explicit opt-in action.
 //
-// registerWebPush() is idempotent (standards Web Push's subscribe() returns
-// the existing subscription if one is already active, and the backend
-// UPSERTs on endpoint) and, when Notification.permission is already
-// 'granted', calling it never re-prompts — Notification.requestPermission()
-// resolves immediately with the existing decision. So this is safe to call
-// on every app boot/login, and is exactly what repairs a device that has
-// permission granted but was never actually registered (see login/index.vue's
-// saveToken(), which calls this too, and setting/index.vue's manual
-// "reconnect push" button for the same repair on an already-open session).
+// registerWebPush({ requestPermission: false }) only repairs an already
+// granted browser permission. The Settings page calls registerWebPush()
+// after the user explicitly clicks Enable/Reconnect.
 export function initPushNotifications() {
     if (window.electronAPI?.sendNotification) return;
 
     import('@/utils/push-service.js')
-        .then(({ initNativePush }) => initNativePush())
+        .then(({ initNativePush }) => initNativePush({ requestPermission: false }))
         .catch(e => console.error('Native push init failed', e));
 
     import('@/web-push.js')
-        .then(({ registerWebPush }) => registerWebPush())
+        .then(({ registerWebPush }) => registerWebPush({ requestPermission: false }))
         .catch(e => console.error('Web push init failed', e));
 }

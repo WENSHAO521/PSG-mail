@@ -354,7 +354,7 @@ onMounted(async () => {
   top: -10px;
   right: 16px;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--psg-radius-xs);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
   font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;

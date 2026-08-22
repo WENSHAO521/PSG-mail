@@ -45,7 +45,7 @@ defineEmits(['cta'])
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   background: var(--psg-surface-muted);
   color: var(--psg-text-muted);
 }

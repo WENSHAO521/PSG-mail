@@ -24,6 +24,7 @@ import { useAccountStore } from '@/store/account.js'
 import { useSettingStore } from '@/store/setting.js'
 import { useRulesStore } from '@/store/rules.js'
 import { useUiStore } from '@/store/ui.js'
+import { EmailUnreadEnum } from '@/enums/email-enum.js'
 import { sleep } from '@/utils/time-utils.js'
 
 const MAX_RECENT = 500
@@ -58,6 +59,7 @@ function currentScope() {
 export function resetSyncState() {
   cursor = 0
   scopeKey = ''
+  recentIds.clear()
 }
 
 async function ensureCursor(accountId, allReceive, scope) {
@@ -84,6 +86,22 @@ function archiveAndRemove(emailId) {
   })
 }
 
+function starIncomingEmail(emailId, email) {
+  return starAdd(emailId).then(() => {
+    email.isStar = 1
+    useEmailStore().starScroll?.addItem?.(email)
+  })
+}
+
+function markIncomingEmailRead(emailIds, email) {
+  return emailRead(emailIds).then(() => {
+    if (emailIds.some(id => String(id) === String(email.emailId))) {
+      email.unread = EmailUnreadEnum.READ
+      email.checked = false
+    }
+  })
+}
+
 // Inserts into the mounted Inbox list (if visible right now) or marks the
 // Inbox dirty for the next time it's opened. Returns true if inserted.
 function insertIntoInboxIfVisible(email) {
@@ -98,27 +116,36 @@ function insertIntoInboxIfVisible(email) {
   }
 
   const inserted = scroll.addItem(email)
-  if (inserted) {
-    useRulesStore().applyRules(email, { starAdd, archiveEmail: archiveAndRemove, emailRead })
-  }
   return inserted
 }
 
-async function processIncomingEmail(email, source) {
+async function processIncomingEmail(email, source, { notify = true } = {}) {
   if (!email || isDuplicate(email.emailId)) return
   insertIntoInboxIfVisible(email)
-  await useNotificationStore().notifyEmail(email)
+  // Rules belong to the incoming-mail pipeline, not to the Inbox view. They
+  // must also run when the user is on another route or the Inbox is not
+  // mounted, otherwise a configured subject keyword silently does nothing.
+  useRulesStore().applyRules(email, {
+    starAdd: (emailId) => starIncomingEmail(emailId, email),
+    archiveEmail: archiveAndRemove,
+    emailRead: (emailIds) => markIncomingEmailRead(emailIds, email),
+  })
+  await useNotificationStore().notifyEmail(email, { deliver: notify })
   if (Number(email.emailId) > cursor) cursor = Number(email.emailId)
 }
 
 // Entry point for push signals (Firebase web/Android) — payloads only carry
 // { emailId, accountId }, so fetch the full row before inserting it.
-export async function handleNewMailSignal({ emailId, accountId, source }) {
-  if (!emailId || isDuplicate(emailId)) return
+export async function handleNewMailSignal({ emailId, accountId, source, notify = true }) {
+  // Do not claim the id before the detail request succeeds. If the request
+  // fails transiently, the fallback poll must still be able to pick up the
+  // same message. processIncomingEmail() is the single de-duplication point
+  // after we have a complete email row.
+  if (!emailId) return
   try {
     const email = await emailDetail(emailId)
     if (!email) return
-    await processIncomingEmail(email, source)
+    await processIncomingEmail(email, source, { notify })
   } catch (e) {
     // Detail fetch failed (transient network/500) — don't lose the signal,
     // let the next fallback poll (or Inbox refresh) pick it up instead.
@@ -233,6 +260,17 @@ export function installLifecycleSync() {
     navigator.serviceWorker.addEventListener('message', (event) => {
       if (event.data?.type === 'OPEN_EMAIL' && event.data.emailId) {
         openEmailById(event.data.emailId)
+      }
+      if (event.data?.type === 'NEW_MAIL' && event.data.emailId) {
+        // The service worker already displayed the system notification for
+        // this push. Update the open app and in-app center without showing a
+        // second browser notification for the same event.
+        handleNewMailSignal({
+          emailId: event.data.emailId,
+          accountId: event.data.accountId,
+          source: 'web-push',
+          notify: false,
+        })
       }
     })
   }

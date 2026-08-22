@@ -111,19 +111,19 @@ const allActions = computed(() => [
     action: () => router.push({ name: 'groups' })
   },
   {
+    id: 'rules', group: t('navigate'), label: t('subjectKeywords'),
+    icon: 'psg:tag',
+    action: () => router.push({ name: 'rules' })
+  },
+  {
     id: 'settings', group: t('navigate'), label: t('settings'),
     icon: 'psg:settings',
     action: () => router.push({ name: 'setting' })
   },
   {
-    id: 'dark', group: t('appearance'), label: t('darkMode'),
+    id: 'theme', group: t('appearance'), label: uiStore.dark ? t('lightMode') : t('darkMode'),
     icon: uiStore.dark ? 'mingcute:sun-fill' : 'solar:moon-linear',
-    action: () => {
-      const root = document.documentElement
-      const next = !uiStore.dark
-      root.setAttribute('class', next ? 'dark' : '')
-      uiStore.dark = next
-    }
+    action: () => uiStore.toggleDark()
   },
 ])
 

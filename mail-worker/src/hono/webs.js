@@ -34,4 +34,7 @@ import '../api/web-push-api'
 import '../api/scheduled-email-api'
 import '../api/label-api'
 import '../api/search-api'
+import '../api/forwarding-api'
+import '../api/notification-event-api'
+import '../api/ai-mail-api'
 export default app;

@@ -4,6 +4,10 @@
     <!-- ── Toolbar ── -->
     <div class="mail-toolbar">
       <div class="toolbar-left">
+        <button v-if="selectionMode" type="button" class="mobile-selection-close"
+                :aria-label="$t('cancel')" @click="clearSelectionMode">
+          <Icon icon="psg:close" width="16" height="16" />
+        </button>
         <el-checkbox
           v-model="checkAll"
           :indeterminate="isIndeterminate"
@@ -19,33 +23,36 @@
             :placeholder="$t('searchPlaceholder')"
             @keydown.esc="searchQuery = ''"
           />
-          <Icon v-if="searchQuery" icon="psg:close-circle" width="15" height="15"
-                class="search-clear-inline" @click="searchQuery = ''" />
+          <button v-if="searchQuery" type="button" class="search-clear-inline"
+                  :aria-label="$t('clear')" @click="searchQuery = ''">
+            <Icon icon="psg:close-circle" width="15" height="15" />
+          </button>
         </div>
         <div class="unread-filter" v-if="showUnread">
           <button class="filter-pill" :class="{ active: !unreadOnly }" @click="unreadOnly = false">{{ $t('all') }}</button>
           <button class="filter-pill" :class="{ active: unreadOnly }" @click="unreadOnly = true">{{ $t('unreadOnly') }}</button>
         </div>
         <slot name="first"></slot>
-        <button class="icon-btn" @click="refresh">
+        <button type="button" class="icon-btn" :aria-label="$t('refresh')" :title="$t('refresh')" @click="refresh">
           <Icon icon="psg:refresh" width="17" height="17" />
         </button>
         <button v-perm="'email:delete'" class="icon-btn icon-danger"
-                v-if="getSelectedMailsIds().length > 0" @click="handleDelete">
+                v-if="getSelectedMailsIds().length > 0" :aria-label="$t('delete')" :title="$t('delete')" @click="handleDelete">
           <Icon icon="psg:trash" width="17" height="17" />
         </button>
         <el-tooltip v-if="getSelectedMailsIds().length > 0 && props.type !== 'draft'"
                     :content="$t('exportEml')" placement="bottom">
-          <button class="icon-btn" @click="handleExportEml">
+          <button type="button" class="icon-btn" :aria-label="$t('exportEml')" @click="handleExportEml">
             <Icon icon="psg:download" width="17" height="17" />
           </button>
         </el-tooltip>
-        <button class="icon-btn" v-if="getSelectedMailsIds().length > 0 && showUnread" @click="handleRead">
+        <button type="button" class="icon-btn" v-if="getSelectedMailsIds().length > 0 && showUnread"
+                :aria-label="$t('markAsRead')" :title="$t('markAsRead')" @click="handleRead">
           <Icon icon="psg:mail" width="19" height="19" />
         </button>
         <el-tooltip v-if="getSelectedMailsIds().length === 0 && unreadCount > 0 && showUnread"
                     :content="$t('markAllRead')" placement="bottom">
-          <button class="icon-btn" @click="handleMarkAllRead">
+          <button type="button" class="icon-btn" :aria-label="$t('markAllRead')" @click="handleMarkAllRead">
             <Icon icon="psg:mail" width="19" height="19" />
           </button>
         </el-tooltip>
@@ -84,11 +91,13 @@
             @touchmove="swipeTouchMove($event, item)"
             @touchend.passive="swipeTouchEnd($event, item)"
           >
-            <div class="swipe-bg swipe-bg--delete" :style="{ opacity: swipeDeleteOpacity(item) }">
-              <Icon icon="psg:trash" width="18" /><span>{{ $t('delete') }}</span>
-            </div>
-            <div v-if="showStar" class="swipe-bg swipe-bg--star" :style="{ opacity: swipeStarOpacity(item) }">
-              <Icon icon="solar:star-bold" width="18" /><span>{{ $t('star') }}</span>
+            <button v-if="swipeOpenId === item.emailId" type="button"
+                    class="swipe-bg swipe-bg--more"
+                    @click.stop="openSwipeMore($event, item)">
+              <Icon icon="psg:more" width="18" /><span>{{ $t('more') }}</span>
+            </button>
+            <div v-else class="swipe-bg swipe-bg--archive" :style="{ opacity: swipeArchiveOpacity(item) }">
+              <Icon icon="psg:archive" width="18" /><span>{{ $t('archive') }}</span>
             </div>
             <div
               class="mail-row"
@@ -104,7 +113,9 @@
               <!-- Col 1: Checkbox + unread dot -->
               <div class="row-check">
                 <div class="unread-indicator" :class="{ visible: item.unread === EmailUnreadEnum.UNREAD && showUnread }"></div>
-                <el-checkbox class="mail-cb" v-model="item.checked" @click.stop />
+                <el-checkbox class="mail-cb"
+                             :class="{ 'mobile-selection-visible': selectionMode || item.checked }"
+                             v-model="item.checked" @click.stop />
               </div>
 
               <!-- Col 2: Sender -->
@@ -148,20 +159,20 @@
               <div class="row-meta">
                 <span class="mail-time">{{ item.formatCreateTime }}</span>
                 <div class="mail-actions">
-                  <button v-if="archiveEmail" class="icon-btn" :title="$t('archive')"
+                  <button v-if="archiveEmail" type="button" class="icon-btn" :title="$t('archive')" :aria-label="$t('archive')"
                           @click.stop="archiveEmail(item.emailId)">
                     <Icon icon="psg:archive" width="14" height="14" />
                   </button>
-                  <button v-if="restoreEmail" class="icon-btn" :title="$t('restore')"
+                  <button v-if="restoreEmail" type="button" class="icon-btn" :title="$t('restore')" :aria-label="$t('restore')"
                           @click.stop="restoreEmail(item.emailId)">
                     <Icon icon="solar:inbox-out-linear" width="14" height="14" />
                   </button>
-                  <button v-if="showStar" class="icon-btn" :title="$t('star')"
+                  <button v-if="showStar" type="button" class="icon-btn" :title="$t('star')" :aria-label="$t('star')"
                           @click.stop="starChange(item)">
                     <Icon :icon="item.isStar ? 'fluent-color:star-16' : 'psg:star'"
                           :width="14" :height="14" />
                   </button>
-                  <button v-perm="'email:delete'" class="icon-btn icon-danger" :title="$t('delete')"
+                  <button v-perm="'email:delete'" type="button" class="icon-btn icon-danger" :title="$t('delete')" :aria-label="$t('delete')"
                           @click.stop="rightDeleteItem(item)">
                     <Icon icon="psg:trash" width="14" height="14" />
                   </button>
@@ -185,11 +196,17 @@
       <skeletonBlock v-if="loading"
                      :rows="skeletonRows" :showStar="showStar" :accountShow="accountShow"
                      :showStatus="showStatus" :showUserInfo="showUserInfo" :type="type" />
-      <div class="empty" v-if="noLoading && emailList.length === 0 && !loading">
-        <el-empty :description="$t('noMessagesFound')" />
+      <div class="empty empty--compact" v-if="noLoading && emailList.length === 0 && !loading">
+        <div class="empty-icon" aria-hidden="true">
+          <Icon icon="psg:mail" width="20" height="20" />
+        </div>
+        <span class="empty-title">{{ $t('noMessagesFound') }}</span>
       </div>
-      <div class="empty" v-if="searchQuery.trim() && searchResultCount === 0 && emailList.length > 0 && !loading">
-        <el-empty :description="$t('noSearchResults')" />
+      <div class="empty empty--compact" v-if="searchQuery.trim() && searchResultCount === 0 && emailList.length > 0 && !loading">
+        <div class="empty-icon" aria-hidden="true">
+          <Icon icon="psg:search" width="20" height="20" />
+        </div>
+        <span class="empty-title">{{ $t('noSearchResults') }}</span>
       </div>
     </div>
 
@@ -332,6 +349,9 @@ const searchQuery = ref('');
 const unreadOnly = ref(false);
 const searchInputRef = ref(null);
 const checkedEmailCount = ref(0);
+const selectionMode = ref(false)
+const longPressedId = ref(null)
+let longPressTimer = null
 let timer = null
 const position = ref(DOMRect.fromRect({ x: 0, y: 0 }))
 const triggerRef = ref({ getBoundingClientRect() { return position.value; } })
@@ -514,7 +534,8 @@ function localRead(emailIds) {
 
 function rightDeleteItem(item) {
   if (props.type === 'draft') {
-    emit('delete-draft', [item.draftId])
+    ElMessageBox.confirm(t('delOneEmailConfirm'), { confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), type: 'warning' })
+      .then(() => emit('delete-draft', [item.draftId]))
     return
   }
   rightDelete(item.emailId)
@@ -530,17 +551,12 @@ function rightDelete(emailId) {
       ElMessage({ message: t('delFailMsg') || 'Delete failed', type: 'error', plain: true })
     })
   }
-  if (props.type === 'all-email') {
-    ElMessageBox.confirm(t('delOneEmailConfirm'), { confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), type: 'warning' })
-      .then(doDelete)
-    return
-  }
-  if (props.type === 'trash') {
-    ElMessageBox.confirm(t('permanentDeleteConfirm'), { confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), type: 'warning' })
-      .then(doDelete)
-    return
-  }
-  doDelete()
+  const confirmText = props.type === 'trash' ? t('permanentDeleteConfirm') : t('delOneEmailConfirm')
+  ElMessageBox.confirm(confirmText, {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning',
+  }).then(doDelete).catch(() => {})
 }
 
 function archiveAction(emailId) { if (props.archiveEmail) props.archiveEmail(emailId) }
@@ -720,9 +736,26 @@ function ptrTouchEnd() {
 // ── Swipe-to-delete / swipe-to-star ────────────────────────────────────────
 const swipeOffsets = reactive(new Map())
 const swipeTouch   = ref(null)
+const swipeOpenId  = ref(null)
 
 function swipeTouchStart(e, item) {
-  swipeTouch.value = { id: item.emailId, sx: e.touches[0].clientX, sy: e.touches[0].clientY, dir: null }
+  const touch = e.touches[0]
+  // Keep the browser/OS edge-back gesture outside the mail-row gesture
+  // recognizer. Users can still use the row gesture from the content area.
+  if (touch.clientX <= 24 || touch.clientX >= window.innerWidth - 24) {
+    swipeTouch.value = null
+    return
+  }
+  if (swipeOpenId.value && swipeOpenId.value !== item.emailId) swipeOpenId.value = null
+  swipeTouch.value = { id: item.emailId, sx: touch.clientX, sy: touch.clientY, dir: null }
+  clearTimeout(longPressTimer)
+  longPressTimer = setTimeout(() => {
+    if (swipeTouch.value?.id !== item.emailId || swipeTouch.value?.dir) return
+    selectionMode.value = true
+    item.checked = true
+    longPressedId.value = item.emailId
+    vibrate(18)
+  }, 420)
 }
 
 function swipeTouchMove(e, item) {
@@ -730,9 +763,10 @@ function swipeTouchMove(e, item) {
   if (!st || st.id !== item.emailId) return
   const dx = e.touches[0].clientX - st.sx
   const dy = e.touches[0].clientY - st.sy
+  if (Math.abs(dx) > 8 || Math.abs(dy) > 8) clearTimeout(longPressTimer)
   if (!st.dir) {
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) st.dir = 'h'
-    else if (Math.abs(dy) > 8) st.dir = 'v'
+    if (Math.abs(dx) > Math.abs(dy) * 1.2 && Math.abs(dx) > 12) st.dir = 'h'
+    else if (Math.abs(dy) > 12) st.dir = 'v'
     else return
   }
   if (st.dir !== 'h') return
@@ -744,16 +778,23 @@ function swipeTouchEnd(e, item) {
   const st = swipeTouch.value
   if (!st || st.id !== item.emailId) return
   const offset = swipeOffsets.get(item.emailId) || 0
+  clearTimeout(longPressTimer)
   swipeTouch.value = null
-  if (offset < -70 && props.emailDelete) {
-    vibrate(40)
+  if (longPressedId.value === item.emailId) {
+    longPressedId.value = null
     swipeOffsets.set(item.emailId, 0)
-    rightDeleteItem(item)
-  } else if (offset > 60 && props.showStar && props.allowStar) {
+    return
+  }
+  if (offset > 70 && props.archiveEmail) {
     vibrate(20)
     swipeOffsets.set(item.emailId, 0)
-    starChange(item)
+    archiveAction(item.emailId)
+  } else if (offset < -70) {
+    vibrate(15)
+    swipeOpenId.value = item.emailId
+    swipeOffsets.set(item.emailId, -116)
   } else {
+    swipeOpenId.value = null
     swipeOffsets.set(item.emailId, 0)
   }
 }
@@ -766,18 +807,47 @@ function rowSwipeStyle(item) {
 }
 
 function swipeDeleteOpacity(item) {
-  const o = swipeOffsets.get(item.emailId) || 0
-  return o < 0 ? Math.min(1, Math.abs(o) / 60) : 0
+  return 0
 }
 
-function swipeStarOpacity(item) {
+function swipeArchiveOpacity(item) {
   const o = swipeOffsets.get(item.emailId) || 0
-  return o > 0 ? Math.min(1, o / 50) : 0
+  return o > 0 && props.archiveEmail ? Math.min(1, o / 70) : 0
 }
 
 function onRowClick(e, item) {
-  if (Math.abs(swipeOffsets.get(item.emailId) || 0) > 5) { swipeOffsets.set(item.emailId, 0); return }
+  if (longPressedId.value === item.emailId) {
+    longPressedId.value = null
+    return
+  }
+  if (selectionMode.value) {
+    item.checked = !item.checked
+    return
+  }
+  if (swipeOpenId.value === item.emailId || Math.abs(swipeOffsets.get(item.emailId) || 0) > 5) {
+    swipeOpenId.value = null
+    swipeOffsets.set(item.emailId, 0)
+    return
+  }
   jumpDetails(item)
+}
+
+function clearSelectionMode() {
+  emailList.forEach(item => { item.checked = false })
+  selectionMode.value = false
+  longPressedId.value = null
+}
+
+function openSwipeMore(event, item) {
+  swipeOpenId.value = null
+  swipeOffsets.set(item.emailId, 0)
+  position.value = DOMRect.fromRect({
+    x: Math.max(20, Math.min(window.innerWidth - 20, event.clientX || window.innerWidth - 20)),
+    y: event.clientY || window.innerHeight - 72,
+  })
+  rightClickEmail.value = item
+  rightClickEmail.value.rightChecked = true
+  dropdownRef.value?.handleOpen()
 }
 
 // ── Haptic feedback (Web Vibration API — no plugin needed) ──────────────────
@@ -789,7 +859,12 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 .email-container {
   display: grid;
   grid-template-rows: auto 1fr;
+  /* Keep the component's implicit grid track inside the pane. Without an
+     explicit minmax track, the all-mail row's intrinsic min-content width
+     wins on narrow phones and the list renders wider than the viewport. */
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
+  min-width: 0;
   overflow: hidden;
   background: var(--psg-canvas);
   font-size: 14px;
@@ -837,6 +912,18 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 }
 
+.mobile-selection-close {
+  display: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--psg-radius-sm);
+  color: var(--psg-text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+
 /* ── Integrated search in toolbar ────────────────────────── */
 .toolbar-search {
   flex: 1;
@@ -847,6 +934,12 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   align-items: center;
   gap: 5px;
   padding: 0 8px;
+
+  &:focus-within {
+    outline: 2px solid var(--psg-focus);
+    outline-offset: -2px;
+    border-radius: var(--psg-radius-sm);
+  }
 
   .search-icon-inline {
     color: var(--psg-text-secondary);
@@ -870,6 +963,9 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 
   .search-clear-inline {
+    border: 0;
+    padding: 0;
+    background: transparent;
     color: var(--psg-text-secondary);
     cursor: pointer;
     flex-shrink: 0;
@@ -887,7 +983,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   margin-left: 4px;
   flex-shrink: 0;
   background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
 }
 
 .filter-pill {
@@ -900,7 +996,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   font-weight: 500;
   font-family: var(--psg-font-sans);
   color: var(--psg-text-secondary);
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   transition: background 0.14s ease, color 0.14s ease;
   white-space: nowrap;
 
@@ -996,7 +1092,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     gap: 2px 10px;
     min-height: 84px;
     padding: 12px 16px 10px 12px;
-    border-radius: 0;
+    border-radius: var(--psg-radius-xs);
     align-items: center;
 
     &.all-email {
@@ -1095,6 +1191,33 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     justify-content: center;
     align-items: center;
     height: 100%;
+
+    &--compact {
+      flex-direction: column;
+      gap: 10px;
+      min-height: 168px;
+      height: auto;
+      padding: 42px 24px;
+      color: var(--psg-text-muted);
+      text-align: center;
+    }
+
+    .empty-icon {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      color: var(--psg-text-muted);
+      background: var(--psg-surface-muted);
+      border: 1px solid var(--psg-border);
+      border-radius: var(--psg-radius-xs);
+    }
+
+    .empty-title {
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--psg-text-secondary);
+    }
   }
 
   .no-more {
@@ -1128,6 +1251,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   padding: 10px 18px 10px 14px;
   border-bottom: 1px solid var(--psg-border);
   background: var(--psg-surface);
+  border-radius: var(--psg-radius-xs);
   cursor: pointer;
   align-items: center;
   transition: background 120ms ease;
@@ -1277,6 +1401,9 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
 /* Mobile row cell placement */
 @media (max-width: 768px) {
+  .mobile-selection-close { display: inline-grid; place-items: center; }
+  :deep(.mail-cb:not(.mobile-selection-visible)) { display: none; }
+
   :deep(.row-check) {
     grid-column: 1;
     grid-row: 1 / 3;
@@ -1360,7 +1487,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     width: 24px;
     height: 24px;
     flex-shrink: 0;
-    border-radius: var(--psg-radius-full);
+    border-radius: var(--psg-radius-xs);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1663,12 +1790,22 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   font-weight: 600;
   color: var(--psg-on-primary);
   pointer-events: none;
+  border: 0;
+  font: inherit;
   font-family: var(--psg-font-sans);
   letter-spacing: 0;
   text-transform: none;
   transition: opacity 0.05s;
 
-  &--delete { right: 0; background: var(--psg-danger); }
-  &--star   { left: 0;  background: var(--psg-primary); }
+  &--archive { left: 0; right: 0; background: var(--psg-primary); justify-content: flex-start; }
+  &--more {
+    right: 0;
+    width: 116px;
+    justify-content: center;
+    background: var(--psg-surface-active);
+    color: var(--psg-text);
+    cursor: pointer;
+    pointer-events: auto;
+  }
 }
 </style>

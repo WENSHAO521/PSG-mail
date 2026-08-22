@@ -28,11 +28,13 @@
       <div class="header-btns">
         <button class="icon-button sidebar-collapse-button"
                 :title="collapsed ? $t('expand') : $t('collapse')"
+                :aria-label="collapsed ? $t('expand') : $t('collapse')"
                 @click="uiStore.asideCollapsed = !uiStore.asideCollapsed">
           <Icon icon="psg:menu" width="20" height="20" />
         </button>
         <button class="icon-button sidebar-close-button"
                 :title="$t('close')"
+                :aria-label="$t('close')"
                 @click="uiStore.asideShow = false">
           <Icon icon="psg:close-circle" width="20" height="20" />
         </button>
@@ -42,32 +44,51 @@
     <!-- ── Scrollable nav area ──────────────────────────── -->
     <div class="sidebar-nav-scroll">
 
-      <!-- Primary nav -->
-      <nav class="sidebar-nav">
-        <el-tooltip v-for="item in navItems" :key="item.name"
-                    :content="$t(item.labelKey)" placement="right" :disabled="!collapsed">
-          <div v-if="!item.perm || hasPerm(item.perm)"
-               class="sidebar-nav-link"
-               :class="{ active: route.meta.name === item.name }"
-               @click="router.push({ name: item.name })">
-            <span class="sidebar-nav-content">
-              <Icon :icon="item.icon" width="20" height="20" class="nav-icon" />
-              <span class="sidebar-label">{{ $t(item.labelKey) }}</span>
-              <el-badge v-if="item.name === 'email' && emailStore.inboxUnreadCount > 0"
-                        :value="emailStore.inboxUnreadCount"
-                        :max="99"
-                        class="inbox-unread-badge" />
-            </span>
-          </div>
-        </el-tooltip>
-      </nav>
+      <!-- Primary nav, grouped by frequency rather than one long flat list. -->
+      <template v-for="section in navSections" :key="section.key">
+        <div v-if="section.titleKey && section.key !== 'more'" class="sidebar-section-title nav-group-title">
+          {{ $t(section.titleKey) }}
+        </div>
+        <button v-else-if="section.key === 'more'"
+                type="button"
+                class="sidebar-section-title nav-group-title nav-group-toggle"
+                :aria-expanded="moreSectionExpanded"
+                :aria-controls="`sidebar-section-${section.key}`"
+                @click="toggleMoreSection">
+          <span>{{ $t(section.titleKey) }}</span>
+          <Icon icon="psg:chevron-down" width="14" height="14"
+                class="nav-group-chevron"
+                :class="{ 'is-open': moreSectionExpanded }" />
+        </button>
+        <nav v-if="section.key !== 'more' || moreSectionExpanded"
+             :id="section.key === 'more' ? `sidebar-section-${section.key}` : undefined"
+             class="sidebar-nav">
+          <el-tooltip v-for="item in section.items" :key="item.name"
+                      :content="$t(item.labelKey)" placement="right" :disabled="!collapsed">
+            <div v-if="!item.perm || hasPerm(item.perm)"
+                 class="sidebar-nav-link"
+                 :class="{ active: route.meta.name === item.name }"
+                 @click="router.push({ name: item.name })">
+              <span class="sidebar-nav-content">
+                <Icon :icon="item.icon" width="20" height="20" class="nav-icon" />
+                <span class="sidebar-label">{{ $t(item.labelKey) }}</span>
+                <el-badge v-if="item.name === 'email' && emailStore.inboxUnreadCount > 0"
+                          :value="emailStore.inboxUnreadCount"
+                          :max="99"
+                          class="inbox-unread-badge" />
+              </span>
+            </div>
+          </el-tooltip>
+        </nav>
+        <div v-if="section.key !== 'mail'" class="sidebar-section-separator"></div>
+      </template>
 
       <!-- Labels -->
       <template v-if="hasPerm('email:send')">
         <div class="sidebar-section-separator"></div>
         <div class="sidebar-section-title label-section-title">
           <span>{{ $t('labels') }}</span>
-          <button class="label-add-btn" :title="$t('newLabel')" @click="promptCreateLabel">
+          <button type="button" class="label-add-btn" :title="$t('newLabel')" :aria-label="$t('newLabel')" @click="promptCreateLabel">
             <Icon icon="psg:add-circle" width="15" height="15" />
           </button>
         </div>
@@ -114,12 +135,12 @@
 
         <!-- Compose — collapsed: icon only -->
         <el-tooltip v-if="canSend && collapsed" :content="$t('compose')" placement="right">
-          <button class="compose-icon-btn" @click="openCompose">
+          <button type="button" class="compose-icon-btn" :aria-label="$t('compose')" @click="openCompose">
             <Icon icon="psg:compose" width="20" height="20" />
           </button>
         </el-tooltip>
         <!-- Compose — expanded: full button -->
-        <button v-else-if="canSend" class="sidebar-compose-button" @click="openCompose">
+        <button v-else-if="canSend" type="button" class="sidebar-compose-button" @click="openCompose">
           <Icon icon="psg:compose" width="20" height="20" />
           <span>{{ $t('compose') }}</span>
         </button>
@@ -128,7 +149,7 @@
         <div class="sidebar-util-cluster">
           <!-- Real backend mail search — distinct from Command Palette (Ctrl+K) -->
           <el-tooltip :content="$t('search') + ' (/)'" placement="right">
-            <button class="util-btn" @click="router.push({ name: 'search' })">
+            <button type="button" class="util-btn" :aria-label="$t('search')" @click="router.push({ name: 'search' })">
               <Icon icon="psg:search" width="18" height="18" />
             </button>
           </el-tooltip>
@@ -139,23 +160,77 @@
 
           <!-- AI mail assistant -->
           <el-tooltip v-if="aiAssistantEnabled" :content="$t('aiAssistantOpen')" placement="right">
-            <button class="util-btn" @click="uiStore.aiAssistantShow = true">
+            <button type="button" class="util-btn" :aria-label="$t('aiAssistantOpen')" @click="uiStore.aiAssistantShow = true">
               <Icon icon="solar:magic-stick-3-bold-duotone" width="18" height="18" />
             </button>
           </el-tooltip>
 
           <!-- ··· dropdown -->
           <el-dropdown placement="top-end" trigger="click">
-            <button class="util-btn">
+            <button type="button" class="util-btn util-more-btn" :aria-label="$t('more')">
               <span class="more-dots"><span/><span/><span/></span>
+              <span v-if="!collapsed" class="utility-more-label">{{ $t('more') }}</span>
             </button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="toggleDark">
+                <el-dropdown-item @click="router.push({ name: 'setting' })">
                   <div class="drop-item">
-                    <Icon :icon="uiStore.dark ? 'solar:sun-linear' : 'solar:moon-linear'"
-                          width="17" height="17" />
-                    <span>{{ uiStore.dark ? $t('lightMode') : $t('darkMode') }}</span>
+                    <Icon icon="psg:settings" width="17" height="17" />
+                    <span>{{ $t('settings') }}</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item @click="router.push({ name: 'download' })">
+                  <div class="drop-item">
+                    <Icon icon="psg:download" width="17" height="17" />
+                    <span>{{ $t('download') }}</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item @click="router.push({ name: 'vpn' })">
+                  <div class="drop-item">
+                    <Icon icon="psg:shield" width="17" height="17" />
+                    <span>{{ $t('vpn') }}</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item divided disabled>
+                  <div class="drop-item theme-menu-heading">
+                    <Icon icon="solar:palette-linear" width="17" height="17" />
+                    <span>{{ $t('theme') }}</span>
+                    <span class="theme-current-label">{{ currentThemeLabel }}</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-for="option in themeOptions"
+                  :key="option.value"
+                  :class="{ 'theme-option-active': activeThemeMode === option.value }"
+                  @click="uiStore.setThemeMode(option.value)"
+                >
+                  <div class="drop-item theme-option" role="menuitemradio"
+                       :aria-checked="activeThemeMode === option.value">
+                    <Icon :icon="option.icon" width="17" height="17" />
+                    <span>{{ $t(option.labelKey) }}</span>
+                    <Icon v-if="activeThemeMode === option.value"
+                          icon="psg:check-circle" width="16" height="16" class="theme-check" />
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item disabled>
+                  <div class="drop-item theme-menu-heading">
+                    <Icon icon="psg:globe" width="17" height="17" />
+                    <span>{{ $t('language') }}</span>
+                    <span class="theme-current-label">{{ currentLanguageLabel }}</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-for="option in languageOptions"
+                  :key="option.value"
+                  :class="{ 'theme-option-active': activeLanguage === option.value }"
+                  @click="changeLanguage(option.value)"
+                >
+                  <div class="drop-item theme-option" role="menuitemradio"
+                       :aria-checked="activeLanguage === option.value">
+                    <span class="language-mark">{{ option.mark }}</span>
+                    <span>{{ option.label }}</span>
+                    <Icon v-if="activeLanguage === option.value"
+                          icon="psg:check-circle" width="16" height="16" class="theme-check" />
                   </div>
                 </el-dropdown-item>
                 <el-dropdown-item @click="clickLogout" class="logout-item">
@@ -189,11 +264,12 @@ import { useLabelStore } from "@/store/label.js";
 import { hasPerm } from "@/perm/perm.js";
 import { logout } from "@/request/login.js";
 import { labelCreate } from "@/request/label.js";
-import { computed, ref, onMounted, onUnmounted } from "vue";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { avatarBg, avatarLetter } from "@/utils/avatar.js";
 import NotificationPanel from '@/components/notification-panel/index.vue'
 import AiAssistantDrawer from '@/components/ai-assistant-drawer/index.vue'
+import { useNotificationStore } from '@/store/notification.js'
 
 const { t } = useI18n();
 const route  = useRoute();
@@ -202,6 +278,7 @@ const userStore = useUserStore();
 const emailStore = useEmailStore();
 const settingStore = useSettingStore();
 const labelStore = useLabelStore();
+const notificationStore = useNotificationStore();
 
 onMounted(() => { if (hasPerm('email:send')) labelStore.load(); })
 
@@ -241,25 +318,81 @@ const collapsed = computed(() => uiStore.asideCollapsed && !isMobile.value);
 const acctAvatarBg = computed(() => avatarBg(userStore.user?.email || ''));
 const acctInitial  = computed(() => avatarLetter(userStore.user?.name, userStore.user?.email));
 
+const themeOptions = [
+  { value: 'light', labelKey: 'themeLight', icon: 'solar:sun-linear' },
+  { value: 'dark', labelKey: 'themeDark', icon: 'solar:moon-linear' },
+  { value: 'system', labelKey: 'themeSystem', icon: 'solar:monitor-linear' },
+];
+const activeThemeMode = computed(() => uiStore.themeMode || (uiStore.dark ? 'dark' : 'light'));
+const currentThemeLabel = computed(() => {
+  const option = themeOptions.find(item => item.value === activeThemeMode.value);
+  return option ? t(option.labelKey) : t('themeLight');
+});
+
+const languageOptions = [
+  { value: 'zh', label: '中文', mark: '中' },
+  { value: 'en', label: 'English', mark: 'EN' },
+];
+const activeLanguage = computed(() => settingStore.lang || (navigator.language?.startsWith('zh') ? 'zh' : 'en'));
+const currentLanguageLabel = computed(() =>
+  languageOptions.find(item => item.value === activeLanguage.value)?.label || 'English'
+);
+
+const moreSectionExpanded = ref(false);
+const moreSectionRoutes = new Set(['star', 'archive', 'spam', 'trash']);
+
+watch(() => route.meta.name, (name) => {
+  if (moreSectionRoutes.has(name)) moreSectionExpanded.value = true;
+}, { immediate: true });
+
+function toggleMoreSection() {
+  moreSectionExpanded.value = !moreSectionExpanded.value;
+}
+
+function changeLanguage(lang) {
+  if (lang === activeLanguage.value) return;
+  let setting = {};
+  try { setting = JSON.parse(localStorage.getItem('setting') || '{}'); } catch {}
+  settingStore.lang = lang;
+  localStorage.setItem('setting', JSON.stringify({ ...setting, lang }));
+  window.location.reload();
+}
+
 /* ── Can compose ── */
 const canSend = computed(() => hasPerm('email:send'));
 
 /* ── Nav items ── */
-const navItems = [
-  { name: 'all-inbox', labelKey: 'allInbox',      icon: 'psg:layers' },
-  { name: 'email',     labelKey: 'inbox',         icon: 'psg:inbox' },
-  { name: 'send',      labelKey: 'sent',          icon: 'psg:send',     perm: 'email:send' },
-  { name: 'draft',     labelKey: 'drafts',        icon: 'psg:draft',    perm: 'email:send' },
-  { name: 'scheduled', labelKey: 'scheduled',     icon: 'psg:clock', perm: 'email:send' },
-  { name: 'star',      labelKey: 'starred',       icon: 'psg:bookmark' },
-  { name: 'archive',   labelKey: 'archiveFolder', icon: 'psg:archive' },
-  { name: 'spam',      labelKey: 'spam',          icon: 'psg:spam' },
-  { name: 'trash',     labelKey: 'deletedMail',   icon: 'psg:trash' },
-  { name: 'templates', labelKey: 'templates',     icon: 'psg:template' },
-  { name: 'groups',    labelKey: 'contactGroups', icon: 'psg:group' },
-{ name: 'setting',   labelKey: 'settings',      icon: 'psg:settings' },
-  { name: 'download',  labelKey: 'download',      icon: 'psg:download' },
-  { name: 'vpn',       labelKey: 'vpn',           icon: 'psg:shield' },
+const navSections = [
+  {
+    key: 'mail',
+    titleKey: 'mailSection',
+    items: [
+      { name: 'all-inbox', labelKey: 'allInbox',  icon: 'psg:layers' },
+      { name: 'email',     labelKey: 'inbox',     icon: 'psg:inbox' },
+      { name: 'send',      labelKey: 'sent',      icon: 'psg:send',  perm: 'email:send' },
+      { name: 'draft',     labelKey: 'drafts',    icon: 'psg:draft', perm: 'email:send' },
+      { name: 'scheduled', labelKey: 'scheduled', icon: 'psg:clock', perm: 'email:send' },
+    ],
+  },
+  {
+    key: 'more',
+    titleKey: 'more',
+    items: [
+      { name: 'star',    labelKey: 'starred',       icon: 'psg:bookmark' },
+      { name: 'archive', labelKey: 'archiveFolder', icon: 'psg:archive' },
+      { name: 'spam',    labelKey: 'spam',          icon: 'psg:spam' },
+      { name: 'trash',   labelKey: 'deletedMail',   icon: 'psg:trash' },
+    ],
+  },
+  {
+    key: 'workspace',
+    titleKey: 'workspace',
+    items: [
+      { name: 'templates', labelKey: 'templates',     icon: 'psg:template' },
+      { name: 'groups',    labelKey: 'contactGroups', icon: 'psg:group' },
+      { name: 'rules',     labelKey: 'subjectKeywords', icon: 'psg:tag' },
+    ],
+  },
 ];
 
 const adminItems = [
@@ -278,13 +411,11 @@ function openCompose() {
   uiStore.writerRef?.open?.();
 }
 
-function toggleDark() {
-  const next = !uiStore.dark;
-  document.documentElement.setAttribute('class', next ? 'dark' : '');
-  uiStore.dark = next;
-}
-
 function clickLogout() {
+  // Notifications are intentionally in-memory, but the layout can survive
+  // until router navigation completes. Clear them before the next account
+  // can render so one user cannot see the previous user's mail subjects.
+  notificationStore.clear()
   logout().catch(() => null).finally(() => {
     localStorage.removeItem('token');
     router.replace('/login');
@@ -303,6 +434,7 @@ function clickLogout() {
   width: 256px;
   background: var(--psg-surface);
   border-right: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
   overflow: hidden;
   transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -401,7 +533,7 @@ function clickLogout() {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
 
   .acct-fallback {
     color: #fff;
@@ -548,8 +680,8 @@ function clickLogout() {
 
   /* Soft filled pill, not a hard ruled indicator. */
   &.active {
-    background: var(--psg-primary-muted);
-    color: var(--psg-primary);
+    background: var(--psg-menu-active-bg);
+    color: var(--psg-menu-active-text);
     font-weight: 700;
   }
 }
@@ -579,7 +711,7 @@ function clickLogout() {
     font-weight: 700;
     background: var(--psg-danger);
     border: none;
-    border-radius: var(--psg-radius-full);
+    border-radius: var(--psg-radius-xs);
     padding: 0 4px;
     min-width: 18px;
     height: 16px;
@@ -603,6 +735,38 @@ function clickLogout() {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-family: var(--psg-font-sans);
+}
+
+.nav-group-title {
+  margin-top: 8px;
+}
+
+.nav-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--psg-text-muted);
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.14s ease;
+
+  &:hover { color: var(--psg-text); }
+  &:focus-visible {
+    outline: 2px solid var(--psg-primary);
+    outline-offset: -2px;
+  }
+}
+
+.nav-group-chevron {
+  flex-shrink: 0;
+  transition: transform 0.16s ease;
+}
+
+.nav-group-chevron.is-open {
+  transform: rotate(180deg);
 }
 
 .label-section-title {
@@ -734,6 +898,19 @@ function clickLogout() {
   }
 }
 
+.util-more-btn {
+  width: auto;
+  min-width: 28px;
+  gap: 7px;
+  padding-inline: 6px;
+}
+
+.utility-more-label {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .compose-icon-btn {
   display: flex;
   align-items: center;
@@ -760,6 +937,42 @@ function clickLogout() {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.theme-menu-heading {
+  gap: 8px;
+  font-weight: 600;
+}
+
+.theme-current-label {
+  margin-left: auto;
+  color: var(--psg-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.theme-option {
+  width: 100%;
+}
+
+.theme-option-active {
+  color: var(--psg-menu-active-text) !important;
+  background: var(--psg-menu-active-bg) !important;
+}
+
+.theme-check {
+  margin-left: auto;
+  color: var(--psg-primary);
+}
+
+.language-mark {
+  width: 24px;
+  flex: 0 0 24px;
+  color: var(--psg-text-muted);
+  font-family: var(--psg-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -813,6 +1026,8 @@ function clickLogout() {
 
   .sidebar-section-separator { margin-inline: 14px; }
 
+  .nav-group-title { margin-top: 8px; }
+
   .sidebar-footer { padding-inline: 10px; }
 
   .sidebar-bottom-actions {
@@ -827,5 +1042,13 @@ function clickLogout() {
     padding: 3px;
     gap: 4px;
   }
+
+  .util-more-btn {
+    width: 28px;
+    min-width: 28px;
+    padding-inline: 0;
+  }
+
+  .utility-more-label { display: none; }
 }
 </style>

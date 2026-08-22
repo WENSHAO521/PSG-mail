@@ -4,20 +4,87 @@
  * survives. tokens.css already flips --psg-* under html.dark, so these
  * derived --el-* vars adapt automatically — no separate dark block needed.
  *
- * This is the foundation only. Per-component overrides (Button, Input,
- * Table, Dialog, Drawer, ...) are added incrementally as each area of the
- * app is rebuilt; see migration stage "17. Element Plus".
+ * Component-level overrides remain local to the owning view; this file only
+ * owns the shared Element Plus variables so new components cannot fall back
+ * to the vendor blue ramp.
  */
 
 :root {
   --el-color-primary: var(--psg-primary);
-  --el-color-primary-light-3: var(--psg-primary-hover);
+  --el-color-primary-rgb: 30, 89, 64;
+  --el-color-primary-light-3: var(--psg-primary-light-3);
+  --el-color-primary-light-5: var(--psg-primary-light-5);
+  --el-color-primary-light-7: var(--psg-primary-light-7);
+  --el-color-primary-light-8: var(--psg-primary-light-8);
+  --el-color-primary-light-9: var(--psg-primary-light-9);
+  --el-color-primary-dark-2: var(--psg-primary-dark-2);
+  --el-color-success: var(--psg-success);
+  --el-color-success-rgb: 47, 125, 82;
+  --el-color-success-light-3: var(--psg-success-light-3);
+  --el-color-success-light-5: var(--psg-success-light-5);
+  --el-color-success-light-7: var(--psg-success-light-7);
+  --el-color-success-light-8: var(--psg-success-light-8);
+  --el-color-success-light-9: var(--psg-success-light-9);
+  --el-color-success-dark-2: var(--psg-success-dark-2);
+  --el-color-warning: var(--psg-warning);
+  --el-color-warning-rgb: 181, 121, 22;
+  --el-color-warning-light-3: var(--psg-warning-light-3);
+  --el-color-warning-light-5: var(--psg-warning-light-5);
+  --el-color-warning-light-7: var(--psg-warning-light-7);
+  --el-color-warning-light-8: var(--psg-warning-light-8);
+  --el-color-warning-light-9: var(--psg-warning-light-9);
+  --el-color-warning-dark-2: var(--psg-warning-dark-2);
+  --el-color-info: var(--psg-info);
+  --el-color-info-rgb: 100, 117, 106;
+  --el-color-info-light-3: var(--psg-info-light-3);
+  --el-color-info-light-5: var(--psg-info-light-5);
+  --el-color-info-light-7: var(--psg-info-light-7);
+  --el-color-info-light-8: var(--psg-info-light-8);
+  --el-color-info-light-9: var(--psg-info-light-9);
+  --el-color-info-dark-2: var(--psg-info-dark-2);
   --el-color-danger: var(--psg-danger);
+  --el-color-danger-rgb: 199, 54, 47;
+  --el-color-danger-light-3: var(--psg-danger-light-3);
+  --el-color-danger-light-5: var(--psg-danger-light-5);
+  --el-color-danger-light-7: var(--psg-danger-light-7);
+  --el-color-danger-light-8: var(--psg-danger-light-8);
+  --el-color-danger-light-9: var(--psg-danger-light-9);
+  --el-color-danger-dark-2: var(--psg-danger-dark-2);
   --el-color-error: var(--psg-danger);
+  --el-color-error-rgb: 199, 54, 47;
+  --el-color-error-light-3: var(--psg-danger-light-3);
+  --el-color-error-light-5: var(--psg-danger-light-5);
+  --el-color-error-light-7: var(--psg-danger-light-7);
+  --el-color-error-light-8: var(--psg-danger-light-8);
+  --el-color-error-light-9: var(--psg-danger-light-9);
+  --el-color-error-dark-2: var(--psg-danger-dark-2);
 
   --el-font-family: var(--psg-font-sans);
-  --el-border-radius-base: var(--psg-radius-md);
-  --el-border-radius-small: var(--psg-radius-sm);
+  /* Element Plus has separate base/small/round defaults plus component
+     overrides (card, dialog, popper, tag, pagination, etc.). Keep every
+     ordinary surface on the same compact 6px corner; circle remains the
+     only intentional geometric exception. */
+  --el-border-radius-base: var(--psg-radius-xs);
+  --el-border-radius-small: var(--psg-radius-xs);
+  --el-border-radius-round: var(--psg-radius-xs);
+  --el-border-radius-circle: 50%;
+  --el-alert-border-radius-base: var(--psg-radius-xs);
+  --el-avatar-border-radius: var(--psg-radius-xs);
+  --el-badge-radius: var(--psg-radius-xs);
+  --el-card-border-radius: var(--psg-radius-xs);
+  --el-checkbox-border-radius: var(--psg-radius-xs);
+  --el-dialog-border-radius: var(--psg-radius-xs);
+  --el-input-border-radius: var(--psg-radius-xs);
+  --el-messagebox-border-radius: var(--psg-radius-xs);
+  --el-pagination-border-radius: var(--psg-radius-xs);
+  --el-popover-border-radius: var(--psg-radius-xs);
+  --el-popper-border-radius: var(--psg-radius-xs);
+  --el-radio-input-border-radius: var(--psg-radius-xs);
+  --el-slider-border-radius: var(--psg-radius-xs);
+  --el-tag-border-radius: var(--psg-radius-xs);
+  --el-tag-border-radius-rounded: var(--psg-radius-xs);
+  --el-tour-border-radius: var(--psg-radius-xs);
+  --el-transfer-border-radius: var(--psg-radius-xs);
 
   --el-border-color: var(--psg-border);
   --el-border-color-light: var(--psg-border);
@@ -26,8 +93,11 @@
   --el-text-color-primary: var(--psg-text);
   --el-text-color-regular: var(--psg-text-secondary);
   --el-text-color-secondary: var(--psg-text-muted);
+  --el-text-color-placeholder: var(--psg-text-muted);
+  --el-text-color-disabled: var(--psg-text-muted);
 
   --el-bg-color: var(--psg-surface);
+  --el-bg-color-overlay: var(--psg-surface);
   --el-bg-color-page: var(--psg-canvas);
   --el-fill-color-blank: var(--psg-surface);
   --el-fill-color: var(--psg-surface-muted);
@@ -49,9 +119,53 @@
    selector so ours is the one left standing. */
 html.dark {
   --el-color-primary: var(--psg-primary);
-  --el-color-primary-light-3: var(--psg-primary-hover);
+  --el-color-primary-rgb: 69, 182, 125;
+  --el-color-primary-light-3: var(--psg-primary-light-3);
+  --el-color-primary-light-5: var(--psg-primary-light-5);
+  --el-color-primary-light-7: var(--psg-primary-light-7);
+  --el-color-primary-light-8: var(--psg-primary-light-8);
+  --el-color-primary-light-9: var(--psg-primary-light-9);
+  --el-color-primary-dark-2: var(--psg-primary-dark-2);
+  --el-color-success: var(--psg-success);
+  --el-color-success-rgb: 107, 203, 145;
+  --el-color-success-light-3: var(--psg-success-light-3);
+  --el-color-success-light-5: var(--psg-success-light-5);
+  --el-color-success-light-7: var(--psg-success-light-7);
+  --el-color-success-light-8: var(--psg-success-light-8);
+  --el-color-success-light-9: var(--psg-success-light-9);
+  --el-color-success-dark-2: var(--psg-success-dark-2);
+  --el-color-warning: var(--psg-warning);
+  --el-color-warning-rgb: 225, 177, 90;
+  --el-color-warning-light-3: var(--psg-warning-light-3);
+  --el-color-warning-light-5: var(--psg-warning-light-5);
+  --el-color-warning-light-7: var(--psg-warning-light-7);
+  --el-color-warning-light-8: var(--psg-warning-light-8);
+  --el-color-warning-light-9: var(--psg-warning-light-9);
+  --el-color-warning-dark-2: var(--psg-warning-dark-2);
+  --el-color-info: var(--psg-info);
+  --el-color-info-rgb: 166, 174, 163;
+  --el-color-info-light-3: var(--psg-info-light-3);
+  --el-color-info-light-5: var(--psg-info-light-5);
+  --el-color-info-light-7: var(--psg-info-light-7);
+  --el-color-info-light-8: var(--psg-info-light-8);
+  --el-color-info-light-9: var(--psg-info-light-9);
+  --el-color-info-dark-2: var(--psg-info-dark-2);
   --el-color-danger: var(--psg-danger);
+  --el-color-danger-rgb: 229, 100, 92;
+  --el-color-danger-light-3: var(--psg-danger-light-3);
+  --el-color-danger-light-5: var(--psg-danger-light-5);
+  --el-color-danger-light-7: var(--psg-danger-light-7);
+  --el-color-danger-light-8: var(--psg-danger-light-8);
+  --el-color-danger-light-9: var(--psg-danger-light-9);
+  --el-color-danger-dark-2: var(--psg-danger-dark-2);
   --el-color-error: var(--psg-danger);
+  --el-color-error-rgb: 229, 100, 92;
+  --el-color-error-light-3: var(--psg-danger-light-3);
+  --el-color-error-light-5: var(--psg-danger-light-5);
+  --el-color-error-light-7: var(--psg-danger-light-7);
+  --el-color-error-light-8: var(--psg-danger-light-8);
+  --el-color-error-light-9: var(--psg-danger-light-9);
+  --el-color-error-dark-2: var(--psg-danger-dark-2);
 
   --el-border-color: var(--psg-border);
   --el-border-color-light: var(--psg-border);
@@ -60,8 +174,11 @@ html.dark {
   --el-text-color-primary: var(--psg-text);
   --el-text-color-regular: var(--psg-text-secondary);
   --el-text-color-secondary: var(--psg-text-muted);
+  --el-text-color-placeholder: var(--psg-text-muted);
+  --el-text-color-disabled: var(--psg-text-muted);
 
   --el-bg-color: var(--psg-surface);
+  --el-bg-color-overlay: var(--psg-surface);
   --el-bg-color-page: var(--psg-canvas);
   --el-fill-color-blank: var(--psg-surface);
   --el-fill-color: var(--psg-surface-muted);
@@ -69,4 +186,33 @@ html.dark {
   --el-fill-color-lighter: var(--psg-canvas);
 
   --el-mask-color: rgba(0, 0, 0, .6);
+}
+
+/* Some Element Plus component maps stamp their own custom property on the
+   component instead of inheriting the root value. These selectors close that
+   last gap without touching explicit circle variants. */
+:where(
+  .el-card,
+  .el-dialog,
+  .el-message,
+  .el-message-box,
+  .el-popover,
+  .el-popper,
+  .el-dropdown-menu,
+  .el-select-dropdown,
+  .el-picker-panel,
+  .el-date-editor,
+  .el-alert,
+  .el-tag,
+  .el-pagination,
+  .el-input__wrapper,
+  .el-input-tag,
+  .el-badge__content,
+  .el-button:not(.is-circle)
+) {
+  border-radius: var(--psg-radius-xs) !important;
+}
+
+.el-checkbox__inner {
+  border-radius: var(--psg-radius-xs) !important;
 }

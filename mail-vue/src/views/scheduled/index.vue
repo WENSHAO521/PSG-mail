@@ -1,21 +1,53 @@
 <template>
-  <div class="page-outer">
-    <div class="page-main-only">
-      <div class="list-toolbar">
-        <div class="toolbar-left">
-          <div class="stat-chip">
-            <span class="stat-num">{{ list.length }}</span>
-            <span class="stat-lbl">{{ $t('scheduled') }}</span>
-          </div>
+  <div class="workspace-page">
+    <section class="workspace-hero" aria-labelledby="scheduled-title">
+      <div>
+        <div class="workspace-eyebrow">
+          <span class="workspace-eyebrow-mark" aria-hidden="true" />
+          {{ $t('scheduled') }}
         </div>
-        <button class="act-btn" :title="$t('refresh')" @click="load">
-          <Icon icon="psg:refresh" width="16" height="16"/>
-        </button>
+        <h1 id="scheduled-title">{{ $t('scheduled') }}</h1>
+        <p>{{ $t('scheduledDesc') }}</p>
       </div>
+    </section>
 
-      <div v-if="!list.length" class="empty-state">
-        <Icon icon="psg:clock" width="32" height="32" class="empty-icon"/>
-        <div class="empty-title">{{ $t('scheduledEmpty') }}</div>
+    <section class="workspace-note" role="note">
+      <Icon icon="psg:info-circle" width="17" height="17" aria-hidden="true" />
+      <span>{{ $t('scheduledScopeNote') }}</span>
+    </section>
+
+    <section class="workspace-stats" aria-label="Scheduled mail summary">
+      <div class="workspace-stat-card surface-card">
+        <span class="workspace-stat-label">{{ $t('scheduledTotalCount') }}</span>
+        <strong class="workspace-stat-value">{{ list.length }}</strong>
+      </div>
+      <div class="workspace-stat-card surface-card">
+        <span class="workspace-stat-label">{{ $t('scheduledPendingCount') }}</span>
+        <strong class="workspace-stat-value workspace-stat-value--accent">{{ pendingCount }}</strong>
+      </div>
+      <div class="workspace-stat-card workspace-stat-card--wide surface-card">
+        <span class="workspace-stat-label">{{ $t('scheduledIssueCount') }}</span>
+        <span class="workspace-stat-description">{{ issueCount }}</span>
+      </div>
+    </section>
+
+    <section class="workspace-surface" aria-labelledby="scheduled-list-title">
+      <header class="workspace-surface-header">
+        <div>
+          <h2 id="scheduled-list-title">{{ $t('scheduled') }}</h2>
+          <p>{{ $t('scheduledListDesc') }}</p>
+        </div>
+        <button class="workspace-icon-button" :aria-label="$t('refresh')" :title="$t('refresh')" @click="load">
+          <Icon icon="psg:refresh" width="16" height="16" />
+        </button>
+      </header>
+
+      <div v-if="!list.length" class="workspace-empty">
+        <div class="workspace-empty-icon">
+          <Icon icon="psg:clock" width="26" height="26" aria-hidden="true" />
+        </div>
+        <h3>{{ $t('scheduledEmpty') }}</h3>
+        <p>{{ $t('scheduledEmptyDesc') }}</p>
       </div>
 
       <div v-else class="item-list">
@@ -40,24 +72,24 @@
             </div>
           </div>
           <div class="item-actions" v-if="row.status === 'pending'">
-            <button class="act-btn" :title="$t('scheduledEdit')" @click="edit(row)">
+            <button class="act-btn" :title="$t('scheduledEdit')" :aria-label="$t('scheduledEdit')" @click="edit(row)">
               <Icon icon="psg:edit" width="14" height="14"/>
             </button>
-            <button class="act-btn" :title="$t('scheduledSendNow')" @click="sendNow(row)">
+            <button class="act-btn" :title="$t('scheduledSendNow')" :aria-label="$t('scheduledSendNow')" @click="sendNow(row)">
               <Icon icon="psg:send" width="14" height="14"/>
             </button>
-            <button class="act-btn danger" :title="$t('cancelSchedule')" @click="cancel(row)">
+            <button class="act-btn danger" :title="$t('cancelSchedule')" :aria-label="$t('cancelSchedule')" @click="cancel(row)">
               <Icon icon="psg:close-circle" width="14" height="14"/>
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, defineOptions } from 'vue'
+import { ref, computed, onMounted, defineOptions } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { ElMessageBox } from 'element-plus'
@@ -72,6 +104,8 @@ defineOptions({ name: 'scheduled' })
 const { t } = useI18n()
 const uiStore = useUiStore()
 const list = ref([])
+const pendingCount = computed(() => list.value.filter(row => row.status === 'pending').length)
+const issueCount = computed(() => list.value.filter(row => ['failed', 'processing'].includes(row.status)).length)
 
 onMounted(load)
 
@@ -138,29 +172,9 @@ async function edit(row) {
 </script>
 
 <style lang="scss" scoped>
-.page-outer { max-width: 1240px; margin: 0 auto; padding: 28px 32px 56px;
-  @media (max-width: 960px) { padding: 20px 24px 40px; }
-  @media (max-width: 640px) { padding: 16px 16px 32px; }
-}
-.page-main-only { display: flex; flex-direction: column; gap: 16px; max-width: 900px; }
-
-.list-toolbar {
-  display: flex; justify-content: space-between; align-items: center; gap: 12px;
-  padding: 10px 16px; background: var(--psg-surface); border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border); min-height: 52px;
-}
-.toolbar-left { display: flex; align-items: center; gap: 12px; }
-.stat-chip { display: flex; align-items: baseline; gap: 4px; }
-.stat-num { font-size: 22px; font-weight: 900; letter-spacing: -0.04em; color: var(--psg-text); font-variant-numeric: tabular-nums; line-height: 1; }
-.stat-lbl { font-size: 11px; color: var(--psg-text-secondary); font-weight: 500; }
-
-.empty-state { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 32px 0; }
-.empty-icon { color: var(--psg-text-secondary); opacity: 0.35; }
-.empty-title { font-size: 14px; font-weight: 700; color: var(--psg-text); }
-
-.item-list { background: var(--psg-surface); border-radius: var(--psg-radius-md); border: 1px solid var(--psg-border); overflow: hidden; }
+.item-list { overflow: hidden; }
 .item-row {
-  display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px;
+  display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px;
   border-bottom: 1px solid var(--psg-border); transition: background 0.12s ease;
   &:last-child { border-bottom: none; }
   @media (hover: hover) { .item-actions { opacity: 0; } &:hover { background: var(--psg-surface-muted); .item-actions { opacity: 1; } } }

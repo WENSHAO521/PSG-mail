@@ -5,7 +5,7 @@
     </div>
     <el-scrollbar class="scroll" v-if="!firstLoading">
       <div class="scroll-body">
-        <div class="settings-shell">
+        <div class="settings-shell" :class="{ 'mobile-detail-active': mobileSettingsDetail }">
           <nav class="settings-sidebar" aria-label="System settings sections">
             <button
                 v-for="item in systemSettingNav"
@@ -13,7 +13,7 @@
                 class="settings-nav-item"
                 :class="{ active: activeSettingSection === item.key }"
                 type="button"
-                @click="activeSettingSection = item.key"
+                @click="openSettingsSection(item.key)"
             >
               <Icon class="settings-nav-icon" :icon="item.icon" width="20" height="20"/>
               <span>{{ item.label }}</span>
@@ -22,11 +22,16 @@
           <main class="settings-panel">
             <div class="settings-panel-header">
               <div>
+                <button v-if="mobileSettingsDetail" type="button" class="mobile-settings-back" @click="mobileSettingsDetail = false">
+                  <Icon icon="psg:chevron-left" width="15" height="15" /> {{ $t('back') }}
+                </button>
                 <h1>{{ activeSettingMeta.label }}</h1>
                 <p>{{ activeSettingMeta.desc }}</p>
               </div>
-              <el-button class="settings-save-button" type="primary" :loading="settingLoading" @click="saveActiveSetting">
-                {{ $t('save') }}
+              <el-button class="settings-save-button" type="primary" :loading="settingLoading"
+                         :disabled="activeSettingSection === 'customization' && !customizationDirty"
+                         @click="saveActiveSetting">
+                {{ activeSettingSection === 'customization' ? $t('saveChanges') : $t('save') }}
               </el-button>
             </div>
             <div class="card-grid">
@@ -131,59 +136,106 @@
             </div>
           </div>
 
-          <!-- Personalization Settings Card -->
+          <!-- Login Appearance Card -->
           <div v-show="activeSettingSection === 'customization'" class="settings-card">
             <div class="card-title">{{ $t('customization') }}</div>
-            <div class="card-content">
-              <div class="setting-item">
-                <div class="title-item"><span>{{ $t('websiteTitle') }}</span></div>
-                <div class="email-title">
-                  <span>{{ setting.title }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="editTitleShow = true">
-                    <Icon icon="psg:edit" width="16" height="16"/>
-                  </el-button>
-                </div>
-              </div>
-              <div class="setting-item">
-                <div class="title-item"><span>{{ $t('loginBoxOpacity') }}</span></div>
-                <div>
-                  <el-input-number size="small" v-model="loginOpacity" @change="opacityChange" :precision="2"
-                                   :step="0.01" :max="1" :min="0"/>
-                </div>
-              </div>
-              <div class="setting-item">
-                <div class="title-item"><span>{{ $t('backgroundDarken') }}</span></div>
-                <div>
-                  <el-input-number size="small" v-model="loginDarkenFactor" @change="darkenChange" :precision="2"
-                                   :step="0.01" :max="1" :min="0"/>
-                </div>
-              </div>
-              <div class="setting-item personalized">
-                <div><span>{{ $t('loginBackground') }}</span></div>
-                <div>
-                  <el-image
-                      class="background"
-                      :src="cvtR2Url(setting.background)"
-                      :preview-src-list="[cvtR2Url(setting.background)]"
-                      show-progress
-                      fit="cover"
-                  >
-                    <template #error>
-                      <div class="error-image">
+            <div class="card-content appearance-layout">
+              <div class="appearance-settings">
+
+                <section class="appearance-module">
+                  <header class="module-header">
+                    <h2>{{ $t('brandInfoTitle') }}</h2>
+                    <p>{{ $t('brandInfoDesc') }}</p>
+                  </header>
+                  <div class="module-field">
+                    <label>{{ $t('websiteTitle') }}</label>
+                    <el-input v-model="titleDraft" :placeholder="$t('websiteTitle')" maxlength="60"/>
+                    <span class="field-hint">{{ $t('loginTitleDesc') }}</span>
+                  </div>
+                </section>
+
+                <section class="appearance-module">
+                  <header class="module-header">
+                    <h2>{{ $t('loginBackground') }}</h2>
+                    <p>{{ $t('loginBackgroundDesc') }}</p>
+                  </header>
+                  <div class="background-manager">
+                    <div class="background-frame">
+                      <el-image
+                          v-if="setting.background"
+                          class="background-image"
+                          :src="cvtR2Url(setting.background)"
+                          :preview-src-list="[cvtR2Url(setting.background)]"
+                          show-progress
+                          fit="cover"
+                      >
+                        <template #error>
+                          <div class="error-image">
+                            <Icon icon="psg:gallery" width="24" height="24"/>
+                          </div>
+                        </template>
+                      </el-image>
+                      <div v-else class="background-empty">
                         <Icon icon="psg:gallery" width="24" height="24"/>
+                        <span>{{ $t('noBackgroundPlaceholder') }}</span>
                       </div>
-                    </template>
-                  </el-image>
-                  <div class="background-btn">
-                    <el-button class="opt-button" size="small" type="primary" @click="openSetBackground">
-                      <Icon icon="psg:edit" width="16" height="16"/>
-                    </el-button>
-                    <el-button class="opt-button" size="small" type="primary" @click="delBackground">
-                      <Icon icon="psg:trash" width="16" height="16"/>
-                    </el-button>
+                    </div>
+                    <div class="background-actions">
+                      <div class="background-buttons">
+                        <el-button @click="openSetBackground">{{ $t('replaceImage') }}</el-button>
+                        <el-button type="danger" plain v-if="setting.background" @click="delBackground">
+                          {{ $t('removeBackground') }}
+                        </el-button>
+                      </div>
+                      <p class="field-hint">{{ $t('backgroundHint') }}</p>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="appearance-module">
+                  <header class="module-header">
+                    <h2>{{ $t('displayEffectsTitle') }}</h2>
+                    <p>{{ $t('displayEffectsDesc') }}</p>
+                  </header>
+                  <div class="slider-field">
+                    <div class="slider-label-row">
+                      <span>{{ $t('panelOpacity') }}</span>
+                      <span class="slider-value">{{ panelOpacityPercent }}%</span>
+                    </div>
+                    <el-slider v-model="panelOpacityPercent" :min="0" :max="100" :show-tooltip="false"/>
+                    <p class="field-hint">{{ $t('panelOpacityDesc') }}</p>
+                  </div>
+                  <div class="slider-field">
+                    <div class="slider-label-row">
+                      <span>{{ $t('backgroundMask') }}</span>
+                      <span class="slider-value">{{ maskPercent }}%</span>
+                    </div>
+                    <el-slider v-model="maskPercent" :min="0" :max="100" :show-tooltip="false"
+                               :disabled="!setting.background"/>
+                    <p class="field-hint">
+                      {{ setting.background ? $t('backgroundMaskRecommend') : $t('backgroundMaskDisabledHint') }}
+                    </p>
+                  </div>
+                </section>
+
+              </div>
+
+              <div class="appearance-preview">
+                <div class="preview-header">
+                  <Icon icon="lucide:eye" width="15" height="15"/>
+                  <span>{{ $t('livePreview') }}</span>
+                </div>
+                <div class="preview-frame" :style="previewFrameStyle">
+                  <span class="preview-eyebrow">{{ $t('institutionalMail') }}</span>
+                  <div class="preview-card" :style="previewCardStyle">
+                    <div class="preview-title">{{ titleDraft || 'PSG Mail' }}</div>
+                    <div class="preview-input">{{ $t('emailAccount') }}</div>
+                    <div class="preview-input">{{ $t('password') }}</div>
+                    <div class="preview-button">{{ $t('loginBtn') }}</div>
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -310,7 +362,7 @@
           </div>
 
           <div v-show="activeSettingSection === 'push'" class="settings-card">
-            <div class="card-title">{{ $t('emailPush') }}</div>
+            <div class="card-title">通知与转发</div>
             <div class="card-content">
               <div class="setting-item">
                 <div><span>{{ $t('tgBot') }}</span></div>
@@ -340,6 +392,7 @@
                 </div>
               </div>
             </div>
+            <AdminForwarding :setting="setting" @saved="getSettings" />
           </div>
 
           <!-- Turnstile Verification Card -->
@@ -429,8 +482,14 @@
           </div>
 
           <div v-show="activeSettingSection === 'ai'" class="settings-card">
-            <div class="card-title">Workers AI</div>
+            <div class="card-title">AI 与智能识别</div>
             <div class="card-content">
+              <div class="setting-item">
+                <div><span>{{ $t('aiServiceStatus') }}</span><p>{{ $t('aiServiceStatusDesc') }}</p></div>
+                <span class="ai-service-status" :class="setting.hasAi ? 'is-ready' : 'is-unavailable'">
+                  {{ setting.hasAi ? $t('aiServiceReady') : $t('aiServiceUnavailable') }}
+                </span>
+              </div>
               <div class="setting-item">
                 <div><span>{{ $t('codeRecognition') }}</span></div>
                 <div>
@@ -453,6 +512,18 @@
                              v-model="setting.aiAssistantStatus"/>
                 </div>
               </div>
+              <div class="setting-item">
+                <div><span>默认模型</span><p>留空时使用部署的 ai_model 或系统默认模型。</p></div>
+                <div><el-input v-model="setting.aiDefaultModel" size="small" placeholder="可选" style="width:220px" /></div>
+              </div>
+              <div class="setting-item">
+                <div><span>备用模型</span><p>主模型失败时才会使用，留空表示不自动切换。</p></div>
+                <div><el-input v-model="setting.aiFallbackModel" size="small" placeholder="可选" style="width:220px" /></div>
+              </div>
+              <div class="setting-item">
+                <div><span>每日 AI 请求额度</span><p>0 表示不设置应用层额度，不会自动产生付费调用。</p></div>
+                <div><el-input-number v-model="setting.aiDailyQuota" :min="0" :max="10000" size="small" /></div>
+              </div>
             </div>
           </div>
 
@@ -463,12 +534,6 @@
       </div>
 
       <!-- Dialogs remain the same -->
-      <el-dialog v-model="editTitleShow" :title="$t('changeTitle')" width="340" @closed="editTitle = setting.title">
-        <form>
-          <el-input type="text" :placeholder="$t('websiteTitle')" v-model="editTitle"/>
-          <el-button type="primary" :loading="settingLoading" @click="saveTitle">{{ $t('save') }}</el-button>
-        </form>
-      </el-dialog>
       <el-dialog v-model="resendTokenFormShow" :title="$t('resendToken')" width="340" @closed="cleanResendTokenForm">
         <form>
           <el-select style="margin-bottom: 15px" v-model="resendTokenForm.domain" placeholder="Select">
@@ -827,21 +892,22 @@
 </template>
 
 <script setup>
-import {computed, defineOptions, nextTick, reactive, ref} from "vue";
+import {computed, defineOptions, nextTick, onActivated, reactive, ref, watch} from "vue";
 import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
+import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
 import {useUserStore} from "@/store/user.js";
 import {useAccountStore} from "@/store/account.js";
 import {Icon} from "@iconify/vue";
 import {cvtR2Url} from "@/utils/convert.js";
 import {storeToRefs} from "pinia";
-import {debounce} from 'lodash-es'
 import {isDomain, isEmail} from "@/utils/verify-utils.js";
 import loading from "@/components/loading/index.vue";
 import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
+import AdminForwarding from '@/components/admin-forwarding/index.vue'
 
 defineOptions({
   name: 'sys-setting'
@@ -852,11 +918,32 @@ const {t, locale} = useI18n();
 const firstLoading = ref(true)
 const settingReady = ref(false)
 const activeSettingSection = ref('website')
+const mobileSettingsDetail = ref(false)
+
+watch(mobileSettingsDetail, (open) => {
+  if (window.innerWidth > 1024) return
+  if (open) {
+    mobileNavigation.openLayer('system-settings-detail', () => {
+      mobileSettingsDetail.value = false
+      return true
+    })
+  } else {
+    mobileNavigation.closeLayer('system-settings-detail')
+  }
+})
+
+onActivated(() => {
+  mobileSettingsDetail.value = false
+})
+
+function openSettingsSection(key) {
+  activeSettingSection.value = key
+  mobileSettingsDetail.value = true
+}
 const backgroundImage = ref('')
 const localUpShow = ref(false)
 const accountStore = useAccountStore();
 const userStore = useUserStore();
-const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
 const blackFormShow = ref(false)
 const aiCodeFilterShow = ref(false)
@@ -870,13 +957,14 @@ const emailPrefixShow = ref(false)
 const showResendList = ref(false)
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
+const mobileNavigation = useMobileNavigationStore();
 const {settings: setting} = storeToRefs(settingStore);
-const editTitle = ref('')
 const settingLoading = ref(false)
 const clearS3Loading = ref(false)
 const r2DomainInput = ref('')
-const loginOpacity = ref(0)
-const loginDarkenFactor = ref(0)
+const titleDraft = ref('')
+const panelOpacityPercent = ref(90)
+const maskPercent = ref(0)
 const minEmailPrefix = ref(0)
 const emailPrefixFilter = ref([])
 const backgroundUrl = ref('')
@@ -962,16 +1050,45 @@ const systemSettingNav = computed(() => [
   {key: 'customization', label: t('customization'), icon: 'lucide:palette', desc: t('sysCustomizationDesc')},
   {key: 'email', label: t('emailSetting'), icon: 'lucide:mail', desc: t('sysEmailDesc')},
   {key: 'storage', label: t('oss'), icon: 'lucide:database', desc: t('sysStorageDesc')},
-  {key: 'push', label: t('emailPush'), icon: 'lucide:send', desc: t('sysPushDesc')},
+  {key: 'push', label: '通知与转发', icon: 'lucide:send', desc: t('sysPushDesc')},
   {key: 'verify', label: t('turnstileSetting'), icon: 'lucide:shield-check', desc: t('sysVerifyDesc')},
   {key: 'notice', label: t('noticeTitle'), icon: 'lucide:megaphone', desc: t('sysNoticeDesc')},
-  {key: 'ai', label: 'Workers AI', icon: 'lucide:sparkles', desc: t('sysAiDesc')},
+  {key: 'ai', label: 'AI 与智能识别', icon: 'lucide:sparkles', desc: t('sysAiDesc')},
 ])
 const activeSettingMeta = computed(() => {
   return systemSettingNav.value.find(item => item.key === activeSettingSection.value) || systemSettingNav.value[0]
 })
 
+const customizationDirty = computed(() => {
+  if (!settingReady.value) return false
+  return titleDraft.value !== (setting.value.title || '')
+      || panelOpacityPercent.value !== factorToPercent(setting.value.loginOpacity)
+      || maskPercent.value !== factorToPercent(setting.value.loginDarkenFactor)
+})
+
+const previewFrameStyle = computed(() => {
+  if (!setting.value.background) return {}
+  const bgUrl = cvtR2Url(setting.value.background)
+  const maskAlpha = maskPercent.value / 100
+  return {
+    backgroundImage: `linear-gradient(rgba(0, 0, 0, ${maskAlpha}), rgba(0, 0, 0, ${maskAlpha})), url(${bgUrl})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  }
+})
+
+const previewCardStyle = computed(() => {
+  if (!setting.value.background) return {}
+  const alpha = panelOpacityPercent.value / 100
+  const rgb = uiStore.dark ? '0, 0, 0' : '255, 255, 255'
+  return {background: `rgba(${rgb}, ${alpha})`}
+})
+
 getSettings()
+
+function factorToPercent(value) {
+  return Math.round(normalizeFactor(value) * 100)
+}
 
 function getSettings() {
   settingReady.value = false
@@ -979,12 +1096,12 @@ function getSettings() {
     setting.value = settingData
     settingStore.domainList = settingData.domainList;
     resendTokenForm.domain = setting.value.domainList[0]
-    loginOpacity.value = setting.value.loginOpacity
-    loginDarkenFactor.value = normalizeFactor(setting.value.loginDarkenFactor)
+    panelOpacityPercent.value = factorToPercent(setting.value.loginOpacity)
+    maskPercent.value = factorToPercent(setting.value.loginDarkenFactor)
     minEmailPrefix.value = setting.value.minEmailPrefix
     firstLoading.value = false
     backgroundUrl.value = setting.value.background?.startsWith('http') ? setting.value.background : ''
-    editTitle.value = setting.value.title
+    titleDraft.value = setting.value.title || ''
     r2DomainInput.value = setting.value.r2Domain
     addVerifyCount.value = setting.value.addVerifyCount
     regVerifyCount.value = setting.value.regVerifyCount
@@ -1247,24 +1364,10 @@ function ruleEmailSave() {
   editSetting(form)
 }
 
-function doOpacityChange() {
-  if (!settingReady.value) return
-  const form = {}
-  form.loginOpacity = loginOpacity.value
-  editSetting(form, true)
-}
-
 function normalizeFactor(value) {
   const factor = Number(value ?? 0)
   if (Number.isNaN(factor)) return 0
   return Math.min(1, Math.max(0, factor))
-}
-
-function doDarkenChange() {
-  if (!settingReady.value) return
-  const form = {}
-  form.loginDarkenFactor = normalizeFactor(loginDarkenFactor.value)
-  editSetting(form, true)
 }
 
 function resetEmailPrefix() {
@@ -1292,16 +1395,6 @@ function saveEmailPrefix() {
 function saveAiCodeFilter() {
   editSetting({aiCodeFilter: aiCodeFilter.value + ''})
 }
-
-const opacityChange = debounce(doOpacityChange, 1000, {
-  leading: false,
-  trailing: true
-})
-
-const darkenChange = debounce(doDarkenChange, 1000, {
-  leading: false,
-  trailing: true
-})
 
 function saveBlackList() {
 
@@ -1503,6 +1596,14 @@ function saveActiveSetting() {
     editSetting(settingForm, false)
     return
   }
+  if (activeSettingSection.value === 'customization') {
+    editSetting({
+      title: titleDraft.value,
+      loginOpacity: panelOpacityPercent.value / 100,
+      loginDarkenFactor: maskPercent.value / 100
+    })
+    return
+  }
   change()
 }
 
@@ -1510,10 +1611,6 @@ function changeField(key, value) {
   if (!settingReady.value) return
   setting.value[key] = value
   editSetting({[key]: value}, false)
-}
-
-function saveTitle() {
-  editSetting({title: editTitle.value})
 }
 
 function editSetting(settingForm, refreshStatus = true) {
@@ -1533,7 +1630,6 @@ function editSetting(settingForm, refreshStatus = true) {
     if (refreshStatus) {
       getSettings()
     }
-    editTitleShow.value = false
     r2DomainShow.value = false
     resendTokenFormShow.value = false
     turnstileShow.value = false
@@ -1547,8 +1643,9 @@ function editSetting(settingForm, refreshStatus = true) {
     emailPrefixShow.value = false
     aiCodeFilterShow.value = false
   }).catch((e) => {
-    loginOpacity.value = setting.value.loginOpacity
-    loginDarkenFactor.value = normalizeFactor(setting.value.loginDarkenFactor)
+    panelOpacityPercent.value = factorToPercent(setting.value.loginOpacity)
+    maskPercent.value = factorToPercent(setting.value.loginDarkenFactor)
+    titleDraft.value = setting.value.title || ''
     setting.value = {...setting.value, ...JSON.parse(backup)}
   }).finally(() => {
     settingLoading.value = false
@@ -1614,6 +1711,8 @@ function editSetting(settingForm, refreshStatus = true) {
   @media (max-width: 820px) {
     grid-template-columns: 1fr;
     gap: 12px;
+    &:not(.mobile-detail-active) .settings-panel { display: none; }
+    &.mobile-detail-active .settings-sidebar { display: none; }
   }
 }
 
@@ -1623,6 +1722,10 @@ function editSetting(settingForm, refreshStatus = true) {
   border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-md);
   overflow: hidden;
+}
+
+.settings-panel {
+  container: settings-panel / inline-size;
 }
 
 .settings-sidebar {
@@ -1635,21 +1738,24 @@ function editSetting(settingForm, refreshStatus = true) {
 
   @media (max-width: 820px) {
     position: static;
-    flex-direction: row;
-    overflow-x: auto;
+    flex-direction: column;
+    overflow: visible;
+    padding: 8px 0;
     border-radius: var(--psg-radius-sm);
   }
 }
 
 .settings-nav-item {
-  width: 100%;
+  width: calc(100% - 16px);
   min-height: 44px;
-  padding: 0 14px;
+  margin: 0 8px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 12px;
   border: none;
   border-left: 3px solid transparent;
+  border-radius: var(--psg-radius-xs);
   background: transparent;
   color: var(--psg-text-secondary);
   font-family: var(--psg-font-sans);
@@ -1666,22 +1772,23 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 
   &.active {
-    background: var(--psg-surface-active);
-    border-left-color: var(--psg-primary);
-    color: var(--psg-text);
+    background: var(--psg-menu-active-bg);
+    color: var(--psg-menu-active-text);
     font-weight: 700;
   }
 
   @media (max-width: 820px) {
-    width: auto;
-    white-space: nowrap;
+    width: calc(100% - 16px);
+    margin: 0 8px;
+    min-height: 48px;
+    white-space: normal;
     flex: 0 0 auto;
-    border-bottom: 3px solid transparent;
+    border-left: 3px solid transparent;
+    border-bottom: 0;
     padding: 0 12px;
 
     &.active {
-      border-bottom-color: var(--psg-primary);
-      background: var(--psg-surface-active);
+      background: var(--psg-menu-active-bg);
     }
   }
 }
@@ -1726,6 +1833,20 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 }
 
+.mobile-settings-back {
+  display: none;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  padding: 0;
+  margin: 0 0 8px;
+  background: transparent;
+  color: var(--psg-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  @media (max-width: 820px) { display: inline-flex; }
+}
+
 .settings-save-button {
   flex: 0 0 auto;
   min-width: 68px;
@@ -1738,21 +1859,257 @@ function editSetting(settingForm, refreshStatus = true) {
   display: block;
 }
 
-.background {
-  width: 249px;
-  height: 140px;
-  border-radius: var(--psg-radius-sm);
-  border: 1px solid var(--psg-border);
-  @media (max-width: 500px) {
-    width: 160px;
-    height: 90px;
+.card-content.appearance-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 28px;
+  align-items: start;
+
+  @container settings-panel (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
   }
 }
 
-.background-btn {
+.appearance-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
+}
+
+.appearance-module {
+  padding: 0 20px 24px;
+
+  &:first-child { padding-top: 18px; }
+
+  & + .appearance-module {
+    padding-top: 24px;
+    border-top: 1px solid var(--psg-border);
+  }
+}
+
+.module-header {
+  margin-bottom: 16px;
+
+  h2 {
+    margin: 0 0 2px;
+    color: var(--psg-text);
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  p {
+    margin: 0;
+    color: var(--psg-text-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+}
+
+.field-hint {
+  display: block;
+  margin-top: 8px;
+  color: var(--psg-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.module-field {
+  label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--psg-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+}
+
+.background-manager {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+
+  @media (max-width: 560px) {
+    flex-direction: column;
+  }
+}
+
+.background-frame {
+  flex: 0 0 auto;
+  width: 220px;
+  height: 124px;
+  border-radius: var(--psg-radius-sm);
+  border: 1px solid var(--psg-border);
+  overflow: hidden;
+
+  @media (max-width: 560px) {
+    width: 100%;
+    height: 150px;
+  }
+}
+
+.background-image {
+  width: 100%;
+  height: 100%;
+}
+
+.background-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--psg-surface-muted);
+  color: var(--psg-text-muted);
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.background-actions {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.background-buttons {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+
+  .el-button {
+    margin-left: 0;
+  }
+}
+
+.slider-field {
+  & + .slider-field {
+    margin-top: 22px;
+  }
+}
+
+.slider-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+
+  span:first-child {
+    color: var(--psg-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+}
+
+.slider-value {
+  color: var(--psg-text-secondary);
+  font-family: var(--psg-font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.appearance-preview {
+  position: sticky;
+  top: 16px;
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
+  padding: 14px;
+
+  @media (max-width: 860px) {
+    position: static;
+  }
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--psg-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.preview-frame {
+  border-radius: var(--psg-radius-sm);
+  border: 1px solid var(--psg-border);
+  background: var(--psg-canvas);
+  padding: 22px 16px;
+  display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 260px;
+  transition: background-image 200ms ease;
+}
+
+.preview-eyebrow {
+  color: var(--psg-text-muted);
+  font-family: var(--psg-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.preview-card {
+  width: 100%;
+  max-width: 220px;
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
+  box-shadow: var(--psg-shadow-sm);
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: background 200ms ease;
+}
+
+.preview-title {
+  color: var(--psg-text);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.preview-input {
+  height: 26px;
+  border-radius: var(--psg-radius-xs);
+  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--psg-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.preview-button {
+  margin-top: 4px;
+  height: 28px;
+  border-radius: var(--psg-radius-xs);
+  background: var(--psg-primary);
+  color: var(--psg-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .bot-verify-select {
@@ -2127,20 +2484,6 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 }
 
-.personalized {
-  align-items: start;
-
-  > div:last-child {
-    display: flex;
-    justify-content: end;
-
-    .el-button {
-      margin-left: 10px;
-      margin-top: 0;
-    }
-  }
-}
-
 .dialog-input {
   margin-bottom: 15px;
 }
@@ -2169,23 +2512,15 @@ function editSetting(settingForm, refreshStatus = true) {
   color: var(--psg-text-muted);
 }
 
-.email-title {
-  font-weight: normal !important;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-
-  span {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .el-button {
-    margin-top: 0;
-  }
+.ai-service-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: var(--psg-radius-xs);
+  font-size: 12px;
+  font-weight: 700;
 }
+.ai-service-status.is-ready { background: var(--psg-primary-muted); color: var(--psg-primary); }
+.ai-service-status.is-unavailable { background: var(--psg-danger-muted); color: var(--psg-danger); }
 
 .token-item {
   padding-top: 0;

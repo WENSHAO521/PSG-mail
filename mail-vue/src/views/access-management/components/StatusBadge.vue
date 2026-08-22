@@ -42,7 +42,7 @@ defineProps({
 
 .variant-pill {
   padding: 3px 10px;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   background: var(--psg-surface-muted);
   color: var(--psg-text-secondary);
   font-weight: 600;

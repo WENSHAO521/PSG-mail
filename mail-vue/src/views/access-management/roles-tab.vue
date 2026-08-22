@@ -10,7 +10,9 @@
            :style="first ? 'background: transparent' : ''">
         <loading/>
       </div>
-      <EmptyState v-if="!tableLoading && !first && roles.length === 0"
+      <EmptyState v-if="!tableLoading && loadError"
+                  icon="psg:warning" :title="$t('loadFailedRoles')" :cta-text="$t('retry')" @cta="refresh"/>
+      <EmptyState v-else-if="!tableLoading && !first && roles.length === 0"
                   icon="psg:lock" :title="$t('emptyRolesTitle')" :description="$t('emptyRolesDesc')"
                   :cta-text="$t('addRoleTitle')" @cta="openAddRole"/>
       <div class="role-grid" v-else>
@@ -153,6 +155,7 @@ const tree = ref({})
 const permLoading = ref(false)
 const tableLoading = ref(false)
 const first = ref(true)
+const loadError = ref(false)
 
 const dialogType = reactive({
   title: '',
@@ -370,8 +373,11 @@ function refresh() {
 }
 
 function getRoleList() {
+  loadError.value = false
   roleRoleList().then(list => {
     roles.value = list
+  }).catch(() => {
+    loadError.value = true
   }).finally(() => {
     tableLoading.value = false
     setTimeout(() => {

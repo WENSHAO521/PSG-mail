@@ -11,11 +11,61 @@ import {t} from '../i18n/i18n'
 import verifyRecordService from './verify-record-service';
 import userContext from '../security/user-context';
 
+const FEATURE_DEFAULTS = {
+	allowPersonalForward: 1,
+	allowForwardNotification: 1,
+	allowForwardFullCopy: 0,
+	allowForwardAttachments: 0,
+	forwardMaxAddresses: 3,
+	forwardAllowedDomains: '',
+	publicAppUrl: '',
+	aiDefaultModel: '',
+	aiFallbackModel: '',
+	aiDailyQuota: 0,
+};
+
+const FEATURE_COLUMNS = {
+	allowPersonalForward: 'allow_personal_forward',
+	allowForwardNotification: 'allow_forward_notification',
+	allowForwardFullCopy: 'allow_forward_full_copy',
+	allowForwardAttachments: 'allow_forward_attachments',
+	forwardMaxAddresses: 'forward_max_addresses',
+	forwardAllowedDomains: 'forward_allowed_domains',
+	publicAppUrl: 'public_app_url',
+	aiDefaultModel: 'ai_default_model',
+	aiFallbackModel: 'ai_fallback_model',
+	aiDailyQuota: 'ai_daily_quota',
+};
+
+async function readFeatureSetting(c) {
+	try {
+		const row = await c.env.db.prepare('SELECT * FROM psg_feature_setting WHERE id = 1').first();
+		if (!row) return { ...FEATURE_DEFAULTS };
+		return {
+			allowPersonalForward: Number(row.allow_personal_forward ?? FEATURE_DEFAULTS.allowPersonalForward),
+			allowForwardNotification: Number(row.allow_forward_notification ?? FEATURE_DEFAULTS.allowForwardNotification),
+			allowForwardFullCopy: Number(row.allow_forward_full_copy ?? FEATURE_DEFAULTS.allowForwardFullCopy),
+			allowForwardAttachments: Number(row.allow_forward_attachments ?? FEATURE_DEFAULTS.allowForwardAttachments),
+			forwardMaxAddresses: Math.max(1, Number(row.forward_max_addresses ?? FEATURE_DEFAULTS.forwardMaxAddresses)),
+			forwardAllowedDomains: row.forward_allowed_domains || '',
+			publicAppUrl: row.public_app_url || '',
+			aiDefaultModel: row.ai_default_model || '',
+			aiFallbackModel: row.ai_fallback_model || '',
+			aiDailyQuota: Math.max(0, Number(row.ai_daily_quota ?? FEATURE_DEFAULTS.aiDailyQuota)),
+		};
+	} catch {
+		// A deployment can briefly run before the new migration is applied. Keep
+		// old settings and old routes usable during that compatibility window.
+		return { ...FEATURE_DEFAULTS };
+	}
+}
+
 const settingService = {
 
 	async refresh(c) {
 		const settingRow = await orm(c).select().from(setting).get();
 		settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
+		Object.assign(settingRow, await readFeatureSetting(c));
 		c.set('setting', settingRow);
 		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
 		kvCache.del(KvConst.SETTING);  // bust in-memory cache after update
@@ -39,6 +89,10 @@ const settingService = {
 		if (!setting) {
 			throw new BizError('数据库未初始化 Database not initialized.');
 		}
+
+		// Feature policy lives in its own singleton table so migrations can run
+		// before the legacy setting table exists on a brand-new D1 database.
+		Object.assign(setting, await readFeatureSetting(c));
 
 		let domainList = c.env.domain;
 
@@ -116,6 +170,7 @@ const settingService = {
 		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
 		settingRow.hasR2 = !!c.env.r2
 		settingRow.hasCfEmail = !!c.env.email
+		settingRow.hasAi = !!c.env.ai
 
 		let regVerifyOpen = false
 		let addVerifyOpen = false
@@ -139,6 +194,13 @@ const settingService = {
 
 	async set(c, params) {
 		const settingData = await this.query(c);
+		const featureParams = {};
+		for (const key of Object.keys(FEATURE_COLUMNS)) {
+			if (Object.prototype.hasOwnProperty.call(params, key)) {
+				featureParams[key] = params[key];
+				delete params[key];
+			}
+		}
 		let resendTokens = { ...settingData.resendTokens, ...params.resendTokens };
 		Object.keys(resendTokens).forEach(domain => {
 			if (resendTokens[domain]) resendTokens[domain] = resendTokens[domain].trim();
@@ -159,7 +221,32 @@ const settingService = {
 		}
 
 		params.resendTokens = JSON.stringify(resendTokens);
-		await orm(c).update(setting).set({ ...params }).returning().get();
+		if (Object.keys(params).length > 0) {
+			await orm(c).update(setting).set({ ...params }).returning().get();
+		}
+
+		const featureUpdate = {};
+		for (const [key, column] of Object.entries(FEATURE_COLUMNS)) {
+			if (!Object.prototype.hasOwnProperty.call(featureParams, key)) continue;
+			let value = featureParams[key];
+			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel'].includes(key)) {
+				value = Array.isArray(value) ? value.join(',') : String(value ?? '').trim();
+			} else {
+				value = Math.max(0, Number(value));
+				if (key === 'forwardMaxAddresses') value = Math.min(20, Math.max(1, value || 3));
+			}
+			featureUpdate[column] = value;
+		}
+		if (Object.keys(featureUpdate).length > 0) {
+			try {
+				const assignments = Object.keys(featureUpdate).map(key => `${key} = ?`).join(', ');
+				await c.env.db.prepare(
+					`UPDATE psg_feature_setting SET ${assignments}, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
+				).bind(...Object.values(featureUpdate)).run();
+			} catch (error) {
+				if (!/no such table/i.test(error?.message || '')) throw error;
+			}
+		}
 		await this.refresh(c);
 	},
 

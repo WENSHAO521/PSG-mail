@@ -38,7 +38,9 @@
            :style="first ? 'background: transparent' : ''">
         <loading/>
       </div>
-      <EmptyState v-if="!tableLoading && !first && users.length === 0 && !hasFilters" class="empty-slot"
+      <EmptyState v-if="!tableLoading && loadError" class="empty-slot"
+                  icon="psg:warning" :title="$t('loadFailedUsers')" :cta-text="$t('retry')" @cta="refresh"/>
+      <EmptyState v-else-if="!tableLoading && !first && users.length === 0 && !hasFilters" class="empty-slot"
                   icon="psg:group" :title="$t('emptyUsersTitle')" :description="$t('emptyUsersDesc')"
                   :cta-text="$t('addUser')" @cta="openAdd"/>
       <EmptyState v-else-if="!tableLoading && !first && users.length === 0" class="empty-slot"
@@ -109,7 +111,9 @@
            :style="first ? 'background: transparent' : ''">
         <loading/>
       </div>
-      <EmptyState v-if="!tableLoading && !first && users.length === 0 && !hasFilters"
+      <EmptyState v-if="!tableLoading && loadError"
+                  icon="psg:warning" :title="$t('loadFailedUsers')" :cta-text="$t('retry')" @cta="refresh"/>
+      <EmptyState v-else-if="!tableLoading && !first && users.length === 0 && !hasFilters"
                   icon="psg:group" :title="$t('emptyUsersTitle')" :description="$t('emptyUsersDesc')"
                   :cta-text="$t('addUser')" @cta="openAdd"/>
       <EmptyState v-else-if="!tableLoading && !first && users.length === 0"
@@ -521,6 +525,7 @@ const accountParams = reactive({
 })
 
 const hasFilters = ref(false)
+const loadError = ref(false)
 
 roleSelectUse().then(list => {
   roleList.length = 0
@@ -1003,6 +1008,7 @@ function sizeChange(size) {
 function getUserList(loading = true) {
 
   tableLoading.value = loading
+  loadError.value = false
   const newParams = {...params}
 
   if (newParams.status === -2) {
@@ -1012,7 +1018,9 @@ function getUserList(loading = true) {
   userList(newParams).then(data => {
     users.value = data.list.map(item => ({...item, checkedClass: ''}))
     total.value = data.total
-    }).finally(() => {
+    }).catch(() => {
+    loadError.value = true
+  }).finally(() => {
     tableLoading.value = false
     setTimeout(() => {
       first.value = false
@@ -1165,7 +1173,7 @@ defineExpose({ openCreate: openAdd })
   flex-shrink: 0;
   width: 30px;
   height: 30px;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;

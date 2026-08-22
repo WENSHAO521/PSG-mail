@@ -31,7 +31,7 @@
     <!-- Mobile sidebar backdrop -->
     <div class="sidebar-backdrop"
          :data-open="String(uiStore.asideShow)"
-         @click="uiStore.asideShow = false"/>
+         @click="closeMobileDrawer"/>
 
     <!-- Sidebar ─ always column 1 -->
     <Aside />
@@ -55,7 +55,7 @@
            @mousedown="startListResize"
            @dblclick="resetListWidth"></div>
       <section class="mail-detail-pane">
-        <ContentPane @back="uiStore.mobileDetailOpen = false"/>
+      <ContentPane @back="closeMobileReader"/>
       </section>
     </template>
 
@@ -108,10 +108,10 @@ import CommandPalette from '@/components/command-palette/index.vue'
 import MobileHeader from '@/layout/mobile-header/index.vue'
 import MobileTabbar from '@/layout/mobile-tabbar/index.vue'
 import writer from '@/layout/write/index.vue'
-import { ref, computed, reactive, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, reactive, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/store/ui.js'
-import { useNotificationStore } from '@/store/notification.js'
+import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 import { useEmailStore } from '@/store/email.js'
 import { useSettingStore } from '@/store/setting.js'
 import { useAccountStore } from '@/store/account.js'
@@ -124,7 +124,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const uiStore = useUiStore()
-const notificationStore = useNotificationStore()
+const mobileNavigation = useMobileNavigationStore()
 const emailStore = useEmailStore()
 const settingStore = useSettingStore()
 const accountStore = useAccountStore()
@@ -222,15 +222,51 @@ const isMailRoute = computed(() => MAIL_ROUTES.has(route.meta?.name))
 const sidebarCollapsed = computed(() => uiStore.asideCollapsed && window.innerWidth >= 1025)
 
 const keepAliveList = ['email', 'all-inbox', 'all-email', 'send', 'star', 'draft', 'archive', 'spam', 'trash', 'label', 'search']
-const keepAliveWorkspace = ['sys-setting', 'analysis', 'user', 'role', 'reg-key', 'setting', 'templates', 'groups', 'scheduled']
+const keepAliveWorkspace = ['sys-setting', 'analysis', 'access-mgmt', 'setting', 'templates', 'groups', 'scheduled']
 
-// Clear selected email when switching mail folders
-watch(isMailRoute, (is) => { if (!is) emailStore.contentData.email = null })
+// Workspace pages share one scroll container. Keep navigation deterministic on
+// mobile (and when a kept-alive page is revisited): a new section should open
+// at its own heading instead of inheriting the previous page's scroll offset.
+function resetWorkspaceScroll() {
+  if (isMailRoute.value) return
+  nextTick(() => {
+    document.querySelector('.workspace-body')?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  })
+}
+
+// Keep the reading pane scoped to the current mail route. contentData is
+// persisted so a hard navigation can otherwise show the previous folder's
+// message beside an empty/new list (for example All Mail -> Inbox).
+function clearReaderSelection() {
+  emailStore.contentData.email = null
+  emailStore.contentData.delType = null
+  emailStore.contentData.emailIndex = 0
+  emailStore.contentData.emailTotal = 0
+  uiStore.mobileDetailOpen = false
+}
+
+function closeMobileDrawer() {
+  uiStore.asideShow = false
+}
+
+function closeMobileReader() {
+  uiStore.mobileDetailOpen = false
+}
+
+// Clear on mail/workspace boundaries as well as when leaving mail entirely.
+watch(isMailRoute, (is, wasInMailRoute) => {
+  if (!is || !wasInMailRoute) clearReaderSelection()
+})
 watch(() => route.name, (name, prev) => {
-  if (MAIL_ROUTES.has(name) && MAIL_ROUTES.has(prev) && name !== prev) {
-    emailStore.contentData.email = null
+  if (name !== prev && isMobile.value) {
+    uiStore.asideShow = false
     uiStore.mobileDetailOpen = false
+    mobileNavigation.clearLayers()
   }
+  if (MAIL_ROUTES.has(name) && MAIL_ROUTES.has(prev) && name !== prev) {
+    clearReaderSelection()
+  }
+  resetWorkspaceScroll()
 })
 
 // Keyboard shortcuts
@@ -286,8 +322,13 @@ function handleKeydown(e) {
 // Responsive sidebar
 function handleResize() {
   isMobile.value = window.innerWidth < 1025
-  if (isMobile.value) uiStore.asideShow = false
-  else uiStore.asideShow = true
+  if (isMobile.value) {
+    uiStore.asideShow = false
+  } else {
+    mobileNavigation.clearLayers()
+    uiStore.asideShow = true
+    uiStore.mobileDetailOpen = false
+  }
 }
 
 // ── Auto-update (Electron only) ──────────────────────────────
@@ -328,13 +369,15 @@ watch([
 ], resetSyncState)
 
 onMounted(async () => {
+  // A full reload mounts the layout without changing route.name, so the
+  // route watcher cannot clear a persisted reader selection by itself.
+  if (isMailRoute.value) clearReaderSelection()
   uiStore.writerRef = writerRef
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('popstate', handlePopState)
   handleResize()
-  notificationStore.requestPermission()
-
+  resetWorkspaceScroll()
   // One fallback polling loop + visibility/focus/online catch-up +
   // notification-click routing for the whole app (Firebase/native push is
   // the primary real-time signal — this just fills gaps). See
@@ -345,26 +388,37 @@ onMounted(async () => {
   setTimeout(checkAndroidUpdates, 8000)
 })
 
-// ── Android / mobile back gesture via popstate ─────────────────────────────
-watch(() => uiStore.mobileDetailOpen, (open) => {
-  if (open && isMobile.value) {
-    window.history.pushState({ psgMailDetail: true }, '')
+// ── Mobile surface history ─────────────────────────────────────────────────
+// Each full-screen mobile surface owns exactly one history marker. System
+// back/edge-back closes the top surface first; the root route is left to the
+// browser/host application and is never replaced with a fake exit state.
+watch(() => uiStore.asideShow, (open) => {
+  if (!isMobile.value) return
+  if (open) {
+    mobileNavigation.openLayer('drawer', () => {
+      uiStore.asideShow = false
+      return true
+    })
+  } else {
+    mobileNavigation.closeLayer('drawer')
   }
 })
 
-function handlePopState(e) {
-  // Only intercept entries we explicitly created — Vue Router entries won't
-  // carry { psgMailDetail: true } so they pass through untouched.
-  if (e.state?.psgMailDetail) {
-    if (uiStore.mobileDetailOpen) uiStore.mobileDetailOpen = false
-    // Clear our marker so a second back press isn't intercepted again
-    window.history.replaceState(null, '')
-    return
+watch(() => uiStore.mobileDetailOpen, (open) => {
+  if (!isMobile.value) return
+  if (open) {
+    mobileNavigation.openLayer('reader', () => {
+      uiStore.mobileDetailOpen = false
+      return true
+    })
+  } else {
+    mobileNavigation.closeLayer('reader')
   }
-  if (uiStore.asideShow) {
-    uiStore.asideShow = false
-    window.history.pushState(null, '')
-  }
+})
+
+async function handlePopState() {
+  // A route-level pop with no mobile surface is intentionally untouched.
+  await mobileNavigation.handlePopState()
 }
 
 onBeforeUnmount(() => {
@@ -536,6 +590,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-right: 1px solid var(--psg-border);
   background: var(--psg-surface);
+  border-radius: var(--psg-radius-md);
 
   /* Mobile: sit between the fixed header and the bottom tab bar */
   @media (max-width: 1024px) {
@@ -637,8 +692,8 @@ onBeforeUnmount(() => {
 
 @media (max-width: 1024px) {
   .app-shell {
-    --m-header-h: 64px;
-    --m-tabbar-h: calc(74px + env(safe-area-inset-bottom, 0px));
+    --m-header-h: calc(64px + env(safe-area-inset-top, 0px));
+    --m-tabbar-h: calc(62px + env(safe-area-inset-bottom, 0px));
   }
 
   .mobile-chrome--top {

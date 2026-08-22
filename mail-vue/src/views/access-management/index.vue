@@ -30,9 +30,9 @@
         </button>
       </nav>
 
-      <UsersTab v-if="activeTab === 'users'" ref="usersTabRef"/>
-      <RolesTab v-else-if="activeTab === 'roles'" ref="rolesTabRef"/>
-      <RegKeysTab v-else-if="activeTab === 'keys'" ref="keysTabRef"/>
+      <keep-alive>
+        <component :is="tabComponents[activeTab]" ref="activeTabRef"/>
+      </keep-alive>
     </div>
   </div>
 </template>
@@ -75,9 +75,8 @@ function setTab(tab) {
   router.replace({ query: { ...route.query, tab } })
 }
 
-const usersTabRef = ref(null)
-const rolesTabRef = ref(null)
-const keysTabRef = ref(null)
+const tabComponents = { users: UsersTab, roles: RolesTab, keys: RegKeysTab }
+const activeTabRef = ref(null)
 
 const primaryActionLabel = computed(() => {
   if (activeTab.value === 'users') return t('addUser')
@@ -92,9 +91,7 @@ const primaryActionIcon = computed(() => {
 })
 
 function primaryAction() {
-  if (activeTab.value === 'users') usersTabRef.value?.openCreate()
-  else if (activeTab.value === 'roles') rolesTabRef.value?.openCreate()
-  else if (activeTab.value === 'keys') keysTabRef.value?.openCreate()
+  activeTabRef.value?.openCreate()
 }
 </script>
 
@@ -188,9 +185,10 @@ function primaryAction() {
   }
 
   &.active {
-    background: var(--psg-surface);
-    color: var(--psg-primary);
-    box-shadow: var(--psg-shadow-xs);
+    background: var(--psg-menu-active-bg);
+    color: var(--psg-menu-active-text);
+    font-weight: 700;
+    box-shadow: none;
   }
 }
 </style>

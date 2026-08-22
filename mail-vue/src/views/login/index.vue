@@ -20,7 +20,7 @@
 
     <!-- ── Right auth column ── -->
     <div class="form-wrapper">
-      <div class="container">
+      <div class="container" :style="containerStyle">
 
         <!-- Compact brand header (shown when brand panel is hidden) -->
         <div class="card-brand">
@@ -340,6 +340,11 @@ window.loadBefore = () => {}
 const loginOpacity = computed(() => {
   const opacity = settingStore.settings.loginOpacity
   return uiStore.dark ? `rgba(0, 0, 0, ${opacity})` : `rgba(255, 255, 255, ${opacity})`
+})
+
+const containerStyle = computed(() => {
+  if (!background.value) return {}
+  return {background: loginOpacity.value}
 })
 
 const loginDarkenFactor = computed(() => {
@@ -801,7 +806,7 @@ function submitRegister() {
 .brand-divider {
   width: 40px;
   height: 4px;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   background: var(--psg-primary);
   margin: 26px 0 20px;
 }
@@ -1184,7 +1189,7 @@ function submitRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   border: 1px solid var(--psg-border);
   background: var(--psg-surface);
   box-shadow: var(--psg-shadow-sm);

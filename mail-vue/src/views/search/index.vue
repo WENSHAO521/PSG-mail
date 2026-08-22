@@ -201,7 +201,7 @@ function openResult(item) {
 .recent-chip {
   font-size: 12.5px;
   padding: 5px 12px;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   border: 1px solid var(--psg-border);
   background: var(--psg-surface);
   cursor: pointer;

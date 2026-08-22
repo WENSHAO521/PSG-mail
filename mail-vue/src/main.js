@@ -5,6 +5,8 @@ import router from './router';
 // PSG Mail design system — the entire app's presentation layer.
 import './styles/tokens.css';
 import './styles/base.css';
+import './styles/workspace.css';
+import './styles/mobile.css';
 // element-plus ships its own `html.dark { --el-color-primary: #409eff; ... }`.
 // `html.dark` outranks a bare `:root` by specificity, so element-plus.css
 // re-declares every mapping under the same `html.dark` selector to match —

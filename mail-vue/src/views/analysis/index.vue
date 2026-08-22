@@ -937,7 +937,7 @@ function createEmailColumnChart() {
   font-size: 12px;
   font-weight: 600;
   color: var(--psg-text-secondary);
-  border-radius: calc(var(--psg-radius-sm) - 2px);
+  border-radius: var(--psg-radius-xs);
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 
@@ -1099,7 +1099,7 @@ function createEmailColumnChart() {
   .composition-bar {
     display: flex;
     height: 6px;
-    border-radius: var(--psg-radius-full);
+    border-radius: var(--psg-radius-xs);
     overflow: hidden;
     background: var(--psg-surface-active);
   }
@@ -1279,14 +1279,14 @@ function createEmailColumnChart() {
 
 .source-bar-track {
   height: 5px;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   background: var(--psg-surface-active);
   overflow: hidden;
 }
 
 .source-bar-fill {
   height: 100%;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   transition: width 0.5s ease;
 }
 

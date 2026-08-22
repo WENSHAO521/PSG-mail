@@ -7,6 +7,7 @@ import kvObjService from './service/kv-obj-service';
 import oauthService from "./service/oauth-service";
 import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
+import forwardingService from './service/forwarding-service';
 // Durable Object classes must be exported by name from the Worker's main
 // entry — this is that export, not a self-contained secondary Worker. See
 // src/durable/scheduled-send-alarm.js for what it's for.
@@ -31,7 +32,10 @@ export default {
 	email: email,
 	async scheduled(c, env, ctx) {
 		if (c.cron === '* * * * *') {
-			await scheduledEmailService.processDue({ env })
+			await Promise.all([
+				scheduledEmailService.processDue({ env }),
+				forwardingService.processDue({ env }),
+			])
 			return;
 		}
 

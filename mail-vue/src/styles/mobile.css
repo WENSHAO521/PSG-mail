@@ -1,0 +1,505 @@
+/* PSG Mail mobile behavior layer.
+   Keep horizontal browser overscroll out of the app surface so a list swipe
+   cannot accidentally become navigation. Intentional row gestures opt in
+   after their own direction lock in email-scroll. */
+
+html,
+body,
+#app {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 1024px) {
+  html,
+  body {
+    overscroll-behavior-x: none;
+  }
+
+  body {
+    touch-action: pan-y;
+  }
+
+  .app-shell,
+  .mail-list-pane,
+  .mail-detail-pane,
+  .workspace-pane,
+  .workspace-body {
+    min-width: 0;
+    max-width: 100vw;
+    overscroll-behavior-x: none;
+  }
+
+  .mail-list-pane,
+  .mail-detail-pane,
+  .workspace-pane,
+  .workspace-body {
+    touch-action: pan-y;
+  }
+
+  .el-overlay,
+  .el-overlay-dialog {
+    overscroll-behavior: contain;
+  }
+
+  .el-dialog,
+  .el-drawer,
+  .el-message-box {
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  .mail-row-wrap {
+    touch-action: pan-y;
+    overscroll-behavior-x: contain;
+  }
+
+  .el-dialog,
+  .el-message-box {
+    width: calc(100vw - 24px) !important;
+    margin: 12px auto;
+  }
+
+  .el-drawer {
+    width: min(100vw, 380px) !important;
+  }
+
+  .compose-ai-popper {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    top: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: none !important;
+    margin: 0 !important;
+    border-radius: var(--psg-radius-sm) !important;
+  }
+
+  .compose-ai-popper .el-popper__arrow {
+    display: none !important;
+  }
+
+  .compose-ai-actions button {
+    min-height: 44px;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+  }
+
+  .contacts-dialog.el-dialog {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: min(78dvh, 620px);
+    margin: 0 !important;
+    border-radius: var(--psg-radius-sm) var(--psg-radius-sm) 0 0 !important;
+    transition: transform 160ms ease;
+  }
+
+  .contacts-dialog .el-dialog__body {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .compose-ai-dialog.el-dialog {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: var(--psg-radius-sm) var(--psg-radius-sm) 0 0 !important;
+  }
+
+  .tpl-preview-dialog.el-dialog {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: var(--psg-radius-sm) var(--psg-radius-sm) 0 0 !important;
+  }
+
+  .tpl-preview-dialog .preview-html {
+    height: min(42dvh, 360px);
+  }
+
+  .mobile-sheet-handle {
+    display: block;
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    width: 34px;
+    height: 4px;
+    transform: translateX(-50%);
+    border-radius: var(--psg-radius-full);
+    background: var(--psg-border-strong);
+    opacity: .35;
+  }
+
+  /* Avoid a fixed action row being hidden behind the home indicator. */
+  .el-dialog__footer,
+  .el-message-box__btns {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Workspace pages use the same list → detail rhythm on a phone.  The
+     scoped page styles still provide their desktop treatment; these rules
+     only collapse dense desktop grids and make every action tappable. */
+  .rules-page,
+  .workspace-page,
+  .page-outer {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .rules-page {
+    padding: 18px 12px calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .rules-page .rules-hero {
+    margin-bottom: 16px;
+  }
+
+  .rules-page.editor-open .rules-section {
+    display: none;
+  }
+
+  .rules-page .editor-section {
+    margin-top: 0;
+    scroll-margin-top: 72px;
+  }
+
+  .rules-page .rule-actions {
+    align-items: center;
+    min-height: 44px;
+    padding-left: 50px;
+  }
+
+  .rules-page .icon-action,
+  .rules-page .close-editor {
+    width: 44px;
+    height: 44px;
+  }
+
+  .rules-page .scope-note {
+    margin-bottom: 12px;
+  }
+
+  .tpl-grid,
+  .grp-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .tpl-card,
+  .grp-card {
+    min-width: 0;
+    padding: 14px;
+    border-radius: var(--psg-radius-sm) !important;
+  }
+
+  .tpl-card .fav-btn,
+  .tpl-card .more-btn,
+  .grp-card .more-btn {
+    width: 44px;
+    height: 44px;
+    margin: -8px -8px 0 0;
+  }
+
+  .tpl-preview-btn,
+  .grp-action {
+    min-height: 44px;
+    padding: 0 2px;
+  }
+
+  .tpl-footer,
+  .grp-footer {
+    min-height: 44px;
+  }
+
+  .editor-mode {
+    min-height: calc(100dvh - var(--m-header-h, 64px));
+  }
+
+  .editor-mode .editor-nav {
+    position: sticky;
+    z-index: 4;
+    top: 0;
+    min-height: 52px;
+    margin-inline: -12px;
+    padding: 6px 12px;
+    background: var(--psg-canvas);
+    border-bottom: 1px solid var(--psg-border);
+  }
+
+  .editor-mode .back-btn,
+  .editor-mode .save-btn {
+    min-height: 44px;
+  }
+
+  .editor-mode .editor-crumb {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .editor-mode .editor-frame {
+    height: min(48dvh, 420px);
+  }
+
+  .scheduled-page .item-row,
+  .item-row {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px 12px;
+  }
+
+  .item-row .item-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+    min-height: 44px;
+    opacity: 1;
+  }
+
+  .item-row .act-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .item-row .item-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .item-row .item-sub {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .page-outer {
+    padding: 16px 12px calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .page-outer .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .page-outer .primary-action-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .page-outer .tab-bar {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .page-outer .tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .page-outer .tab-btn {
+    min-height: 44px;
+    flex: 1 0 auto;
+  }
+
+  .page-outer .toolbar {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .page-outer .toolbar .search {
+    width: 100%;
+    flex: 1 0 100%;
+  }
+
+  .page-outer .toolbar .search-input {
+    width: 100%;
+  }
+
+  .page-outer .toolbar .icon,
+  .page-outer .toolbar .status-select {
+    min-height: 44px;
+  }
+
+  .page-outer .more-menu-trigger {
+    width: 44px;
+    height: 44px;
+  }
+
+  .page-outer .status-pills .pill {
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+
+  .search-page {
+    min-width: 0;
+    padding: 14px 12px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .search-page .search-bar-row {
+    flex-wrap: wrap;
+  }
+
+  .search-page .search-input-wrap {
+    flex-basis: 100%;
+    min-height: 44px;
+  }
+
+  .search-page .search-go-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .tools-page {
+    width: 100%;
+    max-width: none;
+    padding: 18px 12px calc(92px + env(safe-area-inset-bottom, 0px));
+    gap: 24px;
+  }
+
+  .tools-page .list-item {
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .tools-page .item-info {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .tools-page .item-actions {
+    gap: 4px;
+    margin-left: 0;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .tools-page .text-link {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .download-view .dl-body {
+    padding: 24px 12px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .download-view .dl-hero {
+    margin-bottom: 22px;
+    padding-left: 12px;
+  }
+
+  .download-view .hero-product {
+    font-size: 24px;
+  }
+
+  .download-view .dl-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .download-view .dl-card {
+    padding: 16px 14px;
+    border-radius: var(--psg-radius-sm) !important;
+  }
+
+  .download-view .dl-btn,
+  .download-view .dl-btn-row {
+    min-height: 44px;
+    height: auto;
+  }
+
+  .page-outer .header-toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .page-outer .range-toggle {
+    flex: 1;
+  }
+
+  .page-outer .range-btn {
+    min-height: 44px;
+  }
+
+  .role-grid,
+  .code-box {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .user-card,
+  .role-card,
+  .code-item {
+    border-radius: var(--psg-radius-sm) !important;
+  }
+
+  .el-drawer {
+    max-width: 100vw;
+  }
+
+  .el-drawer__header {
+    min-height: 52px;
+    margin-bottom: 0;
+    padding: 12px 16px;
+  }
+
+  .el-drawer__body {
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
+
+  .settings-container .scroll-body {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .settings-panel-header {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: var(--psg-surface);
+  }
+
+  .settings-panel-header .settings-save-button {
+    align-self: flex-end;
+    min-height: 44px;
+  }
+
+  .drawer-footer,
+  .el-drawer__footer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .drawer-footer .el-button,
+  .el-drawer__footer .el-button {
+    min-height: 44px;
+  }
+}

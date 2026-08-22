@@ -692,7 +692,7 @@ path[fill="#ffdda1"] {
     flex-shrink: 0;
     width: 32px;
     height: 32px;
-    border-radius: var(--psg-radius-full);
+    border-radius: var(--psg-radius-xs);
     background: var(--psg-primary);
     color: var(--psg-on-primary);
     font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;

@@ -48,8 +48,8 @@ function openDrawer() {
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  padding: 8px 12px 8px 8px;
+  height: calc(64px + env(safe-area-inset-top, 0px));
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px 8px;
   background: var(--psg-surface);
   border-bottom: 1px solid var(--psg-border);
   gap: 10px;

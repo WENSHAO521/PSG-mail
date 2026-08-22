@@ -72,6 +72,12 @@ const routes = [
                 meta: { title: 'contactGroups', name: 'groups', menu: true }
             },
             {
+                path: '/rules',
+                name: 'rules',
+                component: () => import('@/views/rules/index.vue'),
+                meta: { title: 'subjectKeywords', name: 'rules', menu: true }
+            },
+            {
                 path: '/starred',
                 name: 'star',
                 component: () => import('@/views/star/index.vue'),

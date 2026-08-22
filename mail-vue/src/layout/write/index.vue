@@ -10,7 +10,8 @@
             <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
             <span v-else>{{ $t('compose') }}</span>
           </div>
-          <el-dropdown trigger="click" @command="selectSender" :disabled="senderAccounts.length <= 1">
+          <el-dropdown trigger="click" @command="selectSender" :disabled="senderAccounts.length <= 1"
+                       popper-class="write-sender-dropdown">
             <div class="wh-sender" :class="{ selectable: senderAccounts.length > 1 }">
               <div class="wh-avatar">
                 <img v-if="currentSenderAvatar" :src="currentSenderAvatar" class="wh-avatar-img"/>
@@ -51,15 +52,20 @@
           </el-dropdown>
         </div>
         <div class="wh-actions">
-          <button class="wh-action-btn" :title="windowState === 'minimized' ? $t('expand') : $t('minimize')"
+          <button type="button" class="wh-action-btn"
+                  :title="windowState === 'minimized' ? $t('expand') : $t('minimize')"
+                  :aria-label="windowState === 'minimized' ? $t('expand') : $t('minimize')"
                   @click.stop="toggleMinimize">
             <Icon icon="psg:minimize" width="15" height="15"/>
           </button>
-          <button class="wh-action-btn" :title="windowState === 'maximized' ? $t('restore') : $t('maximize')"
+          <button type="button" class="wh-action-btn"
+                  :title="windowState === 'maximized' ? $t('restore') : $t('maximize')"
+                  :aria-label="windowState === 'maximized' ? $t('restore') : $t('maximize')"
                   @click.stop="toggleMaximize">
             <Icon :icon="windowState === 'maximized' ? 'psg:restore' : 'psg:maximize'" width="14" height="14"/>
           </button>
-          <button class="wh-action-btn wh-close" :title="$t('close')" @click.stop="close">
+          <button type="button" class="wh-action-btn wh-close" :title="$t('close')"
+                  :aria-label="$t('close')" @click.stop="close">
             <Icon icon="psg:close" width="15" height="15"/>
           </button>
         </div>
@@ -85,9 +91,10 @@
           <div class="field-actions">
             <span v-if="!showCc"  class="field-toggle" @click.stop="showCc = true">{{ $t('cc') }}</span>
             <span v-if="!showBcc" class="field-toggle" @click.stop="showBcc = true">{{ $t('bcc') }}</span>
-            <div class="icon-btn-sm" @click.stop="openContacts">
+            <button type="button" class="icon-btn-sm" :title="$t('recentContacts')"
+                    :aria-label="$t('recentContacts')" @click.stop="openContacts">
               <Icon icon="psg:user-plus" width="14" height="14"/>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -113,20 +120,36 @@
 
         <!-- Editor -->
         <div class="editor-wrap">
-          <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
+          <tinyEditor :def-value="defValue" ref="editor" radius="var(--compose-radius)"
+                      @change="change" @focus="focusChange" />
         </div>
 
         <!-- Toolbar -->
         <div class="toolbar-bar">
           <div class="toolbar-left">
+            <el-popover v-model:visible="aiPopoverOpen" placement="top-start" width="230"
+                        trigger="click" popper-class="compose-ai-popper">
+              <div class="compose-ai-actions">
+                <button v-for="action in aiActions" :key="action.value" type="button" @click="runComposeAi(action.value)">
+                  <Icon icon="lucide:sparkles" width="14" height="14" /> {{ t(action.labelKey) }}
+                </button>
+              </div>
+              <template #reference>
+                <button type="button" class="tb-btn tb-btn--label compose-ai-trigger" :aria-label="$t('aiTransform')">
+                  <Icon icon="lucide:sparkles" width="16" height="16"/><span>{{ $t('aiTransform') }}</span>
+                </button>
+              </template>
+            </el-popover>
             <div class="tb-btn tb-btn--label" @click="chooseFile">
               <Icon icon="psg:paperclip" width="16" height="16"/>
               <span>{{ $t('attachments') }}</span>
             </div>
-            <div class="tb-btn" @click="clearContent" :title="$t('clear')">
+            <button type="button" class="tb-btn" @click="clearContent" :title="$t('clear')"
+                    :aria-label="$t('clear')">
               <Icon icon="psg:eraser" width="17" height="17"/>
-            </div>
-            <el-dropdown trigger="click" @command="insertTemplate" :hide-on-click="true">
+            </button>
+            <el-dropdown trigger="click" @command="insertTemplate" :hide-on-click="true"
+                         popper-class="write-template-dropdown">
               <div class="tb-btn tb-btn--label">
                 <Icon icon="psg:template" width="16" height="16"/>
                 <span>{{ $t('insertTemplate') }}</span>
@@ -151,46 +174,107 @@
             </div>
           </div>
           <div class="toolbar-right">
-            <!-- Send Later inline picker -->
-            <template v-if="showSchedulePicker">
-              <el-date-picker
-                v-model="scheduledAt"
-                type="datetime"
-                :placeholder="$t('scheduleFor')"
-                format="YYYY-MM-DD HH:mm"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                :disabled-date="d => d < new Date(Date.now() - 86400000)"
-                size="small"
-                class="schedule-picker"
-                popper-class="schedule-datetime-popper"
-              />
-              <el-button size="small" class="schedule-confirm-btn" type="primary"
-                         @click="sendScheduled" :disabled="!scheduledAt">
-                {{ $t('scheduleConfirmBtn') }}
+            <div v-if="showSchedulePicker" class="schedule-panel" role="dialog"
+                 :aria-label="$t('sendLater')"
+                 @touchstart.passive="scheduleTouchStart"
+                 @touchmove="scheduleTouchMove"
+                 @touchend="scheduleTouchEnd">
+              <div class="schedule-panel-header">
+                <span class="mobile-sheet-handle" aria-hidden="true"></span>
+                <div class="schedule-panel-title">
+                  <span class="schedule-panel-icon">
+                    <Icon icon="psg:clock" width="16" height="16"/>
+                  </span>
+                  <span>
+                    <strong>{{ $t('sendLater') }}</strong>
+                    <small>{{ $t('schedulePanelHint') }}</small>
+                  </span>
+                </div>
+                <button type="button" class="schedule-panel-close"
+                        :aria-label="$t('cancel')" @click="cancelSchedulePicker">
+                  <Icon icon="psg:close" width="15" height="15"/>
+                </button>
+              </div>
+
+              <div class="schedule-panel-section">
+                <div class="schedule-panel-label">{{ $t('scheduleQuick') }}</div>
+                <div class="schedule-quick-grid">
+                  <button v-for="preset in schedulePresets" :key="preset.value"
+                          type="button" class="schedule-quick-btn"
+                          :class="{ 'is-active': isSchedulePresetActive(preset.value) }"
+                          :aria-pressed="isSchedulePresetActive(preset.value)"
+                          @click="applySchedulePreset(preset.value)">
+                    {{ $t(preset.labelKey) }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="schedule-panel-section schedule-panel-custom">
+                <div class="schedule-panel-label-row">
+                  <span class="schedule-panel-label">{{ $t('scheduleFor') }}</span>
+                  <span class="schedule-panel-timezone">{{ scheduleTimezone }}</span>
+                </div>
+                <el-date-picker
+                  v-model="scheduledAt"
+                  type="datetime"
+                  :placeholder="$t('scheduleFor')"
+                  format="YYYY-MM-DD HH:mm"
+                  value-format="YYYY-MM-DD HH:mm:ss"
+                  :disabled-date="isScheduleDateDisabled"
+                  size="default"
+                  class="schedule-picker"
+                  popper-class="schedule-datetime-popper"
+                />
+              </div>
+
+              <div class="schedule-panel-footer">
+                <span class="schedule-panel-note">
+                  <Icon icon="psg:clock" width="13" height="13"/>
+                  {{ scheduleTimezone }}
+                </span>
+                <div class="schedule-panel-actions">
+                  <el-button class="schedule-cancel-btn" @click="cancelSchedulePicker">
+                    {{ $t('cancel') }}
+                  </el-button>
+                  <el-button class="schedule-confirm-btn" type="primary"
+                             @click="sendScheduled" :disabled="!scheduledAt">
+                    {{ $t('scheduleConfirmBtn') }}
+                  </el-button>
+                </div>
+              </div>
+            </div>
+
+            <el-tooltip :content="$t('sendLater')" placement="top" :disabled="showSchedulePicker">
+              <el-button class="send-later-btn" :class="{ 'is-active': showSchedulePicker }"
+                         :aria-label="$t('sendLater')" :aria-expanded="showSchedulePicker"
+                         @click="toggleSchedulePicker">
+                <Icon icon="psg:clock" width="16" height="16"/>
+                <span class="send-later-label">{{ $t('sendLater') }}</span>
               </el-button>
-              <el-button size="small" class="schedule-cancel-btn" @click="showSchedulePicker = false; scheduledAt = ''">
-                {{ $t('cancel') }}
-              </el-button>
-            </template>
-            <template v-else>
-              <el-tooltip :content="$t('sendLater')" placement="top">
-                <el-button class="send-later-btn" @click="showSchedulePicker = true">
-                  <Icon icon="psg:clock" width="16" height="16"/>
-                </el-button>
-              </el-tooltip>
-              <el-button class="send-btn" type="primary" @click="sendEmail">
-                <Icon icon="psg:send" width="15" height="15" style="margin-right:6px"/>
-                <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
-                <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
-                <span v-else>{{ $t('send') }}</span>
-              </el-button>
-            </template>
+            </el-tooltip>
+            <el-button class="send-btn" type="primary" @click="sendEmail">
+              <Icon icon="psg:send" width="15" height="15" style="margin-right:6px"/>
+              <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
+              <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
+              <span v-else>{{ $t('send') }}</span>
+            </el-button>
           </div>
         </div>
 
       </div>
     </div>
-    <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact" :title="t('recentContacts')" width="480">
+    <el-dialog v-model="aiPreviewOpen" :title="$t('aiTransformPreview')" width="520px" class="compose-ai-dialog">
+      <div class="compose-ai-preview">{{ aiPreviewText }}</div>
+      <template #footer>
+        <el-button @click="aiPreviewOpen = false">{{ $t('cancel') }}</el-button>
+        <el-button type="primary" @click="replaceAiSelection">{{ $t('aiReplaceSelection') }}</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact"
+               @touchstart.passive="contactsTouchStart"
+               @touchmove="contactsTouchMove"
+               @touchend="contactsTouchEnd"
+               :title="t('recentContacts')" width="480" class="contacts-dialog">
       <el-tabs v-model="contactTab" @tab-change="onTabChange" class="contacts-tabs">
 
         <!-- Recent contacts -->
@@ -269,7 +353,7 @@
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
-import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
+import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, watch} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend, emailSchedule, emailScheduleCancel} from "@/request/email.js";
@@ -291,10 +375,13 @@ import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
+import {ElMessage} from "element-plus";
 import {getDirectory} from "@/request/my.js";
 import {templateList} from "@/request/template.js";
 import {contactGroupList} from "@/request/contact-group.js";
 import {accountList} from "@/request/account.js";
+import {aiComposeTransform} from "@/request/ai-mail.js";
+import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
 
 defineExpose({
   open,
@@ -303,7 +390,8 @@ defineExpose({
   openReplyAll,
   openForward,
   openDraft,
-  openScheduled
+  openScheduled,
+  requestMobileBack: () => close(),
 })
 
 const {t} = useI18n()
@@ -311,6 +399,7 @@ const writerStore = useWriterStore();
 const draftStore = userDraftStore()
 const settingStore = useSettingStore()
 const uiStore = useUiStore()
+const mobileNavigation = useMobileNavigationStore()
 const emailStore = useEmailStore();
 const accountStore = useAccountStore()
 const editor = ref({})
@@ -332,6 +421,9 @@ const defValue = ref('')
 const contactsTabRef = ref({})
 const directoryTabRef = ref({})
 const showContacts = ref(false)
+let contactsTouchStartY = 0
+let contactsTouchDeltaY = 0
+let contactsDragging = false
 const templatesList = ref([])
 const contactTab = ref('recent')
 const groupsList = ref([])
@@ -343,7 +435,158 @@ const directoryLoaded = ref(false)
 const senderAccounts = ref([])
 const senderLoaded = ref(false)
 const showSchedulePicker = ref(false)
+let scheduleTouchStartY = 0
+let scheduleTouchDeltaY = 0
+let scheduleDragging = false
 const scheduledAt = ref('')
+const aiPopoverOpen = ref(false)
+const aiPreviewOpen = ref(false)
+const aiPreviewText = ref('')
+const aiSelectionText = ref('')
+const aiActions = [
+  { value: 'translate_zh', labelKey: 'aiTranslateZh' },
+  { value: 'translate_en', labelKey: 'aiTranslateEn' },
+  { value: 'rewrite', labelKey: 'aiPolish' },
+  { value: 'formal', labelKey: 'aiFormal' },
+  { value: 'concise', labelKey: 'aiConcise' },
+  { value: 'grammar', labelKey: 'aiGrammar' },
+]
+
+watch(show, (open) => {
+  if (open && window.innerWidth <= 1024) {
+    mobileNavigation.openLayer('compose', () => close() === true)
+  } else if (!open) {
+    mobileNavigation.closeLayer('compose')
+  }
+})
+
+function watchMobileSubLayer(source, key, close) {
+  watch(source, (open) => {
+    if (typeof window === 'undefined' || window.innerWidth > 1024) return
+    if (open) {
+      mobileNavigation.openLayer(key, () => {
+        close()
+        return true
+      })
+    } else {
+      mobileNavigation.closeLayer(key)
+    }
+  })
+}
+
+watchMobileSubLayer(showContacts, 'compose-contacts', () => { showContacts.value = false })
+watchMobileSubLayer(showSchedulePicker, 'compose-schedule', cancelSchedulePicker)
+watchMobileSubLayer(aiPopoverOpen, 'compose-ai-menu', () => { aiPopoverOpen.value = false })
+watchMobileSubLayer(aiPreviewOpen, 'compose-ai-preview', () => { aiPreviewOpen.value = false })
+
+function escapeEditorText(value) {
+  return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
+}
+
+async function runComposeAi(operation) {
+  const selectedText = editor.value?.getSelectedText?.() || ''
+  const selectedHtml = editor.value?.getSelectedContent?.() || ''
+  if (!selectedText.trim()) {
+    ElMessage({ message: t('aiNoSelection'), type: 'warning', plain: true })
+    return
+  }
+  aiPopoverOpen.value = false
+  aiSelectionText.value = selectedText
+  try {
+    const data = await aiComposeTransform({ operation, text: selectedText, html: selectedHtml })
+    aiPreviewText.value = data?.resultText || ''
+    if (aiPreviewText.value) aiPreviewOpen.value = true
+  } catch (error) {
+    ElMessage({ message: error?.message || t('aiAssistantFail'), type: 'error', plain: true })
+  }
+}
+
+function replaceAiSelection() {
+  if (!aiPreviewText.value) return
+  editor.value?.replaceSelection?.(escapeEditorText(aiPreviewText.value))
+  aiPreviewOpen.value = false
+}
+const scheduleTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+const schedulePresets = [
+  { value: 'nextHour', labelKey: 'scheduleNextHour' },
+  { value: 'tomorrowMorning', labelKey: 'scheduleTomorrowMorning' },
+  { value: 'nextWorkday', labelKey: 'scheduleNextWorkday' },
+]
+
+function schedulePresetDate(value) {
+  const now = dayjs()
+  if (value === 'tomorrowMorning') {
+    return now.add(1, 'day').hour(9).minute(0).second(0).millisecond(0)
+  }
+  if (value === 'nextWorkday') {
+    let date = now.add(1, 'day').hour(9).minute(0).second(0).millisecond(0)
+    while (date.day() === 0 || date.day() === 6) date = date.add(1, 'day')
+    return date
+  }
+  return now.add(1, 'hour').startOf('hour')
+}
+
+function applySchedulePreset(value) {
+  scheduledAt.value = schedulePresetDate(value).format('YYYY-MM-DD HH:mm:ss')
+}
+
+function isSchedulePresetActive(value) {
+  return scheduledAt.value === schedulePresetDate(value).format('YYYY-MM-DD HH:mm:ss')
+}
+
+function openSchedulePicker() {
+  if (!scheduledAt.value) applySchedulePreset('nextHour')
+  showSchedulePicker.value = true
+}
+
+function toggleSchedulePicker() {
+  if (showSchedulePicker.value) {
+    showSchedulePicker.value = false
+    return
+  }
+  openSchedulePicker()
+}
+
+// On touch devices the schedule controls behave like a bottom sheet. Only
+// the sheet header/handle owns the vertical gesture so date inputs and quick
+// action buttons keep their native scrolling and tapping behavior.
+function scheduleTouchStart(event) {
+  if (typeof window === 'undefined' || window.innerWidth > 767) return
+  if (!event.target?.closest?.('.schedule-panel-header')) return
+  scheduleTouchStartY = event.touches?.[0]?.clientY ?? 0
+  scheduleTouchDeltaY = 0
+  scheduleDragging = true
+}
+
+function scheduleTouchMove(event) {
+  if (!scheduleDragging) return
+  const currentY = event.touches?.[0]?.clientY ?? scheduleTouchStartY
+  scheduleTouchDeltaY = Math.max(0, currentY - scheduleTouchStartY)
+  if (scheduleTouchDeltaY > 0) {
+    event.preventDefault()
+    const panel = event.currentTarget
+    if (panel) panel.style.transform = `translateY(${Math.min(scheduleTouchDeltaY, 180)}px)`
+  }
+}
+
+function scheduleTouchEnd() {
+  if (!scheduleDragging) return
+  const shouldClose = scheduleTouchDeltaY > 76
+  scheduleDragging = false
+  scheduleTouchDeltaY = 0
+  const panel = document.querySelector('.schedule-panel')
+  if (panel) panel.style.transform = ''
+  if (shouldClose) cancelSchedulePicker()
+}
+
+function cancelSchedulePicker() {
+  showSchedulePicker.value = false
+  scheduledAt.value = ''
+}
+
+function isScheduleDateDisabled(date) {
+  return dayjs(date).isBefore(dayjs().startOf('day'))
+}
 
 const filteredDirectory = computed(() => {
   const q = directorySearch.value.trim().toLowerCase()
@@ -426,6 +669,35 @@ function openContacts() {
       }
     })
   })
+}
+
+function contactsTouchStart(event) {
+  if (typeof window === 'undefined' || window.innerWidth > 767) return
+  if (!event.target?.closest?.('.el-dialog__header')) return
+  contactsTouchStartY = event.touches?.[0]?.clientY ?? 0
+  contactsTouchDeltaY = 0
+  contactsDragging = true
+}
+
+function contactsTouchMove(event) {
+  if (!contactsDragging) return
+  const currentY = event.touches?.[0]?.clientY ?? contactsTouchStartY
+  contactsTouchDeltaY = Math.max(0, currentY - contactsTouchStartY)
+  if (contactsTouchDeltaY > 0) {
+    event.preventDefault()
+    const panel = document.querySelector('.contacts-dialog')
+    if (panel) panel.style.transform = `translateY(${Math.min(contactsTouchDeltaY, 180)}px)`
+  }
+}
+
+function contactsTouchEnd() {
+  if (!contactsDragging) return
+  const shouldClose = contactsTouchDeltaY > 76
+  contactsDragging = false
+  contactsTouchDeltaY = 0
+  const panel = document.querySelector('.contacts-dialog')
+  if (panel) panel.style.transform = ''
+  if (shouldClose) showContacts.value = false
 }
 
 function deleteContact() {
@@ -611,6 +883,10 @@ function validateBeforeSend() {
 // away, silently ignoring the chosen time and sending immediately.
 async function sendScheduled() {
   if (!scheduledAt.value) return
+  if (dayjs(scheduledAt.value).isBefore(dayjs())) {
+    ElMessage({ message: t('schedulePastMsg'), type: 'error', plain: true })
+    return
+  }
   if (!validateBeforeSend()) return
 
   if (sending) {
@@ -1163,13 +1439,13 @@ function close() {
     draftStore.setDraft = {...toRaw(form)}
     show.value = false
     resetForm()
-    return;
+    return true;
   }
 
   if (!(form.content || form.subject || form.receiveEmail.length > 0)) {
     show.value = false
     resetForm()
-    return;
+    return true;
   }
 
   if (backReply.sendType === 'reply' || backReply.sendType === 'forward') {
@@ -1182,7 +1458,7 @@ function close() {
     if (subjectFlag && contentFlag && receiveFlag) {
       show.value = false
       resetForm()
-      return;
+      return true;
     }
   }
 
@@ -1209,7 +1485,7 @@ function close() {
       resetForm()
     }
   })
-
+  return undefined
 }
 
 </script>
@@ -1223,6 +1499,12 @@ function close() {
 
 .write-select .el-select-dropdown {
   min-width: 0 !important;
+  border-radius: var(--psg-radius-xs) !important;
+}
+
+.write-sender-dropdown,
+.write-template-dropdown {
+  border-radius: var(--psg-radius-xs) !important;
 }
 
 /* Send-later date/time popup — desktop widget is fine anchored to the field,
@@ -1244,6 +1526,7 @@ function close() {
   }
   .schedule-datetime-popper .el-picker-panel {
     width: min(320px, calc(100vw - 32px)) !important;
+    border-radius: var(--psg-radius-xs) !important;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.30) !important;
   }
   .schedule-datetime-popper .el-date-picker__content {
@@ -1289,6 +1572,8 @@ function close() {
 /* ── Dialog box ──────────────────────────────── */
 .write-box {
   background: var(--psg-surface);
+  --compose-radius: var(--psg-radius-xs);
+  border-radius: var(--compose-radius);
   width: min(1300px, calc(100% - 16px));
   display: grid;
   grid-template-rows: auto 1fr;
@@ -1362,7 +1647,7 @@ function close() {
   min-width: 0;
   padding-left: 14px;
   border-left: 1px solid color-mix(in srgb, var(--psg-on-primary) 15%, transparent);
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--compose-radius);
   padding: 4px 8px 4px 14px;
   transition: background 0.14s;
   outline: none;
@@ -1393,7 +1678,7 @@ function close() {
 .sender-opt-avatar {
   width: 28px;
   height: 28px;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--compose-radius);
   background: var(--psg-surface-muted);
   border: 1px solid var(--psg-border);
   color: var(--psg-text-secondary);
@@ -1411,7 +1696,7 @@ function close() {
   height: 28px;
   object-fit: cover;
   display: block;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--compose-radius);
 }
 
 .sender-opt-info {
@@ -1452,7 +1737,7 @@ function close() {
 .wh-avatar {
   width: 28px;
   height: 28px;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--compose-radius);
   background: var(--psg-on-primary);
   color: var(--psg-primary);
   font-size: 12px;
@@ -1506,7 +1791,7 @@ function close() {
   width: 30px;
   height: 30px;
   border: none;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--compose-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1588,7 +1873,7 @@ function close() {
   letter-spacing: 0.03em;
   user-select: none;
   padding: 3px 6px;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--compose-radius);
   transition: background 0.12s, color 0.12s;
 
   @media (hover: hover) {
@@ -1602,7 +1887,11 @@ function close() {
 .icon-btn-sm {
   width: 26px;
   height: 26px;
-  border-radius: var(--psg-radius-sm);
+  border: none;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  border-radius: var(--compose-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1641,6 +1930,8 @@ function close() {
   background: var(--psg-surface-muted);
   flex-shrink: 0;
   gap: 12px;
+  position: relative;
+  overflow: visible;
 }
 
 .toolbar-left {
@@ -1651,10 +1942,20 @@ function close() {
   min-width: 0;
 }
 
+.compose-ai-actions { display: flex; flex-direction: column; gap: 2px; }
+.compose-ai-actions button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; border-radius: var(--psg-radius-xs); padding: 8px 9px; background: transparent; color: var(--psg-text); font-size: 12.5px; text-align: left; cursor: pointer; }
+.compose-ai-actions button:hover { background: var(--psg-menu-active-bg); color: var(--psg-menu-active-text); }
+.compose-ai-trigger { color: var(--psg-primary) !important; }
+.compose-ai-preview { max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word; padding: 12px; border: 1px solid var(--psg-border); border-radius: var(--psg-radius-xs); background: var(--psg-surface-muted); color: var(--psg-text); line-height: 1.65; font-size: 13px; }
+
 .tb-btn {
   height: 30px;
   min-width: 30px;
-  border-radius: var(--psg-radius-sm);
+  border: none;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  border-radius: var(--compose-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1696,7 +1997,7 @@ function close() {
     padding: 0 8px;
     background: var(--psg-surface);
     border: 1px solid var(--psg-border);
-    border-radius: var(--psg-radius-sm);
+    border-radius: var(--compose-radius);
     white-space: nowrap;
     flex-shrink: 0;
     max-width: 200px;
@@ -1717,7 +2018,13 @@ function close() {
   }
 }
 
-.toolbar-right { flex-shrink: 0; }
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  position: relative;
+}
 
 .send-btn {
   height: 34px !important;
@@ -1726,31 +2033,213 @@ function close() {
   font-weight: 600 !important;
   letter-spacing: 0 !important;
   text-transform: none !important;
-  border-radius: var(--psg-radius-sm) !important;
+  border-radius: var(--compose-radius) !important;
   display: inline-flex !important;
   align-items: center !important;
 }
 
 .send-later-btn {
   height: 34px !important;
-  width: 34px !important;
-  padding: 0 !important;
-  border-radius: var(--psg-radius-sm) !important;
+  width: auto !important;
+  min-width: 34px !important;
+  padding: 0 11px !important;
+  gap: 6px;
+  border-radius: var(--compose-radius) !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   flex-shrink: 0;
 }
 
+.send-later-label {
+  white-space: nowrap;
+}
+
+.send-later-btn.is-active {
+  background: var(--psg-primary-muted) !important;
+  border-color: var(--psg-primary-light-7) !important;
+  color: var(--psg-primary) !important;
+}
+
+.schedule-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  width: min(368px, calc(100vw - 40px));
+  padding: 16px;
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--compose-radius);
+  box-shadow: var(--psg-shadow-lg);
+  color: var(--psg-text);
+  z-index: 20;
+}
+
+.schedule-panel-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--psg-border);
+}
+
+.schedule-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+
+  > span:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  strong {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  small {
+    color: var(--psg-text-muted);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+}
+
+.schedule-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: var(--compose-radius);
+  background: var(--psg-primary-muted);
+  color: var(--psg-primary);
+}
+
+.schedule-panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: var(--compose-radius);
+  background: transparent;
+  color: var(--psg-text-muted);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--psg-surface-active);
+    color: var(--psg-text);
+    outline: none;
+  }
+}
+
+.schedule-panel-section {
+  margin-top: 14px;
+}
+
+.schedule-panel-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.schedule-panel-label {
+  color: var(--psg-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.schedule-panel-timezone,
+.schedule-panel-note {
+  color: var(--psg-text-muted);
+  font-family: var(--psg-font-mono);
+  font-size: 10px;
+}
+
+.schedule-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.schedule-quick-btn {
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 7px;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--compose-radius);
+  background: var(--psg-surface-muted);
+  color: var(--psg-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+
+  &:hover,
+  &:focus-visible,
+  &.is-active {
+    background: var(--psg-primary-muted);
+    border-color: var(--psg-primary-light-7);
+    color: var(--psg-primary);
+    outline: none;
+  }
+}
+
 .schedule-picker {
-  width: 200px !important;
-  :deep(.el-input__wrapper) { border-radius: var(--psg-radius-sm) !important; }
+  width: 100% !important;
+
+  :deep(.el-input__wrapper) {
+    min-height: 34px;
+    border-radius: var(--compose-radius) !important;
+  }
+}
+
+.schedule-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid var(--psg-border);
+}
+
+.schedule-panel-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.schedule-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .schedule-confirm-btn,
 .schedule-cancel-btn {
-  height: 28px !important;
-  border-radius: var(--psg-radius-sm) !important;
+  height: 32px !important;
+  padding: 0 12px !important;
+  border-radius: var(--compose-radius) !important;
   font-size: 12px !important;
   font-weight: 600 !important;
 }
@@ -1772,15 +2261,19 @@ function close() {
 /* El overrides — flat field inputs */
 :deep(.field-tag .el-input-tag),
 :deep(.field-tag .el-input__wrapper) {
-  border-radius: var(--psg-radius-sm) !important;
+  border-radius: var(--compose-radius) !important;
   box-shadow: none !important;
   border: none !important;
   background: transparent !important;
   padding-left: 0 !important;
 }
 
+:deep(.field-tag .el-tag) {
+  border-radius: var(--compose-radius) !important;
+}
+
 :deep(.subject-input .el-input__wrapper) {
-  border-radius: var(--psg-radius-sm) !important;
+  border-radius: var(--compose-radius) !important;
   box-shadow: none !important;
   border: none !important;
   background: transparent !important;
@@ -1816,6 +2309,8 @@ function close() {
 
 :deep(.el-dialog) {
   width: 500px !important;
+  border-radius: var(--psg-radius-xs) !important;
+  overflow: hidden;
   @media (max-width: 540px) {
     width: calc(100% - 32px) !important;
   }
@@ -1868,8 +2363,8 @@ function close() {
   /* Mobile fullscreen composer: header switches from the desktop ink bar
      to a flat surface bar with a large badge, matching mobile-header. */
   .wh {
-    height: 64px;
-    padding: 8px 10px 8px 16px;
+    height: calc(64px + env(safe-area-inset-top, 0px));
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px 16px;
     background: var(--psg-surface);
     border-bottom: 1px solid var(--psg-border);
   }
@@ -1901,7 +2396,7 @@ function close() {
   .wh-close {
     width: 42px;
     height: 42px;
-    border-radius: var(--psg-radius-sm);
+    border-radius: var(--compose-radius);
     color: var(--psg-text-secondary);
 
     &:active {
@@ -1939,7 +2434,7 @@ function close() {
     display: inline-flex;
     align-items: center;
     padding: 0 9px;
-    border-radius: var(--psg-radius-sm);
+    border-radius: var(--compose-radius);
     background: var(--psg-surface-muted);
     font-size: 12px;
   }
@@ -1971,7 +2466,7 @@ function close() {
   .tb-btn {
     width: 40px;
     height: 40px;
-    border-radius: var(--psg-radius-sm);
+    border-radius: var(--compose-radius);
     background: var(--psg-surface);
   }
 
@@ -1986,26 +2481,63 @@ function close() {
     gap: 6px;
   }
 
+  .send-later-label {
+    display: none;
+  }
+
   .send-btn {
     height: 42px !important;
     min-width: 74px !important;
-    border-radius: var(--psg-radius-sm) !important;
+    border-radius: var(--compose-radius) !important;
     padding: 0 18px !important;
   }
 
   .send-later-btn {
     width: 42px !important;
     height: 42px !important;
-    border-radius: var(--psg-radius-sm) !important;
+    padding: 0 !important;
+    border-radius: var(--compose-radius) !important;
   }
 
-  .schedule-picker {
+  .schedule-panel {
     position: fixed;
     left: 12px;
     right: 12px;
-    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
     width: auto !important;
-    z-index: 5;
+    max-width: none;
+    max-height: min(78dvh, 620px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transition: transform 160ms ease;
+  }
+
+  .schedule-quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-quick-btn {
+    min-height: 38px;
+    text-align: left;
+    padding: 0 12px;
+  }
+
+  .schedule-panel-footer {
+    align-items: flex-end;
+  }
+
+  .schedule-panel-note {
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .schedule-picker {
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    z-index: auto;
   }
 }
 </style>

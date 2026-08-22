@@ -12,50 +12,52 @@
     <header class="detail-header">
       <div class="header-left">
         <!-- Back button: always visible; clears selection on desktop, triggers mobile nav -->
-        <button class="icon-btn detail-back-btn" @click="handleBack">
+        <button type="button" class="icon-btn detail-back-btn" :aria-label="$t('back')" :title="$t('back')" @click="handleBack">
           <Icon icon="psg:chevron-left" width="20" height="20" />
         </button>
         <template v-if="emailStore.contentData.showReply">
-          <button class="icon-btn" v-perm="'email:send'" @click="openReply">
+          <button type="button" class="icon-btn" v-perm="'email:send'" :aria-label="$t('reply')" :title="$t('reply')" @click="openReply">
             <Icon icon="psg:reply" width="21" height="21" />
           </button>
-          <button class="icon-btn" v-perm="'email:send'" @click="openReplyAll">
+          <button type="button" class="icon-btn" v-perm="'email:send'" :aria-label="$t('replyAll')" :title="$t('replyAll')" @click="openReplyAll">
             <Icon icon="psg:reply-all" width="22" height="22" />
           </button>
-          <button class="icon-btn" v-perm="'email:send'" @click="openForward">
+          <button type="button" class="icon-btn" v-perm="'email:send'" :aria-label="$t('forward')" :title="$t('forward')" @click="openForward">
             <Icon icon="psg:forward" width="20" height="20" />
           </button>
         </template>
-        <button class="icon-btn" @click="changeStar" v-if="emailStore.contentData.showStar">
+        <button type="button" class="icon-btn" @click="changeStar" v-if="emailStore.contentData.showStar"
+                :aria-label="$t('star')" :title="$t('star')">
           <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'psg:star'"
                 :width="email.isStar ? 20 : 18" :height="email.isStar ? 20 : 18" />
         </button>
         <!-- Destructive action: kept last (never adjacent to Back/Reply muscle-memory
              position) and visually quiet at rest — only turns --psg-danger on hover. -->
-        <button v-perm="'email:delete'" class="icon-btn icon-danger" @click="handleDelete" :title="$t('delete')">
+        <button v-perm="'email:delete'" type="button" class="icon-btn icon-danger" @click="handleDelete"
+                :title="$t('delete')" :aria-label="$t('delete')">
           <Icon icon="psg:trash" width="19" height="19" />
         </button>
       </div>
       <div class="header-right">
         <el-tooltip :content="$t('markAsUnread')" placement="bottom"
                     v-if="emailStore.contentData.showUnread">
-          <button class="icon-btn" @click="handleMarkAsUnread">
+          <button type="button" class="icon-btn" :aria-label="$t('markAsUnread')" @click="handleMarkAsUnread">
             <Icon icon="psg:mail" width="19" height="19" />
           </button>
         </el-tooltip>
         <el-tooltip :content="$t('printEmail')" placement="bottom">
-          <button class="icon-btn" @click="handlePrint">
+          <button type="button" class="icon-btn" :aria-label="$t('printEmail')" @click="handlePrint">
             <Icon icon="psg:printer" width="19" height="19" />
           </button>
         </el-tooltip>
         <el-tooltip :content="$t('downloadEml')" placement="bottom">
-          <button class="icon-btn" @click="handleDownloadEml">
+          <button type="button" class="icon-btn" :aria-label="$t('downloadEml')" @click="handleDownloadEml">
             <Icon icon="psg:download" width="19" height="19" />
           </button>
         </el-tooltip>
         <el-popover placement="bottom-end" width="220" trigger="click">
           <template #reference>
-            <button class="icon-btn" :title="$t('labelApply')">
+            <button type="button" class="icon-btn" :title="$t('labelApply')" :aria-label="$t('labelApply')">
               <Icon icon="psg:tag" width="19" height="19" />
             </button>
           </template>
@@ -69,16 +71,62 @@
           </div>
         </el-popover>
         <el-tooltip :content="translateBtnLabel" placement="bottom">
-          <button class="icon-btn" :class="{ 'icon-btn--active': showTranslation }"
+          <button type="button" class="icon-btn" :class="{ 'icon-btn--active': showTranslation }"
+                  :aria-label="translateBtnLabel"
                   @click="handleTranslate" :disabled="translating">
             <Icon v-if="translating" icon="svg-spinners:3-dots-fade" width="20" height="20" />
             <Icon v-else icon="psg:globe" width="19" height="19" />
           </button>
         </el-tooltip>
+        <el-popover placement="bottom-end" width="190" trigger="click">
+          <template #reference>
+            <button type="button" class="icon-btn" :class="{ 'icon-btn--active': !!aiPanel }"
+                    :aria-label="$t('aiTransform')" :title="$t('aiTransform')">
+              <Icon icon="lucide:sparkles" width="18" height="18" />
+            </button>
+          </template>
+          <div class="reader-ai-actions">
+            <button type="button" @click="runAiAction('summary')">
+              <Icon icon="psg:mail" width="15" height="15" /> {{ $t('aiMailSummary') }}
+            </button>
+            <button type="button" @click="runAiAction('reply')">
+              <Icon icon="psg:reply" width="15" height="15" /> {{ $t('aiReplySuggestion') }}
+            </button>
+          </div>
+        </el-popover>
         <span class="page-counter" v-if="emailStore.contentData.emailTotal > 0" :title="$t('emailPositionHint')">
           {{ emailStore.contentData.emailIndex }}&thinsp;/&thinsp;{{ emailStore.contentData.emailTotal }}
         </span>
       </div>
+      <el-dropdown ref="mobileMenuRef" class="mobile-reader-menu" placement="bottom-end" trigger="click"
+                   @visible-change="handleMobileMenuVisible">
+        <button type="button" class="icon-btn" :aria-label="$t('more')" :title="$t('more')">
+          <Icon icon="psg:more" width="20" height="20" />
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item v-if="emailStore.contentData.showStar" @click="changeStar">
+              <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'psg:star'" width="16" height="16" />
+              {{ email.isStar ? $t('unstar') : $t('star') }}
+            </el-dropdown-item>
+            <el-dropdown-item v-if="emailStore.contentData.showUnread" @click="handleMarkAsUnread">
+              <Icon icon="psg:mail" width="16" height="16" /> {{ $t('markAsUnread') }}
+            </el-dropdown-item>
+            <el-dropdown-item @click="handleTranslate">
+              <Icon icon="psg:globe" width="16" height="16" /> {{ translateBtnLabel }}
+            </el-dropdown-item>
+            <el-dropdown-item @click="runAiAction('summary')">
+              <Icon icon="lucide:sparkles" width="16" height="16" /> {{ $t('aiMailSummary') }}
+            </el-dropdown-item>
+            <el-dropdown-item @click="runAiAction('reply')" v-if="emailStore.contentData.showReply">
+              <Icon icon="psg:reply" width="16" height="16" /> {{ $t('aiReplySuggestion') }}
+            </el-dropdown-item>
+            <el-dropdown-item divided @click="handleDelete" v-perm="'email:delete'">
+              <Icon icon="psg:trash" width="16" height="16" /> {{ $t('delete') }}
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </header>
 
     <!-- Scrollable content -->
@@ -144,10 +192,10 @@
               <span class="translate-lang-tag">{{ translateTargetLang === 'zh' ? $t('translateToZh') : $t('translateToEn') }}</span>
             </span>
             <div class="translate-panel-actions">
-              <button class="translate-switch-btn" @click="switchTranslateLang">
+              <button type="button" class="translate-switch-btn" @click="switchTranslateLang">
                 {{ translateTargetLang === 'zh' ? $t('translateToEn') : $t('translateToZh') }}
               </button>
-              <button class="icon-btn-sm" @click="showTranslation = false">
+              <button type="button" class="icon-btn-sm" :aria-label="$t('close')" :title="$t('close')" @click="showTranslation = false">
                 <Icon icon="psg:close" width="15" height="15" />
               </button>
             </div>
@@ -155,7 +203,25 @@
           <div v-if="translating" class="translate-loading">
             <Icon icon="svg-spinners:3-dots-fade" width="24" height="24" />
           </div>
-          <pre v-else class="translate-body">{{ translatedText }}</pre>
+          <div v-else class="translate-comparison">
+            <div class="translate-column">
+              <span class="translate-column-label">{{ $t('showOriginal') }}</span>
+              <pre class="translate-body">{{ originalText }}</pre>
+            </div>
+            <div class="translate-column">
+              <span class="translate-column-label">{{ $t('translatedResult') }}</span>
+              <pre class="translate-body">{{ translatedText }}</pre>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="aiPanel" class="ai-mail-panel">
+          <div class="translate-panel-header">
+            <span class="translate-panel-title"><Icon icon="lucide:sparkles" width="15" height="15" /> {{ aiPanelTitle }}</span>
+            <button type="button" class="icon-btn-sm" :aria-label="$t('close')" @click="aiPanel = ''"><Icon icon="psg:close" width="15" height="15" /></button>
+          </div>
+          <div v-if="aiLoading" class="translate-loading"><Icon icon="svg-spinners:3-dots-fade" width="24" height="24" /></div>
+          <pre v-else class="translate-body">{{ aiResult }}</pre>
         </div>
 
         <div class="att-container" v-if="email.attList && email.attList.length > 0">
@@ -169,10 +235,12 @@
               <span class="att-name">{{ att.filename }}</span>
               <span class="att-size">{{ formatBytes(att.size) }}</span>
               <div class="att-actions">
-                <button v-if="isImage(att.filename)" class="icon-btn-sm" @click.stop="showImage(att.key)">
+                <button v-if="isImage(att.filename)" type="button" class="icon-btn-sm"
+                        :aria-label="$t('preview')" :title="$t('preview')" @click.stop="showImage(att.key)">
                   <Icon icon="psg:eye" width="18" height="18" />
                 </button>
-                <a class="icon-btn-sm" :href="cvtR2Url(att.key)" download @click.stop>
+                <a class="icon-btn-sm" :aria-label="$t('download')" :title="$t('download')"
+                   :href="cvtR2Url(att.key)" download @click.stop>
                   <Icon icon="psg:download" width="18" height="18" />
                 </a>
               </div>
@@ -194,6 +262,18 @@
 
       </div>
     </el-scrollbar>
+
+    <nav v-if="emailStore.contentData.showReply" class="mobile-reader-actions" :aria-label="$t('emailActions')">
+      <button type="button" @click="openReply">
+        <Icon icon="psg:reply" width="17" height="17" />{{ $t('reply') }}
+      </button>
+      <button type="button" @click="openReplyAll">
+        <Icon icon="psg:reply-all" width="17" height="17" />{{ $t('replyAll') }}
+      </button>
+      <button type="button" @click="openForward">
+        <Icon icon="psg:forward" width="16" height="16" />{{ $t('forward') }}
+      </button>
+    </nav>
   </article>
 
   <el-image-viewer v-if="showPreview" :url-list="srcList" show-progress @close="showPreview = false" />
@@ -205,6 +285,7 @@ import { reactive, ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { emailDelete, emailRead, emailUnread } from '@/request/email.js'
 import { translateEmail } from '@/request/translate.js'
+import { aiEmailSummary, aiReplySuggestion } from '@/request/ai-mail.js'
 import { Icon } from '@iconify/vue'
 import { useEmailStore } from '@/store/email.js'
 import { useAccountStore } from '@/store/account.js'
@@ -223,6 +304,7 @@ import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import { downloadEml } from '@/utils/download-eml.js'
 import { useLabelStore } from '@/store/label.js'
 import { labelApply, labelRemove } from '@/request/label.js'
+import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 
 const emit = defineEmits(['back'])
 
@@ -232,7 +314,9 @@ const accountStore = useAccountStore()
 const emailStore = useEmailStore()
 const avatarCache = useAvatarCacheStore()
 const labelStore = useLabelStore()
+const mobileNavigation = useMobileNavigationStore()
 const { t } = useI18n()
+const mobileMenuRef = ref(null)
 
 // Reactive reference to the currently selected email
 const email = computed(() => emailStore.contentData.email)
@@ -250,7 +334,23 @@ const srcList = reactive([])
 const translating = ref(false)
 const showTranslation = ref(false)
 const translatedText = ref('')
+const originalText = ref('')
 const translateTargetLang = ref('zh')
+const aiPanel = ref('')
+const aiResult = ref('')
+const aiLoading = ref(false)
+
+function handleMobileMenuVisible(open) {
+  if (typeof window === 'undefined' || window.innerWidth > 1024) return
+  if (open) {
+    mobileNavigation.openLayer('reader-menu', () => {
+      mobileMenuRef.value?.handleClose?.()
+      return true
+    })
+  } else {
+    mobileNavigation.closeLayer('reader-menu')
+  }
+}
 
 const translateBtnLabel = computed(() =>
   showTranslation.value ? t('showOriginal') : t('translateEmail')
@@ -267,6 +367,7 @@ async function runTranslate(targetLang) {
   translating.value = true
   showTranslation.value = true
   translatedText.value = ''
+  originalText.value = e.text || e.content || ''
   const sourceLang = detectLang(e.text || e.content || '')
   try {
     const res = await translateEmail({
@@ -275,12 +376,31 @@ async function runTranslate(targetLang) {
       source_lang: sourceLang,
       target_lang: targetLang,
     })
-    translatedText.value = res.data?.translated_text || ''
+    translatedText.value = res?.translated_text || ''
+    originalText.value = res?.original_text || originalText.value
   } catch {
     ElMessage({ message: t('translateFailed'), type: 'error', plain: true })
     showTranslation.value = false
   } finally {
     translating.value = false
+  }
+}
+
+const aiPanelTitle = computed(() => aiPanel.value === 'summary' ? t('aiSummaryTitle') : t('aiReplySuggestionTitle'))
+
+async function runAiAction(action) {
+  if (!email.value) return
+  aiPanel.value = action
+  aiLoading.value = true
+  aiResult.value = ''
+  try {
+    const res = action === 'summary' ? await aiEmailSummary(email.value.emailId) : await aiReplySuggestion(email.value.emailId)
+    aiResult.value = action === 'summary' ? (res?.summary || '') : (res?.suggestion || '')
+  } catch (error) {
+    aiPanel.value = ''
+    ElMessage({ message: error?.message || t('aiAssistantFail'), type: 'error', plain: true })
+  } finally {
+    aiLoading.value = false
   }
 }
 
@@ -313,6 +433,9 @@ watch(email, (newEmail) => {
   if (!newEmail) emailStore.contentData.showUnread = false
   showTranslation.value = false
   translatedText.value = ''
+  originalText.value = ''
+  aiPanel.value = ''
+  aiResult.value = ''
 }, { immediate: true })
 
 // Clear on account switch
@@ -417,18 +540,52 @@ function handleMarkAsUnread() {
   emailUnread([e.emailId]).catch(() => { e.unread = EmailUnreadEnum.READ })
 }
 
+function escapePrintText(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]))
+}
+
+function sanitizePrintHtml(value) {
+  const root = document.createElement('div')
+  root.innerHTML = String(value || '')
+  root.querySelectorAll('script, noscript').forEach(node => node.remove())
+  root.querySelectorAll('*').forEach(node => {
+    Array.from(node.attributes).forEach(attr => {
+      const name = attr.name.toLowerCase()
+      if (/^on/i.test(name)) node.removeAttribute(attr.name)
+      if (['href', 'src', 'xlink:href'].includes(name) && /^\s*javascript:/i.test(attr.value)) {
+        node.removeAttribute(attr.name)
+      }
+    })
+  })
+  return root.innerHTML
+}
+
 function handlePrint() {
   const e = email.value
   if (!e) return
   const win = window.open('', '_blank', 'width=800,height=600')
+  if (!win) {
+    ElMessage({ message: t('popupBlocked'), type: 'warning', plain: true })
+    return
+  }
+  const subject = escapePrintText(e.subject || t('noSubject'))
+  const sender = escapePrintText(e.name || '')
+  const address = escapePrintText(e.sendEmail || '')
+  const received = escapePrintText(e.createTime || '')
   const body = e.content
-    ? `<div style="font-family:Arial,sans-serif;max-width:760px;margin:0 auto;padding:24px">${e.content}</div>`
-    : `<pre style="font-family:Arial,sans-serif;max-width:760px;margin:0 auto;padding:24px;white-space:pre-wrap">${e.text || ''}</pre>`
+    ? `<div style="font-family:Arial,sans-serif;max-width:760px;margin:0 auto;padding:24px">${sanitizePrintHtml(e.content)}</div>`
+    : `<pre style="font-family:Arial,sans-serif;max-width:760px;margin:0 auto;padding:24px;white-space:pre-wrap">${escapePrintText(e.text || '')}</pre>`
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-    <title>${e.subject || ''}</title>
+    <title>${subject}</title>
     <style>@media print{body{margin:0}}</style></head><body>
-    <h2 style="font-size:18px;margin-bottom:8px">${e.subject || '(No subject)'}</h2>
-    <p style="color:#666;font-size:13px;margin-bottom:16px">From: ${e.name || ''} &lt;${e.sendEmail || ''}&gt; — ${e.createTime || ''}</p>
+    <h2 style="font-size:18px;margin-bottom:8px">${subject}</h2>
+    <p style="color:#666;font-size:13px;margin-bottom:16px">From: ${sender} &lt;${address}&gt; — ${received}</p>
     <hr style="border:none;border-top:1px solid #ddd;margin-bottom:16px">
     ${body}
     </body></html>`)
@@ -518,6 +675,8 @@ function handleDelete() {
 
 .header-left  { display: flex; align-items: center; gap: 2px; }
 .header-right { display: flex; align-items: center; gap: 2px; }
+.mobile-reader-menu { display: none; }
+.mobile-reader-actions { display: none; }
 
 /* Back button: hidden on desktop, visible on mobile/tablet */
 .detail-back-btn {
@@ -615,7 +774,7 @@ function handleDelete() {
   font-size: 11px;
   font-weight: 700;
   padding: 2px 9px;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   color: var(--chip-color);
   background: color-mix(in srgb, var(--chip-color) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--chip-color) 30%, transparent);
@@ -695,7 +854,7 @@ function handleDelete() {
   position: relative;
   overflow: hidden;
   margin-top: 2px;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
 
   .meta-initial { color: #fff; font-size: 15px; font-weight: 700; line-height: 1; }
   .meta-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -864,7 +1023,7 @@ function handleDelete() {
   height: 38px;
   padding: 0 18px;
   border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   background: var(--psg-surface);
   color: var(--psg-text);
   font-family: var(--psg-font-sans);
@@ -889,6 +1048,18 @@ function handleDelete() {
   border-radius: var(--psg-radius-md);
   overflow: hidden;
   background: var(--psg-surface-muted);
+}
+
+.translate-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--psg-border); }
+.translate-column { min-width: 0; padding: 10px 12px; background: var(--psg-surface-muted); }
+.translate-column-label { display: block; margin-bottom: 6px; color: var(--psg-text-muted); font-size: 11px; font-weight: 700; }
+.ai-mail-panel { margin: 16px 0 8px; border: 1px solid var(--psg-border); border-radius: var(--psg-radius-md); overflow: hidden; background: var(--psg-surface-muted); }
+.reader-ai-actions { display: flex; flex-direction: column; gap: 3px; }
+.reader-ai-actions button { display: flex; align-items: center; gap: 8px; border: 0; border-radius: var(--psg-radius-xs); padding: 8px 9px; background: transparent; color: var(--psg-text); font-size: 12.5px; text-align: left; cursor: pointer; }
+.reader-ai-actions button:hover { background: var(--psg-menu-active-bg); color: var(--psg-menu-active-text); }
+
+@media (max-width: 640px) {
+  .translate-comparison { grid-template-columns: 1fr; }
 }
 
 .translate-panel-header {
@@ -917,7 +1088,7 @@ function handleDelete() {
   font-size: 10.5px;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   letter-spacing: 0;
 }
 
@@ -935,7 +1106,7 @@ function handleDelete() {
   text-transform: none;
   color: var(--psg-text);
   border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   background: transparent;
   padding: 3px 10px;
   cursor: pointer;
@@ -968,8 +1139,8 @@ function handleDelete() {
 
 @media (max-width: 768px) {
   .detail-header {
-    min-height: 64px;
-    padding: 8px 10px;
+    min-height: calc(64px + env(safe-area-inset-top, 0px));
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
   }
 
   .header-left,
@@ -982,10 +1153,14 @@ function handleDelete() {
   }
 
   .header-right {
-    overflow-x: auto;
+    overflow: hidden;
     justify-content: flex-end;
-    max-width: calc(100vw - 58px);
+    max-width: 0;
   }
+
+  .header-left .icon-btn:not(.detail-back-btn) { display: none; }
+  .header-right > * { display: none; }
+  .mobile-reader-menu { display: inline-flex; margin-left: auto; }
 
   .icon-btn {
     width: 42px;
@@ -1003,7 +1178,7 @@ function handleDelete() {
   }
 
   .detail-content {
-    padding: 18px 14px 34px;
+    padding: 18px 14px calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
   .email-title {
@@ -1073,6 +1248,41 @@ function handleDelete() {
 
   .att-item {
     border-radius: var(--psg-radius-sm);
+  }
+
+  .mobile-reader-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--psg-surface);
+    border-top: 1px solid var(--psg-border);
+    box-shadow: 0 -6px 18px rgba(20, 24, 21, .08);
+  }
+
+  .mobile-reader-actions button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 6px;
+    border: 1px solid var(--psg-border);
+    border-radius: var(--psg-radius-sm);
+    background: var(--psg-surface);
+    color: var(--psg-text);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .mobile-reader-actions button:active {
+    color: var(--psg-menu-active-text);
+    background: var(--psg-menu-active-bg);
   }
 }
 </style>

@@ -19,15 +19,27 @@ self.addEventListener('push', event => {
 
   const title = data.title || 'PSG Mail'
   const body = data.body || ''
+  const mailData = data.data || {}
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: '/pwa-192.png',
-      badge: '/pwa-192.png',
-      tag: `psg-mail-${data.data?.emailId || Date.now()}`,
-      data: data.data,
-    })
+    Promise.all([
+      self.registration.showNotification(title, {
+        body,
+        icon: '/pwa-192.png',
+        badge: '/pwa-192.png',
+        tag: `psg-mail-${mailData.emailId || Date.now()}`,
+        data: mailData,
+      }),
+      mailData.type === 'new_mail' && mailData.emailId
+        ? self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+            clients.forEach(client => client.postMessage({
+              type: 'NEW_MAIL',
+              emailId: mailData.emailId,
+              accountId: mailData.accountId,
+            }))
+          })
+        : Promise.resolve(),
+    ])
   )
 })
 

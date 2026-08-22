@@ -1,51 +1,70 @@
 <template>
-  <div class="page-outer">
-    <div class="space-y">
+  <div class="workspace-page">
+    <div class="workspace-stack">
 
       <!-- Page header -->
-      <div class="page-header">
+      <section class="workspace-hero" aria-labelledby="groups-title">
         <div>
-          <h1 class="page-title">{{ $t('contactGroups') }}</h1>
-          <p class="page-subtitle">{{ $t('groupsDesc') }}</p>
-          <p class="page-stats" v-if="groupList.length">
-            {{ groupList.length }}&thinsp;{{ $t('groupUnit') }} · {{ totalContacts }}&thinsp;{{ $t('contactUnit') }}
-          </p>
+          <div class="workspace-eyebrow">
+            <span class="workspace-eyebrow-mark" aria-hidden="true" />
+            {{ $t('contactGroups') }}
+          </div>
+          <h1 id="groups-title">{{ $t('contactGroups') }}</h1>
+          <p>{{ $t('groupsDesc') }}</p>
         </div>
-        <el-button type="primary" class="create-btn" @click="openAdd">
-          <Icon icon="psg:add-circle" width="16" height="16"/>
-          {{ $t('addGroup') }}
-        </el-button>
-      </div>
+      </section>
 
-      <!-- Toolbar -->
-      <div class="header-actions" v-if="groupList.length">
-        <div class="search">
-          <el-input v-model="searchQuery" class="search-input" :placeholder="$t('searchGroupsPlaceholder')">
-            <template #prefix><Icon icon="psg:search" width="14" height="14"/></template>
-          </el-input>
+      <section class="workspace-stats" aria-label="Group summary">
+        <div class="workspace-stat-card surface-card">
+          <span class="workspace-stat-label">{{ $t('groupsTotalCount') }}</span>
+          <strong class="workspace-stat-value">{{ groupList.length }}</strong>
         </div>
-      </div>
+        <div class="workspace-stat-card surface-card">
+          <span class="workspace-stat-label">{{ $t('groupsContactCount') }}</span>
+          <strong class="workspace-stat-value workspace-stat-value--accent">{{ totalContacts }}</strong>
+        </div>
+        <div class="workspace-stat-card workspace-stat-card--wide surface-card">
+          <span class="workspace-stat-label">{{ $t('contactMembers') }}</span>
+          <span class="workspace-stat-description">{{ $t('groupsActionSummary') }}</span>
+        </div>
+      </section>
 
-      <!-- Empty states -->
-      <div v-if="!groupList.length" class="empty-state">
-        <Icon icon="psg:group" width="30" height="30" class="empty-icon"/>
-        <div class="empty-title">{{ $t('noGroups') }}</div>
-        <div class="empty-desc">{{ $t('noGroupsDesc') }}</div>
-        <el-button type="primary" class="empty-btn" @click="openAdd">
-          <Icon icon="psg:add-circle" width="14" height="14"/>
-          {{ $t('addGroup') }}
-        </el-button>
-      </div>
+      <section class="workspace-surface" aria-labelledby="groups-list-title">
+        <header class="workspace-surface-header">
+          <div>
+            <h2 id="groups-list-title">{{ $t('contactGroups') }}</h2>
+            <p>{{ $t('groupsListDesc') }}</p>
+          </div>
+          <div v-if="groupList.length" class="workspace-header-actions">
+            <el-input v-model="searchQuery" class="workspace-search" :placeholder="$t('searchGroupsPlaceholder')">
+              <template #prefix><Icon icon="psg:search" width="14" height="14"/></template>
+            </el-input>
+          </div>
+        </header>
 
-      <div v-else-if="!filteredGroups.length" class="empty-state">
-        <Icon icon="psg:file-search" width="30" height="30" class="empty-icon"/>
-        <div class="empty-title">{{ $t('noMatchingGroups') }}</div>
-        <div class="empty-desc">{{ $t('noMatchingGroupsDesc') }}</div>
-      </div>
+        <div v-if="!groupList.length" class="workspace-empty">
+          <div class="workspace-empty-icon">
+            <Icon icon="psg:group" width="26" height="26" aria-hidden="true"/>
+          </div>
+          <h3>{{ $t('noGroups') }}</h3>
+          <p>{{ $t('groupsEmptyDesc') }}</p>
+          <el-button type="primary" class="workspace-empty-action" @click="openAdd">
+            <Icon icon="psg:add-circle" width="14" height="14"/>
+            {{ $t('addGroup') }}
+          </el-button>
+        </div>
 
-      <!-- Card grid -->
-      <div v-else class="grp-grid">
-        <div class="grp-card" v-for="g in filteredGroups" :key="g.groupId">
+        <div v-else-if="!filteredGroups.length" class="workspace-empty">
+          <div class="workspace-empty-icon">
+            <Icon icon="psg:file-search" width="26" height="26" aria-hidden="true"/>
+          </div>
+          <h3>{{ $t('noMatchingGroups') }}</h3>
+          <p>{{ $t('noMatchingGroupsDesc') }}</p>
+        </div>
+
+        <!-- Card grid -->
+        <div v-else class="grp-grid">
+          <div class="grp-card" v-for="g in filteredGroups" :key="g.groupId">
           <div class="grp-card-head">
             <div class="grp-head-left">
               <div class="grp-avatar">{{ (g.name || '?')[0].toUpperCase() }}</div>
@@ -89,8 +108,9 @@
               {{ $t('sendEmailToGroup') }}
             </el-button>
           </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <!-- Drawer: edit group / view + manage members -->
@@ -140,21 +160,35 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted, defineOptions } from 'vue'
+import { reactive, ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { useUiStore } from '@/store/ui.js'
 import { contactGroupList, contactGroupAdd, contactGroupUpdate, contactGroupDelete } from '@/request/contact-group.js'
+import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 
 defineOptions({ name: 'groups' })
 
 const { t } = useI18n()
 const uiStore = useUiStore()
+const mobileNavigation = useMobileNavigationStore()
 const groupList = ref([])
 const drawerShow = ref(false)
 const groupLoading = ref(false)
 const searchQuery = ref('')
 const groupForm = reactive({ groupId: null, name: '', contacts: [] })
+
+watch(drawerShow, (open) => {
+  if (typeof window === 'undefined' || window.innerWidth > 1024) return
+  if (open) {
+    mobileNavigation.openLayer('contact-group-editor', () => {
+      drawerShow.value = false
+      return true
+    })
+  } else {
+    mobileNavigation.closeLayer('contact-group-editor')
+  }
+})
 
 const totalContacts = computed(() => groupList.value.reduce((s, g) => s + g.contacts.length, 0))
 
@@ -355,6 +389,7 @@ function sendToGroup(g) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+  padding: 16px;
 }
 
 .grp-card {
@@ -478,10 +513,9 @@ function sendToGroup(g) {
   border-radius: var(--psg-radius-sm) !important;
   :deep(svg) { margin-right: 5px; }
 
-  /* Element Plus derives disabled-state colors from a primary-color ramp
-     (light-5/7/8/9) that this app never remaps off the stock blue — only
-     light-3 is overridden globally. Pin the disabled look to PSG neutrals
-     directly rather than leaving it to fall through to that blue ramp. */
+  /* Keep disabled actions neutral even when Element Plus derives the state
+     from the shared primary ramp. The full ramp is mapped globally, but a
+     disabled control should not read as an active brand action. */
   &.is-disabled,
   &.is-disabled:hover {
     background: var(--psg-surface-active) !important;

@@ -97,7 +97,9 @@ function openSearch() {
   &:active { background: var(--psg-surface-active); }
 
   &.active {
-    color: var(--psg-primary);
+    background: var(--psg-menu-active-bg);
+    color: var(--psg-menu-active-text);
+    font-weight: 700;
   }
 }
 

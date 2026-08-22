@@ -21,7 +21,9 @@
       <div class="loading" :class="regKeyLoading ? 'loading-show' : 'loading-hide'" :style="regKeyFirst ? 'background: transparent' : ''">
         <loading/>
       </div>
-      <EmptyState v-if="!regKeyLoading && !regKeyFirst && regKeyData.length === 0 && !hasFilters"
+      <EmptyState v-if="!regKeyLoading && loadError"
+                  icon="psg:warning" :title="$t('loadFailedKeys')" :cta-text="$t('retry')" @cta="() => getList(true)"/>
+      <EmptyState v-else-if="!regKeyLoading && !regKeyFirst && regKeyData.length === 0 && !hasFilters"
                   icon="psg:key" :title="$t('emptyKeysTitle')" :description="$t('emptyKeysDesc')"
                   :cta-text="$t('createFirstKey')" @cta="openAdd"/>
       <EmptyState v-else-if="!regKeyLoading && !regKeyFirst && filteredKeys.length === 0"
@@ -50,6 +52,10 @@
             <span class="info-label">{{ $t('validUntil') }}</span>
             <span v-if="item.expireTime">{{ formatExpireTime(item.expireTime) }}</span>
             <span v-else>{{ $t('expired') }}</span>
+          </div>
+          <div class="info-row" v-if="item.createTime">
+            <span class="info-label">{{ $t('createdAt') }}</span>
+            <span>{{ formatUserCreateTime(item) }}</span>
           </div>
         </div>
       </div>
@@ -127,6 +133,7 @@ const emailColumnWidth = ref(0)
 const createTimeColumnWidth = ref(0)
 const historyLoading = ref(false)
 const statusFilter = ref('all')
+const loadError = ref(false)
 
 const addForm = reactive({
   code: '',
@@ -261,6 +268,7 @@ function getList(showLoading = false) {
   if (showLoading) {
     regKeyLoading.value = true
   }
+  loadError.value = false
   regKeyList(params).then(list => {
     regKeyData.length = 0
     regKeyData.push(...list)
@@ -268,6 +276,12 @@ function getList(showLoading = false) {
     setTimeout(() => {
       regKeyFirst.value = false
     },200)
+  }).catch(() => {
+    loadError.value = true
+    regKeyLoading.value = false
+    setTimeout(() => {
+      regKeyFirst.value = false
+    }, 200)
   })
 }
 
@@ -459,7 +473,7 @@ defineExpose({ openCreate: openAdd })
     color: var(--psg-text-secondary);
     background: transparent;
     border: 1px solid var(--psg-border);
-    border-radius: var(--psg-radius-full);
+    border-radius: var(--psg-radius-xs);
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.12s, color 0.12s, border-color 0.12s;

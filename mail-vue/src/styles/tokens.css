@@ -13,6 +13,8 @@
   --psg-surface: #FFFFFF;
   --psg-surface-muted: #EFF2EE;
   --psg-surface-active: #E4E9E3;
+  --psg-menu-active-bg: var(--psg-primary-muted);
+  --psg-menu-active-text: var(--psg-primary);
 
   --psg-border: #DBE1D9;
   --psg-border-strong: #1B2A20;
@@ -27,8 +29,44 @@
   --psg-on-primary: #FFFFFF;
   --psg-primary-muted: rgba(30, 89, 64, .08);
   --psg-primary-muted-strong: rgba(30, 89, 64, .15);
+  --psg-primary-light-3: #4B8063;
+  --psg-primary-light-5: #7FA890;
+  --psg-primary-light-7: #B6CCBE;
+  --psg-primary-light-8: #D1DED5;
+  --psg-primary-light-9: #E9F0EB;
+  --psg-primary-dark-2: #17472F;
+
+  --psg-success: #2F7D52;
+  --psg-success-light-3: #57966F;
+  --psg-success-light-5: #8AB7A0;
+  --psg-success-light-7: #BCD7C8;
+  --psg-success-light-8: #D3E5D9;
+  --psg-success-light-9: #EAF3EC;
+  --psg-success-dark-2: #245F3F;
+
+  --psg-warning: #B57916;
+  --psg-warning-light-3: #C8954A;
+  --psg-warning-light-5: #DDBB7F;
+  --psg-warning-light-7: #ECD7B2;
+  --psg-warning-light-8: #F3E5CC;
+  --psg-warning-light-9: #F8F0E1;
+  --psg-warning-dark-2: #8D5C0F;
+
+  --psg-info: #64756A;
+  --psg-info-light-3: #87958B;
+  --psg-info-light-5: #ABB6AE;
+  --psg-info-light-7: #CDD4CF;
+  --psg-info-light-8: #DEE3DF;
+  --psg-info-light-9: #EEF1EF;
+  --psg-info-dark-2: #4C5E52;
 
   --psg-danger: #C7362F;
+  --psg-danger-light-3: #D15F59;
+  --psg-danger-light-5: #E0938E;
+  --psg-danger-light-7: #EDC0BC;
+  --psg-danger-light-8: #F3D5D2;
+  --psg-danger-light-9: #F9E9E7;
+  --psg-danger-dark-2: #A82A24;
   --psg-danger-hover: #A82A24;
   --psg-danger-active: #8F241E;
   --psg-danger-muted: rgba(199, 54, 47, .08);
@@ -46,10 +84,13 @@
      against a dark surface — no-op in light, inverted in dark. */
   --psg-logo-invert: none;
 
+  /* One compact corner for the product's non-semantic rounded UI. The
+     size-specific names remain as compatibility aliases for existing
+     components, while full stays reserved for pills and circles. */
   --psg-radius-xs: 6px;
-  --psg-radius-sm: 8px;
-  --psg-radius-md: 12px;
-  --psg-radius-lg: 16px;
+  --psg-radius-sm: var(--psg-radius-xs);
+  --psg-radius-md: var(--psg-radius-xs);
+  --psg-radius-lg: var(--psg-radius-xs);
   --psg-radius-full: 999px;
 
   --psg-shadow-xs: 0 1px 2px rgba(20, 24, 21, .05);
@@ -59,6 +100,34 @@
 
   --psg-font-sans: 'IBM Plex Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
   --psg-font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Framework-neutral aliases. Components may use either the historical
+     --psg-* names or these semantic names; both resolve to one palette. */
+  --bg-primary: var(--psg-canvas);
+  --bg-secondary: var(--psg-surface);
+  --bg-tertiary: var(--psg-surface-muted);
+  --bg-elevated: var(--psg-surface);
+  --bg-overlay: rgba(20, 24, 21, .45);
+  --text-primary: var(--psg-text);
+  --text-secondary: var(--psg-text-secondary);
+  --text-muted: var(--psg-text-muted);
+  --border-default: var(--psg-border);
+  --border-hover: var(--psg-border-strong);
+  --border-strong: var(--psg-border-strong);
+  --accent-primary: var(--psg-primary);
+  --accent-hover: var(--psg-primary-hover);
+  --accent-active: var(--psg-primary-active);
+  --accent-soft: var(--psg-primary-muted);
+  --focus-ring: var(--psg-focus);
+  --success: var(--psg-success);
+  --warning: var(--psg-warning);
+  --danger: var(--psg-danger);
+  --info: var(--psg-info);
+  --radius-sm: var(--psg-radius-sm);
+  --radius-md: var(--psg-radius-md);
+  --radius-lg: var(--psg-radius-lg);
+  --shadow-sm: var(--psg-shadow-sm);
+  --shadow-md: var(--psg-shadow-md);
 }
 
 html.dark {
@@ -82,8 +151,44 @@ html.dark {
   --psg-on-primary: #08170F;
   --psg-primary-muted: rgba(69, 182, 125, .14);
   --psg-primary-muted-strong: rgba(69, 182, 125, .22);
+  --psg-primary-light-3: #31825B;
+  --psg-primary-light-5: #2A6748;
+  --psg-primary-light-7: #244B36;
+  --psg-primary-light-8: #1F3B2B;
+  --psg-primary-light-9: #19291F;
+  --psg-primary-dark-2: #63C894;
+
+  --psg-success: #6BCB91;
+  --psg-success-light-3: #519A70;
+  --psg-success-light-5: #3F7254;
+  --psg-success-light-7: #31523F;
+  --psg-success-light-8: #294236;
+  --psg-success-light-9: #203229;
+  --psg-success-dark-2: #88D9A7;
+
+  --psg-warning: #E1B15A;
+  --psg-warning-light-3: #B68F48;
+  --psg-warning-light-5: #846B3B;
+  --psg-warning-light-7: #5C4B2E;
+  --psg-warning-light-8: #463B27;
+  --psg-warning-light-9: #342D20;
+  --psg-warning-dark-2: #EDC77E;
+
+  --psg-info: #A6AEA3;
+  --psg-info-light-3: #80897F;
+  --psg-info-light-5: #626A61;
+  --psg-info-light-7: #474E47;
+  --psg-info-light-8: #374038;
+  --psg-info-light-9: #293129;
+  --psg-info-dark-2: #C1C8BF;
 
   --psg-danger: #E5645C;
+  --psg-danger-light-3: #C94B45;
+  --psg-danger-light-5: #9E3B36;
+  --psg-danger-light-7: #6F302D;
+  --psg-danger-light-8: #522725;
+  --psg-danger-light-9: #3A211F;
+  --psg-danger-dark-2: #F07B75;
   --psg-danger-hover: #EE7A72;
   --psg-danger-active: #C83F39;
   --psg-danger-muted: rgba(229, 100, 92, .16);
@@ -92,6 +197,7 @@ html.dark {
 
   --psg-html-shadow-bg: var(--psg-canvas);
   --psg-logo-invert: invert(1);
+  --bg-overlay: rgba(0, 0, 0, .6);
 
   --psg-shadow-xs: 0 1px 2px rgba(0, 0, 0, .3);
   --psg-shadow-sm: 0 3px 8px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25);

@@ -1,13 +1,12 @@
 import emailUtils from '../utils/email-utils';
 import { settingConst } from '../const/entity-const';
+import aiProviderService from './ai-provider-service';
 
 const aiService = {
 	async extractCode(c, email, options = {}) {
 		if (!this.shouldExtractCode(options.aiCode, options.aiCodeFilter, email)) {
 			return '';
 		}
-
-		const ai = c.env.ai;
 
 		try {
 			const subject = email.subject || '';
@@ -19,7 +18,7 @@ const aiService = {
 				return '';
 			}
 
-			const result = await ai.run(c.env.ai_model || '@cf/meta/llama-3.1-8b-instruct-fast', {
+			const result = await aiProviderService.run(c, 0, 'code_recognition', {
 				messages: [
 					{
 						role: 'system',

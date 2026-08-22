@@ -12,6 +12,8 @@ import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
 import notificationService from '../service/notification-service';
+import forwardingService from '../service/forwarding-service';
+import notificationEventService from '../service/notification-event-service';
 
 export async function email(message, env, ctx) {
 
@@ -146,12 +148,19 @@ export async function email(message, env, ctx) {
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
 
 		if (account) {
+			ctx.waitUntil(notificationEventService.createNewMail({
+				env,
+				userId: account.userId,
+				accountId: account.accountId,
+				email: emailRow
+			}));
 			ctx.waitUntil(notificationService.dispatchNewMail({
 				env,
 				userId: account.userId,
 				accountId: account.accountId,
 				email: emailRow
 			}));
+			ctx.waitUntil(forwardingService.dispatchIncoming({ env }, account, emailRow));
 		}
 
 		// AI code extraction is a Workers AI inference call — can take

@@ -1,32 +1,52 @@
 <template>
 
   <!-- ═══════════════════════════ LIST MODE ═══════════════════════════ -->
-  <div class="page-outer" v-if="!editorMode">
-    <div class="space-y">
+  <div class="workspace-page" v-if="!editorMode">
+    <div class="workspace-stack">
 
       <!-- Page header -->
-      <div class="page-header">
+      <section class="workspace-hero" aria-labelledby="templates-title">
         <div>
-          <h1 class="page-title">{{ $t('templates') }}</h1>
-          <p class="page-subtitle">{{ $t('templatesDesc') }}</p>
-          <p class="page-stats" v-if="tplList.length">
-            {{ tplList.length }}&thinsp;{{ $t('templateUnit') }}
-          </p>
+          <div class="workspace-eyebrow">
+            <span class="workspace-eyebrow-mark" aria-hidden="true" />
+            {{ $t('templates') }}
+          </div>
+          <h1 id="templates-title">{{ $t('templates') }}</h1>
+          <p>{{ $t('templatesDesc') }}</p>
         </div>
-        <el-button type="primary" class="create-btn" @click="openAdd">
-          <Icon icon="psg:add-circle" width="16" height="16"/>
-          {{ $t('addTemplate') }}
-        </el-button>
-      </div>
+      </section>
+
+      <section class="workspace-stats" aria-label="Template summary">
+        <div class="workspace-stat-card surface-card">
+          <span class="workspace-stat-label">{{ $t('templateTotalCount') }}</span>
+          <strong class="workspace-stat-value">{{ tplList.length }}</strong>
+        </div>
+        <div class="workspace-stat-card surface-card">
+          <span class="workspace-stat-label">{{ $t('templateFavoriteCount') }}</span>
+          <strong class="workspace-stat-value workspace-stat-value--accent">{{ tplFavs.size }}</strong>
+        </div>
+        <div class="workspace-stat-card workspace-stat-card--wide surface-card">
+          <span class="workspace-stat-label">{{ $t('templateCategoryCount') }}</span>
+          <span class="workspace-stat-description">{{ $t('templateActionSummary') }}</span>
+        </div>
+      </section>
 
       <!-- Toolbar: search + filter tabs -->
-      <div class="header-actions" v-if="tplList.length">
-        <div class="search">
-          <el-input v-model="searchQuery" class="search-input" :placeholder="$t('searchTemplatesPlaceholder')">
+      <section class="workspace-surface" aria-labelledby="templates-list-title">
+        <header class="workspace-surface-header">
+          <div>
+            <h2 id="templates-list-title">{{ $t('templates') }}</h2>
+            <p>{{ $t('templatesListDesc') }}</p>
+          </div>
+          <div v-if="tplList.length" class="workspace-header-actions">
+            <el-input v-model="searchQuery" class="workspace-search" :placeholder="$t('searchTemplatesPlaceholder')">
             <template #prefix><Icon icon="psg:search" width="14" height="14"/></template>
-          </el-input>
-        </div>
-        <div class="filter-tabs" v-if="allCategories.length || tplFavs.size">
+            </el-input>
+          </div>
+        </header>
+
+        <div class="workspace-filter-row" v-if="tplList.length && (allCategories.length || tplFavs.size)">
+          <div class="filter-tabs">
           <button
             class="filter-tab"
             :class="{ active: activeCategory === '__all__' }"
@@ -63,24 +83,24 @@
             {{ $t('uncategorized') }}
             <span class="filter-count">{{ categoryCount[''] }}</span>
           </button>
+          </div>
         </div>
-      </div>
 
       <!-- Empty states -->
-      <div v-if="!tplList.length" class="empty-state">
-        <Icon icon="psg:template" width="30" height="30" class="empty-icon"/>
-        <div class="empty-title">{{ $t('noTemplates') }}</div>
-        <div class="empty-desc">{{ $t('noTemplatesDesc') }}</div>
-        <el-button type="primary" class="empty-btn" @click="openAdd">
+      <div v-if="!tplList.length" class="workspace-empty">
+        <div class="workspace-empty-icon"><Icon icon="psg:template" width="26" height="26" aria-hidden="true"/></div>
+        <h3>{{ $t('noTemplates') }}</h3>
+        <p>{{ $t('templatesEmptyDesc') }}</p>
+        <el-button type="primary" class="workspace-empty-action" @click="openAdd">
           <Icon icon="psg:add-circle" width="14" height="14"/>
           {{ $t('addTemplate') }}
         </el-button>
       </div>
 
-      <div v-else-if="!filteredList.length" class="empty-state">
-        <Icon icon="psg:file-search" width="30" height="30" class="empty-icon"/>
-        <div class="empty-title">{{ $t('noMatchingTemplates') }}</div>
-        <div class="empty-desc">{{ $t('noMatchingTemplatesDesc') }}</div>
+      <div v-else-if="!filteredList.length" class="workspace-empty">
+        <div class="workspace-empty-icon"><Icon icon="psg:file-search" width="26" height="26" aria-hidden="true"/></div>
+        <h3>{{ $t('noMatchingTemplates') }}</h3>
+        <p>{{ $t('noMatchingTemplatesDesc') }}</p>
       </div>
 
       <!-- Card grid -->
@@ -134,6 +154,8 @@
         </div>
       </div>
 
+      </section>
+
     </div>
 
     <!-- Preview dialog -->
@@ -162,7 +184,7 @@
   </div>
 
   <!-- ═══════════════════════════ EDITOR MODE ═══════════════════════════ -->
-  <div class="page-outer editor-mode" v-else>
+  <div class="workspace-page editor-mode" v-else>
     <div class="editor-nav">
       <button class="back-btn" @click="cancelEdit">
         <Icon icon="psg:chevron-left" width="14" height="14"/>
@@ -232,18 +254,20 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted, defineOptions } from 'vue'
+import { reactive, ref, computed, onMounted, defineOptions, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import tinyEditor from '@/components/tiny-editor/index.vue'
 import shadowHtml from '@/components/shadow-html/index.vue'
 import { useUiStore } from '@/store/ui.js'
 import { templateList, templateAdd, templateUpdate, templateDelete } from '@/request/template.js'
+import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 
 defineOptions({ name: 'templates' })
 
 const { t } = useI18n()
 const uiStore = useUiStore()
+const mobileNavigation = useMobileNavigationStore()
 const tplList = ref([])
 const tplLoading = ref(false)
 const tplEditorRef = ref(null)
@@ -410,6 +434,18 @@ function handleCommand(cmd, tpl) {
 // ── Preview dialog ──
 const previewShow = ref(false)
 const previewTpl = ref(null)
+
+watch(previewShow, (open) => {
+  if (typeof window === 'undefined' || window.innerWidth > 1024) return
+  if (open) {
+    mobileNavigation.openLayer('template-preview', () => {
+      previewShow.value = false
+      return true
+    })
+  } else {
+    mobileNavigation.closeLayer('template-preview')
+  }
+})
 
 function openPreview(tpl) {
   previewTpl.value = tpl
@@ -590,6 +626,7 @@ function useTemplate(tpl) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+  padding: 16px;
 }
 
 .tpl-card {

@@ -11,8 +11,11 @@
       <Icon icon="psg:search" width="15" height="15" class="explorer-search-icon"/>
       <input v-model="searchValue" class="explorer-search-input"
              :placeholder="$t('searchAllMailPlaceholder')" @keydown.enter="search"/>
-      <Icon v-if="searchValue" icon="psg:close-circle" width="14" height="14"
-            class="explorer-search-clear" @click="searchValue = ''; search()"/>
+      <button v-if="searchValue" type="button" class="explorer-search-clear"
+              :aria-label="$t('clear')" :title="$t('clear')"
+              @click="searchValue = ''; search()">
+        <Icon icon="psg:close-circle" width="14" height="14" aria-hidden="true"/>
+      </button>
     </div>
 
     <emailScroll ref="sysEmailScroll"
@@ -38,16 +41,21 @@
         <!-- ── Status chips + advanced filter + sort + refresh + overflow ── -->
         <div class="explorer-filters">
           <div class="filter-chips">
-            <button class="filter-chip" :class="{ active: params.type === 'all' }" @click="setType('all')">{{ $t('all') }}</button>
-            <button class="filter-chip" :class="{ active: params.type === 'receive' }" @click="setType('receive')">{{ $t('received') }}</button>
-            <button class="filter-chip" :class="{ active: params.type === 'send' }" @click="setType('send')">{{ $t('sent') }}</button>
+            <button type="button" class="filter-chip" :class="{ active: params.type === 'all' }"
+                    :aria-pressed="params.type === 'all'" @click="setType('all')">{{ $t('all') }}</button>
+            <button type="button" class="filter-chip" :class="{ active: params.type === 'receive' }"
+                    :aria-pressed="params.type === 'receive'" @click="setType('receive')">{{ $t('received') }}</button>
+            <button type="button" class="filter-chip" :class="{ active: params.type === 'send' }"
+                    :aria-pressed="params.type === 'send'" @click="setType('send')">{{ $t('sent') }}</button>
           </div>
 
           <el-popover trigger="click" placement="bottom-start" width="240" popper-class="explorer-adv-popover">
             <template #reference>
-              <button class="filter-text-btn" :class="{ active: isAdvancedActive }">
+              <button type="button" class="filter-text-btn" :class="{ active: isAdvancedActive }"
+                      :aria-label="$t('advancedFilter')" :aria-pressed="isAdvancedActive">
                 <span class="filter-text-btn-label">{{ $t('advancedFilter') }}</span>
-                <Icon icon="psg:chevron-down" width="12" height="12"/>
+                <Icon icon="psg:filter" width="13" height="13" class="filter-text-btn-icon" aria-hidden="true"/>
+                <Icon icon="psg:chevron-down" width="12" height="12" class="filter-text-btn-chevron" aria-hidden="true"/>
               </button>
             </template>
             <div class="adv-field">
@@ -71,16 +79,19 @@
             </div>
           </el-popover>
 
-          <button class="sort-btn" @click="changeTimeSort">
+          <button type="button" class="sort-btn" @click="changeTimeSort"
+                  :aria-label="params.timeSort !== 0 ? $t('sortOldest') : $t('sortNewest')">
             <span class="sort-btn-label">{{ params.timeSort !== 0 ? $t('sortOldest') : $t('sortNewest') }}</span>
-            <Icon icon="psg:chevron-down" width="12" height="12"/>
+            <Icon icon="psg:sort" width="13" height="13" class="sort-btn-icon" aria-hidden="true"/>
+            <Icon icon="psg:chevron-down" width="12" height="12" class="sort-btn-chevron" aria-hidden="true"/>
           </button>
 
           <!-- High-risk bulk action: tucked behind ⋯, never a primary toolbar icon.
                Refresh itself is emailScroll's own built-in toolbar button, right
                after this slot — no need to duplicate it here. -->
           <el-dropdown trigger="click" placement="bottom-end" @command="handleMoreCommand">
-            <button class="icon-btn-plain more-btn" :title="$t('moreActions')">⋯</button>
+            <button type="button" class="icon-btn-plain more-btn"
+                    :aria-label="$t('moreActions')" :title="$t('moreActions')">⋯</button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="cleanup">
@@ -351,7 +362,9 @@ async function latest() {
 
     await sleep(autoRefresh > 1 ? autoRefresh * 1000 : 3000);
 
-    const latestId = sysEmailScroll.value.latestEmail?.emailId
+    // The route can unmount the list while the sleep above is resolving.
+    // Stop cleanly instead of reading a stale component ref during navigation.
+    const latestId = sysEmailScroll.value?.latestEmail?.emailId
 
     if (autoRefresh < 2) {
       continue
@@ -510,6 +523,15 @@ async function latest() {
 }
 
 .explorer-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--psg-radius-xs);
+  background: transparent;
   color: var(--psg-text-muted);
   cursor: pointer;
   flex-shrink: 0;
@@ -541,7 +563,7 @@ async function latest() {
   padding: 3px;
   flex-shrink: 0;
   background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
 }
 
 .filter-chip {
@@ -554,7 +576,7 @@ async function latest() {
   font-weight: 500;
   font-family: var(--psg-font-sans);
   color: var(--psg-text-secondary);
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
   transition: background 0.14s ease, color 0.14s ease;
   white-space: nowrap;
 
@@ -619,6 +641,16 @@ async function latest() {
   letter-spacing: -1px;
 }
 
+.filter-text-btn-icon,
+.sort-btn-icon {
+  display: none;
+}
+
+.filter-text-btn-chevron,
+.sort-btn-chevron {
+  display: block;
+}
+
 /* Advanced-filter popover fields */
 .adv-field {
   display: flex;
@@ -647,6 +679,44 @@ async function latest() {
   .explorer-search-row { margin: 8px 14px 0; height: 40px; }
 }
 
+/* At the smallest supported phone width, keep every mail action reachable
+   instead of letting the filter strip run underneath the fixed refresh
+   button. The chips occupy the first line; advanced/sort/more sit on a
+   compact second line while refresh remains a stable touch target. */
+@media (max-width: 340px) {
+  :deep(.mail-toolbar) {
+    height: 78px;
+  }
+
+  :deep(.mail-toolbar .toolbar-left) {
+    align-content: flex-start;
+    align-items: flex-start;
+    overflow: visible;
+  }
+
+  .explorer-filters {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    row-gap: 4px;
+    overflow: visible;
+  }
+
+  .filter-text-btn-label,
+  .sort-btn-label {
+    display: inline;
+  }
+
+  .filter-text-btn,
+  .sort-btn {
+    padding: 0 4px;
+  }
+
+  :deep(.mail-toolbar > .toolbar-left > .icon-btn) {
+    margin-top: 2px;
+  }
+}
+
 /* Narrow list pane (or a real mobile viewport, same width class): drop
    text labels on advanced-filter/sort down to icon-only so the row of
    controls doesn't force horizontal scrolling before it has to. */
@@ -656,9 +726,31 @@ async function latest() {
     display: none;
   }
 
+  .filter-text-btn-icon,
+  .sort-btn-icon {
+    display: block;
+  }
+
+  .filter-text-btn-chevron,
+  .sort-btn-chevron {
+    display: none;
+  }
+
   .filter-text-btn,
   .sort-btn {
     padding: 0 6px;
+  }
+}
+
+@media (max-width: 340px) {
+  .filter-text-btn-label,
+  .sort-btn-label {
+    display: inline;
+  }
+
+  .filter-text-btn,
+  .sort-btn {
+    padding: 0 4px;
   }
 }
 

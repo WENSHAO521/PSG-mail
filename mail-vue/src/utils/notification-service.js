@@ -43,13 +43,13 @@ async function getCapacitorNotifications() {
   }
 }
 
-async function ensureCapacitorNotifications() {
+async function ensureCapacitorNotifications({ requestPermission = true } = {}) {
   const localNotifications = await getCapacitorNotifications()
   if (!localNotifications) return false
 
   const current = await localNotifications.checkPermissions()
   let display = current.display
-  if (display !== 'granted') {
+  if (display !== 'granted' && requestPermission) {
     const requested = await localNotifications.requestPermissions()
     display = requested.display
   }
@@ -82,8 +82,9 @@ async function requestBrowserPermission() {
 }
 
 async function showBrowserNotification(email) {
-  const permission = await requestBrowserPermission()
-  if (permission !== 'granted') return false
+  // New mail is a background event, not a user gesture. Never turn it into
+  // a browser permission prompt; the Settings action owns that decision.
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false
 
   const title = notificationTitle(email)
   const options = {
@@ -126,7 +127,9 @@ export async function showMailNotification(email) {
   }
 
   if (isNativeCapacitor()) {
-    const ready = await ensureCapacitorNotifications()
+    // The explicit Settings action calls requestNotificationPermission(); a
+    // received email may only use an already-granted OS permission.
+    const ready = await ensureCapacitorNotifications({ requestPermission: false })
     if (!ready) return false
 
     const localNotifications = await getCapacitorNotifications()

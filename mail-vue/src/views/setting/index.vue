@@ -2,7 +2,7 @@
   <div class="settings-container">
     <el-scrollbar class="scroll">
       <div class="scroll-body">
-        <div class="settings-shell">
+        <div class="settings-shell" :class="{ 'mobile-detail-active': mobileSettingsDetail }">
 
           <!-- ── Left sidebar nav ── -->
           <nav class="settings-sidebar" aria-label="Personal settings sections">
@@ -12,7 +12,7 @@
               class="settings-nav-item"
               :class="{ active: activeSection === item.key }"
               type="button"
-              @click="activeSection = item.key"
+              @click="openSettingsSection(item.key)"
             >
               <Icon class="settings-nav-icon" :icon="item.icon" width="20" height="20"/>
               <span>{{ item.label }}</span>
@@ -25,6 +25,9 @@
             <!-- Panel header -->
             <div class="settings-panel-header">
               <div>
+                <button v-if="mobileSettingsDetail" type="button" class="mobile-settings-back" @click="mobileSettingsDetail = false">
+                  <Icon icon="psg:chevron-left" width="15" height="15" /> {{ $t('back') }}
+                </button>
                 <h1>{{ activeMeta.label }}</h1>
                 <p>{{ activeMeta.desc }}</p>
               </div>
@@ -39,6 +42,10 @@
                 class="settings-save-button" type="primary"
                 :loading="autoReplySaving" @click="saveAutoReply"
               >{{ $t('save') }}</el-button>
+            </div>
+
+            <div v-show="activeSection === 'forwarding'" class="settings-card">
+              <PersonalForwarding />
             </div>
 
             <!-- ── Profile section ── -->
@@ -121,16 +128,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <!-- ── Language section ── -->
-            <div v-show="activeSection === 'language'" class="settings-card">
-              <div class="card-body">
-                <el-select :model-value="langSelect" style="width:220px" @change="changeLang">
-                  <el-option label="中文" value="zh" @pointerdown.prevent.stop="changeLang('zh')"/>
-                  <el-option label="English" value="en" @pointerdown.prevent.stop="changeLang('en')"/>
-                </el-select>
               </div>
             </div>
 
@@ -455,6 +452,7 @@ import { useAccountStore } from "@/store/account.js"
 import { useI18n } from "vue-i18n"
 import { useSettingStore } from "@/store/setting.js"
 import { useUiStore } from "@/store/ui.js"
+import { useMobileNavigationStore } from "@/store/mobile-navigation.js"
 import { useLabelStore } from "@/store/label.js"
 import { labelCreate, labelUpdate, labelDelete } from "@/request/label.js"
 import { Icon } from "@iconify/vue"
@@ -468,16 +466,17 @@ import { listWebPushSubscriptions, removeWebPushSubscription, sendWebPushTest } 
 import { useNotificationStore } from "@/store/notification.js"
 import { Capacitor } from "@capacitor/core"
 import dayjs from "dayjs"
+import PersonalForwarding from '@/components/personal-forwarding/index.vue'
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
 const settingStore = useSettingStore()
 const uiStore = useUiStore()
+const mobileNavigation = useMobileNavigationStore()
 const userStore = useUserStore()
 const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
-const langSelect = ref(settingStore.lang)
 const fileInputRef = ref(null)
 const pwdShow = ref(false)
 const form = reactive({ password: '', newPwd: '' })
@@ -876,14 +875,32 @@ function revokeApiKey(k) {
 defineOptions({ name: 'setting' })
 
 const activeSection = ref('profile')
+const mobileSettingsDetail = ref(false)
+
+watch(mobileSettingsDetail, (open) => {
+  if (window.innerWidth > 1024) return
+  if (open) {
+    mobileNavigation.openLayer('personal-settings-detail', () => {
+      mobileSettingsDetail.value = false
+      return true
+    })
+  } else {
+    mobileNavigation.closeLayer('personal-settings-detail')
+  }
+})
+
+function openSettingsSection(key) {
+  activeSection.value = key
+  mobileSettingsDetail.value = true
+}
 
 const navItems = computed(() => {
   const items = [
     { key: 'profile',   icon: 'psg:user',            label: t('profile') },
-    { key: 'language',  icon: 'psg:globe',          label: t('language') },
     { key: 'signature', icon: 'psg:edit',             label: t('signature') },
     { key: 'autoreply', icon: 'psg:chat', label: t('autoReply') },
     { key: 'notification', icon: 'psg:bell',         label: t('notifications') },
+    { key: 'forwarding', icon: 'psg:forward',        label: t('personalForwarding') },
     { key: 'mail',      icon: 'psg:mail',         label: t('mailManagement') },
     { key: 'labels',    icon: 'psg:tag',             label: t('labelManage') },
     { key: 'backup',    icon: 'psg:cloud-upload',    label: t('cloudBackup') },
@@ -897,10 +914,10 @@ const navItems = computed(() => {
 
 const sectionMeta = computed(() => ({
   profile:   { label: t('profile'),        desc: t('profileDesc') },
-  language:  { label: t('language'),       desc: t('languageDesc') },
   signature: { label: t('signature'),      desc: t('signatureDesc') },
   autoreply: { label: t('autoReply'),      desc: t('autoReplyDesc') },
   notification: { label: t('notifications'), desc: t('notificationsDesc') },
+  forwarding: { label: t('personalForwarding'), desc: t('personalForwardingDesc') },
   mail:      { label: t('mailManagement'), desc: t('mailManagementDesc') },
   labels:    { label: t('labelManage'),    desc: t('labelManageDesc') },
   backup:    { label: t('cloudBackup'),    desc: t('cloudBackupDesc') },
@@ -911,6 +928,7 @@ const sectionMeta = computed(() => ({
 const activeMeta = computed(() => sectionMeta.value[activeSection.value] || { label: '', desc: '' })
 
 onActivated(() => {
+  mobileSettingsDetail.value = false
   signatureText.value = userStore.user.signature || ''
 })
 
@@ -1028,13 +1046,6 @@ async function saveAutoReply() {
   } finally { autoReplySaving.value = false }
 }
 
-function changeLang(lang) {
-  let setting = {}
-  try { setting = JSON.parse(localStorage.getItem('setting') || '{}') } catch {}
-  localStorage.setItem('setting', JSON.stringify({ ...setting, lang }))
-  window.location.reload()
-}
-
 const deleteConfirm = () => {
   ElMessageBox.confirm(t('delAccountConfirm'), {
     confirmButtonText: t('confirm'),
@@ -1105,6 +1116,9 @@ function submitPwd() {
   @media (max-width: 820px) {
     grid-template-columns: 1fr;
     gap: 12px;
+
+    &:not(.mobile-detail-active) .settings-panel { display: none; }
+    &.mobile-detail-active .settings-sidebar { display: none; }
   }
 }
 
@@ -1113,6 +1127,7 @@ function submitPwd() {
 .settings-panel {
   background: var(--psg-surface);
   border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
   overflow: hidden;
 }
 
@@ -1128,21 +1143,23 @@ function submitPwd() {
   @media (max-width: 820px) {
     position: static;
     min-height: 0;
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 0;
+    flex-direction: column;
+    overflow: visible;
+    padding: 8px 0;
   }
 }
 
 .settings-nav-item {
-  width: 100%;
+  width: calc(100% - 16px);
   min-height: 44px;
-  padding: 0 14px;
+  margin: 0 8px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 12px;
   border: none;
   border-left: 3px solid transparent;
+  border-radius: var(--psg-radius-xs);
   background: transparent;
   color: var(--psg-text-secondary);
   font-family: var(--psg-font-sans);
@@ -1159,23 +1176,23 @@ function submitPwd() {
   }
 
   &.active {
-    background: var(--psg-surface-active);
-    border-left-color: var(--psg-primary);
-    color: var(--psg-primary);
+    background: var(--psg-menu-active-bg);
+    color: var(--psg-menu-active-text);
     font-weight: 700;
   }
 
   @media (max-width: 820px) {
-    width: auto;
-    white-space: nowrap;
+    width: calc(100% - 16px);
+    margin: 0 8px;
+    min-height: 48px;
+    white-space: normal;
     flex: 0 0 auto;
-    border-left: none;
-    border-bottom: 3px solid transparent;
+    border-left: 3px solid transparent;
+    border-bottom: 0;
     padding: 0 12px;
 
     &.active {
-      border-bottom-color: var(--psg-primary);
-      background: var(--psg-surface-active);
+      background: var(--psg-menu-active-bg);
     }
   }
 }
@@ -1218,6 +1235,21 @@ function submitPwd() {
     align-items: stretch;
     flex-direction: column;
   }
+}
+
+.mobile-settings-back {
+  display: none;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  padding: 0;
+  margin: 0 0 8px;
+  background: transparent;
+  color: var(--psg-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+
+  @media (max-width: 820px) { display: inline-flex; }
 }
 
 .settings-save-button {
@@ -1600,7 +1632,7 @@ function submitPwd() {
 }
 .notif-device-tag {
   font-size: 11px; color: var(--psg-danger);
-  border: 1px solid currentColor; border-radius: 3px;
+  border: 1px solid currentColor; border-radius: var(--psg-radius-xs);
   padding: 1px 6px;
 }
 .notif-device-meta {

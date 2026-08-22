@@ -6,6 +6,7 @@ import settingService from './setting-service';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
 import { emailConst, settingConst } from '../const/entity-const';
+import aiProviderService from './ai-provider-service';
 
 const MAX_STEPS = 8;
 const CONFIRM_TTL = 300; // seconds
@@ -262,11 +263,8 @@ const aiAssistantService = {
 	},
 
 	async _runLoop(c, userId, convo, stepsUsed) {
-		const model = c.env.ai_assistant_model || c.env.ai_model || '@cf/meta/llama-3.1-8b-instruct-fast';
-		const ai = c.env.ai;
-
 		for (let step = stepsUsed; step < MAX_STEPS; step++) {
-			const resp = await ai.run(model, { messages: convo, tools: TOOLS });
+			const resp = await aiProviderService.run(c, userId, 'assistant', { messages: convo, tools: TOOLS });
 			const toolCalls = parseToolCalls(resp);
 
 			if (toolCalls.length === 0) {
