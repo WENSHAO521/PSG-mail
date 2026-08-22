@@ -58,7 +58,7 @@
     "@resvg/resvg-js": "^2.6.2",
     "@vitejs/plugin-vue": "^5.2.1",
     "cross-env": "^7.0.3",
-    "electron": "^39.8.5",
+    "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
     "less": "^4.2.2",
     "sass": "^1.82.0",
