@@ -19,10 +19,13 @@ const aiProviderService = {
 	async models(c, task = 'chat') {
 		const setting = await settingService.query(c);
 		const isTranslation = task === 'translation';
+		// ai_model is a chat-completion model (expects { messages: [...] }).
+		// A translation task sends { text, source_lang, target_lang } instead,
+		// so it must never fall back to ai_model -- only to a translation model.
 		const model = setting.aiDefaultModel
-			|| (isTranslation ? c.env.ai_translation_model : '')
-			|| c.env.ai_model
-			|| (isTranslation ? DEFAULT_TRANSLATION_MODEL : DEFAULT_CHAT_MODEL);
+			|| (isTranslation
+				? (c.env.ai_translation_model || DEFAULT_TRANSLATION_MODEL)
+				: (c.env.ai_model || DEFAULT_CHAT_MODEL));
 		const fallbackModel = setting.aiFallbackModel || c.env.ai_fallback_model || c.env.ai_assistant_model || '';
 		return { model, fallbackModel, quota: Math.max(0, Number(setting.aiDailyQuota) || 0) };
 	},

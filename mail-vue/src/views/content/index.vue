@@ -378,8 +378,8 @@ async function runTranslate(targetLang) {
     })
     translatedText.value = res?.translated_text || ''
     originalText.value = res?.original_text || originalText.value
-  } catch {
-    ElMessage({ message: t('translateFailed'), type: 'error', plain: true })
+  } catch (error) {
+    ElMessage({ message: error?.message || t('translateFailed'), type: 'error', plain: true })
     showTranslation.value = false
   } finally {
     translating.value = false
