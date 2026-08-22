@@ -978,24 +978,43 @@ const mailboxLimitText = computed(() => userStore.user?.role?.accountCount || t(
 
 function triggerUpload() { fileInputRef.value?.click() }
 
-function handleFileChange(e) {
+async function handleFileChange(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  compressImage(file, 200).then(base64 => { userStore.saveAvatar(base64) })
-  e.target.value = ''
+  try {
+    const base64 = await compressImage(file, 200)
+    await userStore.saveAvatar(base64)
+    ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+  } catch (error) {
+    console.error('Avatar upload failed', error)
+    ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true })
+  } finally {
+    e.target.value = ''
+  }
 }
 
 function compressImage(file, maxPx = 200) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
+    if (!file.type?.startsWith('image/')) {
+      reject(new Error('Unsupported avatar image type'))
+      return
+    }
     const reader = new FileReader()
+    reader.onerror = () => reject(new Error('Avatar image could not be read'))
     reader.onload = ev => {
       const img = new Image()
+      img.onerror = () => reject(new Error('Avatar image could not be decoded'))
       img.onload = () => {
         const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1)
         const canvas = document.createElement('canvas')
         canvas.width  = Math.round(img.width  * ratio)
         canvas.height = Math.round(img.height * ratio)
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+        const context = canvas.getContext('2d')
+        if (!context || !canvas.width || !canvas.height) {
+          reject(new Error('Avatar image could not be prepared'))
+          return
+        }
+        context.drawImage(img, 0, 0, canvas.width, canvas.height)
         resolve(canvas.toDataURL('image/jpeg', 0.88))
       }
       img.src = ev.target.result

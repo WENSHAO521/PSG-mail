@@ -21,14 +21,13 @@ export function getDirectory() {
 }
 
 export function saveAvatar(avatar) {
-    return http.put('/my/avatar', { avatar })
+    return http.put('/my/avatar', { avatar }, { noMsg: true })
 }
 
 export function clearAvatar() {
-    return http.delete('/my/avatar')
+    return http.delete('/my/avatar', { noMsg: true })
 }
 
 export function getAvatarByEmail(email) {
     return http.get('/my/avatar', { params: { email } })
 }
-

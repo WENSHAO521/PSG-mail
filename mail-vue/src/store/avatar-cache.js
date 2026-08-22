@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { getAvatarByEmail } from '@/request/my.js'
+import { normalizeAvatarEmail } from '@/utils/avatar.js'
 
 export const useAvatarCacheStore = defineStore('avatarCache', {
     state: () => ({
@@ -11,16 +12,17 @@ export const useAvatarCacheStore = defineStore('avatarCache', {
         // Returns immediately; when fetch completes the reactive cache
         // entry updates and any component using get() re-renders.
         prefetch(email) {
-            if (!email || email in this.cache) return
-            this.cache[email] = null   // mark in-flight
-            getAvatarByEmail(email)
-                .then(res => { this.cache[email] = res?.avatar || '' })
-                .catch(() => { this.cache[email] = '' })
+            const normalizedEmail = normalizeAvatarEmail(email)
+            if (!normalizedEmail || normalizedEmail in this.cache) return
+            this.cache[normalizedEmail] = null   // mark in-flight
+            getAvatarByEmail(normalizedEmail)
+                .then(res => { this.cache[normalizedEmail] = res?.avatar || '' })
+                .catch(() => { this.cache[normalizedEmail] = '' })
         },
         // Synchronous read + side-effect fetch. Use in templates.
         get(email) {
             this.prefetch(email)
-            return this.cache[email] || ''
+            return this.cache[normalizeAvatarEmail(email)] || ''
         }
     }
 })

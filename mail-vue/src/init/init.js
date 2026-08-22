@@ -51,6 +51,7 @@ export async function init() {
             accountStore.currentAccountId = user.account.accountId;
             accountStore.currentAccount = user.account;
             userStore.user = user;
+            userStore.loadAvatar();
 
             const routers = permsToRouter(user.permKeys);
             routers.forEach(routerData => {

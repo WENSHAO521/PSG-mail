@@ -21,6 +21,15 @@ import {oauth} from "../entity/oauth";
 import oauthService from "./oauth-service";
 import {account} from "../entity/account";
 
+const AVATAR_DATA_URL_PATTERN = /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/i;
+const MAX_AVATAR_DATA_URL_LENGTH = 256 * 1024;
+
+async function ensureAvatarColumn(c) {
+	try {
+		await c.env.db.prepare(`ALTER TABLE user ADD COLUMN avatar TEXT NOT NULL DEFAULT '';`).run();
+	} catch {}
+}
+
 const userService = {
 
 	async loginUserInfo(c, userId) {
@@ -75,30 +84,49 @@ const userService = {
 	},
 
 	async saveAvatar(c, base64, userId) {
-		try {
-			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN avatar TEXT NOT NULL DEFAULT '';`).run();
-		} catch {}
+		if (typeof base64 !== 'string'
+			|| base64.length > MAX_AVATAR_DATA_URL_LENGTH
+			|| !AVATAR_DATA_URL_PATTERN.test(base64)) {
+			throw new BizError(t('invalidAvatar'));
+		}
+
+		await ensureAvatarColumn(c);
 		await c.env.db
 			.prepare('UPDATE user SET avatar = ? WHERE user_id = ?')
 			.bind(base64 ?? '', userId).run();
 	},
 
 	async clearAvatar(c, userId) {
-		try {
-			await c.env.db
-				.prepare('UPDATE user SET avatar = ? WHERE user_id = ?')
-				.bind('', userId).run();
-		} catch {}
+		await ensureAvatarColumn(c);
+		await c.env.db
+			.prepare('UPDATE user SET avatar = ? WHERE user_id = ?')
+			.bind('', userId).run();
 	},
 
-	// Returns avatar for any registered email — used for cross-account lookup
+	// Returns the server avatar for a registered primary or linked mailbox.
+	// The lookup is case-insensitive and does not rely on the recipient's
+	// localStorage, so it works across devices and browser profiles.
 	async getAvatarByEmail(c, email) {
-		if (!email) return '';
+		const normalizedEmail = String(email || '').trim().toLowerCase();
+		if (!normalizedEmail) return '';
 		try {
-			const row = await c.env.db
-				.prepare('SELECT avatar FROM user WHERE email = ? AND is_del = 0 LIMIT 1')
-				.bind(email).first();
-			return row?.avatar || '';
+			const primaryRow = await c.env.db
+				.prepare('SELECT avatar FROM user WHERE LOWER(TRIM(email)) = ? AND is_del = 0 LIMIT 1')
+				.bind(normalizedEmail).first();
+			if (primaryRow?.avatar) return primaryRow.avatar;
+
+			const linkedRow = await c.env.db
+				.prepare(`
+					SELECT u.avatar
+					FROM account a
+					INNER JOIN user u ON u.user_id = a.user_id
+					WHERE LOWER(TRIM(a.email)) = ?
+					  AND a.is_del = 0
+					  AND u.is_del = 0
+					LIMIT 1
+				`)
+				.bind(normalizedEmail).first();
+			return linkedRow?.avatar || '';
 		} catch {
 			return '';
 		}

@@ -15,8 +15,18 @@ export function avatarLetter(name, email) {
   return ((name || email || '?')[0] || '?').toUpperCase()
 }
 
+export function normalizeAvatarEmail(email) {
+  return String(email || '').trim().toLowerCase()
+}
+
 export function storedAvatar(email) {
-  return email ? (localStorage.getItem(`psg_avatar_${email}`) ?? '') : ''
+  const rawEmail = String(email || '').trim()
+  if (!rawEmail) return ''
+
+  const normalizedEmail = normalizeAvatarEmail(rawEmail)
+  return localStorage.getItem(`psg_avatar_${normalizedEmail}`)
+    ?? (rawEmail === normalizedEmail ? '' : localStorage.getItem(`psg_avatar_${rawEmail}`))
+    ?? ''
 }
 
 // ── Gravatar ──────────────────────────────────────────────────────────────────
