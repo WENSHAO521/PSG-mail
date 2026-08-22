@@ -402,7 +402,7 @@ function clickLogout() {
   // Notifications are intentionally in-memory, but the layout can survive
   // until router navigation completes. Clear them before the next account
   // can render so one user cannot see the previous user's mail subjects.
-  notificationStore.clear()
+  notificationStore.clear({ resetPersistence: true })
   logout().catch(() => null).finally(() => {
     localStorage.removeItem('token');
     router.replace('/login');

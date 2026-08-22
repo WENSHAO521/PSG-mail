@@ -189,51 +189,63 @@
       <div class="password-dialog-content">
         <p class="password-dialog-hint">{{ $t('changePasswordLoginHint') }}</p>
 
-        <label class="field-label">{{ $t('emailAccount') }}</label>
-        <el-input
-          v-model="changeForm.email"
-          type="email"
-          :placeholder="$t('emailAccount')"
-          autocomplete="username"
-          @keyup.enter="submitChangePassword"
-        />
+        <div class="password-field">
+          <label class="field-label">{{ $t('emailAccount') }}</label>
+          <el-input
+            class="password-input"
+            v-model="changeForm.email"
+            type="email"
+            :placeholder="$t('emailAccount')"
+            autocomplete="username"
+            @keyup.enter="submitChangePassword"
+          />
+        </div>
 
-        <label class="field-label">{{ $t('currentPassword') }}</label>
-        <el-input
-          v-model="changeForm.currentPassword"
-          type="password"
-          :placeholder="$t('currentPassword')"
-          autocomplete="current-password"
-          show-password
-          @keyup.enter="submitChangePassword"
-        />
+        <div class="password-field">
+          <label class="field-label">{{ $t('currentPassword') }}</label>
+          <el-input
+            class="password-input"
+            v-model="changeForm.currentPassword"
+            type="password"
+            :placeholder="$t('currentPassword')"
+            autocomplete="current-password"
+            show-password
+            @keyup.enter="submitChangePassword"
+          />
+        </div>
 
-        <label class="field-label">{{ $t('newPassword') }}</label>
-        <el-input
-          v-model="changeForm.newPassword"
-          type="password"
-          :placeholder="$t('newPassword')"
-          autocomplete="new-password"
-          show-password
-          @keyup.enter="submitChangePassword"
-        />
+        <div class="password-field">
+          <label class="field-label">{{ $t('newPassword') }}</label>
+          <el-input
+            class="password-input"
+            v-model="changeForm.newPassword"
+            type="password"
+            :placeholder="$t('newPassword')"
+            autocomplete="new-password"
+            show-password
+            @keyup.enter="submitChangePassword"
+          />
+        </div>
 
-        <label class="field-label">{{ $t('confirmPassword') }}</label>
-        <el-input
-          v-model="changeForm.confirmPassword"
-          type="password"
-          :placeholder="$t('confirmPassword')"
-          autocomplete="new-password"
-          show-password
-          @keyup.enter="submitChangePassword"
-        />
+        <div class="password-field">
+          <label class="field-label">{{ $t('confirmPassword') }}</label>
+          <el-input
+            class="password-input"
+            v-model="changeForm.confirmPassword"
+            type="password"
+            :placeholder="$t('confirmPassword')"
+            autocomplete="new-password"
+            show-password
+            @keyup.enter="submitChangePassword"
+          />
+        </div>
 
         <div class="password-security-note">
           <Icon icon="solar:info-circle-bold-duotone" width="17" height="17" aria-hidden="true" />
           <span>{{ $t('forgotPasswordMsg') }}</span>
         </div>
 
-        <el-button class="btn" type="primary" :loading="changePasswordLoading" @click="submitChangePassword">
+        <el-button class="btn password-submit" type="primary" :loading="changePasswordLoading" @click="submitChangePassword">
           {{ $t('changePwdBtn') }}
         </el-button>
       </div>
@@ -1271,15 +1283,21 @@ function submitRegister() {
 }
 
 :deep(.password-dialog) {
-  width: min(420px, calc(100% - 32px)) !important;
+  width: min(420px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+
+  .el-dialog__header {
+    padding: 18px 16px 12px;
+  }
 
   .el-dialog__body {
+    padding: 0 16px 18px;
     max-height: min(70vh, 560px);
     overflow-y: auto;
   }
 
   @media (max-width: 440px) {
-    width: calc(100% - 24px) !important;
+    width: calc(100vw - 24px) !important;
     margin: 12px auto !important;
   }
 }
@@ -1287,6 +1305,62 @@ function submitRegister() {
 .password-dialog-content {
   display: flex;
   flex-direction: column;
+
+  :deep(.password-input) {
+    width: 100%;
+    margin: 0 !important;
+  }
+
+  :deep(.el-input__wrapper) {
+    box-sizing: border-box;
+    width: 100%;
+    height: 46px;
+    min-height: 46px;
+    padding: 0 12px;
+    border: 1px solid var(--psg-border) !important;
+    border-radius: var(--psg-radius-xs) !important;
+    background: var(--psg-surface-muted) !important;
+    box-shadow: none !important;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease !important;
+
+    &:hover {
+      border-color: var(--psg-text-secondary) !important;
+      background: var(--psg-surface) !important;
+    }
+
+    &.is-focus {
+      border-color: var(--psg-focus) !important;
+      background: var(--psg-surface) !important;
+      box-shadow: 0 0 0 2px var(--psg-primary-muted) !important;
+    }
+  }
+
+  :deep(.el-input__inner) {
+    box-sizing: border-box;
+    height: 44px;
+    padding: 0;
+    line-height: 44px;
+  }
+
+  :deep(.el-input__suffix) {
+    color: var(--psg-text-secondary);
+  }
+
+  :deep(.password-submit) {
+    width: 100%;
+    margin-top: 2px;
+  }
+}
+
+.password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 14px;
+
+  .field-label {
+    margin: 0;
+  }
 }
 
 .password-dialog-hint {

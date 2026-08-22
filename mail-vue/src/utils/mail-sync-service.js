@@ -28,7 +28,13 @@ import { EmailUnreadEnum } from '@/enums/email-enum.js'
 import { sleep } from '@/utils/time-utils.js'
 
 const MAX_RECENT = 500
+// There is deliberately one safe floor for every client. Push is the fast
+// path; this is the recovery path for missed push signals and Electron.
+export const MAIL_SYNC_INTERVAL_MS = 30_000
+const MAIL_SYNC_LEASE_KEY = 'psg-mail-sync-lease'
+const MAIL_SYNC_MIN_GAP_MS = MAIL_SYNC_INTERVAL_MS
 const recentIds = new Map()
+const syncOwnerId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 function isDuplicate(emailId) {
   const id = Number(emailId)
@@ -46,6 +52,45 @@ let scopeKey = ''
 let pollRunning = false
 let pollLoopStarted = false
 let lifecycleInstalled = false
+let syncInFlight = null
+let lastSyncAt = 0
+
+function safePollIntervalMs() {
+  const configured = Number(useSettingStore().settings.autoRefresh || 0)
+  if (!Number.isFinite(configured) || configured <= 0) return MAIL_SYNC_INTERVAL_MS
+  return Math.max(MAIL_SYNC_INTERVAL_MS, Math.round(configured) * 1000)
+}
+
+function claimSyncLease() {
+  if (typeof window === 'undefined' || !window.localStorage) return true
+
+  try {
+    const now = Date.now()
+    const current = JSON.parse(window.localStorage.getItem(MAIL_SYNC_LEASE_KEY) || 'null')
+    const expiresAt = Number(current?.expiresAt || 0)
+    if (expiresAt > now && current?.owner !== syncOwnerId) return false
+
+    const lease = {
+      owner: syncOwnerId,
+      expiresAt: now + safePollIntervalMs() + 5_000,
+    }
+    window.localStorage.setItem(MAIL_SYNC_LEASE_KEY, JSON.stringify(lease))
+    const confirmed = JSON.parse(window.localStorage.getItem(MAIL_SYNC_LEASE_KEY) || 'null')
+    return confirmed?.owner === syncOwnerId
+  } catch {
+    // Private browsing/storage-disabled environments still get the local
+    // in-flight guard; they simply cannot coordinate across tabs.
+    return true
+  }
+}
+
+function releaseSyncLease() {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    const current = JSON.parse(window.localStorage.getItem(MAIL_SYNC_LEASE_KEY) || 'null')
+    if (current?.owner === syncOwnerId) window.localStorage.removeItem(MAIL_SYNC_LEASE_KEY)
+  } catch {}
+}
 
 function currentScope() {
   const accountStore = useAccountStore()
@@ -60,6 +105,7 @@ export function resetSyncState() {
   cursor = 0
   scopeKey = ''
   recentIds.clear()
+  lastSyncAt = 0
 }
 
 async function ensureCursor(accountId, allReceive, scope) {
@@ -158,30 +204,49 @@ export async function handleNewMailSignal({ emailId, accountId, source, notify =
 // recentIds set, so a push+poll race for the same email never double-inserts
 // or double-notifies.
 export async function syncNow(reason = 'manual') {
+  if (syncInFlight) return syncInFlight
+
   const accountStore = useAccountStore()
   const accountId = Number(accountStore.currentAccountId || 0)
   const scope = currentScope()
   if (!accountId || !scope) return
   const allReceive = Number(accountStore.currentAccount?.allReceive || 0)
 
-  try {
-    await ensureCursor(accountId, allReceive, scope)
-    if (!cursor) return
+  const now = Date.now()
+  if (now - lastSyncAt < MAIL_SYNC_MIN_GAP_MS) return
+  if (!claimSyncLease()) return
+  lastSyncAt = now
 
-    const list = await emailLatest(cursor, accountId, allReceive)
-    if (!Array.isArray(list) || list.length === 0) return
+  syncInFlight = (async () => {
+    try {
+      await ensureCursor(accountId, allReceive, scope)
+      if (!cursor || currentScope() !== scope) return
 
-    const newestId = Math.max(...list.map(e => Number(e.emailId || 0)))
-    for (const email of [...list].reverse()) {
-      await processIncomingEmail(email, reason)
-      await sleep(50)
+      const list = await emailLatest(cursor, accountId, allReceive)
+      if (!Array.isArray(list) || list.length === 0) return
+      if (currentScope() !== scope) return
+
+      const newestId = Math.max(...list.map(e => Number(e.emailId || 0)))
+      for (const email of [...list].reverse()) {
+        await processIncomingEmail(email, reason)
+        await sleep(50)
+      }
+      if (Number.isFinite(newestId) && newestId > cursor) cursor = newestId
+    } catch (e) {
+      if (e?.code === 401 || e?.code === 403) {
+        // Do not keep polling with an expired token. The router/axios auth
+        // flow owns redirecting to login; stopping here prevents a 30-second
+        // request loop while that redirect is being resolved.
+        stopFallbackPolling()
+      } else {
+        console.warn('[mail-sync] catch-up failed', reason, e?.message || e)
+      }
+    } finally {
+      syncInFlight = null
     }
-    if (Number.isFinite(newestId) && newestId > cursor) cursor = newestId
-  } catch (e) {
-    if (e?.code === 401 || e?.code === 403) {
-      useSettingStore().settings.autoRefresh = 0
-    }
-  }
+  })()
+
+  return syncInFlight
 }
 
 // Flushed when the Inbox mounts/activates after being marked dirty by a push
@@ -194,18 +259,14 @@ export function flushInboxIfDirty() {
 }
 
 // The one fallback polling loop for the whole app. Firebase/native push is
-// the primary real-time signal; this only fills gaps (push blocked/missing
-// token/network blip/Electron has no push transport yet). Honors the same
-// autoRefresh semantics the old per-view pollers used: 0/1 = disabled.
+// the primary real-time signal; this fills gaps (push blocked/missing token,
+// network blip, or Electron which has no push transport). The interval is
+// never allowed below 30 seconds and every same-origin tab shares a lease.
 async function pollLoop() {
   while (pollRunning) {
-    const settingStore = useSettingStore()
-    const autoRefresh = Number(settingStore.settings.autoRefresh || 0)
-    const interval = autoRefresh > 1 ? autoRefresh * 1000 : 30000
-    await sleep(interval)
+    await sleep(safePollIntervalMs())
     if (!pollRunning) break
     if (!localStorage.getItem('token')) continue
-    if (autoRefresh <= 1) continue
     await syncNow('poll')
   }
 }
@@ -214,12 +275,17 @@ export function startFallbackPolling() {
   if (pollLoopStarted) return
   pollLoopStarted = true
   pollRunning = true
+  // Establish the cursor before the first 30-second wait. Without this
+  // bootstrap, a message arriving between login and the first tick could be
+  // mistaken for the current baseline and never trigger a notification.
+  void syncNow('startup')
   pollLoop()
 }
 
 export function stopFallbackPolling() {
   pollRunning = false
   pollLoopStarted = false
+  releaseSyncLease()
 }
 
 // Opens a specific email from a notification click (Web SW postMessage,

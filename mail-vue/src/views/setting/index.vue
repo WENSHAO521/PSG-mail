@@ -423,17 +423,17 @@
     </el-scrollbar>
 
     <!-- Password dialog -->
-    <el-dialog v-model="pwdShow" :title="$t('changePassword')" width="380">
+    <el-dialog class="password-settings-dialog" v-model="pwdShow" :title="$t('changePassword')" width="380">
       <div class="pwd-form">
         <div class="pwd-field">
           <label class="pwd-label">{{ $t('newPassword') }}</label>
-          <el-input type="password" v-model="form.password" autocomplete="off" show-password/>
+          <el-input class="pwd-input" type="password" v-model="form.password" autocomplete="off" show-password/>
         </div>
         <div class="pwd-field">
           <label class="pwd-label">{{ $t('confirmPassword') }}</label>
-          <el-input type="password" v-model="form.newPwd" autocomplete="off" show-password/>
+          <el-input class="pwd-input" type="password" v-model="form.newPwd" autocomplete="off" show-password/>
         </div>
-        <el-button type="primary" :loading="setPwdLoading" @click="submitPwd" style="align-self:flex-end">
+        <el-button class="pwd-submit" type="primary" :loading="setPwdLoading" @click="submitPwd">
           {{ $t('save') }}
         </el-button>
       </div>
@@ -1693,13 +1693,77 @@ function submitPwd() {
 .pwd-form {
   display: flex; flex-direction: column; gap: 16px;
   padding: 4px 0 8px;
+
+  :deep(.pwd-input) {
+    width: 100%;
+    margin: 0 !important;
+  }
+
+  :deep(.el-input__wrapper) {
+    box-sizing: border-box;
+    width: 100%;
+    height: 46px;
+    min-height: 46px;
+    padding: 0 12px;
+    border: 1px solid var(--psg-border) !important;
+    border-radius: var(--psg-radius-xs) !important;
+    background: var(--psg-surface-muted) !important;
+    box-shadow: none !important;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease !important;
+
+    &:hover {
+      border-color: var(--psg-text-secondary) !important;
+      background: var(--psg-surface) !important;
+    }
+
+    &.is-focus {
+      border-color: var(--psg-focus) !important;
+      background: var(--psg-surface) !important;
+      box-shadow: 0 0 0 2px var(--psg-primary-muted) !important;
+    }
+  }
+
+  :deep(.el-input__inner) {
+    box-sizing: border-box;
+    height: 44px;
+    padding: 0;
+    line-height: 44px;
+  }
+
+  :deep(.el-input__suffix) {
+    color: var(--psg-text-secondary);
+  }
+
+  :deep(.pwd-submit) {
+    align-self: stretch;
+    width: 100%;
+    margin-top: 2px;
+  }
 }
 
-.pwd-field { display: flex; flex-direction: column; gap: 6px; }
+.pwd-field { display: flex; flex-direction: column; gap: 7px; }
 
 .pwd-label {
   font-size: 10px; font-weight: 900;
   text-transform: uppercase; letter-spacing: 0.10em;
   color: var(--psg-text-secondary);
+}
+
+:deep(.password-settings-dialog) {
+  width: min(420px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+
+  .el-dialog__header {
+    padding: 18px 16px 12px;
+  }
+
+  .el-dialog__body {
+    padding: 0 16px 18px;
+  }
+
+  @media (max-width: 440px) {
+    width: calc(100vw - 24px) !important;
+    margin: 12px auto !important;
+  }
 }
 </style>

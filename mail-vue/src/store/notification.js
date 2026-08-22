@@ -2,6 +2,11 @@ import { defineStore } from 'pinia'
 import { requestNotificationPermission, showMailNotification } from '@/utils/notification-service.js'
 import { notificationEvents, notificationEventsRead, notificationEventsReadAll } from '@/request/notification-events.js'
 
+// Desktop and mobile layouts both mount the notification panel. Keep the
+// persisted-event request at one per app session instead of one per panel.
+let persistedLoadPromise = null
+let persistedLoaded = false
+
 export const useNotificationStore = defineStore('notification', {
   state: () => ({
     items: [],               // { emailId, name, subject, time, read }
@@ -26,26 +31,36 @@ export const useNotificationStore = defineStore('notification', {
       if (this.items.length > 100) this.items.length = 100
       return true
     },
-    async loadPersisted() {
-      try {
-        const rows = await notificationEvents({ limit: 50 })
-        for (const row of (rows || []).reverse()) {
-          if (this.items.some(item => String(item.emailId) === String(row.emailId))) continue
-          this.items.push({
-            eventId: row.id,
-            emailId: row.emailId,
-            name: row.title || row.payload?.from || '',
-            subject: row.payload?.subject || row.subject || row.body || '',
-            time: row.createdAt || Date.now(),
-            read: !row.unread,
-          })
+    async loadPersisted({ force = false } = {}) {
+      if (persistedLoaded && !force) return
+      if (persistedLoadPromise) return persistedLoadPromise
+
+      persistedLoadPromise = (async () => {
+        try {
+          const rows = await notificationEvents({ limit: 50 })
+          for (const row of (rows || []).reverse()) {
+            if (this.items.some(item => String(item.emailId) === String(row.emailId))) continue
+            this.items.push({
+              eventId: row.id,
+              emailId: row.emailId,
+              name: row.title || row.payload?.from || '',
+              subject: row.payload?.subject || row.subject || row.body || '',
+              time: row.createdAt || Date.now(),
+              read: !row.unread,
+            })
+          }
+          this.items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+          if (this.items.length > 100) this.items.length = 100
+          persistedLoaded = true
+        } catch {
+          // The in-memory mail-sync notification remains the fallback for older
+          // deployments or a database migration that has not arrived yet.
+        } finally {
+          persistedLoadPromise = null
         }
-        this.items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-        if (this.items.length > 100) this.items.length = 100
-      } catch {
-        // The in-memory mail-sync notification remains the fallback for older
-        // deployments or a database migration that has not arrived yet.
-      }
+      })()
+
+      return persistedLoadPromise
     },
     async notifyEmail(email, { deliver = true } = {}) {
       const added = this.push(email)
@@ -75,8 +90,9 @@ export const useNotificationStore = defineStore('notification', {
         try { await notificationEventsRead(ids) } catch {}
       }
     },
-    clear() {
+    clear({ resetPersistence = false } = {}) {
       this.items = []
+      if (resetPersistence) persistedLoaded = false
     },
     async requestPermission() {
       const result = await requestNotificationPermission()

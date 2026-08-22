@@ -48,6 +48,10 @@ const jwtUtils = {
 
 	async verifyToken(c, token) {
 		try {
+			// Public endpoints (for example websiteConfig) legitimately arrive
+			// without an Authorization header. Treat that as an anonymous request
+			// instead of calling split() on undefined and polluting Worker logs.
+			if (typeof token !== 'string' || !token) return null;
 			const [headerB64, payloadB64, signatureB64] = token.split('.');
 
 			if (!headerB64 || !payloadB64 || !signatureB64) return null;

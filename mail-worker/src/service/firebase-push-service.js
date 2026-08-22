@@ -9,11 +9,27 @@ const INVALID_ERROR_CODES = new Set([
 	'SENDER_ID_MISMATCH'
 ]);
 
+function notificationText(value, fallback, limit) {
+	const text = String(value ?? '')
+		.replace(/[\r\n\t]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, limit);
+	return text || fallback;
+}
+
 function buildMessage(device, payload) {
-	const { title, body, data } = payload;
+	const data = payload?.data || {};
+	const title = notificationText(payload?.title, 'PSG Mail', 120);
+	const body = notificationText(payload?.body || data.subject, 'New email', 240);
 	const stringData = Object.fromEntries(
-		Object.entries(data || {}).map(([k, v]) => [k, String(v)])
+		Object.entries({
+			...data,
+			notificationTitle: title,
+			notificationBody: body,
+		}).map(([k, v]) => [k, String(v ?? '')])
 	);
+	const notificationTag = `psg-mail-${data.emailId || 'new'}`;
 
 	// Both platforms register an FCM registration token (device.targetKind
 	// is always 'token' today); only the platform-specific delivery hints differ.
@@ -26,7 +42,16 @@ function buildMessage(device, payload) {
 	if (device.platform === 'android') {
 		message.android = {
 			priority: 'high',
-			notification: { channel_id: 'psg-mail-inbox' }
+			notification: {
+				// Repeat these common fields in the Android block. Some Android /
+				// Capacitor combinations otherwise keep the app notification but
+				// drop the common body when a channel is supplied.
+				title,
+				body,
+				channel_id: 'psg-mail-inbox',
+				tag: notificationTag,
+				sound: 'default'
+			}
 		};
 	} else {
 		message.webpush = {
@@ -72,4 +97,5 @@ const firebasePushService = {
 	}
 };
 
+export { buildMessage };
 export default firebasePushService;

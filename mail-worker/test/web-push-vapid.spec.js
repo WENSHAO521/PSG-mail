@@ -57,7 +57,13 @@ describe('web-push-vapid-service (RFC 8292)', () => {
 	});
 
 	it('throws a clear error when VAPID keys are not configured', async () => {
-		await expect(webPushVapidService.buildAuthorizationHeader(env, 'https://fcm.googleapis.com/wp/x'))
+		// The developer may have a real .dev.vars file for local push testing.
+		// Make this negative case independent of that local configuration.
+		const unconfiguredEnv = { ...env };
+		delete unconfiguredEnv.VAPID_PRIVATE_KEY_JWK;
+		delete unconfiguredEnv.VAPID_PUBLIC_KEY;
+		delete unconfiguredEnv.VAPID_SUBJECT;
+		await expect(webPushVapidService.buildAuthorizationHeader(unconfiguredEnv, 'https://fcm.googleapis.com/wp/x'))
 			.rejects.toThrow(/VAPID keys are not configured/);
 	});
 });

@@ -1012,12 +1012,10 @@ const blackListForm = ref({
 const aiCodeFilter = ref([])
 
 const authRefreshOptions = computed(() => [
-  {label: t('disable'), value: 0},
-  {label: '3s', value: 3},
-  {label: '5s', value: 5},
-  {label: '10s', value: 10},
-  {label: '15s', value: 15},
-  {label: '20s', value: 20},
+  {label: '30s', value: 30},
+  {label: '1 min', value: 60},
+  {label: '2 min', value: 120},
+  {label: '5 min', value: 300},
 ])
 
 const tgChatId = ref([])

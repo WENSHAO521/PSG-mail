@@ -6,8 +6,21 @@
 // is proven stable in production (see the notification architecture
 // migration notes) — nothing here imports them.
 import { subscribeWebPush } from '@/request/web-push.js'
+import { useSettingStore } from '@/store/setting.js'
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY
+function getVapidPublicKey() {
+  // Keep the build-time variable for existing deployments, but prefer the
+  // public key returned by the already-required websiteConfig request. This
+  // prevents the frontend bundle and Worker from silently drifting apart.
+  if (import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY) {
+    return import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY
+  }
+  try {
+    return useSettingStore().settings.webPushVapidPublicKey || ''
+  } catch {
+    return ''
+  }
+}
 
 // PushManager.subscribe() needs applicationServerKey as a Uint8Array, not the
 // base64url string the env var carries.
@@ -33,11 +46,12 @@ function errorId(e) {
 // different import. Stages: unsupported, permission, service_worker,
 // subscribe, device_register, connected.
 export async function registerWebPush({ requestPermission = true } = {}) {
+  const vapidPublicKey = getVapidPublicKey()
   const diag = {
     permission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
     serviceWorkerSupported: typeof window !== 'undefined' && 'serviceWorker' in navigator,
     pushManagerSupported: typeof window !== 'undefined' && 'PushManager' in window,
-    vapidKeyPresent: !!VAPID_PUBLIC_KEY,
+    vapidKeyPresent: !!vapidPublicKey,
     serviceWorkerState: 'not_attempted',
     subscribe: 'not_attempted',
     deviceRegisterAttempted: false,
@@ -56,7 +70,7 @@ export async function registerWebPush({ requestPermission = true } = {}) {
   ) {
     return finish({ ok: false, stage: 'unsupported' })
   }
-  if (!VAPID_PUBLIC_KEY) {
+  if (!vapidPublicKey) {
     return finish({ ok: false, stage: 'unsupported', error: 'WEB_PUSH_NOT_CONFIGURED' })
   }
 
@@ -87,7 +101,7 @@ export async function registerWebPush({ requestPermission = true } = {}) {
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       })
     }
     diag.subscribe = 'success'

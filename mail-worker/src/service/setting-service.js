@@ -37,6 +37,23 @@ const FEATURE_COLUMNS = {
 	aiDailyQuota: 'ai_daily_quota',
 };
 
+// Polling is a recovery path for missed push signals and for Electron. A
+// value below this floor creates a request burst without improving delivery
+// reliability, so old values (including the legacy 0/1 disabled values) are
+// migrated to one safe interval at the settings boundary.
+const SAFE_AUTO_REFRESH_SECONDS = 30;
+
+function normalizeAutoRefresh(value) {
+	const seconds = Number(value);
+	if (!Number.isFinite(seconds) || seconds <= 0) return SAFE_AUTO_REFRESH_SECONDS;
+	return Math.max(SAFE_AUTO_REFRESH_SECONDS, Math.round(seconds));
+}
+
+function normalizeSettingRow(row) {
+	if (!row) return row;
+	return { ...row, autoRefresh: normalizeAutoRefresh(row.autoRefresh) };
+}
+
 async function readFeatureSetting(c) {
 	try {
 		const row = await c.env.db.prepare('SELECT * FROM psg_feature_setting WHERE id = 1').first();
@@ -65,6 +82,7 @@ const settingService = {
 	async refresh(c) {
 		const settingRow = await orm(c).select().from(setting).get();
 		settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
+		settingRow.autoRefresh = normalizeAutoRefresh(settingRow.autoRefresh);
 		Object.assign(settingRow, await readFeatureSetting(c));
 		c.set('setting', settingRow);
 		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
@@ -74,7 +92,7 @@ const settingService = {
 	async query(c) {
 
 		if (c.get?.('setting')) {
-			return c.get('setting')
+			return normalizeSettingRow(c.get('setting'))
 		}
 
 		let setting = kvCache.get(KvConst.SETTING);
@@ -89,6 +107,8 @@ const settingService = {
 		if (!setting) {
 			throw new BizError('数据库未初始化 Database not initialized.');
 		}
+
+		setting.autoRefresh = normalizeAutoRefresh(setting.autoRefresh);
 
 		// Feature policy lives in its own singleton table so migrations can run
 		// before the legacy setting table exists on a brand-new D1 database.
@@ -220,6 +240,10 @@ const settingService = {
 			params.loginDarkenFactor = Number.isNaN(factor) ? 0 : Math.min(1, Math.max(0, factor));
 		}
 
+		if (Object.prototype.hasOwnProperty.call(params, 'autoRefresh')) {
+			params.autoRefresh = normalizeAutoRefresh(params.autoRefresh);
+		}
+
 		params.resendTokens = JSON.stringify(resendTokens);
 		if (Object.keys(params).length > 0) {
 			await orm(c).update(setting).set({ ...params }).returning().get();
@@ -314,6 +338,10 @@ const settingService = {
 			manyEmail: settingRow.manyEmail,
 			addEmail: settingRow.addEmail,
 			autoRefresh: settingRow.autoRefresh,
+			// VAPID public keys are safe to expose and are needed by the browser
+			// to subscribe. Keeping this in the existing config response prevents
+			// a second client request and avoids build-time key drift.
+			webPushVapidPublicKey: c.env.VAPID_PUBLIC_KEY || '',
 			addEmailVerify: settingRow.addEmailVerify,
 			registerVerify: settingRow.registerVerify,
 			send: settingRow.send,

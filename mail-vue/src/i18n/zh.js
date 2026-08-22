@@ -501,7 +501,7 @@ const zh = {
     emailSetting: '邮件设置',
     receiveEmail: '邮件接收',
     autoRefresh: '自动刷新',
-    autoRefreshDesc: '轮询请求服务器获取最新邮件',
+    autoRefreshDesc: '全局只保留一个同步入口，最短每 30 秒检查一次；推送可用时会即时提醒',
     sendEmail: '邮件发送',
     resendToken: 'Resend Token',
     cloudflareEmailSending: 'Cloudflare 邮件发送',

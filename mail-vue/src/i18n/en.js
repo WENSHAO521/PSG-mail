@@ -501,7 +501,7 @@ const en = {
     emailSetting: 'Email',
     receiveEmail: 'Receive Email',
     autoRefresh: 'Auto Refresh',
-    autoRefreshDesc: 'Automatically fetch the latest emails from the server',
+    autoRefreshDesc: 'One app-wide sync loop, no faster than every 30 seconds; push delivers alerts immediately when available',
     sendEmail: 'Send Email',
     resendToken: 'Resend Token',
     cloudflareEmailSending: 'Cloudflare Email Sending',

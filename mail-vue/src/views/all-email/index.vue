@@ -137,44 +137,31 @@
 <script setup>
 import {starAdd, starCancel} from "@/request/star.js";
 import emailScroll from "@/components/email-scroll/index.vue"
-import {computed, defineOptions, reactive, ref, watch, onMounted, onUnmounted} from "vue";
+import {computed, defineOptions, reactive, ref, watch} from "vue";
 import {useEmailStore} from "@/store/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {
   allEmailList,
   allEmailDelete,
-  allEmailBatchDelete,
-  allEmailLatest
+  allEmailBatchDelete
 } from "@/request/all-email.js";
 import {Icon} from "@iconify/vue";
 import router from "@/router/index.js";
 import {useI18n} from 'vue-i18n';
 import {toUtc} from "@/utils/day.js";
-import {sleep} from "@/utils/time-utils.js";
-import {useSettingStore} from "@/store/setting.js";
-import { useRoute } from 'vue-router'
 
 defineOptions({
   name: 'all-email'
 })
 
-const route = useRoute()
 const {t} = useI18n();
 const emailStore = useEmailStore();
 const uiStore = useUiStore();
-const settingStore = useSettingStore();
 const clearTime = ref('')
 const sysEmailScroll = ref({})
 const searchValue = ref('')
 const showBathDelete = ref(false)
 const clearLoading = ref(false)
-
-let latestRunning = false
-onMounted(() => {
-  latestRunning = true
-  latest();
-})
-onUnmounted(() => { latestRunning = false })
 
 const params = reactive({
   timeSort: 0,
@@ -352,70 +339,6 @@ function jumpContent(email) {
 
 function getEmailList(emailId, size) {
   return allEmailList({emailId, size, ...params})
-}
-
-async function latest() {
-
-  while (latestRunning) {
-
-    let autoRefresh = settingStore.settings.autoRefresh;
-
-    await sleep(autoRefresh > 1 ? autoRefresh * 1000 : 3000);
-
-    // The route can unmount the list while the sleep above is resolving.
-    // Stop cleanly instead of reading a stale component ref during navigation.
-    const latestId = sysEmailScroll.value?.latestEmail?.emailId
-
-    if (autoRefresh < 2) {
-      continue
-    }
-
-    if (!latestId && latestId !== 0) {
-      continue
-    }
-
-    if (route.name !== 'all-email') {
-      continue
-    }
-
-
-    if (params.type !== 'receive') {
-      continue
-    }
-
-    try {
-
-      const curTimeSort = params.timeSort
-      let list = await allEmailLatest(latestId)
-
-      if (list.length === 0) {
-        continue
-      }
-
-      if (params.type !== 'receive') {
-        continue
-      }
-
-      // 确保回来之后条件没变
-      if (params.timeSort !== curTimeSort) {
-        continue
-      }
-
-      for (let email of list) {
-
-        sysEmailScroll.value.addItem(email)
-        await sleep(50)
-
-      }
-
-    } catch (e) {
-      if (e.code === 401 || e.code === 403) {
-        settingStore.settings.autoRefresh = 0;
-      }
-      console.error(e)
-    }
-
-  }
 }
 
 </script>
