@@ -131,7 +131,11 @@ const webPushSubscriptionService = {
 							? 'WEB_PUSH_NOT_CONFIGURED'
 							: (e.status === 401 || e.status === 403)
 								? 'WEB_PUSH_AUTH_FAILED'
-								: 'WEB_PUSH_SEND_FAILED';
+								: e.invalidDevice
+									? 'WEB_PUSH_SUBSCRIPTION_EXPIRED'
+									: e.status === 429
+										? 'WEB_PUSH_RATE_LIMITED'
+										: 'WEB_PUSH_SEND_FAILED';
 					}
 					console.error('web push send failed for device', device.id, e.message);
 					if (e && e.invalidDevice) {

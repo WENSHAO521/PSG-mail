@@ -200,7 +200,7 @@
                     <div v-if="pushRegisterErrorCode" class="card-desc" style="margin:0">{{ $t('notifErrorCode') }}: {{ pushRegisterErrorCode }}</div>
                   </div>
                   <el-button
-                    v-if="pushGrantedButDisconnected"
+                    v-if="pushReconnectAvailable"
                     size="small" :loading="notifReconnecting"
                     @click="reconnectPush"
                   >{{ $t('notifReconnect') }}</el-button>
@@ -509,6 +509,7 @@ const isAndroidPlatform = !isElectronPlatform && Capacitor?.isNativePlatform?.()
 // without opening devtools.
 const pushRegisterStage = ref('')
 const pushRegisterErrorCode = ref('')
+const pushRepairNeeded = ref(false)
 
 const pushConnected = computed(() => webPushSubscriptions.value.some(d => d.enabled))
 const androidPushConnected = computed(() => notifDevices.value.some(d => d.platform === 'android' && d.enabled))
@@ -526,6 +527,7 @@ const pushGrantedButDisconnected = computed(() =>
   notifDevicesLoaded.value &&
   webPushSubscriptions.value.length === 0
 )
+const pushReconnectAvailable = computed(() => pushGrantedButDisconnected.value || pushRepairNeeded.value)
 
 const STAGE_LABEL_KEYS = {
   service_worker: 'notifStageServiceWorker',
@@ -618,12 +620,12 @@ function loadNotifDevices() {
 // (pushManager.subscribe() returns the existing subscription if one is
 // already active, and the backend UPSERTs on endpoint), so calling it again
 // never creates a duplicate row.
-async function registerPushDevices() {
+async function registerPushDevices({ forceRenew = false } = {}) {
   const [{ initNativePush }, { registerWebPush }] = await Promise.all([
     import('@/utils/push-service.js'),
     import('@/web-push.js'),
   ])
-  const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush()])
+  const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush({ forceRenew })])
   if (webResult.status === 'fulfilled') {
     const webStatus = webResult.value
     const failed = webStatus && !webStatus.ok
@@ -632,6 +634,7 @@ async function registerPushDevices() {
     // WEB_PUSH_NOT_CONFIGURED by web-push.js#errorId — never e.message, a
     // subscription key, or credential — so it's safe to store and render as-is.
     pushRegisterErrorCode.value = failed ? (webStatus.error || '') : ''
+    if (!failed) pushRepairNeeded.value = false
   } else {
     // registerWebPush() itself is supposed to catch everything into a
     // {ok:false, stage} result — a rejection here means something threw
@@ -661,7 +664,7 @@ async function requestNotifPermission() {
 async function reconnectPush() {
   notifReconnecting.value = true
   try {
-    await registerPushDevices()
+    await registerPushDevices({ forceRenew: true })
   } finally {
     notifReconnecting.value = false
   }
@@ -709,13 +712,46 @@ async function sendTestNotif() {
     ElMessage({ message: t('notifTestSent'), type: 'success', plain: true })
   } catch (e) {
     const reason = e?.message || ''
+    const isWebPush = !isElectronPlatform && !isAndroidPlatform
+
+    if (isWebPush && ['WEB_PUSH_AUTH_FAILED', 'WEB_PUSH_SUBSCRIPTION_EXPIRED'].includes(reason)) {
+      pushRepairNeeded.value = true
+    }
+
+    // A 404/410 from the browser's push service means this endpoint is dead,
+    // not that the server's VAPID configuration is wrong. Renew it in-place
+    // so the next test uses a live subscription. The backend has already
+    // disabled the dead row, so refresh the device list before showing status.
+    if (isWebPush && reason === 'WEB_PUSH_SUBSCRIPTION_EXPIRED') {
+      try {
+        const { renewWebPushSubscription } = await import('@/web-push.js')
+        const repaired = await renewWebPushSubscription()
+        await loadNotifDevices()
+        if (repaired?.ok) {
+          pushRepairNeeded.value = false
+          pushRegisterStage.value = ''
+          pushRegisterErrorCode.value = ''
+          ElMessage({ message: t('notifPushRenewed'), type: 'success', plain: true })
+          return
+        }
+      } catch (repairError) {
+        console.warn('[web-push] automatic subscription renewal failed', repairError)
+      }
+    } else if (isWebPush) {
+      // Keep the device list honest after a failed test. In particular, an
+      // expired endpoint may have just been disabled by the Worker.
+      await loadNotifDevices().catch(() => {})
+    }
+
     const key = {
       NO_REGISTERED_DEVICE: 'notifTestNoDevice',
       FIREBASE_NOT_CONFIGURED: 'notifTestServerNotConfigured',
       FIREBASE_AUTH_FAILED: 'notifTestServerNotConfigured',
       FCM_SEND_FAILED: 'notifTestSendFailed',
       WEB_PUSH_NOT_CONFIGURED: 'notifTestServerNotConfigured',
-      WEB_PUSH_AUTH_FAILED: 'notifTestServerNotConfigured',
+      WEB_PUSH_AUTH_FAILED: 'notifTestAuthFailed',
+      WEB_PUSH_SUBSCRIPTION_EXPIRED: 'notifTestSubscriptionExpired',
+      WEB_PUSH_RATE_LIMITED: 'notifTestRateLimited',
       WEB_PUSH_SEND_FAILED: 'notifTestSendFailed',
     }[reason]
     ElMessage({ message: key ? t(key) : t('notifTestFailed'), type: 'error', plain: true })

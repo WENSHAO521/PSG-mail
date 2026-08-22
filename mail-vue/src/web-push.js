@@ -8,18 +8,16 @@
 import { subscribeWebPush } from '@/request/web-push.js'
 import { useSettingStore } from '@/store/setting.js'
 
+const VAPID_KEY_STORAGE = 'psg-mail-vapid-public-key'
+
 function getVapidPublicKey() {
-  // Keep the build-time variable for existing deployments, but prefer the
-  // public key returned by the already-required websiteConfig request. This
-  // prevents the frontend bundle and Worker from silently drifting apart.
-  if (import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY) {
-    return import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY
-  }
+  // The Worker response is the source of truth. A production bundle can stay
+  // cached after a VAPID rotation, while websiteConfig is fetched at runtime.
   try {
-    return useSettingStore().settings.webPushVapidPublicKey || ''
-  } catch {
-    return ''
-  }
+    const runtimeKey = useSettingStore().settings.webPushVapidPublicKey
+    if (runtimeKey) return runtimeKey
+  } catch {}
+  return import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY || ''
 }
 
 // PushManager.subscribe() needs applicationServerKey as a Uint8Array, not the
@@ -31,6 +29,36 @@ function urlBase64ToUint8Array(base64Url) {
   const bytes = new Uint8Array(raw.length)
   for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
   return bytes
+}
+
+function uint8ArrayToUrlBase64(bytes) {
+  let raw = ''
+  for (const byte of bytes) raw += String.fromCharCode(byte)
+  return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+function readStoredVapidKey() {
+  try {
+    return localStorage.getItem(VAPID_KEY_STORAGE) || ''
+  } catch {
+    return ''
+  }
+}
+
+function writeStoredVapidKey(value) {
+  try {
+    localStorage.setItem(VAPID_KEY_STORAGE, value)
+  } catch {}
+}
+
+function subscriptionVapidKey(subscription) {
+  const key = subscription?.options?.applicationServerKey
+  if (!key) return ''
+  try {
+    return uint8ArrayToUrlBase64(new Uint8Array(key))
+  } catch {
+    return ''
+  }
 }
 
 // Safe error identifier only — an exception's .name/.message never carries a
@@ -45,7 +73,7 @@ function errorId(e) {
 // former registerWebPush() so the Settings UI needs no shape change — only a
 // different import. Stages: unsupported, permission, service_worker,
 // subscribe, device_register, connected.
-export async function registerWebPush({ requestPermission = true } = {}) {
+export async function registerWebPush({ requestPermission = true, forceRenew = false } = {}) {
   const vapidPublicKey = getVapidPublicKey()
   const diag = {
     permission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
@@ -98,6 +126,17 @@ export async function registerWebPush({ requestPermission = true } = {}) {
   let subscription
   try {
     subscription = await registration.pushManager.getSubscription()
+    const storedKey = readStoredVapidKey()
+    const subscriptionKey = subscriptionVapidKey(subscription)
+    const keyChanged = subscription && (
+      forceRenew ||
+      (subscriptionKey && subscriptionKey !== vapidPublicKey) ||
+      (!subscriptionKey && storedKey && storedKey !== vapidPublicKey)
+    )
+    if (keyChanged) {
+      await subscription.unsubscribe().catch(() => {})
+      subscription = null
+    }
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -120,6 +159,7 @@ export async function registerWebPush({ requestPermission = true } = {}) {
       platform: 'web',
       userAgent: navigator.userAgent,
     })
+    writeStoredVapidKey(vapidPublicKey)
     diag.deviceRegisterOk = true
   } catch (e) {
     diag.deviceRegisterOk = false
@@ -127,6 +167,10 @@ export async function registerWebPush({ requestPermission = true } = {}) {
   }
 
   return finish({ ok: true, stage: 'connected' })
+}
+
+export async function renewWebPushSubscription() {
+  return registerWebPush({ requestPermission: false, forceRenew: true })
 }
 
 // "本地测试" — direct Notification API call, no server round trip. Distinct
