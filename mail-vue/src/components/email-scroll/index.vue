@@ -1,5 +1,5 @@
 <template>
-  <div class="email-container">
+  <div class="email-container" :class="{ 'received-mail-list': props.type === 'email' }">
 
     <!-- ── Toolbar ── -->
     <div class="mail-toolbar">
@@ -79,6 +79,7 @@
         :list="list"
         :options="{ itemHeight: itemHeight, overscan: 15 }"
         class="virtual"
+        :class="{ 'virtual--received': props.type === 'email' }"
         style="height: 100%"
         v-if="!loading && emailList.length > 0"
         :key="keyCount"
@@ -874,6 +875,15 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
      so the desktop 4-column row doesn't apply where it doesn't fit. */
   container-type: inline-size;
   container-name: mail-scroll;
+
+  /* Inbox and All Inboxes share the same compact toolbar. Keep a small,
+     deliberate breathing space before the first row so the list does not
+     appear glued to the toolbar, while preserving the denser mail-reader
+     layout used by the other folders. */
+  &.received-mail-list .virtual--received {
+    box-sizing: border-box;
+    padding-top: 10px;
+  }
 }
 
 /* ── Toolbar ──────────────────────────────────────────────── */
@@ -1038,6 +1048,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 }
 
 @media (max-width: 768px) {
+  .email-container.received-mail-list .virtual--received {
+    padding-top: 8px;
+  }
+
   .mail-toolbar {
     height: 58px;
     padding: 8px 12px;
