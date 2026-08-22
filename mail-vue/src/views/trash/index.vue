@@ -9,6 +9,10 @@
     :restore-email="restoreAction"
     actionLeft="6px"
     :show-account-icon="false"
+    :explorer-title="$t('deletedMail')"
+    :explorer-subtitle="$t('trashSubtitle')"
+    :explorer-search-placeholder="$t('searchPlaceholder')"
+    :hide-inline-search="true"
     @jump="jumpContent"
   >
     <template #first>

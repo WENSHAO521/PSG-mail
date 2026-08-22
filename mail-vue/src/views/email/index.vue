@@ -9,18 +9,17 @@
                :time-sort="params.timeSort"
                :email-read="emailRead"
                :show-unread="true"
+               :explorer-title="$t('inbox')"
+               :explorer-subtitle="$t('inboxSubtitle')"
+               :explorer-search-placeholder="$t('searchPlaceholder')"
+               :hide-inline-search="true"
+               :show-sort="true"
                :spam-email="spamEmailAction"
                :archive-email="archiveEmailAction"
                actionLeft="4px"
                @jump="jumpContent"
+               @sort="changeTimeSort"
   >
-    <template #first>
-      <Icon class="icon" @click="changeTimeSort" icon="psg:sort"
-            v-if="params.timeSort === 0" width="28" height="28"/>
-      <Icon class="icon" @click="changeTimeSort" icon="psg:sort" v-else
-            width="28" height="28" style="transform:scaleY(-1)"/>
-    </template>
-
   </emailScroll>
 </template>
 
@@ -33,7 +32,6 @@ import {emailList, emailDelete, emailRead, emailMarkSpam, emailArchive} from "@/
 import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, h, onMounted, onActivated, reactive, ref, watch, computed} from "vue";
 import {useI18n} from "vue-i18n";
-import {Icon} from "@iconify/vue";
 import { flushInboxIfDirty, syncNow } from "@/utils/mail-sync-service.js";
 
 defineOptions({
@@ -118,8 +116,3 @@ function getEmailList(emailId, size) {
 }
 
 </script>
-<style>
-.icon {
-  cursor: pointer;
-}
-</style>

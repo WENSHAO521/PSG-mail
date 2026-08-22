@@ -6,18 +6,18 @@
                :emailDelete="emailDelete"
                :star-add="starAdd"
                show-status
+               :explorer-title="$t('sent')"
+               :explorer-subtitle="$t('sentSubtitle')"
+               :explorer-search-placeholder="$t('searchPlaceholder')"
+               :hide-inline-search="true"
+               :show-sort="true"
                actionLeft="4px"
                :star-cancel="starCancel"
                @jump="jumpContent"
+               @sort="changeTimeSort"
                :time-sort="params.timeSort"
                :type="'send'"
   >
-    <template #first>
-      <Icon class="icon" @click="changeTimeSort" icon="psg:sort"
-            v-if="params.timeSort === 0" width="28" height="28"/>
-      <Icon class="icon" @click="changeTimeSort" icon="psg:sort" v-else
-            width="28" height="28" style="transform:scaleY(-1)"/>
-    </template>
   </emailScroll>
 </template>
 
@@ -30,7 +30,6 @@ import {emailList, emailDelete} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, onMounted, reactive, ref, watch} from "vue";
 import router from "@/router/index.js";
-import {Icon} from "@iconify/vue";
 
 defineOptions({
   name: 'send'

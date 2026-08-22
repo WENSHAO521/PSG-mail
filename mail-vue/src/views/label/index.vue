@@ -8,6 +8,10 @@
     :star-cancel="starCancel"
     actionLeft="6px"
     :show-account-icon="false"
+    :explorer-title="$t('labels')"
+    :explorer-subtitle="$t('labelSubtitle')"
+    :explorer-search-placeholder="$t('searchPlaceholder')"
+    :hide-inline-search="true"
     @jump="jumpContent"
   />
 </template>

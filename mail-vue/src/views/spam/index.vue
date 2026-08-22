@@ -9,6 +9,10 @@
     :unspam-email="unspamEmail"
     actionLeft="6px"
     :show-account-icon="false"
+    :explorer-title="$t('spam')"
+    :explorer-subtitle="$t('spamSubtitle')"
+    :explorer-search-placeholder="$t('searchPlaceholder')"
+    :hide-inline-search="true"
     @jump="jumpContent"
   />
 </template>

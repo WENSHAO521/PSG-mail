@@ -9,6 +9,10 @@
                @jump="jumpContent"
                actionLeft="6px"
                :show-account-icon="false"
+               :explorer-title="$t('starred')"
+               :explorer-subtitle="$t('starredSubtitle')"
+               :explorer-search-placeholder="$t('searchPlaceholder')"
+               :hide-inline-search="true"
   />
 </template>
 

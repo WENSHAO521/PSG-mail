@@ -9,6 +9,10 @@
     :unarchive-email="unarchiveAction"
     actionLeft="6px"
     :show-account-icon="false"
+    :explorer-title="$t('archiveFolder')"
+    :explorer-subtitle="$t('archiveSubtitle')"
+    :explorer-search-placeholder="$t('searchPlaceholder')"
+    :hide-inline-search="true"
     @jump="jumpContent"
   />
 </template>

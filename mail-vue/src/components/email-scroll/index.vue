@@ -1,5 +1,31 @@
 <template>
-  <div class="email-container" :class="{ 'received-mail-list': props.type === 'email' }">
+  <div class="email-container" :class="{
+    'received-mail-list': props.type === 'email',
+    'explorer-list': !!props.explorerTitle,
+  }">
+
+    <!-- Shared folder header: every mail folder uses the same explorer rhythm. -->
+    <div v-if="props.explorerTitle" class="explorer-head">
+      <div class="explorer-header">
+        <h2 class="explorer-title">{{ props.explorerTitle }}</h2>
+        <p v-if="props.explorerSubtitle" class="explorer-subtitle">{{ props.explorerSubtitle }}</p>
+      </div>
+
+      <div class="explorer-search-row">
+        <Icon icon="psg:search" width="15" height="15" class="explorer-search-icon" aria-hidden="true" />
+        <input
+          v-model="searchQuery"
+          class="explorer-search-input"
+          :placeholder="props.explorerSearchPlaceholder || $t('searchPlaceholder')"
+          :aria-label="props.explorerSearchPlaceholder || $t('searchPlaceholder')"
+          @keydown.esc="searchQuery = ''"
+        />
+        <button v-if="searchQuery" type="button" class="explorer-search-clear"
+                :aria-label="$t('clear')" :title="$t('clear')" @click="searchQuery = ''">
+          <Icon icon="psg:close-circle" width="14" height="14" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
 
     <!-- ── Toolbar ── -->
     <div class="mail-toolbar">
@@ -28,11 +54,21 @@
             <Icon icon="psg:close-circle" width="15" height="15" />
           </button>
         </div>
-        <div class="unread-filter" v-if="showUnread">
-          <button class="filter-pill" :class="{ active: !unreadOnly }" @click="unreadOnly = false">{{ $t('all') }}</button>
-          <button class="filter-pill" :class="{ active: unreadOnly }" @click="unreadOnly = true">{{ $t('unreadOnly') }}</button>
+        <div class="filter-chips" v-if="showUnread">
+          <button type="button" class="filter-chip" :class="{ active: !unreadOnly }"
+                  :aria-pressed="!unreadOnly" @click="unreadOnly = false">{{ $t('all') }}</button>
+          <button type="button" class="filter-chip" :class="{ active: unreadOnly }"
+                  :aria-pressed="unreadOnly" @click="unreadOnly = true">{{ $t('unreadOnly') }}</button>
         </div>
         <slot name="first"></slot>
+        <button v-if="props.showSort" type="button" class="sort-btn folder-sort-btn"
+                :aria-label="props.timeSort !== 0 ? $t('sortOldest') : $t('sortNewest')"
+                :title="props.timeSort !== 0 ? $t('sortOldest') : $t('sortNewest')"
+                @click="emit('sort')">
+          <span class="sort-btn-label">{{ props.timeSort !== 0 ? $t('sortOldest') : $t('sortNewest') }}</span>
+          <Icon icon="psg:sort" width="13" height="13" class="sort-btn-icon" aria-hidden="true" />
+          <Icon icon="psg:chevron-down" width="12" height="12" class="sort-btn-chevron" aria-hidden="true" />
+        </button>
         <button type="button" class="icon-btn" :aria-label="$t('refresh')" :title="$t('refresh')" @click="refresh">
           <Icon icon="psg:refresh" width="17" height="17" />
         </button>
@@ -317,9 +353,13 @@ const props = defineProps({
   unarchiveEmail: { type: Function, default: null },
   restoreEmail: { type: Function, default: null },
   hideInlineSearch: { type: Boolean, default: false },
+  explorerTitle: { type: String, default: '' },
+  explorerSubtitle: { type: String, default: '' },
+  explorerSearchPlaceholder: { type: String, default: '' },
+  showSort: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['jump', 'refresh-before', 'delete-draft', 'right-search'])
+const emit = defineEmits(['jump', 'refresh-before', 'delete-draft', 'right-search', 'sort'])
 const {t} = useI18n()
 const settingStore = useSettingStore()
 const uiStore = useUiStore();
@@ -876,6 +916,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   container-type: inline-size;
   container-name: mail-scroll;
 
+  &.explorer-list {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
   /* Inbox and All Inboxes share the same compact toolbar. Keep a small,
      deliberate breathing space before the first row so the list does not
      appear glued to the toolbar, while preserving the denser mail-reader
@@ -884,6 +928,84 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     box-sizing: border-box;
     padding-top: 10px;
   }
+}
+
+/* ── Shared folder explorer header ───────────────────────── */
+.explorer-head {
+  min-width: 0;
+  background: var(--psg-surface);
+}
+
+.explorer-header {
+  min-width: 0;
+  padding: 14px 16px 2px;
+}
+
+.explorer-title {
+  margin: 0;
+  font-family: var(--psg-font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--psg-text);
+}
+
+.explorer-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--psg-text-secondary);
+}
+
+.explorer-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin: 10px 16px 0;
+  padding: 0 10px;
+  background: var(--psg-canvas);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+
+  &:focus-within {
+    border-color: var(--psg-primary);
+    box-shadow: 0 0 0 3px var(--psg-primary-muted);
+  }
+}
+
+.explorer-search-icon {
+  flex-shrink: 0;
+  color: var(--psg-text-muted);
+}
+
+.explorer-search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--psg-text);
+  font-size: 13px;
+
+  &::placeholder { color: var(--psg-text-muted); }
+}
+
+.explorer-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--psg-radius-xs);
+  background: transparent;
+  color: var(--psg-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover { color: var(--psg-text); }
 }
 
 /* ── Toolbar ──────────────────────────────────────────────── */
@@ -985,7 +1107,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 }
 
 /* ── ALL / UNREAD segmented filter ────────────────────────── */
-.unread-filter {
+.filter-chips {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -996,12 +1118,12 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   border-radius: var(--psg-radius-xs);
 }
 
-.filter-pill {
+.filter-chip {
   border: none;
   background: transparent;
   cursor: pointer;
-  height: 26px;
-  padding: 0 14px;
+  height: 24px;
+  padding: 0 11px;
   font-size: 12.5px;
   font-weight: 500;
   font-family: var(--psg-font-sans);
@@ -1017,6 +1139,33 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     font-weight: 600;
   }
 }
+
+/* Keep the standard folder controls aligned with All Mail. */
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--psg-radius-sm);
+  background: transparent;
+  color: var(--psg-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: var(--psg-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.10s ease, color 0.10s ease;
+
+  @media (hover: hover) {
+    &:hover { background: var(--psg-surface-active); color: var(--psg-text); }
+  }
+}
+
+.sort-btn-icon { display: none; }
+.sort-btn-chevron { display: block; }
 
 /* ── Icon button ──────────────────────────────────────────── */
 .icon-btn {
@@ -1052,6 +1201,15 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     padding-top: 8px;
   }
 
+  .explorer-header {
+    padding: 12px 14px 0;
+  }
+
+  .explorer-search-row {
+    height: 40px;
+    margin: 8px 14px 0;
+  }
+
   .mail-toolbar {
     height: 58px;
     padding: 8px 12px;
@@ -1065,9 +1223,16 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
       display: none;
     }
 
-    .unread-filter {
-      display: none;
+    .filter-chips {
+      display: flex;
     }
+  }
+
+  .explorer-list .mail-toolbar .toolbar-left {
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar { display: none; }
   }
 
   .toolbar-search {
@@ -1337,6 +1502,22 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
    keyed to the pane's own width via a container query rather than the
    viewport, so it also applies here. ── */
 @container mail-scroll (max-width: 480px) {
+  .sort-btn-label {
+    display: none;
+  }
+
+  .sort-btn-icon {
+    display: block;
+  }
+
+  .sort-btn-chevron {
+    display: none;
+  }
+
+  .sort-btn {
+    padding: 0 6px;
+  }
+
   /* .all-email keeps its own fixed 88px card height, set unconditionally
      above (higher specificity: `.mail-row.all-email` beats `.mail-row`
      here regardless of this query matching) — not touched by this block. */

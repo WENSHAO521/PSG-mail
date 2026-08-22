@@ -10,7 +10,14 @@
                :show-account-icon="false"
                :show-first-loading="false"
                :showStar="false"
+               :explorer-title="$t('drafts')"
+               :explorer-subtitle="$t('draftsSubtitle')"
+               :explorer-search-placeholder="$t('searchPlaceholder')"
+               :hide-inline-search="true"
+               :show-sort="true"
+               :time-sort="params.timeSort"
                @delete-draft="deleteDraft"
+               @sort="changeTimeSort"
                :type="'draft'"
   >
     <template #name="props">
@@ -26,7 +33,7 @@
 import emailScroll from "@/components/email-scroll/index.vue"
 import {emailDelete} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, ref, watch, toRaw} from "vue";
+import {defineOptions, reactive, ref, watch, toRaw} from "vue";
 import {useUiStore} from "@/store/ui.js";
 import {userDraftStore} from "@/store/draft.js";
 import db from "@/db/db.js"
@@ -38,6 +45,7 @@ defineOptions({
 const draftStore = userDraftStore();
 const uiStore = useUiStore();
 const scroll = ref({})
+const params = reactive({ timeSort: 0 })
 
 watch(() => draftStore.setDraft, async () => {
 
@@ -69,9 +77,16 @@ watch(() => draftStore.refreshList, async () => {
     scroll.value.emailList.push(...list)
 })
 
+function changeTimeSort() {
+  params.timeSort = params.timeSort ? 0 : 1
+  scroll.value.refreshList()
+}
+
 function getEmailList() {
   return new Promise((resolve, reject) => {
-    db.value.draft.orderBy('createTime').reverse().toArray().then(list => {
+    const query = db.value.draft.orderBy('createTime')
+    if (params.timeSort === 0) query.reverse()
+    query.toArray().then(list => {
       resolve({list})
     })
   })

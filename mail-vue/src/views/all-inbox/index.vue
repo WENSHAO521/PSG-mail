@@ -9,17 +9,17 @@
                :time-sort="params.timeSort"
                :email-read="emailRead"
                :show-unread="true"
+               :explorer-title="$t('allInbox')"
+               :explorer-subtitle="$t('allInboxSubtitle')"
+               :explorer-search-placeholder="$t('searchPlaceholder')"
+               :hide-inline-search="true"
+               :show-sort="true"
                :spam-email="spamEmailAction"
                :archive-email="archiveEmailAction"
                actionLeft="4px"
                @jump="jumpContent"
+               @sort="changeTimeSort"
   >
-    <template #first>
-      <Icon class="icon" @click="changeTimeSort" icon="psg:sort"
-            v-if="params.timeSort === 0" width="28" height="28"/>
-      <Icon class="icon" @click="changeTimeSort" icon="psg:sort" v-else
-            width="28" height="28" style="transform:scaleY(-1)"/>
-    </template>
   </emailScroll>
 </template>
 
@@ -35,7 +35,6 @@ import { defineOptions, onMounted, onUnmounted, reactive, ref, watch } from "vue
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { sleep } from "@/utils/time-utils.js";
-import { Icon } from "@iconify/vue";
 
 defineOptions({ name: 'all-inbox' })
 
@@ -135,7 +134,3 @@ function getEmailList(emailId, size) {
   });
 }
 </script>
-
-<style>
-.icon { cursor: pointer; }
-</style>
