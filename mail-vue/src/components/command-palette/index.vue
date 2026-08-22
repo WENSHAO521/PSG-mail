@@ -4,7 +4,7 @@
       <div class="palette-overlay" v-if="show" @click.self="close" @keydown.esc="close">
         <div class="palette-box" role="dialog">
           <div class="palette-input-row">
-            <Icon icon="solar:magnifer-linear" width="18" height="18" class="palette-search-icon"/>
+            <Icon icon="psg:search" width="18" height="18" class="palette-search-icon"/>
             <input
               ref="inputRef"
               v-model="query"

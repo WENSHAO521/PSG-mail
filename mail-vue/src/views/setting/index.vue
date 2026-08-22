@@ -48,7 +48,7 @@
                   <img v-if="userStore.avatar" :src="userStore.avatar" class="avatar-img"/>
                   <div v-else class="avatar-init">{{ userInitial }}</div>
                   <div class="avatar-lens">
-                    <Icon icon="solar:camera-add-bold" width="18" height="18"/>
+                    <Icon icon="psg:camera" width="18" height="18"/>
                   </div>
                   <input ref="fileInputRef" type="file" accept="image/*"
                          style="display:none" @change="handleFileChange"/>
@@ -83,11 +83,42 @@
                   <span class="data-key">{{ $t('emailAccount') }}</span>
                   <span class="val-str mono">{{ userStore.user.email }}</span>
                 </div>
-                <div class="data-row last">
+                <div class="data-row">
                   <span class="data-key">{{ $t('password') }}</span>
                   <div class="data-val">
                     <span class="val-str">••••••••</span>
                     <button class="link-btn" @click="pwdShow = true">{{ $t('changePwdBtn') }}</button>
+                  </div>
+                </div>
+                <div class="data-row last">
+                  <span class="data-key">{{ $t('memberSince') }}</span>
+                  <span class="val-str">{{ memberSinceText }}</span>
+                </div>
+              </div>
+
+              <div class="plan-strip">
+                <div class="plan-label">{{ $t('planLimits') }}</div>
+                <div class="plan-grid">
+                  <div class="plan-tile">
+                    <Icon icon="psg:mail" width="20" height="20"/>
+                    <div>
+                      <div class="plan-tile-value">{{ dailySendLimitText }}</div>
+                      <div class="plan-tile-label">{{ $t('dailySendLimit') }}</div>
+                    </div>
+                  </div>
+                  <div class="plan-tile">
+                    <Icon icon="psg:mail" width="20" height="20"/>
+                    <div>
+                      <div class="plan-tile-value">{{ mailboxLimitText }}</div>
+                      <div class="plan-tile-label">{{ $t('mailboxLimit') }}</div>
+                    </div>
+                  </div>
+                  <div class="plan-tile" v-if="userStore.user.role?.name">
+                    <Icon icon="psg:shield" width="20" height="20"/>
+                    <div>
+                      <div class="plan-tile-value">{{ userStore.user.role.name }}</div>
+                      <div class="plan-tile-label">{{ $t('roleLabel') }}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -114,7 +145,7 @@
                     editor-id="signature-editor"
                     toolbar="bold italic underline | forecolor | link | code"
                     height="200px"
-                    :light-content="true"
+                    :placeholder="$t('signaturePlaceholder')"
                     @change="onSignatureChange"
                   />
                 </div>
@@ -227,7 +258,7 @@
             <!-- ── Mail management section ── -->
             <div v-show="activeSection === 'mail'" class="settings-card">
               <div class="auto-delete-notice">
-                <Icon icon="solar:danger-triangle-bold" width="15" height="15" style="flex-shrink:0"/>
+                <Icon icon="psg:warning" width="15" height="15" style="flex-shrink:0"/>
                 {{ $t('autoDeleteDaysUserWarn', { n: settingStore.settings.autoDeleteDays > 0 ? settingStore.settings.autoDeleteDays : 30 }) }}
               </div>
               <div class="card-body">
@@ -359,7 +390,7 @@
                 </div>
                 <div v-for="k in apiKeyList" :key="k.id" class="backup-provider-row">
                   <div class="backup-provider-info">
-                    <Icon icon="solar:key-bold-duotone" width="24" height="24" class="backup-provider-logo"/>
+                    <Icon icon="psg:key" width="24" height="24" class="backup-provider-logo"/>
                     <div class="backup-provider-meta">
                       <div class="backup-provider-name">{{ k.name || t('apiKeyUnnamed') }}</div>
                       <div class="backup-provider-status">
@@ -848,18 +879,18 @@ const activeSection = ref('profile')
 
 const navItems = computed(() => {
   const items = [
-    { key: 'profile',   icon: 'solar:user-bold-duotone',            label: t('profile') },
-    { key: 'language',  icon: 'solar:global-bold-duotone',          label: t('language') },
-    { key: 'signature', icon: 'solar:pen-bold-duotone',             label: t('signature') },
-    { key: 'autoreply', icon: 'solar:chat-round-dots-bold-duotone', label: t('autoReply') },
-    { key: 'notification', icon: 'solar:bell-bold-duotone',         label: t('notifications') },
-    { key: 'mail',      icon: 'solar:mailbox-bold-duotone',         label: t('mailManagement') },
-    { key: 'labels',    icon: 'solar:tag-bold-duotone',             label: t('labelManage') },
-    { key: 'backup',    icon: 'solar:cloud-upload-bold-duotone',    label: t('cloudBackup') },
-    { key: 'apikey',    icon: 'solar:key-bold-duotone',             label: t('externalApi') },
+    { key: 'profile',   icon: 'psg:user',            label: t('profile') },
+    { key: 'language',  icon: 'psg:globe',          label: t('language') },
+    { key: 'signature', icon: 'psg:edit',             label: t('signature') },
+    { key: 'autoreply', icon: 'psg:chat', label: t('autoReply') },
+    { key: 'notification', icon: 'psg:bell',         label: t('notifications') },
+    { key: 'mail',      icon: 'psg:mail',         label: t('mailManagement') },
+    { key: 'labels',    icon: 'psg:tag',             label: t('labelManage') },
+    { key: 'backup',    icon: 'psg:cloud-upload',    label: t('cloudBackup') },
+    { key: 'apikey',    icon: 'psg:key',             label: t('externalApi') },
   ]
   if (hasPerm('my:delete')) {
-    items.push({ key: 'danger', icon: 'solar:danger-triangle-bold-duotone', label: t('dangerZone') })
+    items.push({ key: 'danger', icon: 'psg:warning', label: t('dangerZone') })
   }
   return items
 })
@@ -913,6 +944,19 @@ const userInitial = computed(() => {
   if (name) return name[0].toUpperCase()
   return userStore.user?.email?.[0]?.toUpperCase() || '?'
 })
+
+// account.createTime comes back as a raw D1 timestamp string — guard against
+// a missing/unparseable value rather than rendering "Invalid Date".
+const memberSinceText = computed(() => {
+  const raw = userStore.user?.account?.createTime
+  const d = raw && dayjs(raw)
+  return d && d.isValid() ? d.format('MMM D, YYYY') : '—'
+})
+
+// Backend convention: 0 (or null) on role.sendCount/accountCount means the
+// role has no cap — same convention constant.ADMIN_ROLE relies on.
+const dailySendLimitText = computed(() => userStore.user?.role?.sendCount || t('unlimited'))
+const mailboxLimitText = computed(() => userStore.user?.role?.accountCount || t('unlimited'))
 
 function triggerUpload() { fileInputRef.value?.click() }
 
@@ -1427,6 +1471,54 @@ function submitPwd() {
     grid-template-columns: 1fr;
     min-height: auto; padding: 10px 0;
   }
+}
+
+/* ── Plan & limits ── */
+.plan-strip {
+  padding: 20px 24px 24px;
+  border-top: 1px solid var(--psg-border);
+  margin-top: 4px;
+}
+
+.plan-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--psg-text-muted);
+  margin-bottom: 12px;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+
+  @media (max-width: 640px) { grid-template-columns: 1fr; }
+}
+
+.plan-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
+  color: var(--psg-text-secondary);
+}
+
+.plan-tile-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--psg-text);
+  line-height: 1.3;
+}
+
+.plan-tile-label {
+  font-size: 12px;
+  color: var(--psg-text-secondary);
+  margin-top: 1px;
 }
 
 .data-key {

@@ -13,9 +13,9 @@
                :type="'send'"
   >
     <template #first>
-      <Icon class="icon" @click="changeTimeSort" icon="solar:sort-by-time-linear"
+      <Icon class="icon" @click="changeTimeSort" icon="psg:sort"
             v-if="params.timeSort === 0" width="28" height="28"/>
-      <Icon class="icon" @click="changeTimeSort" icon="solar:sort-by-time-linear" v-else
+      <Icon class="icon" @click="changeTimeSort" icon="psg:sort" v-else
             width="28" height="28" style="transform:scaleY(-1)"/>
     </template>
   </emailScroll>

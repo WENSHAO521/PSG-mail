@@ -1,78 +1,99 @@
 <template>
   <div class="page-outer">
+    <div class="space-y">
 
-    <div class="page-main-only">
-        <!-- Toolbar -->
-        <div class="list-toolbar">
-          <div class="toolbar-stats">
-            <span class="stat-item">
-              <span class="stat-num">{{ groupList.length }}</span>
-              <span class="stat-lbl">{{ $t('groupUnit') }}</span>
-            </span>
-            <span class="stat-sep">·</span>
-            <span class="stat-item">
-              <span class="stat-num">{{ totalContacts }}</span>
-              <span class="stat-lbl">{{ $t('contactUnit') }}</span>
-            </span>
-          </div>
-          <el-button class="add-btn" @click="openAdd">
-            <Icon icon="solar:add-circle-linear" width="13" height="13"/>
-            {{ $t('addGroup') }}
-          </el-button>
+      <!-- Page header -->
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">{{ $t('contactGroups') }}</h1>
+          <p class="page-subtitle">{{ $t('groupsDesc') }}</p>
+          <p class="page-stats" v-if="groupList.length">
+            {{ groupList.length }}&thinsp;{{ $t('groupUnit') }} · {{ totalContacts }}&thinsp;{{ $t('contactUnit') }}
+          </p>
         </div>
+        <el-button type="primary" class="create-btn" @click="openAdd">
+          <Icon icon="psg:add-circle" width="16" height="16"/>
+          {{ $t('addGroup') }}
+        </el-button>
+      </div>
 
-        <div v-if="!groupList.length" class="empty-state">
-          <Icon icon="solar:users-group-rounded-linear" width="32" height="32" class="empty-icon"/>
-          <div class="empty-title">{{ $t('noGroups') }}</div>
-          <div class="empty-desc">{{ $t('noGroupsDesc') }}</div>
-        </div>
-
-        <div v-else class="group-list">
-          <div class="group-card" v-for="g in groupList" :key="g.groupId">
-
-            <div class="card-head" @click="toggleExpand(g.groupId)">
-              <div class="card-left">
-                <div class="group-avatar">{{ (g.name || '?')[0].toUpperCase() }}</div>
-                <div class="card-info">
-                  <div class="group-name">{{ g.name }}</div>
-                  <div class="group-count">
-                    {{ g.contacts.length }}&thinsp;{{ g.contacts.length === 1 ? $t('memberSingle') : $t('memberPlural') }}
-                  </div>
-                </div>
-              </div>
-              <div class="card-right" @click.stop>
-                <div class="card-actions">
-                  <button class="act-btn" :title="$t('change')" @click="openEdit(g)">
-                    <Icon icon="solar:pen-linear" width="14" height="14"/>
-                  </button>
-                  <button class="act-btn danger" :title="$t('delete')" @click="deleteGroup(g.groupId)">
-                    <Icon icon="solar:trash-bin-trash-linear" width="14" height="14"/>
-                  </button>
-                </div>
-                <span class="chevron" :class="{ open: expandedIds.has(g.groupId) }">
-                  <Icon icon="solar:alt-arrow-down-linear" width="13" height="13"/>
-                </span>
-              </div>
-            </div>
-
-            <transition name="slide">
-              <div v-if="expandedIds.has(g.groupId)" class="member-list">
-                <div v-if="!g.contacts.length" class="member-empty">{{ $t('noContacts') }}</div>
-                <div class="member-row" v-for="(c, i) in g.contacts" :key="i">
-                  <div class="member-dot">{{ (c.name || c.email || '?')[0].toUpperCase() }}</div>
-                  <div class="member-info">
-                    <span class="member-name" v-if="c.name">{{ c.name }}</span>
-                    <span class="member-email" :class="{ solo: !c.name }">{{ c.email }}</span>
-                  </div>
-                </div>
-              </div>
-            </transition>
-
-          </div>
+      <!-- Toolbar -->
+      <div class="header-actions" v-if="groupList.length">
+        <div class="search">
+          <el-input v-model="searchQuery" class="search-input" :placeholder="$t('searchGroupsPlaceholder')">
+            <template #prefix><Icon icon="psg:search" width="14" height="14"/></template>
+          </el-input>
         </div>
       </div>
 
-    <!-- Drawer -->
+      <!-- Empty states -->
+      <div v-if="!groupList.length" class="empty-state">
+        <Icon icon="psg:group" width="30" height="30" class="empty-icon"/>
+        <div class="empty-title">{{ $t('noGroups') }}</div>
+        <div class="empty-desc">{{ $t('noGroupsDesc') }}</div>
+        <el-button type="primary" class="empty-btn" @click="openAdd">
+          <Icon icon="psg:add-circle" width="14" height="14"/>
+          {{ $t('addGroup') }}
+        </el-button>
+      </div>
+
+      <div v-else-if="!filteredGroups.length" class="empty-state">
+        <Icon icon="psg:file-search" width="30" height="30" class="empty-icon"/>
+        <div class="empty-title">{{ $t('noMatchingGroups') }}</div>
+        <div class="empty-desc">{{ $t('noMatchingGroupsDesc') }}</div>
+      </div>
+
+      <!-- Card grid -->
+      <div v-else class="grp-grid">
+        <div class="grp-card" v-for="g in filteredGroups" :key="g.groupId">
+          <div class="grp-card-head">
+            <div class="grp-head-left">
+              <div class="grp-avatar">{{ (g.name || '?')[0].toUpperCase() }}</div>
+              <div class="grp-info">
+                <div class="grp-name" :title="g.name">{{ g.name }}</div>
+                <div class="grp-count">
+                  {{ g.contacts.length }}&thinsp;{{ g.contacts.length === 1 ? $t('memberSingle') : $t('memberPlural') }}
+                </div>
+              </div>
+            </div>
+            <el-dropdown trigger="click" @command="cmd => handleCommand(cmd, g)">
+              <button class="more-btn" @click.stop>
+                <Icon icon="psg:settings" width="16" height="16"/>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="edit">{{ $t('editGroup') }}</el-dropdown-item>
+                  <el-dropdown-item command="duplicate">{{ $t('duplicateGroup') }}</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided class="danger-item">{{ $t('delete') }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+
+          <div class="member-preview" v-if="g.contacts.length">
+            <div class="member-preview-row" v-for="(c, i) in g.contacts.slice(0, 3)" :key="i">
+              <span class="dot"></span>
+              <span class="member-preview-text">{{ c.name || c.email }}</span>
+            </div>
+            <div class="member-more" v-if="g.contacts.length > 3">+{{ g.contacts.length - 3 }}</div>
+          </div>
+          <div class="member-preview-empty" v-else>{{ $t('noContacts') }}</div>
+
+          <div class="grp-footer">
+            <button class="grp-action" @click="openEdit(g)">
+              <Icon icon="psg:user" width="13" height="13"/>
+              {{ $t('viewMembers') }}
+            </button>
+            <el-button type="primary" class="send-btn" :disabled="!g.contacts.length" @click="sendToGroup(g)">
+              <Icon icon="psg:send" width="12" height="12"/>
+              {{ $t('sendEmailToGroup') }}
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drawer: edit group / view + manage members -->
     <el-drawer
       v-model="drawerShow"
       :title="groupForm.groupId ? $t('editGroup') : $t('addGroup')"
@@ -89,7 +110,7 @@
           <div class="members-head">
             <label class="drawer-label">{{ $t('contactMembers') }}</label>
             <button class="add-member-btn" @click="addContact">
-              <Icon icon="solar:add-circle-linear" width="12" height="12"/>
+              <Icon icon="psg:add-circle" width="12" height="12"/>
               {{ $t('addContact') }}
             </button>
           </div>
@@ -102,7 +123,7 @@
                 <el-input v-model="c.email" :placeholder="$t('emailAccount')" size="small" class="no-border-input mono-input"/>
               </div>
               <button class="remove-btn" @click="removeContact(i)">
-                <Icon icon="solar:close-circle-linear" width="13" height="13"/>
+                <Icon icon="psg:close-circle" width="13" height="13"/>
               </button>
             </div>
           </div>
@@ -122,28 +143,33 @@
 import { reactive, ref, computed, onMounted, defineOptions } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
+import { useUiStore } from '@/store/ui.js'
 import { contactGroupList, contactGroupAdd, contactGroupUpdate, contactGroupDelete } from '@/request/contact-group.js'
 
 defineOptions({ name: 'groups' })
 
 const { t } = useI18n()
+const uiStore = useUiStore()
 const groupList = ref([])
 const drawerShow = ref(false)
 const groupLoading = ref(false)
-const expandedIds = ref(new Set())
+const searchQuery = ref('')
 const groupForm = reactive({ groupId: null, name: '', contacts: [] })
 
 const totalContacts = computed(() => groupList.value.reduce((s, g) => s + g.contacts.length, 0))
 
+const filteredGroups = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return groupList.value
+  return groupList.value.filter(g =>
+    (g.name || '').toLowerCase().includes(q) ||
+    g.contacts.some(c => (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q))
+  )
+})
+
 onMounted(() => {
   contactGroupList().then(list => groupList.value = list).catch(() => {})
 })
-
-function toggleExpand(groupId) {
-  if (expandedIds.value.has(groupId)) expandedIds.value.delete(groupId)
-  else expandedIds.value.add(groupId)
-  expandedIds.value = new Set(expandedIds.value)
-}
 
 function addContact() { groupForm.contacts.push({ name: '', email: '' }) }
 function removeContact(i) { groupForm.contacts.splice(i, 1) }
@@ -180,14 +206,45 @@ async function saveGroup() {
   } finally { groupLoading.value = false }
 }
 
-async function deleteGroup(groupId) {
+function deleteGroup(g) {
+  ElMessageBox.confirm(t('delConfirm', { msg: g.name }), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await contactGroupDelete(g.groupId)
+      groupList.value = groupList.value.filter(x => x.groupId !== g.groupId)
+      ElMessage({ message: t('groupDeleted'), type: 'success', plain: true })
+    } catch {}
+  })
+}
+
+async function duplicateGroup(g) {
   try {
-    await contactGroupDelete(groupId)
-    groupList.value = groupList.value.filter(g => g.groupId !== groupId)
-    expandedIds.value.delete(groupId)
-    expandedIds.value = new Set(expandedIds.value)
-    ElMessage({ message: t('groupDeleted'), type: 'success', plain: true })
+    const copy = await contactGroupAdd(g.name + t('duplicateSuffix'), g.contacts.map(c => ({ ...c })))
+    groupList.value.unshift(copy)
+    ElMessage({ message: t('groupDuplicated'), type: 'success', plain: true })
   } catch {}
+}
+
+function handleCommand(cmd, g) {
+  if (cmd === 'edit') openEdit(g)
+  else if (cmd === 'duplicate') duplicateGroup(g)
+  else if (cmd === 'delete') deleteGroup(g)
+}
+
+// Sending to a group inserts every member as a recipient. Beyond a small
+// count, addresses go into Bcc instead of To so members' emails aren't
+// exposed to each other.
+const BCC_THRESHOLD = 8
+
+function sendToGroup(g) {
+  const emails = [...new Set(g.contacts.map(c => c.email).filter(Boolean))]
+  if (!emails.length) return
+  const prefill = emails.length > BCC_THRESHOLD ? { bcc: emails } : { to: emails }
+  uiStore.writerRef?.open?.(prefill)
+  ElMessage({ message: t('recipientsAddedMsg', { count: emails.length }), type: 'success', plain: true })
 }
 </script>
 
@@ -201,117 +258,134 @@ async function deleteGroup(groupId) {
   @media (max-width: 640px)  { padding: 16px 16px 32px; }
 }
 
-/* Full-width main (no sidebar) */
-.page-main-only {
+.space-y {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 900px;
 }
 
-.page-main { display: flex; flex-direction: column; gap: 16px; }
-
-.list-toolbar {
+/* ── Page header ── */
+.page-header {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--psg-border);
+  flex-wrap: wrap;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--psg-text);
+}
+
+.page-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--psg-text-secondary);
+}
+
+.page-stats {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--psg-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.create-btn {
+  display: inline-flex;
   align-items: center;
-  padding: 10px 16px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Toolbar ── */
+.header-actions {
+  padding: 8px 12px;
+  min-height: 44px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
   background: var(--psg-surface);
   border-radius: var(--psg-radius-md);
   border: 1px solid var(--psg-border);
-  min-height: 52px;
+
+  :deep(.el-input__wrapper) {
+    height: 30px;
+    box-shadow: none !important;
+    border: 1px solid var(--psg-border);
+    border-radius: var(--psg-radius-sm);
+    transition: border-color 0.12s;
+    &:hover { border-color: var(--psg-border-strong); }
+  }
+  :deep(.el-input__wrapper.is-focus) {
+    border-color: var(--psg-primary) !important;
+  }
+
+  .search-input {
+    width: min(280px, calc(100vw - 200px));
+    flex-shrink: 0;
+  }
 }
 
-.toolbar-stats {
+/* Empty state */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: flex-start; gap: 6px;
+  padding: 40px 24px;
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
+  max-width: 480px;
+  margin: 8px auto 0;
+  text-align: left;
+}
+.empty-icon { color: var(--psg-text-secondary); opacity: 0.4; }
+.empty-title { font-size: 14.5px; font-weight: 700; color: var(--psg-text); }
+.empty-desc  { font-size: 12.5px; color: var(--psg-text-secondary); line-height: 1.5; }
+.empty-btn { margin-top: 10px; }
+
+/* ── Card grid ── */
+.grp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.grp-card {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
+  padding: 16px;
+  transition: border-color 0.16s ease;
+
+  @media (hover: hover) {
+    &:hover { border-color: var(--psg-border-strong); }
+  }
+}
+
+.grp-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.stat-item {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.stat-num {
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  color: var(--psg-text);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.stat-lbl {
-  font-size: 11px;
-  color: var(--psg-text-secondary);
-  font-weight: 500;
-}
-
-.stat-sep {
-  font-size: 16px;
-  color: var(--psg-border);
-  font-weight: 300;
-  line-height: 1;
-}
-
-.add-btn {
-  font-size: 13px; font-weight: 600;
-  height: 34px; padding: 0 14px;
-  border-radius: var(--psg-radius-sm) !important;
-  flex-shrink: 0;
-
-  :deep(svg) { margin-right: 6px; }
-}
-
-.empty-state {
-  display: flex; flex-direction: column;
-  align-items: flex-start; gap: 6px; padding: 32px 0;
-}
-.empty-icon { color: var(--psg-text-secondary); opacity: 0.35; }
-.empty-title { font-size: 14px; font-weight: 700; color: var(--psg-text); }
-.empty-desc  { font-size: 12.5px; color: var(--psg-text-secondary); }
-
-/* Group list */
-.group-list {
-  background: var(--psg-surface);
-  border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
-  overflow: hidden;
-}
-
-.group-card {
-  border-bottom: 1px solid var(--psg-border);
-  &:last-child { border-bottom: none; }
-}
-
-.card-head {
-  display: flex; align-items: center;
-  justify-content: space-between;
-  padding: 13px 16px; cursor: pointer;
-  transition: background 0.12s ease;
-
-  @media (hover: hover) {
-    .card-actions { opacity: 0; }
-    &:hover {
-      background: var(--psg-surface-muted);
-      .card-actions { opacity: 1; }
-    }
-  }
-
-  @media (max-width: 480px) {
-    padding: 10px 12px;
-  }
-}
-
-.card-left {
+.grp-head-left {
   display: flex; align-items: center;
   gap: 12px; flex: 1; min-width: 0;
 }
 
-.group-avatar {
-  width: 32px; height: 32px; border-radius: var(--psg-radius-sm);
+.grp-avatar {
+  width: 34px; height: 34px; border-radius: var(--psg-radius-sm);
   background: var(--psg-surface-muted);
   border: 1px solid var(--psg-border);
   color: var(--psg-text); font-size: 13px; font-weight: 800;
@@ -319,86 +393,102 @@ async function deleteGroup(groupId) {
   flex-shrink: 0;
 }
 
-.card-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.grp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
-.group-name {
-  font-size: 13.5px; font-weight: 700;
+.grp-name {
+  font-size: 14px; font-weight: 700;
   color: var(--psg-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.group-count { font-size: 11.5px; color: var(--psg-text-secondary); }
+.grp-count { font-size: 11.5px; color: var(--psg-text-secondary); }
 
-.card-right {
-  display: flex; align-items: center; gap: 2px;
-  flex-shrink: 0; margin-left: 12px;
-}
-
-.card-actions {
-  display: flex; gap: 2px; flex-shrink: 0;
-  transition: opacity 0.14s;
-}
-
-.act-btn {
+.more-btn {
   display: flex; align-items: center; justify-content: center;
-  min-width: 32px; height: 32px;
+  width: 28px; height: 28px; flex-shrink: 0;
   border: none; background: transparent;
   border-radius: var(--psg-radius-sm); cursor: pointer;
   color: var(--psg-text-secondary);
   transition: background 0.10s, color 0.10s;
-
   &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
-  &.danger:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
 }
 
-.chevron {
-  display: flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px;
-  color: var(--psg-text-secondary);
-  transition: transform 0.20s cubic-bezier(0.22,1,0.36,1);
-  &.open { transform: rotate(180deg); }
-}
+:deep(.danger-item) { color: var(--psg-danger) !important; }
 
-/* Expanded members */
-.member-list {
-  padding: 8px 16px 12px 62px;
-  display: flex; flex-direction: column; gap: 2px;
-  border-top: 1px solid var(--psg-border);
+/* Member preview */
+.member-preview {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 10px 12px;
   background: var(--psg-canvas);
-}
-
-.member-empty { font-size: 12.5px; color: var(--psg-text-secondary); padding: 4px 0; }
-
-.member-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
-
-.member-dot {
-  width: 24px; height: 24px; border-radius: var(--psg-radius-sm);
-  background: var(--psg-surface-muted);
   border: 1px solid var(--psg-border);
-  color: var(--psg-text-secondary); font-size: 9.5px; font-weight: 800;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  border-radius: var(--psg-radius-sm);
 }
 
-.member-info { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.member-preview-row {
+  display: flex; align-items: center; gap: 8px;
+  min-width: 0;
+}
 
-.member-name {
-  font-size: 12.5px; font-weight: 600;
-  color: var(--psg-text);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--psg-text-muted);
   flex-shrink: 0;
 }
 
-.member-email {
-  font-size: 11.5px; font-family: 'IBM Plex Mono', monospace;
-  color: var(--psg-text-secondary);
+.member-preview-text {
+  font-size: 12.5px; color: var(--psg-text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  &.solo { font-size: 13px; }
 }
 
-.slide-enter-active { transition: opacity 0.20s ease, transform 0.20s ease; }
-.slide-leave-active { transition: opacity 0.14s ease, transform 0.14s ease; }
-.slide-enter-from { opacity: 0; transform: translateY(-5px); }
-.slide-leave-to   { opacity: 0; transform: translateY(-3px); }
+.member-more {
+  font-size: 11.5px; font-weight: 700;
+  color: var(--psg-text-muted);
+  padding-left: 13px;
+}
+
+.member-preview-empty {
+  font-size: 12.5px; color: var(--psg-text-muted);
+  padding: 10px 12px;
+  background: var(--psg-canvas);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
+}
+
+.grp-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--psg-border);
+}
+
+.grp-action {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 700;
+  color: var(--psg-text-secondary); padding: 4px 0;
+  font-family: inherit;
+  transition: color 0.12s;
+  &:hover { color: var(--psg-text); }
+}
+
+.send-btn {
+  height: 30px; padding: 0 12px;
+  font-size: 12px; font-weight: 700;
+  border-radius: var(--psg-radius-sm) !important;
+  :deep(svg) { margin-right: 5px; }
+
+  /* Element Plus derives disabled-state colors from a primary-color ramp
+     (light-5/7/8/9) that this app never remaps off the stock blue — only
+     light-3 is overridden globally. Pin the disabled look to PSG neutrals
+     directly rather than leaving it to fall through to that blue ramp. */
+  &.is-disabled,
+  &.is-disabled:hover {
+    background: var(--psg-surface-active) !important;
+    border-color: var(--psg-surface-active) !important;
+    color: var(--psg-text-muted) !important;
+  }
+}
 
 /* ── Drawer ── */
 .drawer-body {
@@ -425,7 +515,7 @@ async function deleteGroup(groupId) {
   font-size: 12px; font-weight: 700;
   color: var(--psg-text-secondary); padding: 4px 10px;
   transition: border-color 0.12s, color 0.12s; font-family: inherit;
-  &:hover { border-color: var(--psg-border); color: var(--psg-text); }
+  &:hover { border-color: var(--psg-border-strong); color: var(--psg-text); }
 }
 
 .members-empty {

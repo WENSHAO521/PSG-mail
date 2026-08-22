@@ -29,12 +29,12 @@
         <button class="icon-button sidebar-collapse-button"
                 :title="collapsed ? $t('expand') : $t('collapse')"
                 @click="uiStore.asideCollapsed = !uiStore.asideCollapsed">
-          <Icon icon="solar:hamburger-menu-linear" width="20" height="20" />
+          <Icon icon="psg:menu" width="20" height="20" />
         </button>
         <button class="icon-button sidebar-close-button"
                 :title="$t('close')"
                 @click="uiStore.asideShow = false">
-          <Icon icon="solar:close-circle-linear" width="20" height="20" />
+          <Icon icon="psg:close-circle" width="20" height="20" />
         </button>
       </div>
     </div>
@@ -68,7 +68,7 @@
         <div class="sidebar-section-title label-section-title">
           <span>{{ $t('labels') }}</span>
           <button class="label-add-btn" :title="$t('newLabel')" @click="promptCreateLabel">
-            <Icon icon="solar:add-circle-linear" width="15" height="15" />
+            <Icon icon="psg:add-circle" width="15" height="15" />
           </button>
         </div>
         <nav class="sidebar-nav" v-if="labelStore.labels.length">
@@ -129,7 +129,7 @@
           <!-- Real backend mail search — distinct from Command Palette (Ctrl+K) -->
           <el-tooltip :content="$t('search') + ' (/)'" placement="right">
             <button class="util-btn" @click="router.push({ name: 'search' })">
-              <Icon icon="solar:magnifer-linear" width="18" height="18" />
+              <Icon icon="psg:search" width="18" height="18" />
             </button>
           </el-tooltip>
 
@@ -160,7 +160,7 @@
                 </el-dropdown-item>
                 <el-dropdown-item @click="clickLogout" class="logout-item">
                   <div class="drop-item">
-                    <Icon icon="solar:logout-linear" width="17" height="17" />
+                    <Icon icon="psg:logout" width="17" height="17" />
                     <span>{{ $t('logOut') }}</span>
                   </div>
                 </el-dropdown-item>
@@ -246,30 +246,27 @@ const canSend = computed(() => hasPerm('email:send'));
 
 /* ── Nav items ── */
 const navItems = [
-  { name: 'all-inbox', labelKey: 'allInbox',      icon: 'solar:layers-linear' },
+  { name: 'all-inbox', labelKey: 'allInbox',      icon: 'psg:layers' },
   { name: 'email',     labelKey: 'inbox',         icon: 'psg:inbox' },
   { name: 'send',      labelKey: 'sent',          icon: 'psg:send',     perm: 'email:send' },
   { name: 'draft',     labelKey: 'drafts',        icon: 'psg:draft',    perm: 'email:send' },
-  { name: 'scheduled', labelKey: 'scheduled',     icon: 'solar:clock-circle-linear', perm: 'email:send' },
+  { name: 'scheduled', labelKey: 'scheduled',     icon: 'psg:clock', perm: 'email:send' },
   { name: 'star',      labelKey: 'starred',       icon: 'psg:bookmark' },
   { name: 'archive',   labelKey: 'archiveFolder', icon: 'psg:archive' },
   { name: 'spam',      labelKey: 'spam',          icon: 'psg:spam' },
-  { name: 'trash',     labelKey: 'deletedMail',   icon: 'solar:trash-bin-minimalistic-linear' },
+  { name: 'trash',     labelKey: 'deletedMail',   icon: 'psg:trash' },
   { name: 'templates', labelKey: 'templates',     icon: 'psg:template' },
   { name: 'groups',    labelKey: 'contactGroups', icon: 'psg:group' },
 { name: 'setting',   labelKey: 'settings',      icon: 'psg:settings' },
-  { name: 'download',  labelKey: 'download',      icon: 'solar:download-minimalistic-linear' },
-  { name: 'vpn',       labelKey: 'vpn',           icon: 'solar:shield-network-linear' },
-  { name: 'about',     labelKey: 'about',         icon: 'solar:info-circle-linear' },
+  { name: 'download',  labelKey: 'download',      icon: 'psg:download' },
+  { name: 'vpn',       labelKey: 'vpn',           icon: 'psg:shield' },
 ];
 
 const adminItems = [
-  { name: 'analysis',   labelKey: 'analytics',      icon: 'psg:analytics', perm: 'analysis:query' },
-  { name: 'user',       labelKey: 'allUsers',        icon: 'psg:group',     perm: 'user:query' },
-  { name: 'all-email',  labelKey: 'allMail',         icon: 'psg:all-mail',  perm: 'all-email:query' },
-  { name: 'role',       labelKey: 'permissions',     icon: 'psg:lock',      perm: 'role:query' },
-  { name: 'reg-key',    labelKey: 'inviteCode',      icon: 'psg:key',       perm: 'reg-key:query' },
-  { name: 'sys-setting',labelKey: 'SystemSettings',  icon: 'psg:system',    perm: 'setting:query' },
+  { name: 'analysis',    labelKey: 'analytics',      icon: 'psg:analytics', perm: 'analysis:query' },
+  { name: 'access-mgmt', labelKey: 'accessManagement', icon: 'psg:group',   perm: ['user:query', 'role:query', 'reg-key:query'] },
+  { name: 'all-email',   labelKey: 'allMail',         icon: 'psg:all-mail',  perm: 'all-email:query' },
+  { name: 'sys-setting', labelKey: 'SystemSettings',  icon: 'psg:system',    perm: 'setting:query' },
 ];
 
 const visibleAdminItems = computed(() =>
@@ -328,7 +325,6 @@ function clickLogout() {
   padding: 18px 20px 14px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--psg-border);
-  border-left: 3px solid var(--psg-primary);
   -webkit-app-region: drag;
 
   /* macOS hiddenInset: trafficLightPosition y=18, button h≈14px → bottom≈32px.
@@ -465,7 +461,7 @@ function clickLogout() {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   cursor: pointer;
   color: var(--psg-text-secondary);
   transition: background 0.14s ease, color 0.14s ease, transform 0.1s ease;
@@ -488,7 +484,7 @@ function clickLogout() {
   width: 44px;
   height: 44px;
   border: none;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   background: transparent;
   cursor: pointer;
   color: var(--psg-text-secondary);
@@ -529,10 +525,9 @@ function clickLogout() {
 .sidebar-nav-link {
   display: flex;
   align-items: center;
-  height: 44px;
+  height: 40px;
   margin: 0 10px;
-  padding: 0 14px 0 10px;
-  border-left: 4px solid transparent;
+  padding: 0 12px;
   font-size: 13.5px;
   font-weight: 500;
   letter-spacing: 0;
@@ -540,8 +535,8 @@ function clickLogout() {
   font-family: var(--psg-font-sans);
   cursor: pointer;
   color: var(--psg-text-secondary);
-  border-radius: var(--psg-radius-sm);
-  transition: background 0.10s ease, color 0.10s ease, border-color 0.10s ease;
+  border-radius: var(--psg-radius-md);
+  transition: background 0.12s ease, color 0.12s ease;
   user-select: none;
 
   @media (hover: hover) {
@@ -551,11 +546,9 @@ function clickLogout() {
     }
   }
 
-  /* Strong, quiet indicator — an ink left rule + flat neutral fill,
-     never a solid ink row. */
+  /* Soft filled pill, not a hard ruled indicator. */
   &.active {
-    background: var(--psg-surface-active);
-    border-left-color: var(--psg-primary);
+    background: var(--psg-primary-muted);
     color: var(--psg-primary);
     font-weight: 700;
   }
@@ -672,7 +665,7 @@ function clickLogout() {
   gap: 8px;
   height: 36px;
   border: none;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
   font-size: 13.5px;
@@ -681,12 +674,13 @@ function clickLogout() {
   text-transform: none;
   font-family: var(--psg-font-sans);
   cursor: pointer;
-  transition: opacity 0.14s ease, transform 0.1s ease;
+  box-shadow: var(--psg-shadow-sm);
+  transition: background 0.14s ease, box-shadow 0.14s ease, transform 0.1s ease;
 
   @media (hover: hover) {
-    &:hover { opacity: .88; }
+    &:hover { background: var(--psg-primary-hover); box-shadow: var(--psg-shadow-md); }
   }
-  &:active { opacity: .88; transform: scale(0.97); }
+  &:active { background: var(--psg-primary-active); transform: scale(0.97); box-shadow: var(--psg-shadow-xs); }
 }
 
 /* Secondary actions grouped into one quiet surface, distinct from the
@@ -699,7 +693,7 @@ function clickLogout() {
   padding: 0 3px;
   flex-shrink: 0;
   border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   background: var(--psg-surface-muted);
 }
 
@@ -711,7 +705,7 @@ function clickLogout() {
   height: 28px;
   flex-shrink: 0;
   border: none;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   background: transparent;
   color: var(--psg-text-muted);
   cursor: pointer;
@@ -748,16 +742,17 @@ function clickLogout() {
   height: 36px;
   flex-shrink: 0;
   border: none;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
   cursor: pointer;
-  transition: opacity 0.14s ease, transform 0.1s ease;
+  box-shadow: var(--psg-shadow-sm);
+  transition: background 0.14s ease, transform 0.1s ease;
 
   @media (hover: hover) {
-    &:hover { opacity: .88; }
+    &:hover { background: var(--psg-primary-hover); }
   }
-  &:active { opacity: .88; transform: scale(0.94); }
+  &:active { background: var(--psg-primary-active); transform: scale(0.94); }
 }
 
 /* Dropdown items */

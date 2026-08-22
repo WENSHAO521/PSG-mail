@@ -1,9 +1,9 @@
 <template>
-  <div class="send" v-show="show">
-    <div class="write-box">
+  <div class="send" v-show="show" :data-state="windowState">
+    <div class="write-box" :data-state="windowState">
 
       <!-- ── Header ─────────────────────────────── -->
-      <div class="wh">
+      <div class="wh" @click="windowState === 'minimized' && toggleMinimize()">
         <div class="wh-left">
           <div class="wh-badge">
             <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
@@ -21,7 +21,7 @@
                 <span class="wh-email">{{ form.sendEmail }}</span>
               </div>
               <Icon v-if="senderAccounts.length > 1"
-                    icon="solar:alt-arrow-down-linear" width="12" height="12" class="sender-chevron"/>
+                    icon="psg:chevron-down" width="12" height="12" class="sender-chevron"/>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
@@ -43,15 +43,25 @@
                       <span class="sender-opt-email">{{ acc.email }}</span>
                     </div>
                     <Icon v-if="acc.accountId === form.accountId"
-                          icon="solar:check-circle-linear" width="14" height="14" class="sender-opt-check"/>
+                          icon="psg:check-circle" width="14" height="14" class="sender-opt-check"/>
                   </div>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
-        <div class="wh-close" @click="close">
-          <Icon icon="solar:close-circle-linear" width="22" height="22"/>
+        <div class="wh-actions">
+          <button class="wh-action-btn" :title="windowState === 'minimized' ? $t('expand') : $t('minimize')"
+                  @click.stop="toggleMinimize">
+            <Icon icon="psg:minimize" width="15" height="15"/>
+          </button>
+          <button class="wh-action-btn" :title="windowState === 'maximized' ? $t('restore') : $t('maximize')"
+                  @click.stop="toggleMaximize">
+            <Icon :icon="windowState === 'maximized' ? 'psg:restore' : 'psg:maximize'" width="14" height="14"/>
+          </button>
+          <button class="wh-action-btn wh-close" :title="$t('close')" @click.stop="close">
+            <Icon icon="psg:close" width="15" height="15"/>
+          </button>
         </div>
       </div>
 
@@ -76,7 +86,7 @@
             <span v-if="!showCc"  class="field-toggle" @click.stop="showCc = true">{{ $t('cc') }}</span>
             <span v-if="!showBcc" class="field-toggle" @click.stop="showBcc = true">{{ $t('bcc') }}</span>
             <div class="icon-btn-sm" @click.stop="openContacts">
-              <Icon icon="solar:user-plus-linear" width="14" height="14"/>
+              <Icon icon="psg:user-plus" width="14" height="14"/>
             </div>
           </div>
         </div>
@@ -110,15 +120,15 @@
         <div class="toolbar-bar">
           <div class="toolbar-left">
             <div class="tb-btn tb-btn--label" @click="chooseFile">
-              <Icon icon="solar:paperclip-linear" width="16" height="16"/>
+              <Icon icon="psg:paperclip" width="16" height="16"/>
               <span>{{ $t('attachments') }}</span>
             </div>
             <div class="tb-btn" @click="clearContent" :title="$t('clear')">
-              <Icon icon="solar:eraser-linear" width="17" height="17"/>
+              <Icon icon="psg:eraser" width="17" height="17"/>
             </div>
             <el-dropdown trigger="click" @command="insertTemplate" :hide-on-click="true">
               <div class="tb-btn tb-btn--label">
-                <Icon icon="solar:document-text-linear" width="16" height="16"/>
+                <Icon icon="psg:template" width="16" height="16"/>
                 <span>{{ $t('insertTemplate') }}</span>
               </div>
               <template #dropdown>
@@ -135,7 +145,7 @@
                 <Icon v-bind="getIconByName(item.filename)" width="14" height="14"/>
                 <span class="att-filename">{{ item.filename }}</span>
                 <span class="att-size">{{ formatBytes(item.size) }}</span>
-                <Icon icon="solar:close-circle-linear" width="16" height="16"
+                <Icon icon="psg:close-circle" width="16" height="16"
                       style="cursor:pointer;flex-shrink:0" @click="delAtt(index)"/>
               </div>
             </div>
@@ -165,11 +175,11 @@
             <template v-else>
               <el-tooltip :content="$t('sendLater')" placement="top">
                 <el-button class="send-later-btn" @click="showSchedulePicker = true">
-                  <Icon icon="solar:clock-circle-linear" width="16" height="16"/>
+                  <Icon icon="psg:clock" width="16" height="16"/>
                 </el-button>
               </el-tooltip>
               <el-button class="send-btn" type="primary" @click="sendEmail">
-                <Icon icon="solar:plain-3-bold" width="15" height="15" style="margin-right:6px"/>
+                <Icon icon="psg:send" width="15" height="15" style="margin-right:6px"/>
                 <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
                 <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
                 <span v-else>{{ $t('send') }}</span>
@@ -194,7 +204,7 @@
             </el-table-column>
             <el-table-column width="44">
               <template #default>
-                <Icon icon="solar:user-linear" width="20" height="20" style="color:var(--psg-text-secondary)"/>
+                <Icon icon="psg:user" width="20" height="20" style="color:var(--psg-text-secondary)"/>
               </template>
             </el-table-column>
           </el-table>
@@ -208,7 +218,7 @@
             clearable
             style="margin-bottom:8px"
           >
-            <template #prefix><Icon icon="solar:magnifer-linear" width="15" height="15"/></template>
+            <template #prefix><Icon icon="psg:search" width="15" height="15"/></template>
           </el-input>
           <el-table
             ref="directoryTabRef"
@@ -288,6 +298,7 @@ import {accountList} from "@/request/account.js";
 
 defineExpose({
   open,
+  openWithTemplate,
   openReply,
   openReplyAll,
   openForward,
@@ -305,6 +316,13 @@ const accountStore = useAccountStore()
 const editor = ref({})
 const userStore = useUserStore();
 const show = ref(false);
+const windowState = ref('normal'); // 'normal' | 'minimized' | 'maximized'
+function toggleMinimize() {
+  windowState.value = windowState.value === 'minimized' ? 'normal' : 'minimized'
+}
+function toggleMaximize() {
+  windowState.value = windowState.value === 'maximized' ? 'normal' : 'maximized'
+}
 const showCc = ref(false);
 const showBcc = ref(false);
 const percent = ref(0)
@@ -674,7 +692,7 @@ async function sendWithUndo() {
     message: () => h('div', { style: 'display:flex;align-items:center;gap:14px;justify-content:space-between' }, [
       h('span', { style: 'color:teal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, snapshot.subject || t('noSubject')),
       h('button', {
-        style: 'color:#1890ff;background:none;border:none;cursor:pointer;font-weight:700;flex-shrink:0;font-size:13px',
+        style: 'color:var(--psg-primary);background:none;border:none;cursor:pointer;font-weight:700;flex-shrink:0;font-size:13px',
         onClick: async () => {
           if (undone) return
           undone = true
@@ -1014,12 +1032,13 @@ function _showWindow() {
     form.name = accountStore.currentAccount.name;
   }
   show.value = true;
+  windowState.value = 'normal'
   try { editor.value.focus() } catch {}
   loadTemplates()
   loadSenderAccounts()
 }
 
-function open() {
+function open(prefill) {
   _showWindow()
   const sig = userStore.user.signature
   const sigHtml = sig
@@ -1027,6 +1046,22 @@ function open() {
     : ''
   defValue.value = ''
   setTimeout(() => { defValue.value = sigHtml })
+  if (prefill?.to?.length) form.receiveEmail = [...new Set(prefill.to)]
+  if (prefill?.bcc?.length) {
+    form.bcc = [...new Set(prefill.bcc)]
+    showBcc.value = true
+  }
+}
+
+function openWithTemplate(tpl) {
+  _showWindow()
+  const sig = userStore.user.signature
+  const sigHtml = sig
+    ? `<p><br></p><p><br></p><p style="color:#999;margin-top:0">-- </p>${sig}`
+    : ''
+  form.subject = tpl.subject || ''
+  defValue.value = ''
+  setTimeout(() => { defValue.value = (tpl.content || '') + sigHtml })
 }
 
 function openDraft(draft) {
@@ -1224,15 +1259,17 @@ function close() {
 </style>
 <style scoped lang="scss">
 /* ── Overlay ── no backdrop-filter: TinyMCE repaints on every keystroke,
-   blur forces GPU recompositing of all layers below → severe lag */
+   blur forces GPU recompositing of all layers below → severe lag.
+   Desktop: genuinely non-blocking — the wrapper only positions the panel,
+   it doesn't capture clicks, so the inbox behind stays fully usable while
+   composing (Gmail/Outlook-style floating window, not a modal dialog).
+   Mobile: a real full-screen sheet, backdrop and all. */
 .send {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* A quiet scrim, not a heavy dark modal backdrop — the composer reads
-     as a floating panel over the inbox, not a blocking full-screen dialog. */
   background: rgba(17, 17, 17, 0.12);
   z-index: 2000;
 
@@ -1244,6 +1281,8 @@ function close() {
     align-items: flex-end;
     justify-content: flex-end;
     padding: 0 28px 28px 0;
+    background: transparent;
+    pointer-events: none;
   }
 }
 
@@ -1255,17 +1294,33 @@ function close() {
   grid-template-rows: auto 1fr;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.40), 0 4px 16px rgba(0,0,0,0.18);
   overflow: hidden;
+  transition: width 0.16s ease, height 0.16s ease;
 
   @media (max-width: 767px) {
     width: 100%;
     height: 100%;
   }
 
-  /* Desktop "Normal" composer — a productivity panel, not a centered
-     1300px modal. */
+  /* Desktop: the wrapper ignores clicks (see .send above), the panel
+     itself takes them back. */
   @media (min-width: 768px) {
-    width: min(680px, calc(100vw - 56px));
-    height: min(680px, calc(100vh - 88px));
+    pointer-events: auto;
+
+    /* "Normal" — a productivity panel, not a centered 1300px modal. */
+    &[data-state="normal"] {
+      width: min(680px, calc(100vw - 56px));
+      height: min(680px, calc(100vh - 88px));
+    }
+
+    &[data-state="maximized"] {
+      width: min(1300px, calc(100vw - 56px));
+      height: min(860px, calc(100vh - 56px));
+    }
+
+    &[data-state="minimized"] {
+      width: 300px;
+      height: 52px;
+    }
   }
 }
 
@@ -1440,14 +1495,23 @@ function close() {
   text-overflow: ellipsis;
 }
 
-.wh-close {
-  width: 32px;
-  height: 32px;
+.wh-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.wh-action-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
   border-radius: var(--psg-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  background: transparent;
   color: color-mix(in srgb, var(--psg-on-primary) 60%, transparent);
   flex-shrink: 0;
   transition: background 0.12s, color 0.12s;
@@ -1458,6 +1522,21 @@ function close() {
       color: var(--psg-on-primary);
     }
   }
+
+  &.wh-close:hover {
+    background: var(--psg-danger);
+    color: #fff;
+  }
+}
+
+/* Minimized: the header is the whole window and doubles as a restore
+   button — everything except the action buttons re-expands on click. */
+.write-box[data-state="minimized"] .wh {
+  cursor: pointer;
+}
+
+.write-box[data-state="minimized"] .container {
+  display: none;
 }
 
 /* ── Fields container ────────────────────────── */
@@ -1676,6 +1755,20 @@ function close() {
   font-weight: 600 !important;
 }
 
+/* Cancel is a Secondary action — it shouldn't compete with Confirm's
+   primary green, so it stays a flat, low-contrast outline. */
+.schedule-cancel-btn {
+  background: var(--psg-surface-muted) !important;
+  border-color: var(--psg-border) !important;
+  color: var(--psg-text-secondary) !important;
+
+  &:hover {
+    background: var(--psg-surface-active) !important;
+    border-color: var(--psg-border) !important;
+    color: var(--psg-text) !important;
+  }
+}
+
 /* El overrides — flat field inputs */
 :deep(.field-tag .el-input-tag),
 :deep(.field-tag .el-input__wrapper) {
@@ -1692,12 +1785,24 @@ function close() {
   border: none !important;
   background: transparent !important;
   padding-left: 0 !important;
+  transition: box-shadow 0.14s ease !important;
+
+  &.is-focus {
+    box-shadow: 0 0 0 3px var(--psg-primary-muted) !important;
+    padding-left: 8px !important;
+    margin-left: -8px;
+  }
 
   .el-input__inner {
     font-size: 15px !important;
-    font-weight: 600 !important;
+    font-weight: 500 !important;
     color: var(--psg-text) !important;
     letter-spacing: 0.01em !important;
+
+    &::placeholder {
+      font-weight: 400;
+      color: var(--psg-text-muted);
+    }
   }
 }
 
@@ -1785,6 +1890,11 @@ function close() {
   }
 
   .wh-sender {
+    display: none;
+  }
+
+  /* Mobile is always a full-screen sheet — minimize/maximize don't apply. */
+  .wh-actions .wh-action-btn:not(.wh-close) {
     display: none;
   }
 

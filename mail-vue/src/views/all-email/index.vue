@@ -1,6 +1,22 @@
 <template>
   <div class="email-list-box">
+    <!-- ── Page header: identity, not a database-browser title bar ── -->
+    <div class="explorer-header">
+      <h2 class="explorer-title">{{ $t('allMail') }}</h2>
+      <p class="explorer-subtitle">{{ $t('allMailSubtitle') }}</p>
+    </div>
+
+    <!-- ── Search: the input itself performs the search, no separate icon button ── -->
+    <div class="explorer-search-row">
+      <Icon icon="psg:search" width="15" height="15" class="explorer-search-icon"/>
+      <input v-model="searchValue" class="explorer-search-input"
+             :placeholder="$t('searchAllMailPlaceholder')" @keydown.enter="search"/>
+      <Icon v-if="searchValue" icon="psg:close-circle" width="14" height="14"
+            class="explorer-search-clear" @click="searchValue = ''; search()"/>
+    </div>
+
     <emailScroll ref="sysEmailScroll"
+                 class="explorer-body"
                  :get-emailList="getEmailList"
                  :email-delete="allEmailDelete"
                  :star-add="starAdd"
@@ -11,7 +27,7 @@
                  actionLeft="4px"
                  :show-account-icon="false"
                  :time-sort="params.timeSort"
-                 :item-height="65"
+                 :item-height="88"
                  :hide-inline-search="true"
                  @jump="jumpContent"
                  @refresh-before="refreshBefore"
@@ -19,38 +35,64 @@
                  :type="'all-email'"
     >
       <template #first>
-        <!-- ── Unified search group ── -->
-        <div class="search-group">
-          <!-- Type selector -->
-          <div class="type-pill" @click.stop="openSelect">
-            <el-select ref="mySelect" v-model="params.searchType" class="select">
-              <el-option key="3" :label="$t('sender')" :value="'name'"/>
-              <el-option key="4" :label="$t('subject')" :value="'subject'"/>
-              <el-option key="1" :label="$t('user')" :value="'user'"/>
-              <el-option key="2" :label="$t('selectEmail')" :value="'account'"/>
-            </el-select>
-            <span class="type-label">{{ selectTitle }}</span>
-            <Icon icon="solar:alt-arrow-down-linear" width="13" height="13" class="type-arrow"/>
+        <!-- ── Status chips + advanced filter + sort + refresh + overflow ── -->
+        <div class="explorer-filters">
+          <div class="filter-chips">
+            <button class="filter-chip" :class="{ active: params.type === 'all' }" @click="setType('all')">{{ $t('all') }}</button>
+            <button class="filter-chip" :class="{ active: params.type === 'receive' }" @click="setType('receive')">{{ $t('received') }}</button>
+            <button class="filter-chip" :class="{ active: params.type === 'send' }" @click="setType('send')">{{ $t('sent') }}</button>
           </div>
-          <!-- Content input -->
-          <input v-model="searchValue" class="content-input"
-                 :placeholder="$t('searchByContent')" @keydown.enter="search"/>
-          <!-- Status filter -->
-          <el-select v-model="params.type" class="status-select" @change="typeSelectChange">
-            <el-option key="1" :label="$t('all')" value="all"/>
-            <el-option key="3" :label="$t('received')" value="receive"/>
-            <el-option key="2" :label="$t('sent')" value="send"/>
-            <el-option key="4" :label="$t('selectDeleted')" value="delete"/>
-            <el-option key="4" :label="$t('noRecipientTitle')" value="noone"/>
-          </el-select>
+
+          <el-popover trigger="click" placement="bottom-start" width="240" popper-class="explorer-adv-popover">
+            <template #reference>
+              <button class="filter-text-btn" :class="{ active: isAdvancedActive }">
+                <span class="filter-text-btn-label">{{ $t('advancedFilter') }}</span>
+                <Icon icon="psg:chevron-down" width="12" height="12"/>
+              </button>
+            </template>
+            <div class="adv-field">
+              <label class="adv-label">{{ selectTitle }}</label>
+              <el-select v-model="params.searchType" size="default" style="width:100%">
+                <el-option key="3" :label="$t('sender')" value="name"/>
+                <el-option key="4" :label="$t('subject')" value="subject"/>
+                <el-option key="1" :label="$t('user')" value="user"/>
+                <el-option key="2" :label="$t('selectEmail')" value="account"/>
+              </el-select>
+            </div>
+            <div class="adv-field">
+              <label class="adv-label">{{ $t('all') }}</label>
+              <el-select v-model="params.type" size="default" style="width:100%" @change="typeSelectChange">
+                <el-option key="1" :label="$t('all')" value="all"/>
+                <el-option key="3" :label="$t('received')" value="receive"/>
+                <el-option key="2" :label="$t('sent')" value="send"/>
+                <el-option key="4" :label="$t('selectDeleted')" value="delete"/>
+                <el-option key="5" :label="$t('noRecipientTitle')" value="noone"/>
+              </el-select>
+            </div>
+          </el-popover>
+
+          <button class="sort-btn" @click="changeTimeSort">
+            <span class="sort-btn-label">{{ params.timeSort !== 0 ? $t('sortOldest') : $t('sortNewest') }}</span>
+            <Icon icon="psg:chevron-down" width="12" height="12"/>
+          </button>
+
+          <!-- High-risk bulk action: tucked behind ⋯, never a primary toolbar icon.
+               Refresh itself is emailScroll's own built-in toolbar button, right
+               after this slot — no need to duplicate it here. -->
+          <el-dropdown trigger="click" placement="bottom-end" @command="handleMoreCommand">
+            <button class="icon-btn-plain more-btn" :title="$t('moreActions')">⋯</button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="cleanup">
+                  <div class="ctx-item danger">
+                    <Icon icon="psg:clear-format" width="16" height="16"/>
+                    <span>{{ $t('clearEmail') }}</span>
+                  </div>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
-        <!-- ── Action icons ── -->
-        <Icon class="icon" icon="solar:magnifer-linear" @click="search" width="16" height="16"/>
-        <Icon class="icon" @click="changeTimeSort"
-              icon="solar:sort-by-time-linear"
-              :style="params.timeSort !== 0 ? 'transform:scaleY(-1)' : ''"
-              width="17" height="17"/>
-        <Icon class="icon icon-danger" icon="solar:broom-linear" width="16" height="16" @click="openBathDelete"/>
       </template>
     </emailScroll>
     <el-dialog v-model="showBathDelete" :title="$t('clearEmail')" width="335"
@@ -113,7 +155,6 @@ const settingStore = useSettingStore();
 const clearTime = ref('')
 const sysEmailScroll = ref({})
 const searchValue = ref('')
-const mySelect = ref()
 const showBathDelete = ref(false)
 const clearLoading = ref(false)
 
@@ -123,10 +164,6 @@ onMounted(() => {
   latest();
 })
 onUnmounted(() => { latestRunning = false })
-
-const openSelect = () => {
-  mySelect.value.toggleMenu()
-}
 
 const params = reactive({
   timeSort: 0,
@@ -278,6 +315,21 @@ function typeSelectChange() {
   search()
 }
 
+function setType(type) {
+  params.type = type
+  search()
+}
+
+// Advanced-filter trigger highlights once it holds anything beyond the
+// three quick-access chips (all/receive/send) or a non-default search field.
+const isAdvancedActive = computed(() =>
+  ['delete', 'noone'].includes(params.type) || params.searchType !== 'name'
+)
+
+function handleMoreCommand(command) {
+  if (command === 'cleanup') openBathDelete()
+}
+
 function jumpContent(email) {
   emailStore.contentData.email = email
   emailStore.contentData.delType = 'physics'
@@ -394,103 +446,160 @@ async function latest() {
   height: 100%;
   width: 100%;
   overflow: hidden;
-}
-
-
-/* ── Hidden real select (triggered by type-pill) ─────── */
-.select {
-  position: absolute;
-  width: 40px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ── Unified search group: type | input | status ──────── */
-.search-group {
   display: flex;
-  align-items: stretch;
-  height: 30px;
+  flex-direction: column;
+  background: var(--psg-surface);
+}
+
+/* ── Page header: title + one-line purpose statement ──────── */
+.explorer-header {
+  flex-shrink: 0;
+  padding: 14px 16px 2px;
+}
+
+.explorer-title {
+  margin: 0;
+  font-family: var(--psg-font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--psg-text);
+}
+
+.explorer-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--psg-text-secondary);
+}
+
+/* ── Search: the input itself is the action, no separate button ──── */
+.explorer-search-row {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin: 10px 16px 0;
+  padding: 0 10px;
+  background: var(--psg-canvas);
   border: 1px solid var(--psg-border);
-  flex: 1 1 100px;
-  min-width: 100px;
-  max-width: 380px;
-  overflow: hidden;
+  border-radius: var(--psg-radius-md);
+  transition: border-color 0.12s ease;
 
   &:focus-within {
     border-color: var(--psg-primary);
+    box-shadow: 0 0 0 3px var(--psg-primary-muted);
   }
 }
 
-.type-pill {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 0 8px;
-  border-right: 1px solid var(--psg-border);
-  background: var(--psg-surface-muted);
-  cursor: pointer;
+.explorer-search-icon {
+  color: var(--psg-text-muted);
   flex-shrink: 0;
-  user-select: none;
-  white-space: nowrap;
-
-  .type-label {
-    font-size: 12px;
-    color: var(--psg-text-secondary);
-  }
-
-  .type-arrow {
-    color: var(--psg-text-muted);
-  }
-
-  @media (hover: hover) {
-    &:hover { background: var(--psg-surface-active); }
-  }
 }
 
-.content-input {
+.explorer-search-input {
   flex: 1;
   min-width: 0;
   border: none;
+  outline: none;
   background: transparent;
-  padding: 0 8px;
   font-size: 13px;
   color: var(--psg-text);
-  outline: none;
 
   &::placeholder { color: var(--psg-text-muted); }
 }
 
-/* status-select: borderless inside the group, left separator only */
-.status-select {
-  width: 76px;
+.explorer-search-clear {
+  color: var(--psg-text-muted);
+  cursor: pointer;
   flex-shrink: 0;
+  &:hover { color: var(--psg-text); }
 }
 
-.status-select :deep(.el-select__wrapper) {
-  height: 100%;
-  min-height: unset;
-  padding: 0 6px;
-  box-shadow: none !important;
-  border: none;
-  border-left: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-sm);
+/* ── List body: emailScroll fills whatever's left ─────────── */
+.explorer-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Filter row: rendered into emailScroll's own 44px toolbar slot ── */
+.explorer-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 6px 0 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  flex-shrink: 0;
   background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-full);
 }
 
-.status-select :deep(.el-select__wrapper:hover),
-.status-select :deep(.el-select__wrapper.is-focused) {
-  box-shadow: none !important;
-  background: var(--psg-surface-active);
+.filter-chip {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  height: 24px;
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--psg-font-sans);
+  color: var(--psg-text-secondary);
+  border-radius: var(--psg-radius-full);
+  transition: background 0.14s ease, color 0.14s ease;
+  white-space: nowrap;
+
+  &.active {
+    background: var(--psg-surface);
+    color: var(--psg-text);
+    border: 1px solid var(--psg-border);
+    font-weight: 600;
+  }
 }
 
-/* ── Action icon buttons ──────────────────────────────── */
-.icon {
+.filter-text-btn,
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--psg-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--psg-text-secondary);
+  white-space: nowrap;
+  transition: background 0.10s, color 0.10s;
+
+  @media (hover: hover) {
+    &:hover { background: var(--psg-surface-active); color: var(--psg-text); }
+  }
+
+  &.active { color: var(--psg-primary); }
+}
+
+/* ── Plain icon button: the overflow trigger — icon-only is fine here,
+   "More" is convention-enough to not need a label (Refresh, right after
+   this slot, is emailScroll's own built-in toolbar button). ── */
+.icon-btn-plain {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: 1px solid transparent;
   border-radius: var(--psg-radius-sm);
   background: transparent;
@@ -501,7 +610,55 @@ async function latest() {
 
   @media (hover: hover) {
     &:hover { background: var(--psg-surface-active); color: var(--psg-text); }
-    &.icon-danger:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
+  }
+}
+
+.more-btn {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+/* Advanced-filter popover fields */
+.adv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  & + .adv-field { margin-top: 12px; }
+}
+
+.adv-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--psg-text-secondary);
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &.danger { color: var(--psg-danger); }
+}
+
+@media (max-width: 767px) {
+  .explorer-header { padding: 12px 14px 0; }
+  .explorer-search-row { margin: 8px 14px 0; height: 40px; }
+}
+
+/* Narrow list pane (or a real mobile viewport, same width class): drop
+   text labels on advanced-filter/sort down to icon-only so the row of
+   controls doesn't force horizontal scrolling before it has to. */
+@container mail-scroll (max-width: 480px) {
+  .filter-text-btn-label,
+  .sort-btn-label {
+    display: none;
+  }
+
+  .filter-text-btn,
+  .sort-btn {
+    padding: 0 6px;
   }
 }
 

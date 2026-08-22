@@ -89,7 +89,7 @@
                 <div>
                   <span>{{ $t('multipleEmail') }}</span>
                   <el-tooltip effect="dark" :content="$t('multipleEmailDesc')">
-                    <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+                    <Icon class="warning" icon="psg:warning" width="18" height="18"/>
                   </el-tooltip>
                   <p>{{ $t('multipleEmailDesc') }}</p>
                 </div>
@@ -140,7 +140,7 @@
                 <div class="email-title">
                   <span>{{ setting.title }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="editTitleShow = true">
-                    <Icon icon="solar:pen-linear" width="16" height="16"/>
+                    <Icon icon="psg:edit" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -170,16 +170,16 @@
                   >
                     <template #error>
                       <div class="error-image">
-                        <Icon icon="solar:gallery-linear" width="24" height="24"/>
+                        <Icon icon="psg:gallery" width="24" height="24"/>
                       </div>
                     </template>
                   </el-image>
                   <div class="background-btn">
                     <el-button class="opt-button" size="small" type="primary" @click="openSetBackground">
-                      <Icon icon="solar:pen-linear" width="16" height="16"/>
+                      <Icon icon="psg:edit" width="16" height="16"/>
                     </el-button>
                     <el-button class="opt-button" size="small" type="primary" @click="delBackground">
-                      <Icon icon="solar:trash-bin-trash-linear" width="16" height="16"/>
+                      <Icon icon="psg:trash" width="16" height="16"/>
                     </el-button>
                   </div>
                 </div>
@@ -202,7 +202,7 @@
                 <div>
                   <span>{{ $t('autoRefresh') }}</span>
                   <el-tooltip effect="dark" :content="$t('autoRefreshDesc')">
-                    <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+                    <Icon class="warning" icon="psg:warning" width="18" height="18"/>
                   </el-tooltip>
                 </div>
                 <div>
@@ -232,7 +232,7 @@
                 <div>
                   <span>{{ $t('noRecipientTitle') }}</span>
                   <el-tooltip effect="dark" :content="$t('noRecipientDesc')">
-                    <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+                    <Icon class="warning" icon="psg:warning" width="18" height="18"/>
                   </el-tooltip>
                 </div>
                 <div>
@@ -248,11 +248,11 @@
                 <div v-else>
                   <el-button class="opt-button" style="margin-top: 0" @click="openResendList" size="small"
                              type="primary">
-                    <Icon icon="solar:list-linear" width="18" height="18"/>
+                    <Icon icon="psg:list" width="18" height="18"/>
                   </el-button>
                   <el-button class="opt-button" style="margin-top: 0" @click="openResendForm" size="small"
                              type="primary">
-                    <Icon icon="solar:add-circle-linear" width="16" height="16"/>
+                    <Icon icon="psg:add-circle" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -261,7 +261,7 @@
                 <div>
                   <el-button class="opt-button" style="margin-top: 0" @click="openBlackListForm" size="small"
                              type="primary">
-                    <Icon icon="solar:settings-linear" width="16" height="16"/>
+                    <Icon icon="psg:settings" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -276,13 +276,13 @@
                 <div>
                   <span>{{ $t('osDomain') }}</span>
                   <el-tooltip effect="dark" :content="$t('ossDomainDesc')">
-                    <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+                    <Icon class="warning" icon="psg:warning" width="18" height="18"/>
                   </el-tooltip>
                 </div>
                 <div class="r2domain">
                   <span>{{ setting.r2Domain || '' }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="r2DomainShow = true">
-                    <Icon icon="solar:pen-linear" width="16" height="16"/>
+                    <Icon icon="psg:edit" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -292,7 +292,7 @@
                 </div>
                 <div class="r2domain">
                   <el-button class="opt-button" size="small" type="primary" @click="addS3Show = true">
-                    <Icon icon="solar:settings-linear" width="16" height="16"/>
+                    <Icon icon="psg:settings" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -317,7 +317,7 @@
                 <div class="forward">
                   <span>{{ setting.tgBotStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="openTgSetting">
-                    <Icon icon="solar:settings-linear" width="18" height="18"/>
+                    <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
               </div>
@@ -326,7 +326,7 @@
                 <div class="forward">
                   <span>{{ setting.forwardStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="openThirdEmailSetting">
-                    <Icon icon="solar:settings-linear" width="18" height="18"/>
+                    <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
               </div>
@@ -335,7 +335,7 @@
                 <div class="forward">
                   <span>{{ setting.ruleType === 0 ? $t('forwardAll') : $t('rules') }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="openForwardRules">
-                    <Icon icon="solar:settings-linear" width="18" height="18"/>
+                    <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
               </div>
@@ -350,7 +350,7 @@
                 <div><span>{{ $t('signUpVerification') }}</span></div>
                 <div>
                   <el-button class="opt-button" size="small" type="primary" @click="openRegVerifyCount">
-                    <Icon icon="solar:settings-linear" width="18" height="18"/>
+                    <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                   <el-select
                       @change="change"
@@ -369,7 +369,7 @@
                 <div><span>{{ $t('addEmailVerification') }}</span></div>
                 <div>
                   <el-button class="opt-button" size="small" type="primary" @click="openAddVerifyCount">
-                    <Icon icon="solar:settings-linear" width="18" height="18"/>
+                    <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                   <el-select
                       @change="change"
@@ -389,7 +389,7 @@
                 <div class="bot-verify">
                   <span>{{ setting.siteKey }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
-                    <Icon icon="solar:pen-linear" width="16" height="16"/>
+                    <Icon icon="psg:edit" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -398,7 +398,7 @@
                 <div class="bot-verify">
                   <span> {{ setting.secretKey }} </span>
                   <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
-                    <Icon icon="solar:pen-linear" width="16" height="16"/>
+                    <Icon icon="psg:edit" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -413,7 +413,7 @@
                 <div class="forward">
                   <span>{{ setting.notice === 0 ? $t('enabled') : $t('disabled') }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="openNoticePopupSetting">
-                    <Icon icon="solar:settings-linear" width="18" height="18"/>
+                    <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
               </div>
@@ -421,7 +421,7 @@
                 <div><span>{{ $t('popUp') }}</span></div>
                 <div class="forward">
                   <el-button class="opt-button" size="small" type="primary" @click="openNoticePopup">
-                    <Icon icon="solar:cursor-bold" width="18" height="18"/>
+                    <Icon icon="psg:cursor" width="18" height="18"/>
                   </el-button>
                 </div>
               </div>
@@ -442,7 +442,7 @@
                 <div><span>{{ $t('codeRecognitionRules') }}</span></div>
                 <div class="forward">
                   <el-button class="opt-button" size="small" type="primary" @click="openAiCodeFilter">
-                    <Icon icon="solar:settings-linear" width="18" height="18"/>
+                    <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
               </div>
@@ -456,55 +456,10 @@
             </div>
           </div>
 
-          <div v-show="activeSettingSection === 'about'" class="settings-card about">
-            <div class="card-content">
-              <div class="about-row">
-                <span class="about-label">{{ $t('version') }}</span>
-                <div class="about-actions">
-                  <el-badge is-dot :hidden="!hasUpdate">
-                    <el-button class="about-btn" @click="jump('https://github.com/WENSHAO521/PSG-mail/releases')">
-                      <template #icon><Icon icon="solar:code-branch-linear" width="16" height="16" color="#1890FF"/></template>
-                      {{ currentVersion }}
-                    </el-button>
-                  </el-badge>
-                </div>
-              </div>
-              <div class="about-row">
-                <span class="about-label">{{ $t('community') }}</span>
-                <div class="about-actions">
-                  <el-button class="about-btn" @click="jump('https://panorama-sg.com')">
-                    <template #icon><img src="/favicon.svg" width="16" height="16" style="display:block"/></template>
-                    PSG
-                  </el-button>
-                  <el-button class="about-btn" @click="jump('https://t.me/cloud_mail_tg')">
-                    <template #icon><Icon icon="logos:telegram" width="18" height="18"/></template>
-                    Telegram
-                  </el-button>
-                </div>
-              </div>
-              <div class="about-row">
-                <span class="about-label">{{ $t('support') }}</span>
-                <div class="about-actions">
-                  <el-button class="about-btn" @click="jump('https://doc.skymail.ink/support.html')">
-                    <template #icon><Icon color="#79D6B5" icon="simple-icons:buymeacoffee" width="18" height="18"/></template>
-                    {{ t('supportDesc') }}
-                  </el-button>
-                </div>
-              </div>
-              <div class="about-row">
-                <span class="about-label">{{ $t('help') }}</span>
-                <div class="about-actions">
-                  <el-button class="about-btn" @click="jump('https://doc.skymail.ink')">
-                    <template #icon><Icon color="#79D6B5" icon="fluent-color:document-32" width="18" height="18"/></template>
-                    {{ t('document') }}
-                  </el-button>
-                </div>
-              </div>
-            </div>
-          </div>
             </div>
           </main>
         </div>
+        <div class="settings-footer">PSG Mail {{ currentVersion }}</div>
       </div>
 
       <!-- Dialogs remain the same -->
@@ -555,7 +510,7 @@
               <template #content>
                 <span>{{ $t('backgroundWarning') }}</span>
               </template>
-              <Icon class="title-icon  warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+              <Icon class="title-icon  warning" icon="psg:warning" width="18" height="18"/>
             </el-tooltip>
           </span>
         </template>
@@ -587,7 +542,7 @@
           <div class="forward-head">
             <span class="forward-set-title">{{ $t('tgBot') }}</span>
             <el-tooltip effect="dark" :content="$t('tgBotDesc')">
-              <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+              <Icon class="warning" icon="psg:warning" width="18" height="18"/>
             </el-tooltip>
           </div>
         </template>
@@ -648,7 +603,7 @@
           <div class="forward-head">
             <span class="forward-set-title">{{ $t('otherEmail') }}</span>
             <el-tooltip effect="dark" :content="$t('otherEmailDesc')">
-              <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+              <Icon class="warning" icon="psg:warning" width="18" height="18"/>
             </el-tooltip>
           </div>
         </template>
@@ -674,7 +629,7 @@
           <div class="forward-head">
             <span class="forward-set-title">{{ $t('forwardingRules') }}</span>
             <el-tooltip effect="dark" :content="$t('forwardingRulesDesc')">
-              <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+              <Icon class="warning" icon="psg:warning" width="18" height="18"/>
             </el-tooltip>
           </div>
         </template>
@@ -802,7 +757,7 @@
             <div class="force-path-style-left">
               <span>ForcePathStyle</span>
               <el-tooltip effect="dark" :content="$t('forcePathStyleDesc')">
-                <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+                <Icon class="warning" icon="psg:warning" width="18" height="18"/>
               </el-tooltip>
             </div>
             <el-switch :before-change="beforeChange" :active-value="0" :inactive-value="1"
@@ -834,7 +789,7 @@
           <div class="forward-head">
             <span class="forward-set-title">{{ $t('blackList') }}</span>
             <el-tooltip effect="dark" :content="$t('blackListDesc')">
-              <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+              <Icon class="warning" icon="psg:warning" width="18" height="18"/>
             </el-tooltip>
           </div>
         </template>
@@ -856,7 +811,7 @@
           <div class="forward-head">
             <span class="forward-set-title">{{ $t('codeRecognitionRules') }}</span>
             <el-tooltip effect="dark" :content="$t('codeRecognitionRulesDesc')">
-              <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
+              <Icon class="warning" icon="psg:warning" width="18" height="18"/>
             </el-tooltip>
           </div>
         </template>
@@ -887,15 +842,12 @@ import loading from "@/components/loading/index.vue";
 import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
-import axios from "axios";
 
 defineOptions({
   name: 'sys-setting'
 })
 
 const currentVersion = 'v3.0.0'
-const hasUpdate = ref(false)
-let getUpdateErrorCount = 1;
 const {t, locale} = useI18n();
 const firstLoading = ref(true)
 const settingReady = ref(false)
@@ -1014,14 +966,12 @@ const systemSettingNav = computed(() => [
   {key: 'verify', label: t('turnstileSetting'), icon: 'lucide:shield-check', desc: t('sysVerifyDesc')},
   {key: 'notice', label: t('noticeTitle'), icon: 'lucide:megaphone', desc: t('sysNoticeDesc')},
   {key: 'ai', label: 'Workers AI', icon: 'lucide:sparkles', desc: t('sysAiDesc')},
-  {key: 'about', label: t('about'), icon: 'lucide:info', desc: t('sysAboutDesc')},
 ])
 const activeSettingMeta = computed(() => {
   return systemSettingNav.value.find(item => item.key === activeSettingSection.value) || systemSettingNav.value[0]
 })
 
 getSettings()
-getUpdate()
 
 function getSettings() {
   settingReady.value = false
@@ -1096,24 +1046,6 @@ const resendList = computed(() => {
 
   return list;
 });
-
-function getUpdate() {
-  if (getUpdateErrorCount > 5 || !getUpdateErrorCount) return
-  axios.get('https://api.github.com/repos/WENSHAO521/PSG-mail/releases/latest').then(({data}) => {
-    // release.yml's release "name" has no "v" prefix (RELEASE_VERSION strips
-    // it), but currentVersion here is written with one — compare normalized
-    // so this doesn't permanently show "update available" on a match.
-    const stripV = v => String(v || '').replace(/^v/i, '')
-    hasUpdate.value = stripV(data.name) !== stripV(currentVersion)
-    getUpdateErrorCount = 0
-  }).catch(e => {
-    getUpdateErrorCount++
-    setTimeout(() => {
-      getUpdate()
-    }, 2000)
-    console.error('检查更新失败：', e)
-  })
-}
 
 function saveAddVerifyCount() {
   if (!addVerifyCount.value) {
@@ -1584,13 +1516,6 @@ function saveTitle() {
   editSetting({title: editTitle.value})
 }
 
-function jump(href) {
-  const doc = document.createElement('a')
-  doc.href = href
-  doc.target = '_blank'
-  doc.click()
-}
-
 function editSetting(settingForm, refreshStatus = true) {
   if (settingLoading.value) return
   settingLoading.value = true
@@ -1703,7 +1628,6 @@ function editSetting(settingForm, refreshStatus = true) {
 .settings-sidebar {
   position: sticky;
   top: 16px;
-  min-height: min(630px, calc(100vh - 32px));
   padding: 8px 0;
   display: flex;
   flex-direction: column;
@@ -1711,7 +1635,6 @@ function editSetting(settingForm, refreshStatus = true) {
 
   @media (max-width: 820px) {
     position: static;
-    min-height: 0;
     flex-direction: row;
     overflow-x: auto;
     border-radius: var(--psg-radius-sm);
@@ -1725,7 +1648,9 @@ function editSetting(settingForm, refreshStatus = true) {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-radius: var(--psg-radius-sm);
+  border: none;
+  border-left: 3px solid transparent;
+  background: transparent;
   color: var(--psg-text-secondary);
   font-family: var(--psg-font-sans);
   font-size: 13.5px;
@@ -1742,6 +1667,7 @@ function editSetting(settingForm, refreshStatus = true) {
 
   &.active {
     background: var(--psg-surface-active);
+    border-left-color: var(--psg-primary);
     color: var(--psg-text);
     font-weight: 700;
   }
@@ -2233,38 +2159,14 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 }
 
-.about-row {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  min-height: 76px;
-  padding: 16px 20px;
-  align-items: center;
-  gap: 20px;
-  border-bottom: 1px solid var(--psg-border);
-
-  &:last-child { border-bottom: none; }
-}
-
-.about-label {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--psg-text-secondary);
-  white-space: nowrap;
-}
-
-.about-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.about-btn {
-  font-weight: 500;
-  font-size: 13px;
+.settings-footer {
+  margin-top: 14px;
+  padding: 4px 4px 0;
+  text-align: center;
+  font-family: var(--psg-font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--psg-text-muted);
 }
 
 .email-title {

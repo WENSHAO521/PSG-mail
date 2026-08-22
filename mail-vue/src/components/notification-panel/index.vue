@@ -14,7 +14,7 @@
           :max="99"
           class="notif-badge"
         >
-          <Icon icon="solar:bell-bold-duotone" width="20" height="20"/>
+          <Icon icon="psg:bell" width="20" height="20"/>
         </el-badge>
       </div>
     </template>

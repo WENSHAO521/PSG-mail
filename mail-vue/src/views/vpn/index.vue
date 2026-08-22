@@ -12,7 +12,7 @@
 
         <!-- ── Notice ── -->
         <div class="dl-notice">
-          <Icon icon="solar:letter-linear" width="15" />
+          <Icon icon="psg:mail" width="15" />
           {{ $t('vpnNotice') }}
           <a href="mailto:admin@panorama-sg.de" class="dl-notice-link">admin@panorama-sg.de</a>
         </div>
@@ -24,7 +24,7 @@
 
         <!-- ── Error ── -->
         <div v-else-if="error" class="dl-error">
-          <Icon icon="solar:danger-triangle-linear" width="20" />
+          <Icon icon="psg:warning" width="20" />
           {{ $t('vpnLoadError') }}
           <a :href="RELEASES_URL" target="_blank" rel="noopener" class="dl-releases-link">
             {{ $t('vpnViewOnGitHub') }}
@@ -62,7 +62,7 @@
                   rel="noopener"
                   :title="a.name"
                 >
-                  <Icon icon="solar:download-minimalistic-bold" width="14" height="14" />
+                  <Icon icon="psg:download" width="14" height="14" />
                   {{ archLabel(a.name) }}
                 </a>
               </div>
@@ -88,7 +88,7 @@
                   rel="noopener"
                   :title="a.name"
                 >
-                  <Icon icon="solar:download-minimalistic-bold" width="14" height="14" />
+                  <Icon icon="psg:download" width="14" height="14" />
                   {{ archLabel(a.name) }}
                 </a>
               </div>
@@ -114,7 +114,7 @@
                   rel="noopener"
                   :title="a.name"
                 >
-                  <Icon icon="solar:download-minimalistic-bold" width="14" height="14" />
+                  <Icon icon="psg:download" width="14" height="14" />
                   {{ archLabel(a.name) }}
                 </a>
               </div>
@@ -140,7 +140,7 @@
                   rel="noopener"
                   :title="a.name"
                 >
-                  <Icon icon="solar:download-minimalistic-bold" width="14" height="14" />
+                  <Icon icon="psg:download" width="14" height="14" />
                   {{ archLabel(a.name) }}
                 </a>
               </div>

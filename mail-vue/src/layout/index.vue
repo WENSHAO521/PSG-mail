@@ -25,7 +25,8 @@
        :data-mode="isMailRoute ? 'mail' : 'workspace'"
        :data-collapsed="String(sidebarCollapsed)"
        :data-mobile-detail="String(uiStore.mobileDetailOpen)"
-       :data-platform="platform">
+       :data-platform="platform"
+       :style="{ '--mail-list-w': listPaneWidth + 'px' }">
 
     <!-- Mobile sidebar backdrop -->
     <div class="sidebar-backdrop"
@@ -49,6 +50,10 @@
           </keep-alive>
         </router-view>
       </section>
+      <div class="mail-list-resizer"
+           :class="{ 'is-dragging': resizerDragging }"
+           @mousedown="startListResize"
+           @dblclick="resetListWidth"></div>
       <section class="mail-detail-pane">
         <ContentPane @back="uiStore.mobileDetailOpen = false"/>
       </section>
@@ -77,7 +82,7 @@
   <!-- ── Auto-update banner (Electron only) ── -->
   <Transition name="update-bar">
     <div v-if="updateState.show" class="update-bar">
-      <Icon icon="solar:download-minimalistic-linear" width="16" height="16" class="update-icon"/>
+      <Icon icon="psg:download" width="16" height="16" class="update-icon"/>
       <span v-if="updateState.stage === 'downloading'" class="update-text">
         {{ $t('updateDownloading', { version: updateState.version, pct: updateState.progress }) }}
       </span>
@@ -127,6 +132,44 @@ const writerRef = ref({})
 const cmdPaletteRef = ref(null)
 const showShortcuts = ref(false)
 const platform = window.electronAPI?.platform ?? 'web'
+const isMobile = ref(window.innerWidth < 1025)
+
+// ── Draggable list/detail pane divider ──────────────────────────────────
+const LIST_WIDTH_KEY = 'psgMailListWidth'
+const DEFAULT_LIST_WIDTH = 440
+const listPaneWidth = ref(Number(localStorage.getItem(LIST_WIDTH_KEY)) || DEFAULT_LIST_WIDTH)
+let resizeStartX = 0
+let resizeStartWidth = 0
+const resizerDragging = ref(false)
+
+function startListResize(e) {
+  resizeStartX = e.clientX
+  resizeStartWidth = listPaneWidth.value
+  resizerDragging.value = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  window.addEventListener('mousemove', onListResize)
+  window.addEventListener('mouseup', stopListResize)
+}
+
+function onListResize(e) {
+  const next = resizeStartWidth + (e.clientX - resizeStartX)
+  listPaneWidth.value = Math.min(650, Math.max(340, next))
+}
+
+function stopListResize() {
+  resizerDragging.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  localStorage.setItem(LIST_WIDTH_KEY, String(listPaneWidth.value))
+  window.removeEventListener('mousemove', onListResize)
+  window.removeEventListener('mouseup', stopListResize)
+}
+
+function resetListWidth() {
+  listPaneWidth.value = DEFAULT_LIST_WIDTH
+  localStorage.setItem(LIST_WIDTH_KEY, String(DEFAULT_LIST_WIDTH))
+}
 let elNotification = null
 let noticeStyle = null
 
@@ -242,7 +285,8 @@ function handleKeydown(e) {
 
 // Responsive sidebar
 function handleResize() {
-  if (window.innerWidth < 1025) uiStore.asideShow = false
+  isMobile.value = window.innerWidth < 1025
+  if (isMobile.value) uiStore.asideShow = false
   else uiStore.asideShow = true
 }
 
@@ -328,6 +372,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('popstate', handlePopState)
+  window.removeEventListener('mousemove', onListResize)
+  window.removeEventListener('mouseup', stopListResize)
   clearTimeout(pendingGTimer)
 })
 </script>
@@ -418,12 +464,12 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
 
-  /* Mail mode: sidebar | list | detail */
+  /* Mail mode: sidebar | list | resizer | detail */
   &[data-mode="mail"] {
-    grid-template-columns: 256px minmax(380px, 420px) minmax(380px, 1fr);
+    grid-template-columns: 256px clamp(340px, var(--mail-list-w, 440px), 650px) 6px minmax(340px, 1fr);
 
     &[data-collapsed="true"] {
-      grid-template-columns: 72px minmax(380px, 420px) minmax(380px, 1fr);
+      grid-template-columns: 72px clamp(340px, var(--mail-list-w, 440px), 650px) 6px minmax(340px, 1fr);
     }
   }
 
@@ -439,9 +485,9 @@ onBeforeUnmount(() => {
   /* Tablet: reduce list width */
   @media (max-width: 1280px) {
     &[data-mode="mail"] {
-      grid-template-columns: 256px minmax(340px, 380px) minmax(0, 1fr);
+      grid-template-columns: 256px clamp(300px, var(--mail-list-w, 380px), 480px) 6px minmax(0, 1fr);
       &[data-collapsed="true"] {
-        grid-template-columns: 72px minmax(340px, 380px) minmax(0, 1fr);
+        grid-template-columns: 72px clamp(300px, var(--mail-list-w, 380px), 480px) 6px minmax(0, 1fr);
       }
     }
   }
@@ -502,6 +548,37 @@ onBeforeUnmount(() => {
     border-right: none;
     z-index: 5;
   }
+}
+
+/* ── Drag handle between list and detail panes ───────────────
+   A near-invisible 6px hit target that only reveals itself on
+   hover/drag, so it reads as "the gap between panes" at rest and
+   as an obvious control the moment you reach for it. ── */
+.mail-list-resizer {
+  position: relative;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 6;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+
+  @media (hover: hover) {
+    &:hover::after { background: var(--psg-primary); }
+  }
+
+  &.is-dragging::after { background: var(--psg-primary); }
+
+  @media (max-width: 1024px) { display: none; }
 }
 
 .mail-detail-pane {

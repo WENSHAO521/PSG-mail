@@ -2,7 +2,7 @@
   <div class="search-page">
     <div class="search-bar-row">
       <div class="search-input-wrap">
-        <Icon icon="solar:magnifer-linear" width="18" height="18" class="search-icon"/>
+        <Icon icon="psg:search" width="18" height="18" class="search-icon"/>
         <input
           ref="inputRef"
           v-model="queryText"
@@ -10,7 +10,7 @@
           :placeholder="$t('searchOperatorsPlaceholder')"
           @keydown.enter="runSearch()"
         />
-        <Icon v-if="queryText" icon="solar:close-circle-linear" width="17" height="17"
+        <Icon v-if="queryText" icon="psg:close-circle" width="17" height="17"
               class="search-clear" @click="queryText = ''; results = []; searched = false"/>
       </div>
       <el-button type="primary" class="search-go-btn" @click="runSearch()">{{ $t('search') }}</el-button>
@@ -37,7 +37,7 @@
     <div v-if="searched" class="results-block">
       <div class="results-count" v-if="results.length">{{ $t('searchResultCount', { count: results.length }) }}</div>
       <div v-if="!loading && !results.length" class="empty-state">
-        <Icon icon="solar:file-search-linear" width="32" height="32" class="empty-icon"/>
+        <Icon icon="psg:file-search" width="32" height="32" class="empty-icon"/>
         <div class="empty-title">{{ $t('noSearchResults') }}</div>
       </div>
 
@@ -48,7 +48,7 @@
             <span class="row-label-dots" v-if="item.labels && item.labels.length">
               <span v-for="l in item.labels" :key="l.labelId" class="row-label-dot" :style="{ background: l.color }" :title="l.name"></span>
             </span>
-            <Icon v-if="hasAttachment(item)" icon="solar:paperclip-linear" width="12" height="12" class="result-att-icon"/>
+            <Icon v-if="hasAttachment(item)" icon="psg:paperclip" width="12" height="12" class="result-att-icon"/>
             <span class="result-time">{{ formatTime(item.createTime) }}</span>
           </div>
           <span class="result-subject" :class="{ unread: item.unread === 0 }">{{ item.subject || $t('noSubject') }}</span>

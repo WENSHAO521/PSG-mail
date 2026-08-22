@@ -2,10 +2,10 @@
   <div class="account-box">
     <div class="head-opt">
       <div v-perm="'account:add'" class="icon" @click="add">
-        <Icon icon="solar:add-circle-linear" width="20" height="20"/>
+        <Icon icon="psg:add-circle" width="20" height="20"/>
       </div>
       <div class="icon" @click="refresh">
-        <Icon icon="solar:refresh-linear" width="16" height="16"/>
+        <Icon icon="psg:refresh" width="16" height="16"/>
       </div>
     </div>
     <el-scrollbar class="scrollbar" ref="scrollbarRef">
@@ -22,15 +22,15 @@
           </div>
           <div class="item-actions" @click.stop>
             <Icon @click="setAllReceive(item)" v-if="!item.allReceive"
-                  icon="solar:inbox-outline" width="15" height="15" class="action-icon"/>
+                  icon="psg:mail" width="15" height="15" class="action-icon"/>
             <Icon @click="setAllReceive(item)" v-else
-                  icon="solar:inbox-archive-outline" width="15" height="15" class="action-icon action-active"/>
-            <Icon icon="solar:copy-outline" width="15" height="15" class="action-icon"
+                  icon="psg:mail" width="15" height="15" class="action-icon action-active"/>
+            <Icon icon="psg:copy" width="15" height="15" class="action-icon"
                   @click.stop="copyAccount(item.email)"/>
-            <Icon icon="solar:settings-outline" width="15" height="15" class="action-icon"
+            <Icon icon="psg:settings" width="15" height="15" class="action-icon"
                   v-if="showNullSetting(item)"/>
             <el-dropdown v-else trigger="click">
-              <Icon icon="solar:settings-outline" width="15" height="15" class="action-icon"/>
+              <Icon icon="psg:settings" width="15" height="15" class="action-icon"/>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item v-if="hasPerm('email:send')" @click="openSetName(item)">{{ $t('rename') }}</el-dropdown-item>
@@ -108,7 +108,7 @@
                   </el-select>
                   <div>
                     <span>{{ addForm.suffix }}</span>
-                    <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
+                    <Icon class="setting-icon" icon="psg:chevron-down" width="20" height="20"/>
                   </div>
                 </div>
               </template>

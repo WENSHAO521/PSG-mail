@@ -34,7 +34,7 @@
               <template v-else-if="dlVariants.win.length">
                 <a v-for="v in dlVariants.win" :key="v.url" class="dl-btn-row" :href="v.url" target="_blank" rel="noopener">
                   <span class="dl-btn-row-label">
-                    <Icon icon="solar:download-minimalistic-bold" width="15" height="15" />
+                    <Icon icon="psg:download" width="15" height="15" />
                     {{ v.label }}
                   </span>
                   <span class="dl-btn-row-size" v-if="v.size">{{ formatBytes(v.size) }}</span>
@@ -42,7 +42,7 @@
               </template>
               <a v-else class="dl-btn-row" :href="RELEASES_URL" target="_blank" rel="noopener">
                 <span class="dl-btn-row-label">
-                  <Icon icon="solar:download-minimalistic-bold" width="15" height="15" />
+                  <Icon icon="psg:download" width="15" height="15" />
                   {{ $t('dlAllReleases') }}
                 </span>
               </a>
@@ -65,7 +65,7 @@
               <template v-else-if="dlVariants.mac.length">
                 <a v-for="v in dlVariants.mac" :key="v.url" class="dl-btn-row" :href="v.url" target="_blank" rel="noopener">
                   <span class="dl-btn-row-label">
-                    <Icon icon="solar:download-minimalistic-bold" width="15" height="15" />
+                    <Icon icon="psg:download" width="15" height="15" />
                     {{ v.label }}
                   </span>
                   <span class="dl-btn-row-size" v-if="v.size">{{ formatBytes(v.size) }}</span>
@@ -73,7 +73,7 @@
               </template>
               <a v-else class="dl-btn-row" :href="RELEASES_URL" target="_blank" rel="noopener">
                 <span class="dl-btn-row-label">
-                  <Icon icon="solar:download-minimalistic-bold" width="15" height="15" />
+                  <Icon icon="psg:download" width="15" height="15" />
                   {{ $t('dlAllReleases') }}
                 </span>
               </a>
@@ -96,7 +96,7 @@
               <template v-else-if="dlVariants.android.length">
                 <a v-for="v in dlVariants.android" :key="v.url" class="dl-btn-row" :href="v.url" target="_blank" rel="noopener">
                   <span class="dl-btn-row-label">
-                    <Icon icon="solar:download-minimalistic-bold" width="15" height="15" />
+                    <Icon icon="psg:download" width="15" height="15" />
                     {{ v.label }}
                   </span>
                   <span class="dl-btn-row-size" v-if="v.size">{{ formatBytes(v.size) }}</span>
@@ -104,7 +104,7 @@
               </template>
               <a v-else class="dl-btn-row" :href="RELEASES_URL" target="_blank" rel="noopener">
                 <span class="dl-btn-row-label">
-                  <Icon icon="solar:download-minimalistic-bold" width="15" height="15" />
+                  <Icon icon="psg:download" width="15" height="15" />
                   {{ $t('dlAllReleases') }}
                 </span>
               </a>
@@ -127,7 +127,7 @@
               <template v-else-if="dlVariants.linux.length">
                 <a v-for="v in dlVariants.linux" :key="v.url" class="dl-btn-row" :href="v.url" target="_blank" rel="noopener">
                   <span class="dl-btn-row-label">
-                    <Icon icon="solar:download-minimalistic-bold" width="15" height="15" />
+                    <Icon icon="psg:download" width="15" height="15" />
                     {{ v.label }}
                   </span>
                   <span class="dl-btn-row-size" v-if="v.size">{{ formatBytes(v.size) }}</span>
@@ -135,7 +135,7 @@
               </template>
               <a v-else class="dl-btn-row" :href="RELEASES_URL" target="_blank" rel="noopener">
                 <span class="dl-btn-row-label">
-                  <Icon icon="solar:download-minimalistic-bold" width="15" height="15" />
+                  <Icon icon="psg:download" width="15" height="15" />
                   {{ $t('dlAllReleases') }}
                 </span>
               </a>
@@ -145,7 +145,7 @@
           <!-- Web -->
           <div class="dl-card dl-card--web">
             <div class="dl-card-icon">
-              <Icon icon="solar:global-linear" width="40" height="40" />
+              <Icon icon="psg:globe" width="40" height="40" />
             </div>
             <div class="dl-card-info">
               <div class="dl-card-platform">{{ $t('dlWeb') }}</div>
@@ -155,7 +155,7 @@
             <div class="dl-btn-list">
               <div class="dl-btn-row dl-btn-row--current">
                 <span class="dl-btn-row-label">
-                  <Icon icon="solar:check-circle-bold" width="15" height="15" />
+                  <Icon icon="psg:check-circle" width="15" height="15" />
                   {{ $t('dlWebCurrent') }}
                 </span>
               </div>

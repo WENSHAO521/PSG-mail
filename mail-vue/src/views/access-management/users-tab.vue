@@ -1,167 +1,185 @@
 <template>
-  <div class="page-outer">
-    <div class="space-y">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">{{ $t('allUsers') }}</h1>
-        <p class="page-subtitle">{{ $t('userManagementDesc') }}</p>
-      </div>
-      <el-button type="primary" class="create-user-btn" @click="openAdd">
-        <Icon icon="solar:user-plus-linear" width="16" height="16"/>
-        {{ $t('addUser') }}
-      </el-button>
-    </div>
-    <div class="header-actions">
+  <div class="tab-panel">
+    <div class="toolbar">
       <div class="search">
         <el-input
             v-model="params.email"
             class="search-input"
             :placeholder="$t('searchByEmail')"
+            @keyup.enter="search"
         >
         </el-input>
       </div>
       <el-select v-model="params.status" placeholder="Select" class="status-select"
-                 :style="`width: ${locale === 'en' ? 95 : 80 }px`">
+                 :style="`width: ${locale === 'en' ? 95 : 80 }px`" @change="search">
         <el-option :key="-1" :label="$t('all')" :value="-1"/>
         <el-option :key="0" :label="$t('active')" :value="0"/>
         <el-option :key="1" :label="$t('banned')" :value="1"/>
         <el-option :key="-2" :label="$t('deleted')" :value="-2"/>
       </el-select>
-      <Icon class="icon" icon="solar:magnifer-linear" @click="search" width="18" height="18"/>
-      <Icon class="icon" @click="changeTimeSort" icon="solar:sort-by-time-linear"
+      <Icon class="icon" @click="changeTimeSort" icon="psg:sort"
             v-if="params.timeSort === 1" width="20" height="20"/>
-      <Icon class="icon" @click="changeTimeSort" icon="solar:sort-by-time-linear" v-else width="20"
+      <Icon class="icon" @click="changeTimeSort" icon="psg:sort" v-else width="20"
             height="20" style="transform: scaleY(-1)"/>
-      <Icon class="icon" icon="solar:refresh-linear" width="18" height="18" @click="refresh"/>
-      <Icon class="icon icon-danger" icon="solar:trash-bin-trash-linear" width="18" height="18" @click="delUser"/>
+      <Icon class="icon" icon="psg:refresh" width="18" height="18" @click="refresh"/>
     </div>
-    <div class="table-card">
-      <div>
-        <div class="loading" :class="tableLoading ? 'loading-show' : 'loading-hide'"
-             :style="first ? 'background: transparent' : ''">
-          <loading/>
+
+    <transition name="fade">
+      <div class="selection-bar" v-if="selectedRows.length">
+        <span>{{ selectedRows.length }}</span>
+        <el-button size="small" type="danger" plain @click="delUser">
+          {{ $t('deleteSelected', { n: selectedRows.length }) }}
+        </el-button>
+      </div>
+    </transition>
+
+    <div class="table-card" v-if="!isCardView">
+      <div class="loading" :class="tableLoading ? 'loading-show' : 'loading-hide'"
+           :style="first ? 'background: transparent' : ''">
+        <loading/>
+      </div>
+      <EmptyState v-if="!tableLoading && !first && users.length === 0 && !hasFilters" class="empty-slot"
+                  icon="psg:group" :title="$t('emptyUsersTitle')" :description="$t('emptyUsersDesc')"
+                  :cta-text="$t('addUser')" @cta="openAdd"/>
+      <EmptyState v-else-if="!tableLoading && !first && users.length === 0" class="empty-slot"
+                  icon="psg:search" :title="$t('searchEmptyTitle')" :cta-text="$t('clearFilters')" @cta="clearFilters"/>
+      <el-table
+          v-else
+          :data="users"
+          :preserve-expanded-content="preserveExpanded"
+          style="width: 100%;"
+          ref="tableRef"
+          @cell-contextmenu="handleContextmenu"
+          @selection-change="onSelectionChange"
+          :cell-class-name="cellClassName"
+      >
+        <el-table-column width="40" type="selection" :selectable="row => row.type !== 0"/>
+        <el-table-column :label="$t('user')" :min-width="220" show-overflow-tooltip :tooltip-formatter="tableRowFormatter">
+          <template #default="props">
+            <div class="user-cell">
+              <div class="user-avatar" :style="{ background: avatarBg(props.row.email) }">
+                {{ avatarLetter(props.row.accountName || props.row.oauthName, props.row.email) }}
+              </div>
+              <div class="user-cell-text">
+                <div class="user-cell-name">{{ props.row.accountName || props.row.oauthName || props.row.email }}</div>
+                <div class="user-cell-email">{{ props.row.email }}</div>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="statusShow" min-width="90px" :label="$t('tabStatus')">
+          <template #default="props">
+            <StatusBadge v-if="props.row.isDel === 1" tone="neutral" :label="$t('deleted')"/>
+            <StatusBadge v-else-if="props.row.status === 0" tone="success" :label="$t('active')"/>
+            <StatusBadge v-else-if="props.row.status === 1" tone="danger" :label="$t('banned')"/>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('tabReceived')" prop="receiveEmailCount" min-width="80"/>
+        <el-table-column v-if="sendNumShow" :label="$t('tabSent')" prop="sendEmailCount" min-width="80"/>
+        <el-table-column v-if="accountNumShow" :label="$t('tabMailboxes')" prop="accountCount" min-width="90"/>
+        <el-table-column v-if="typeShow" :label="$t('roleLabel')" min-width="140">
+          <template #default="props">
+            <StatusBadge variant="pill" :tone="props.row.type === 0 ? 'success' : 'neutral'"
+                          :label="toRoleName(props.row.type)"/>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('action')" width="60">
+          <template #default="props">
+            <MoreMenu v-if="!(props.row.type === 0 && userStore.user.type !== 0)">
+              <el-dropdown-item @click="openDetails(props.row)">{{ $t('details') }}</el-dropdown-item>
+              <el-dropdown-item @click="openSetName(props.row)">{{ $t('setUsername') }}</el-dropdown-item>
+              <el-dropdown-item @click="openSetPwd(props.row)">{{ $t('chgPwd') }}</el-dropdown-item>
+              <el-dropdown-item @click="openSetType(props.row)">{{ $t('perm') }}</el-dropdown-item>
+              <el-dropdown-item @click="openAccountList(props.row.userId)">{{ $t('account') }}</el-dropdown-item>
+              <template v-if="props.row.type !== 0">
+                <el-dropdown-item v-if="props.row.isDel !== 1" @click="setStatus(props.row)" divided>
+                  {{ setStatusName(props.row) }}
+                </el-dropdown-item>
+                <el-dropdown-item v-else @click="restore(props.row)" divided>{{ $t('restore') }}</el-dropdown-item>
+                <el-dropdown-item class="danger" @click="delOneUser(props.row)">{{ $t('adminDeleteUser') }}</el-dropdown-item>
+              </template>
+            </MoreMenu>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div><!-- /table-card -->
+
+    <div class="card-list" v-else>
+      <div class="loading" :class="tableLoading ? 'loading-show' : 'loading-hide'"
+           :style="first ? 'background: transparent' : ''">
+        <loading/>
+      </div>
+      <EmptyState v-if="!tableLoading && !first && users.length === 0 && !hasFilters"
+                  icon="psg:group" :title="$t('emptyUsersTitle')" :description="$t('emptyUsersDesc')"
+                  :cta-text="$t('addUser')" @cta="openAdd"/>
+      <EmptyState v-else-if="!tableLoading && !first && users.length === 0"
+                  icon="psg:search" :title="$t('searchEmptyTitle')" :cta-text="$t('clearFilters')" @cta="clearFilters"/>
+      <div class="user-card" v-for="row in users" :key="row.userId">
+        <div class="user-card-head">
+          <div class="user-avatar" :style="{ background: avatarBg(row.email) }">
+            {{ avatarLetter(row.accountName || row.oauthName, row.email) }}
+          </div>
+          <div class="user-cell-text">
+            <div class="user-cell-name">{{ row.accountName || row.oauthName || row.email }}</div>
+            <div class="user-cell-email">{{ row.email }}</div>
+          </div>
+          <MoreMenu v-if="!(row.type === 0 && userStore.user.type !== 0)" aria-label="User actions">
+            <el-dropdown-item @click="openDetails(row)">{{ $t('details') }}</el-dropdown-item>
+            <el-dropdown-item @click="openSetName(row)">{{ $t('setUsername') }}</el-dropdown-item>
+            <el-dropdown-item @click="openSetPwd(row)">{{ $t('chgPwd') }}</el-dropdown-item>
+            <el-dropdown-item @click="openSetType(row)">{{ $t('perm') }}</el-dropdown-item>
+            <el-dropdown-item @click="openAccountList(row.userId)">{{ $t('account') }}</el-dropdown-item>
+            <template v-if="row.type !== 0">
+              <el-dropdown-item v-if="row.isDel !== 1" @click="setStatus(row)" divided>{{ setStatusName(row) }}</el-dropdown-item>
+              <el-dropdown-item v-else @click="restore(row)" divided>{{ $t('restore') }}</el-dropdown-item>
+              <el-dropdown-item class="danger" @click="delOneUser(row)">{{ $t('adminDeleteUser') }}</el-dropdown-item>
+            </template>
+          </MoreMenu>
         </div>
-        <el-table
-            @filter-change="tableFilter"
-            :empty-text="first ? '' : null"
-            :data="users"
-            :preserve-expanded-content="preserveExpanded"
-            style="width: 100%;"
-            ref="tableRef"
-            @cell-contextmenu="handleContextmenu"
-            :cell-class-name="cellClassName"
-        >
-          <el-table-column :width="expandWidth" type="selection" :selectable="row => row.type !== 0" />
-          <el-table-column show-overflow-tooltip :tooltip-formatter="tableRowFormatter" :label="$t('tabEmailAddress')"
-                           :min-width="emailWidth">
-            <template #default="props">
-              <div class="user-email-cell">
-                <div class="user-avatar" :style="{ background: avatarBg(props.row.email) }">
-                  {{ avatarLetter(props.row.accountName || props.row.oauthName, props.row.email) }}
-                </div>
-                <div class="email-row">{{ props.row.email }}</div>
-                <el-tag type="warning" v-if="props.row.username">L</el-tag>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column :label="$t('username')" width="150" show-overflow-tooltip>
-            <template #default="{ row }">
-              <span class="user-name-cell">{{ row.accountName || row.oauthName || '—' }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column :formatter="formatterReceive" label-class-name="receive" column-key="receive"
-                           :filtered-value="filteredValue" :filters="filters" :width="receiveWidth"
-                           :label="$t('tabReceived')"
-                           prop="receiveEmailCount"/>
-          <el-table-column :formatter="formatterSend" label-class-name="send" column-key="send"
-                           :filtered-value="filteredValue" :filters="filters" v-if="sendNumShow" :label="$t('tabSent')"
-                           prop="sendEmailCount"/>
-          <el-table-column :formatter="formatterAccount" label-class-name="account" column-key="account"
-                           :filtered-value="filteredValue" :filters="filters" v-if="accountNumShow"
-                           :label="$t('tabMailboxes')"
-                           prop="accountCount"/>
-          <el-table-column v-if="createTimeShow" :label="$t('tabRegisteredAt')" min-width="160" prop="createTime">
-            <template #default="props">
-              {{ tzDayjs(props.row.createTime).format('YYYY-MM-DD HH:mm') }}
-            </template>
-          </el-table-column>
-          <el-table-column v-if="statusShow" min-width="90px" :label="$t('tabStatus')" prop="status">
-            <template #default="props">
-              <div class="status-dot-cell" v-if="props.row.isDel === 1">
-                <span class="status-dot status-dot--muted"></span>{{ $t('deleted') }}
-              </div>
-              <div class="status-dot-cell" v-else-if="props.row.status === 0">
-                <span class="status-dot status-dot--active"></span>{{ $t('active') }}
-              </div>
-              <div class="status-dot-cell" v-else-if="props.row.status === 1">
-                <span class="status-dot status-dot--danger"></span>{{ $t('banned') }}
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="typeShow" :label="$t('tabRole')" min-width="140" prop="type">
-            <template #default="props">
-              <div class="role-pill" :class="{ 'role-pill--admin': props.row.type === 0 }">
-                {{ toRoleName(props.row.type) }}
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column :label="$t('tabSetting')" :width="settingWidth">
-            <template #default="props">
-              <el-button size="small" type="primary" v-if="(props.row.type === 0 && userStore.user.type !== 0)" >{{ $t('action') }}</el-button>
-              <el-dropdown v-else >
-                <el-button size="small" type="primary">{{ $t('action') }}</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="openSetPwd(props.row)" >{{ $t('chgPwd') }}</el-dropdown-item>
-                    <el-dropdown-item @click="openSetName(props.row)" >{{ $t('setUsername') }}</el-dropdown-item>
-                    <el-dropdown-item @click="openSetType(props.row)" >{{ $t('perm') }}</el-dropdown-item>
-                    <template v-if="props.row.type !== 0">
-                      <el-dropdown-item v-if="props.row.isDel !== 1" @click="setStatus(props.row)">
-                        {{ setStatusName(props.row) }}
-                      </el-dropdown-item>
-                      <el-dropdown-item v-else @click="restore(props.row)">{{ $t('restore') }}</el-dropdown-item>
-                    </template>
-                    <el-dropdown-item @click="openAccountList(props.row.userId)" >{{ $t('account') }}</el-dropdown-item>
-                    <el-dropdown-item @click="openDetails(props.row)" >{{ $t('details') }}</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </template>
-          </el-table-column>
-        </el-table>
-        <div class="pagination" v-if="total > 10">
-          <el-pagination
-              :size="pageSize"
-              :current-page="params.num"
-              :page-size="params.size"
-              :pager-count="pagerCount"
-              :page-sizes="[10, 15, 20, 25, 30, 50]"
-              background
-              :layout="layout"
-              :total="total"
-              @size-change="sizeChange"
-              @current-change="numChange"
-          />
-          <el-pagination
-              v-if="phonePageShow"
-              :size="pageSize"
-              :current-page="params.num"
-              :page-size="params.size"
-              :pager-count="pagerCount"
-              :page-sizes="[10, 15, 20, 25, 30, 50]"
-              background
-              layout="sizes, total"
-              :total="total"
-              @size-change="sizeChange"
-              @current-change="numChange"
-          />
+        <div class="user-card-badges">
+          <StatusBadge v-if="row.isDel === 1" tone="neutral" :label="$t('deleted')"/>
+          <StatusBadge v-else-if="row.status === 0" tone="success" :label="$t('active')"/>
+          <StatusBadge v-else-if="row.status === 1" tone="danger" :label="$t('banned')"/>
+          <StatusBadge variant="pill" :tone="row.type === 0 ? 'success' : 'neutral'" :label="toRoleName(row.type)"/>
+        </div>
+        <div class="user-card-stats">
+          <span>{{ $t('tabReceived') }} {{ row.receiveEmailCount }}</span>
+          <span>{{ $t('tabSent') }} {{ row.sendEmailCount }}</span>
+          <span>{{ $t('tabMailboxes') }} {{ row.accountCount }}</span>
         </div>
       </div>
-    </div><!-- /table-card -->
-    </div><!-- /space-y -->
-  </div><!-- /page-outer -->
-  <!-- dialogs -->
-  <el-dialog class="dialog" v-model="setPwdShow" :title="$t('changePassword')" width="min(400px, calc(100vw - 32px))" @closed="resetUserForm">
+    </div><!-- /card-list -->
+
+    <div class="pagination" v-if="total > 10">
+      <el-pagination
+          :size="pageSize"
+          :current-page="params.num"
+          :page-size="params.size"
+          :pager-count="pagerCount"
+          :page-sizes="[10, 15, 20, 25, 30, 50]"
+          background
+          :layout="layout"
+          :total="total"
+          @size-change="sizeChange"
+          @current-change="numChange"
+      />
+      <el-pagination
+          v-if="phonePageShow"
+          :size="pageSize"
+          :current-page="params.num"
+          :page-size="params.size"
+          :pager-count="pagerCount"
+          :page-sizes="[10, 15, 20, 25, 30, 50]"
+          background
+          layout="sizes, total"
+          :total="total"
+          @size-change="sizeChange"
+          @current-change="numChange"
+      />
+    </div>
+
+    <!-- dialogs -->
+    <el-dialog class="dialog" v-model="setPwdShow" :title="$t('changePassword')" width="min(400px, calc(100vw - 32px))" @closed="resetUserForm">
       <div class="dialog-box">
         <el-input v-model="userForm.password" type="password" :placeholder="$t('newPassword')" autocomplete="off">
         </el-input>
@@ -207,7 +225,7 @@
               </el-select>
               <div>
                 <span>{{ addForm.suffix }}</span>
-                <Icon class="setting-icon" icon="solar:alt-arrow-down-linear" width="20" height="20"/>
+                <Icon class="setting-icon" icon="psg:chevron-down" width="20" height="20"/>
               </div>
             </div>
           </template>
@@ -275,7 +293,7 @@
             userDetails.accountCount
           }}
         </div>
-        <div v-if="!createTimeShow"><span class="details-item-title">{{ $t('tabRegisteredAt') }}:</span>{{
+        <div><span class="details-item-title">{{ $t('tabRegisteredAt') }}:</span>{{
             tzDayjs(userDetails.createTime).format('YYYY-MM-DD HH:mm')
           }}
         </div>
@@ -339,74 +357,61 @@
     >
       <template #dropdown>
         <el-dropdown-menu>
-          <el-dropdown-item @click="openSetPwd(rightClickUser)">
-            <template #default>
-              <div class="right-dropdown-item">
-                <icon icon="solar:fingerprint-bold-duotone" width="22" height="22" />
-                <span>{{t('changePassword')}}</span>
-              </div>
-            </template>
+          <el-dropdown-item @click="openDetails(rightClickUser)">
+            <div class="right-dropdown-item">
+              <Icon icon="psg:user" width="20" height="20"/>
+              <span>{{ t('userDetails') }}</span>
+            </div>
           </el-dropdown-item>
           <el-dropdown-item @click="openSetName(rightClickUser)">
-            <template #default>
-              <div class="right-dropdown-item">
-                <icon icon="solar:user-id-bold-duotone" width="21" height="21" />
-                <span>{{ t('setUsername') }}</span>
-              </div>
-            </template>
+            <div class="right-dropdown-item">
+              <icon icon="psg:user" width="21" height="21" />
+              <span>{{ t('setUsername') }}</span>
+            </div>
+          </el-dropdown-item>
+          <el-dropdown-item @click="openSetPwd(rightClickUser)">
+            <div class="right-dropdown-item">
+              <icon icon="solar:fingerprint-bold-duotone" width="22" height="22" />
+              <span>{{t('changePassword')}}</span>
+            </div>
           </el-dropdown-item>
           <el-dropdown-item @click="openSetType(rightClickUser)">
-            <template #default>
-              <div class="right-dropdown-item">
-                <icon icon="solar:lock-keyhole-linear" width="21" height="21" />
-                <span>{{ t('setRole') }}</span>
-              </div>
-            </template>
-          </el-dropdown-item>
-          <el-dropdown-item v-if="rightClickUser.type !== 0">
-            <template #default>
-              <div class="right-dropdown-item" v-if="rightClickUser.isDel !== 1" @click="setStatus(rightClickUser)" >
-                <Icon icon="solar:refresh-linear" v-if="rightClickUser.status" style="margin-left: 1px;margin-right: 1px" width="19" height="19" />
-                <Icon icon="solar:shield-cross-linear" v-else style="margin-left: 1px;margin-right: 1px" width="19" height="19" />
-                <span>{{ setRightStatusName(rightClickUser) }}</span>
-              </div>
-              <div class="right-dropdown-item" v-else @click="restore(rightClickUser)">
-                <Icon icon="solar:refresh-linear" style="margin-left: 1px;margin-right: 1px" width="19" height="19" />
-                <span>{{ t('restoreUser') }}</span>
-              </div>
-            </template>
+            <div class="right-dropdown-item">
+              <icon icon="psg:lock" width="21" height="21" />
+              <span>{{ t('setRole') }}</span>
+            </div>
           </el-dropdown-item>
           <el-dropdown-item @click="openAccountList(rightClickUser.userId)" >
-            <template #default>
-              <div class="right-dropdown-item" >
-                <Icon icon="solar:mailbox-linear" width="20" height="20" />
-                <span>{{ t('userEmail') }}</span>
-              </div>
-            </template>
+            <div class="right-dropdown-item" >
+              <Icon icon="psg:mail" width="20" height="20" />
+              <span>{{ t('userEmail') }}</span>
+            </div>
           </el-dropdown-item>
-          <el-dropdown-item @click="openDetails(rightClickUser)" >
-            <template #default>
-              <div class="right-dropdown-item" >
-                <Icon icon="solar:user-linear" width="20" height="20" />
-                <span>{{ t('userDetails') }}</span>
-              </div>
-            </template>
+          <el-dropdown-item v-if="rightClickUser.type !== 0" divided>
+            <div class="right-dropdown-item" v-if="rightClickUser.isDel !== 1" @click="setStatus(rightClickUser)" >
+              <Icon icon="psg:refresh" v-if="rightClickUser.status" width="19" height="19" />
+              <Icon icon="psg:shield" v-else width="19" height="19" />
+              <span>{{ setRightStatusName(rightClickUser) }}</span>
+            </div>
+            <div class="right-dropdown-item" v-else @click="restore(rightClickUser)">
+              <Icon icon="psg:refresh" width="19" height="19" />
+              <span>{{ t('restoreUser') }}</span>
+            </div>
           </el-dropdown-item>
-          <el-dropdown-item v-if="rightClickUser.type !== 0" @click="delOneUser(rightClickUser)" >
-            <template #default>
-              <div class="right-dropdown-item" >
-                <Icon icon="solar:trash-bin-trash-linear" width="18" height="18" style="margin-left: 1px;margin-right: 1px" />
-                <span>{{ t('adminDeleteUser') }}</span>
-              </div>
-            </template>
+          <el-dropdown-item v-if="rightClickUser.type !== 0" class="danger" @click="delOneUser(rightClickUser)" >
+            <div class="right-dropdown-item" >
+              <Icon icon="psg:trash" width="18" height="18" />
+              <span>{{ t('adminDeleteUser') }}</span>
+            </div>
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
     </el-dropdown>
+  </div>
 </template>
 
 <script setup>
-import {defineOptions, h, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {defineExpose, h, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {
   userList,
   userDelete,
@@ -423,6 +428,9 @@ import {
 import {roleSelectUse} from "@/request/role.js";
 import {Icon} from "@iconify/vue";
 import loading from "@/components/loading/index.vue";
+import StatusBadge from "./components/StatusBadge.vue";
+import MoreMenu from "./components/MoreMenu.vue";
+import EmptyState from "./components/EmptyState.vue";
 import {tzDayjs} from "@/utils/day.js";
 import {avatarBg, avatarLetter} from "@/utils/avatar.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -431,27 +439,17 @@ import {useRoleStore} from "@/store/role.js";
 import {useUserStore} from "@/store/user.js";
 import {useI18n} from 'vue-i18n';
 
-defineOptions({
-  name: 'user'
-})
-
 const {t, locale} = useI18n();
 const roleStore = useRoleStore()
 const userStore = useUserStore()
 const settingStore = useSettingStore()
-const filteredValue = ['normal', 'del']
-const filters = [{text: t('active'), value: 'normal'}, {text: t('deleted'), value: 'del'}]
 const preserveExpanded = ref(false)
-const emailWidth = ref(230)
-const expandWidth = ref(40)
-const settingWidth = ref(null)
 const sendNumShow = ref(true)
 const accountNumShow = ref(true)
-const createTimeShow = ref(true)
 const statusShow = ref(true)
 const typeShow = ref(true)
-const receiveWidth = ref(null)
 const phonePageShow = ref(false)
+const isCardView = ref(false)
 const detailsShow = ref(false);
 const layout = ref('prev, pager, next,  sizes, total')
 const pageSize = ref('')
@@ -464,6 +462,7 @@ const accountLoading = ref(false)
 const dropdownRef = ref(null);
 const dropdownShow = ref(false);
 const rightClickUser = ref({});
+const selectedRows = ref([])
 const position = ref(
     DOMRect.fromRect({
       x: 0,
@@ -521,6 +520,8 @@ const accountParams = reactive({
   userId: 0,
 })
 
+const hasFilters = ref(false)
+
 roleSelectUse().then(list => {
   roleList.length = 0
   roleList.push(...list)
@@ -537,6 +538,7 @@ if (paramsStar) {
 
 watch(() => params, () => {
   localStorage.setItem('user-params', JSON.stringify(params))
+  hasFilters.value = !!params.email || params.status !== -1
 }, {
   deep: true
 })
@@ -554,11 +556,9 @@ watch(() => userStore.refreshList, () => {
 
 getUserList()
 
-const filterItem = reactive({
-  send: ['normal', 'del'],
-  account: ['normal', 'del'],
-  receive: ['normal', 'del']
-})
+function onSelectionChange(rows) {
+  selectedRows.value = rows
+}
 
 const onWheel = () => { if (dropdownShow.value) dropdownRef.value.handleClose() }
 
@@ -645,66 +645,6 @@ function getAccountList(loading = false) {
     })
 }
 
-function tableFilter(e) {
-
-  if (e.send) filterItem.send = e.send
-  if (e.account) filterItem.account = e.account
-  if (e.receive) filterItem.receive = e.receive
-
-}
-
-function formatterSend(e) {
-
-  if (filterItem.send.length === 2) {
-    return e.sendEmailCount + e.delSendEmailCount
-  }
-
-  if (filterItem.send.includes('normal')) {
-    return e.sendEmailCount
-  }
-
-  if (filterItem.send.includes('del')) {
-    return e.delSendEmailCount
-  }
-
-  return 0
-}
-
-function formatterAccount(e) {
-
-  if (filterItem.account.length === 2) {
-    return e.accountCount + e.delAccountCount
-  }
-
-  if (filterItem.account.includes('normal')) {
-    return e.accountCount
-  }
-
-  if (filterItem.account.includes('del')) {
-    return e.delAccountCount
-  }
-
-  return 0
-}
-
-function formatterReceive(e) {
-
-
-  if (filterItem.receive.length === 2) {
-    return e.receiveEmailCount + e.delReceiveEmailCount
-  }
-
-  if (filterItem.receive.includes('normal')) {
-    return e.receiveEmailCount
-  }
-
-  if (filterItem.receive.includes('del')) {
-    return e.delReceiveEmailCount
-  }
-
-  return 0
-}
-
 function setStatusName(user) {
   if (user.isDel === 1) return t('restore')
   if (user.status === 0) return t('btnBan')
@@ -734,6 +674,13 @@ function resetAddForm() {
 
 function openAdd() {
   showAdd.value = true
+}
+
+function clearFilters() {
+  params.email = ''
+  params.status = -1
+  params.num = 1
+  getUserList()
 }
 
 function submit() {
@@ -855,9 +802,8 @@ function resetSendCount(user) {
   });
 }
 
-function delUser(user) {
-  const rows = tableRef.value.getSelectionRows();
-  const userIds = rows.map(row => row.userId);
+function delUser() {
+  const userIds = selectedRows.value.map(row => row.userId);
   if (userIds.length === 0) {
     return;
   }
@@ -872,6 +818,7 @@ function delUser(user) {
         type: "success",
         plain: true
       })
+      tableRef.value.clearSelection?.()
       getUserList(true)
     })
   });
@@ -903,13 +850,6 @@ function restore(user) {
     cancelButtonText: t('cancel'),
     message: () => h('div', [
       h('div', {class: 'mb-2'}, t('restoreConfirm', {msg: user.email}))
-      // h(ElRadioGroup, {
-      //   modelValue: type.value,
-      //   'onUpdate:modelValue': (val) => (type.value = val),
-      // }, [
-      //   h(ElRadio, {label: 'option1', value: 0}, t('normalRestore')),
-      //   h(ElRadio, {label: 'option2', value: 1}, t('allRestore')),
-      // ])
     ]),
     type: 'warning'
   }).then(() => {
@@ -1085,21 +1025,18 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth); window.re
 
 function adjustWidth() {
   const width = window.innerWidth
+  isCardView.value = width < 768
   statusShow.value = width > 1090
-  createTimeShow.value = width > 1367
   accountNumShow.value = width > 650
-  sendNumShow.value = width > 685
-  typeShow.value = width > 767
-  emailWidth.value = width > 480 ? 160 : null
-  settingWidth.value = width < 480 ? (locale.value === 'en' ? 85 : 75) : null
-  expandWidth.value = width < 480 ? 30 : 35
+  sendNumShow.value = width > 900
+  typeShow.value = width > 990
   pagerCount.value = width < 768 ? 7 : 11
-  receiveWidth.value = width < 480 ? 90 : null
   layout.value = width < 768 ? 'pager' : 'prev, pager, next,sizes, total'
   phonePageShow.value = width < 768
   pageSize.value = width < 380 ? 'small' : ''
 }
 
+defineExpose({ openCreate: openAdd })
 </script>
 
 <style>
@@ -1110,80 +1047,20 @@ function adjustWidth() {
 .el-message-box__message {
   word-break: break-all;
 }
-
-.el-table-filter__content {
-  min-width: 0;
-}
 </style>
-<style lang="scss" scoped>
+<style scoped lang="scss">
 
 :deep(.el-table .checked-row) {
   background: var(--psg-surface-active);
 }
 
-.page-outer {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 24px 32px 56px;
-  @media (max-width: 960px)  { padding: 20px 24px 40px; }
-  @media (max-width: 640px)  { padding: 16px 16px 32px; }
-}
-
-.space-y {
+.tab-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--psg-border);
-  flex-wrap: wrap;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--psg-text);
-}
-
-.page-subtitle {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--psg-text-secondary);
-}
-
-.create-user-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-:deep(.el-dialog) {
-  width: 400px !important;
-  @media (max-width: 440px) {
-    width: calc(100% - 40px) !important;
-    margin-right: 20px !important;
-    margin-left: 20px !important;
-  }
-}
-
-:deep(.account-dialog) {
-  width: 500px !important;
-  @media (max-width: 540px) {
-    width: calc(100% - 40px) !important;
-    margin-right: 20px !important;
-    margin-left: 20px !important;
-  }
-}
-
-.header-actions {
+.toolbar {
   padding: 0 12px;
   height: 44px;
   display: flex;
@@ -1208,7 +1085,7 @@ function adjustWidth() {
   }
 
   .search-input {
-    width: min(160px, calc(100vw - 260px));
+    width: min(220px, calc(100vw - 260px));
   }
 
   .icon {
@@ -1230,14 +1107,25 @@ function adjustWidth() {
         background: var(--psg-surface-active);
         color: var(--psg-text);
       }
-      &.icon-danger:hover {
-        border-color: transparent;
-        background: var(--psg-danger-muted);
-        color: var(--psg-danger);
-      }
     }
   }
 }
+
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--psg-text);
+}
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.14s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
 .container {
   display: grid;
@@ -1245,81 +1133,94 @@ function adjustWidth() {
   gap: 15px;
 }
 
-.type {
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.user-cell-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.user-cell-name {
+  font-weight: 600;
+  color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.user-email-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+.user-cell-email {
+  font-size: 12px;
+  color: var(--psg-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-avatar {
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--psg-radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-}
-
-.status-dot-cell {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  color: var(--psg-text);
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: var(--psg-radius-full);
-  flex-shrink: 0;
-
-  &--active { background: var(--psg-primary); }
-  &--danger { background: var(--psg-danger); }
-  &--muted  { background: var(--psg-text-muted); }
-}
-
-.role-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: var(--psg-radius-full);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--psg-text-secondary);
-  background: var(--psg-surface-muted);
-  white-space: nowrap;
-
-  &--admin {
-    color: var(--psg-text);
-    background: var(--psg-surface-active);
-    font-weight: 700;
-  }
-}
-
-.choose-star {
-  color: var(--psg-primary)
 }
 
 .table-card {
   position: relative;
   width: 100%;
+  min-height: 120px;
   background: var(--psg-surface);
   border-radius: var(--psg-radius-md);
   border: 1px solid var(--psg-border);
   overflow: hidden;
+}
+
+.card-list {
+  position: relative;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-card {
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.user-card-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 12.5px;
+  color: var(--psg-text-secondary);
 }
 
 .details {
@@ -1346,7 +1247,7 @@ function adjustWidth() {
 }
 
 .pagination {
-  margin-top: 15px;
+  margin-top: 4px;
   margin-bottom: 20px;
   padding-right: 30px;
   width: 100%;
@@ -1363,19 +1264,10 @@ function adjustWidth() {
   }
 }
 
-
 .email-row {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.user-name-cell {
-  font-weight: 600;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .status-select :deep(.el-select__wrapper) {
@@ -1398,12 +1290,34 @@ function adjustWidth() {
   }
 }
 
+:deep(.el-dialog) {
+  width: 400px !important;
+  @media (max-width: 440px) {
+    width: calc(100% - 40px) !important;
+    margin-right: 20px !important;
+    margin-left: 20px !important;
+  }
+}
+
+:deep(.account-dialog) {
+  width: 500px !important;
+  @media (max-width: 540px) {
+    width: calc(100% - 40px) !important;
+    margin-right: 20px !important;
+    margin-left: 20px !important;
+  }
+}
+
 .select {
   position: absolute;
   right: 30px;
   width: 100px;
   opacity: 0;
   pointer-events: none;
+}
+
+.empty-slot {
+  position: relative;
 }
 
 .loading {
@@ -1444,44 +1358,16 @@ function adjustWidth() {
   width: 100%;
 }
 
-:deep(.el-pagination .el-select) {
-  width: 100px;
-  background: var(--psg-surface);
-}
-
 :deep(.el-input-group__append) {
   padding: 0 !important;
   padding-left: 8px !important;
   background: var(--psg-surface);
 }
 
-:deep(.cell) {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-:deep(.receive .cell) {
-  white-space: nowrap;
-}
-
-:deep(.send .cell) {
-  white-space: nowrap;
-}
-
-:deep(.account .cell) {
-  white-space: nowrap;
-}
-
 :deep(.el-table) {
   @media (pointer: coarse) {
-    /* 触屏 */
     user-select: none;
   }
-}
-
-:deep(.el-table th.el-table__cell>.cell.highlight) {
-  color: #909399;
 }
 
 :deep(.el-table__inner-wrapper:before) {

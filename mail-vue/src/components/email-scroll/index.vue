@@ -11,7 +11,7 @@
           @change="handleCheckAllChange"
         />
         <div v-if="!props.hideInlineSearch" class="toolbar-search" :class="{ 'has-value': searchQuery }">
-          <Icon icon="solar:magnifer-linear" width="15" height="15" class="search-icon-inline"/>
+          <Icon icon="psg:search" width="15" height="15" class="search-icon-inline"/>
           <input
             ref="searchInputRef"
             v-model="searchQuery"
@@ -19,7 +19,7 @@
             :placeholder="$t('searchPlaceholder')"
             @keydown.esc="searchQuery = ''"
           />
-          <Icon v-if="searchQuery" icon="solar:close-circle-linear" width="15" height="15"
+          <Icon v-if="searchQuery" icon="psg:close-circle" width="15" height="15"
                 class="search-clear-inline" @click="searchQuery = ''" />
         </div>
         <div class="unread-filter" v-if="showUnread">
@@ -28,25 +28,25 @@
         </div>
         <slot name="first"></slot>
         <button class="icon-btn" @click="refresh">
-          <Icon icon="solar:refresh-linear" width="17" height="17" />
+          <Icon icon="psg:refresh" width="17" height="17" />
         </button>
         <button v-perm="'email:delete'" class="icon-btn icon-danger"
                 v-if="getSelectedMailsIds().length > 0" @click="handleDelete">
-          <Icon icon="solar:trash-bin-trash-linear" width="17" height="17" />
+          <Icon icon="psg:trash" width="17" height="17" />
         </button>
         <el-tooltip v-if="getSelectedMailsIds().length > 0 && props.type !== 'draft'"
                     :content="$t('exportEml')" placement="bottom">
           <button class="icon-btn" @click="handleExportEml">
-            <Icon icon="solar:download-linear" width="17" height="17" />
+            <Icon icon="psg:download" width="17" height="17" />
           </button>
         </el-tooltip>
         <button class="icon-btn" v-if="getSelectedMailsIds().length > 0 && showUnread" @click="handleRead">
-          <Icon icon="solar:letter-opened-linear" width="19" height="19" />
+          <Icon icon="psg:mail" width="19" height="19" />
         </button>
         <el-tooltip v-if="getSelectedMailsIds().length === 0 && unreadCount > 0 && showUnread"
                     :content="$t('markAllRead')" placement="bottom">
           <button class="icon-btn" @click="handleMarkAllRead">
-            <Icon icon="solar:letter-opened-linear" width="19" height="19" />
+            <Icon icon="psg:mail" width="19" height="19" />
           </button>
         </el-tooltip>
         <!-- Count pushed to right edge via margin-left:auto -->
@@ -62,7 +62,7 @@
       @touchend.passive="ptrTouchEnd"
     >
       <div class="ptr-bar" :style="ptrBarStyle">
-        <Icon icon="solar:refresh-linear" width="20"
+        <Icon icon="psg:refresh" width="20"
           :class="{ 'ptr-spin': ptrSpinning }"
           :style="{ transform: ptrSpinning ? '' : `rotate(${ptrAngle}deg)`, opacity: ptrOpacity }" />
       </div>
@@ -85,7 +85,7 @@
             @touchend.passive="swipeTouchEnd($event, item)"
           >
             <div class="swipe-bg swipe-bg--delete" :style="{ opacity: swipeDeleteOpacity(item) }">
-              <Icon icon="solar:trash-bin-trash-linear" width="18" /><span>{{ $t('delete') }}</span>
+              <Icon icon="psg:trash" width="18" /><span>{{ $t('delete') }}</span>
             </div>
             <div v-if="showStar" class="swipe-bg swipe-bg--star" :style="{ opacity: swipeStarOpacity(item) }">
               <Icon icon="solar:star-bold" width="18" /><span>{{ $t('star') }}</span>
@@ -93,7 +93,10 @@
             <div
               class="mail-row"
               :style="rowSwipeStyle(item)"
-              :class="[props.type, { 'is-unread': item.unread === EmailUnreadEnum.UNREAD && showUnread }]"
+              :class="[props.type, {
+                'is-unread': item.unread === EmailUnreadEnum.UNREAD && showUnread,
+                'is-open': !!item.emailId && emailStore.contentData.email?.emailId === item.emailId,
+              }]"
               :data-active="item.rightChecked || undefined"
               @click="onRowClick($event, item)"
               @contextmenu="handleContextmenu($event, item)"
@@ -147,7 +150,7 @@
                 <div class="mail-actions">
                   <button v-if="archiveEmail" class="icon-btn" :title="$t('archive')"
                           @click.stop="archiveEmail(item.emailId)">
-                    <Icon icon="solar:archive-linear" width="14" height="14" />
+                    <Icon icon="psg:archive" width="14" height="14" />
                   </button>
                   <button v-if="restoreEmail" class="icon-btn" :title="$t('restore')"
                           @click.stop="restoreEmail(item.emailId)">
@@ -155,12 +158,12 @@
                   </button>
                   <button v-if="showStar" class="icon-btn" :title="$t('star')"
                           @click.stop="starChange(item)">
-                    <Icon :icon="item.isStar ? 'fluent-color:star-16' : 'solar:star-line-duotone'"
+                    <Icon :icon="item.isStar ? 'fluent-color:star-16' : 'psg:star'"
                           :width="14" :height="14" />
                   </button>
                   <button v-perm="'email:delete'" class="icon-btn icon-danger" :title="$t('delete')"
                           @click.stop="rightDeleteItem(item)">
-                    <Icon icon="solar:trash-bin-trash-linear" width="14" height="14" />
+                    <Icon icon="psg:trash" width="14" height="14" />
                   </button>
                 </div>
               </div>
@@ -207,31 +210,31 @@
             <div class="ctx-item"><Icon icon="fluent-color:clipboard-24" width="18" height="18" /><span>{{ t('copyCode') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="['email'].includes(props.type)" @click="emailRead(rightClickEmail.emailId)">
-            <div class="ctx-item"><Icon icon="solar:letter-opened-linear" width="18" height="18" /><span>{{ t('markAsRead') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:mail" width="18" height="18" /><span>{{ t('markAsRead') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="['email','star'].includes(props.type)" @click="openReply(rightClickEmail)">
-            <div class="ctx-item"><Icon icon="solar:reply-linear" width="18" height="18" /><span>{{ t('reply') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:reply" width="18" height="18" /><span>{{ t('reply') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="['email','star'].includes(props.type)" @click="openReplyAll(rightClickEmail)">
-            <div class="ctx-item"><Icon icon="solar:reply-all-linear" width="18" height="18" /><span>{{ t('replyAll') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:reply-all" width="18" height="18" /><span>{{ t('replyAll') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="['email','send','star'].includes(props.type)" @click="openForward(rightClickEmail)">
-            <div class="ctx-item"><Icon icon="solar:arrow-right-up-linear" width="17" height="17" /><span>{{ t('forward') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:forward" width="17" height="17" /><span>{{ t('forward') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="['email','send','star'].includes(props.type)" @click="starChange(rightClickEmail)">
-            <div class="ctx-item"><Icon icon="solar:star-line-duotone" width="17" height="17" /><span>{{ t('star') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:star" width="17" height="17" /><span>{{ t('star') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'all-email'" @click="handleSearch('user', rightClickEmail.userEmail)">
-            <div class="ctx-item"><Icon icon="solar:magnifer-linear" width="18" height="18" /><span>{{ t('searchUser') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:search" width="18" height="18" /><span>{{ t('searchUser') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'all-email'" @click="handleSearch('account', rightClickEmail.toEmail)">
-            <div class="ctx-item"><Icon icon="solar:magnifer-linear" width="18" height="18" /><span>{{ t('searchEmail') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:search" width="18" height="18" /><span>{{ t('searchEmail') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'all-email'" @click="handleSearch('name', rightClickEmail.name)">
-            <div class="ctx-item"><Icon icon="solar:magnifer-linear" width="18" height="18" /><span>{{ t('searchSender') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:search" width="18" height="18" /><span>{{ t('searchSender') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'email'" @click="archiveAction(rightClickEmail.emailId)">
-            <div class="ctx-item"><Icon icon="solar:archive-linear" width="18" height="18" /><span>{{ t('archive') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:archive" width="18" height="18" /><span>{{ t('archive') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'archive'" @click="unarchiveAction(rightClickEmail.emailId)">
             <div class="ctx-item"><Icon icon="solar:inbox-out-linear" width="18" height="18" /><span>{{ t('unarchive') }}</span></div>
@@ -240,13 +243,13 @@
             <div class="ctx-item"><Icon icon="solar:inbox-out-linear" width="18" height="18" /><span>{{ t('restore') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'email'" @click="markSpamAction(rightClickEmail.emailId)">
-            <div class="ctx-item"><Icon icon="solar:danger-triangle-linear" width="18" height="18" /><span>{{ t('markAsSpam') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:warning" width="18" height="18" /><span>{{ t('markAsSpam') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'spam'" @click="unmarkSpamAction(rightClickEmail.emailId)">
-            <div class="ctx-item"><Icon icon="solar:check-circle-linear" width="18" height="18" /><span>{{ t('notSpam') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:check-circle" width="18" height="18" /><span>{{ t('notSpam') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item @click="rightDelete(rightClickEmail.emailId)">
-            <div class="ctx-item danger"><Icon icon="solar:trash-bin-trash-linear" width="18" height="18" /><span>{{ t('delete') }}</span></div>
+            <div class="ctx-item danger"><Icon icon="psg:trash" width="18" height="18" /><span>{{ t('delete') }}</span></div>
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
@@ -663,14 +666,14 @@ function handleList(list) {
     email.formatCreateTime = fromNow(email.createTime);
     email.test = t('received')
     const statusIconMap = {
-      0: { icon: 'ic:round-mark-email-read', color: '#51C76B', content: t('received') },
+      0: { icon: 'psg:mail', color: '#51C76B', content: t('received') },
       1: { icon: 'bi:send-arrow-up-fill',    color: '#51C76B', content: t('sent') },
       2: { icon: 'bi:send-check-fill',       color: '#51C76B', content: t('delivered') },
       3: { icon: 'bi:send-x-fill',           color: '#F56C6C', content: t('bounced') },
       8: { icon: 'bi:send-x-fill',           color: '#F56C6C', content: t('bounced') },
       4: { icon: 'bi:send-exclamation-fill', color: '#FBBD08', content: t('complained') },
       5: { icon: 'bi:send-arrow-up-fill',    color: '#FBBD08', content: t('delayed') },
-      7: { icon: 'ic:round-mark-email-read', color: '#FBBD08', content: t('noRecipient') },
+      7: { icon: 'psg:mail', color: '#FBBD08', content: t('noRecipient') },
     };
     if (email.isDel) email.isDelContent = t('selectDeleted');
     email.statusIcon = statusIconMap[email.status];
@@ -791,6 +794,11 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   background: var(--psg-canvas);
   font-size: 14px;
   color: var(--psg-text);
+  /* The list pane is a narrow column (~380-420px) even on a wide desktop
+     window — row layout must respond to its own width, not the viewport's,
+     so the desktop 4-column row doesn't apply where it doesn't fit. */
+  container-type: inline-size;
+  container-name: mail-scroll;
 }
 
 /* ── Toolbar ──────────────────────────────────────────────── */
@@ -914,7 +922,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   height: 32px;
   border: 1px solid transparent;
   background: transparent;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   cursor: pointer;
   color: var(--psg-text-secondary);
   transition: background 0.10s ease, color 0.10s ease, border-color 0.10s;
@@ -1136,16 +1144,33 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     transition: opacity 120ms ease;
   }
 
+  /* Admin "all mail" rows carry more identity per email (sender, subject,
+     snippet, from→to flow) than a personal inbox row can show on one line —
+     so instead of the shared 4-column single-line grid, this variant always
+     uses a stacked 4-line card, regardless of how wide the list pane is
+     resized. (Every other type still gets the narrow/stacked treatment only
+     below the @container breakpoint further down — this one opts out of
+     that condition entirely, on purpose.) See the `.mail-row.all-email …`
+     rules below for the child-cell placement. */
+  /* Row tracks are fixed px, not auto — this list is a fixed-item-height
+     virtual list (see all-email/index.vue's :item-height), so the row's
+     rendered height must be deterministic, not content-dependent. */
   &.all-email {
-    grid-template-columns: 52px 180px 1fr 110px;
-    min-height: 68px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-rows: 17px 48px;
+    row-gap: 3px;
+    column-gap: 10px;
+    height: 88px;
+    padding: 10px 18px 10px 14px;
+    align-items: start;
   }
 
   @media (max-width: 1280px) {
     grid-template-columns: 44px 140px 1fr 88px;
   }
 
-  /* ── Mobile: stacked 2-row layout ── */
+  /* ── Mobile: stacked 2-row layout ── (.all-email keeps its own fixed
+     88px card height, set unconditionally above — not touched here) */
   @media (max-width: 768px) {
     grid-template-columns: 36px 1fr auto;
     grid-template-rows: auto auto;
@@ -1153,8 +1178,6 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     min-height: 64px;
     padding: 10px 14px 10px 8px;
     align-items: start;
-
-    &.all-email { min-height: 72px; }
   }
 
   @media (hover: hover) {
@@ -1163,10 +1186,92 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     }
   }
 
-  &[data-active] {
-    background: var(--psg-surface-active);
+  &[data-active],
+  &.is-open {
+    background: var(--psg-primary-muted);
 
     &::before { opacity: 1; }
+  }
+}
+
+/* ── Narrow list pane (desktop split view is ~380-420px wide even on a
+   huge monitor): same stacked sender/subject/preview layout as mobile,
+   keyed to the pane's own width via a container query rather than the
+   viewport, so it also applies here. ── */
+@container mail-scroll (max-width: 480px) {
+  /* .all-email keeps its own fixed 88px card height, set unconditionally
+     above (higher specificity: `.mail-row.all-email` beats `.mail-row`
+     here regardless of this query matching) — not touched by this block. */
+  :deep(.mail-row) {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-rows: 24px 28px 24px;
+    gap: 2px 10px;
+    min-height: 84px;
+    padding: 12px 16px 10px 12px;
+    align-items: center;
+  }
+
+  :deep(.row-check) {
+    grid-column: 1;
+    grid-row: 1 / 4;
+    align-self: center;
+    padding-left: 0;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+
+    .unread-indicator { width: 8px; height: 8px; }
+  }
+
+  :deep(.row-sender) {
+    grid-column: 2;
+    grid-row: 1;
+    padding-top: 0;
+
+    .mail-name { font-size: 15px; font-weight: 800; color: var(--psg-text); }
+  }
+
+  :deep(.row-meta) {
+    grid-column: 3;
+    grid-row: 1;
+    align-items: flex-end;
+    padding-top: 0;
+
+    .mail-time { font-size: 11px; font-weight: 700; color: var(--psg-text-muted); }
+    .mail-actions { display: none; }
+  }
+
+  :deep(.row-subject-cell) {
+    grid-column: 2 / 4;
+    grid-row: 2 / 4;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    padding-bottom: 0;
+
+    .subject-text {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--psg-text-secondary);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .mail-preview-inline {
+      display: block !important;
+      margin-top: 2px;
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--psg-text-muted);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
   }
 }
 
@@ -1221,8 +1326,25 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     flex-shrink: 0;
     transition: background 0.1s;
 
-    &.visible { background: var(--psg-danger); }
+    &.visible { background: var(--psg-primary); }
   }
+
+  /* Select checkbox: out of the way at rest, not a permanent row of
+     empty circles — appears on hover, or once something is checked.
+     Touch devices have no hover to reveal it, so leave it visible there
+     (this whole treatment is mouse/desktop-only). */
+  @media (hover: hover) {
+    .mail-cb {
+      opacity: 0;
+      transition: opacity 0.12s ease;
+
+      &.is-checked { opacity: 1; }
+    }
+  }
+}
+
+@media (hover: hover) {
+  :deep(.mail-row):hover .mail-cb { opacity: 1; }
 }
 
 /* ── Col 2: Sender ────────────────────────────────────────── */
@@ -1397,6 +1519,108 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 :deep(.mail-row:not(.is-unread)) {
   .row-sender .mail-name { opacity: 0.65; }
   .row-subject-cell .subject-text { opacity: 0.65; }
+}
+
+/* ── Admin "all mail" row: stacked card ──────────────────────
+   Sender+date on the first line, subject on the second, snippet on the
+   third, from→to flow on the fourth. Admin rows never carry `is-unread`
+   (all-email doesn't pass showUnread), so the dimmed/read opacity rule
+   above would otherwise mute every sender and subject permanently — these
+   selectors are more specific (two classes) than that rule, so they win
+   regardless of source order and keep sender/subject at full strength. ── */
+:deep(.mail-row.all-email) {
+  .row-check {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: center;
+    padding-left: 0;
+  }
+
+  /* No avatar on the admin row — with 4 lines of real content to show
+     (sender+date, subject, snippet, from→to), the 24px avatar circle would
+     force track 1 taller than a text line needs and blow the row past a
+     comfortable height. The status icon (received/sent/bounced/…) still
+     carries the identity cue a circle would have. */
+  .row-sender {
+    grid-column: 2;
+    grid-row: 1;
+    height: 17px;
+
+    .sender-avatar { display: none; }
+
+    .mail-name {
+      font-size: 13.5px;
+      line-height: 17px;
+      font-weight: 700;
+      color: var(--psg-text);
+      opacity: 1;
+    }
+  }
+
+  .row-meta {
+    grid-column: 3;
+    grid-row: 1;
+    height: 17px;
+    align-items: flex-end;
+    justify-content: flex-start;
+
+    .mail-time {
+      line-height: 17px;
+      font-size: 11.5px;
+    }
+  }
+
+  .row-subject-cell {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    height: 48px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 2px;
+
+    .subject-text {
+      display: block;
+      width: 100%;
+      height: 16px;
+      font-size: 13px;
+      line-height: 16px;
+      font-weight: 600;
+      color: var(--psg-text);
+      opacity: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+
+    .mail-preview-inline {
+      display: block;
+      width: 100%;
+      height: 15px;
+      font-size: 12px;
+      line-height: 15px;
+      color: var(--psg-text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+
+    .user-info-inline {
+      width: 100%;
+      height: 13px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 11px;
+      line-height: 13px;
+      color: var(--psg-text-muted);
+      flex-shrink: 0;
+    }
+  }
 }
 
 /* ── Context menu ─────────────────────────────────────────── */

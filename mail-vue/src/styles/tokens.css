@@ -9,39 +9,53 @@
 :root {
   color-scheme: light;
 
-  --psg-canvas: #F5F5F3;
+  --psg-canvas: #F6F7F5;
   --psg-surface: #FFFFFF;
-  --psg-surface-muted: #F1F1EF;
-  --psg-surface-active: #ECECEA;
+  --psg-surface-muted: #EFF2EE;
+  --psg-surface-active: #E4E9E3;
 
-  --psg-border: #D3D3CF;
-  --psg-border-strong: #111111;
+  --psg-border: #DBE1D9;
+  --psg-border-strong: #1B2A20;
 
-  --psg-text: #171717;
-  --psg-text-secondary: #686868;
-  --psg-text-muted: #92928C;
+  --psg-text: #141815;
+  --psg-text-secondary: #5B655D;
+  --psg-text-muted: #8A9188;
 
-  --psg-primary: #111111;
+  --psg-primary: #1E5940;
+  --psg-primary-hover: #17472F;
+  --psg-primary-active: #123825;
   --psg-on-primary: #FFFFFF;
+  --psg-primary-muted: rgba(30, 89, 64, .08);
+  --psg-primary-muted-strong: rgba(30, 89, 64, .15);
 
-  --psg-danger: #C92020;
-  --psg-danger-hover: #A81919;
-  --psg-danger-muted: rgba(201, 32, 32, .08);
+  --psg-danger: #C7362F;
+  --psg-danger-hover: #A82A24;
+  --psg-danger-active: #8F241E;
+  --psg-danger-muted: rgba(199, 54, 47, .08);
 
-  --psg-focus: #111111;
+  --psg-focus: #1E5940;
 
-  /* Dims bright HTML email content so it doesn't glare against the dark
-     canvas — transparent in light, a dark scrim in dark mode. */
-  --psg-html-dim: rgba(0, 0, 0, 0);
+  /* Backdrop behind raw HTML email content. Light mode drops it to
+     transparent — the canvas is already near-white, and a literal #FFF
+     read as a stray floating card. shadow-html itself repaints any
+     hardcoded light backgrounds/dark text inside the email for dark
+     mode, so this only matters as the wrapper's own default. */
+  --psg-html-shadow-bg: transparent;
 
   /* Flips single-color logo marks (dark ink on transparent) so they read
      against a dark surface — no-op in light, inverted in dark. */
   --psg-logo-invert: none;
 
-  --psg-radius-xs: 2px;
-  --psg-radius-sm: 3px;
-  --psg-radius-md: 4px;
+  --psg-radius-xs: 6px;
+  --psg-radius-sm: 8px;
+  --psg-radius-md: 12px;
+  --psg-radius-lg: 16px;
   --psg-radius-full: 999px;
+
+  --psg-shadow-xs: 0 1px 2px rgba(20, 24, 21, .05);
+  --psg-shadow-sm: 0 2px 6px rgba(20, 24, 21, .06), 0 1px 2px rgba(20, 24, 21, .04);
+  --psg-shadow-md: 0 8px 20px rgba(20, 24, 21, .08), 0 2px 6px rgba(20, 24, 21, .05);
+  --psg-shadow-lg: 0 20px 48px rgba(20, 24, 21, .14), 0 6px 14px rgba(20, 24, 21, .06);
 
   --psg-font-sans: 'IBM Plex Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
   --psg-font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
@@ -50,27 +64,37 @@
 html.dark {
   color-scheme: dark;
 
-  --psg-canvas: #151515;
-  --psg-surface: #1B1B1B;
-  --psg-surface-muted: #202020;
-  --psg-surface-active: #282828;
+  --psg-canvas: #101311;
+  --psg-surface: #171B18;
+  --psg-surface-muted: #1D221E;
+  --psg-surface-active: #262C27;
 
-  --psg-border: #383838;
-  --psg-border-strong: #F2F2EE;
+  --psg-border: #2D332E;
+  --psg-border-strong: #E8ECE6;
 
-  --psg-text: #F2F2EE;
-  --psg-text-secondary: #AAAAA5;
-  --psg-text-muted: #7D7D78;
+  --psg-text: #ECEFE9;
+  --psg-text-secondary: #A6AEA3;
+  --psg-text-muted: #6F766D;
 
-  --psg-primary: #F2F2EE;
-  --psg-on-primary: #111111;
+  --psg-primary: #45B67D;
+  --psg-primary-hover: #5AC48D;
+  --psg-primary-active: #37A06C;
+  --psg-on-primary: #08170F;
+  --psg-primary-muted: rgba(69, 182, 125, .14);
+  --psg-primary-muted-strong: rgba(69, 182, 125, .22);
 
-  --psg-danger: #E04B4B;
-  --psg-danger-hover: #F15D5D;
-  --psg-danger-muted: rgba(224, 75, 75, .14);
+  --psg-danger: #E5645C;
+  --psg-danger-hover: #EE7A72;
+  --psg-danger-active: #C83F39;
+  --psg-danger-muted: rgba(229, 100, 92, .16);
 
-  --psg-focus: #F2F2EE;
+  --psg-focus: #45B67D;
 
-  --psg-html-dim: rgba(14, 14, 20, .55);
+  --psg-html-shadow-bg: var(--psg-canvas);
   --psg-logo-invert: invert(1);
+
+  --psg-shadow-xs: 0 1px 2px rgba(0, 0, 0, .3);
+  --psg-shadow-sm: 0 3px 8px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25);
+  --psg-shadow-md: 0 10px 24px rgba(0, 0, 0, .45), 0 2px 6px rgba(0, 0, 0, .3);
+  --psg-shadow-lg: 0 24px 56px rgba(0, 0, 0, .55), 0 6px 16px rgba(0, 0, 0, .35);
 }

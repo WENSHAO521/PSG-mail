@@ -3,26 +3,10 @@
     <!-- Optional admin-configured background image -->
     <div v-if="background" class="custom-bg" :style="background"></div>
 
-    <!-- ── Left brand panel — light, editorial, structural lines ── -->
+    <!-- ── Left brand panel — soft gradient, modern ── -->
     <div class="brand-panel">
-      <!-- Precise structural grid / registration marks (Bauhaus restraint) -->
-      <svg class="brand-grid" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <g stroke="var(--psg-border)" stroke-width="1">
-          <line x1="80" y1="0" x2="80" y2="800"/>
-          <line x1="220" y1="0" x2="220" y2="800"/>
-          <line x1="360" y1="0" x2="360" y2="800"/>
-          <line x1="500" y1="0" x2="500" y2="800"/>
-          <line x1="0" y1="160" x2="600" y2="160"/>
-          <line x1="0" y1="400" x2="600" y2="400"/>
-          <line x1="0" y1="640" x2="600" y2="640"/>
-        </g>
-        <g stroke="var(--psg-border-strong)" stroke-width="1">
-          <path d="M40 40 H70 M40 40 V70" fill="none"/>
-          <path d="M560 760 H530 M560 760 V730" fill="none"/>
-        </g>
-        <rect x="500" y="160" width="14" height="14" fill="var(--psg-primary)"/>
-        <circle cx="80" cy="640" r="6" fill="none" stroke="var(--psg-border-strong)" stroke-width="1"/>
-      </svg>
+      <div class="brand-glow brand-glow--a" aria-hidden="true"></div>
+      <div class="brand-glow brand-glow--b" aria-hidden="true"></div>
 
       <div class="brand-editorial">
         <div class="brand-eyebrow">{{ $t('institutionalMail') }}</div>
@@ -72,7 +56,7 @@
                 </el-select>
                 <div style="color: var(--psg-text)">
                   <span>{{ suffix }}</span>
-                  <Icon class="setting-icon" icon="solar:alt-arrow-down-linear" width="20" height="20"/>
+                  <Icon class="setting-icon" icon="psg:chevron-down" width="20" height="20"/>
                 </div>
               </div>
             </template>
@@ -121,7 +105,7 @@
                 </el-select>
                 <div>
                   <span>{{ suffix }}</span>
-                  <Icon class="setting-icon" icon="solar:alt-arrow-down-linear" width="20" height="20"/>
+                  <Icon class="setting-icon" icon="psg:chevron-down" width="20" height="20"/>
                 </div>
               </div>
             </template>
@@ -181,7 +165,7 @@
               </el-select>
               <div>
                 <span>{{ suffix }}</span>
-                <Icon class="setting-icon" icon="solar:alt-arrow-down-linear" width="20" height="20"/>
+                <Icon class="setting-icon" icon="psg:chevron-down" width="20" height="20"/>
               </div>
             </div>
           </template>
@@ -759,19 +743,32 @@ function submitRegister() {
   flex-direction: column;
   justify-content: space-between;
   padding: 60px 64px;
-  background: var(--psg-surface);
-  border-right: 1px solid var(--psg-border);
+  background: var(--psg-canvas);
   overflow: hidden;
 
   @media (max-width: 980px) { display: none; }
 }
 
-.brand-grid {
+.brand-glow {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
   z-index: 0;
+}
+.brand-glow--a {
+  top: -12%;
+  right: -10%;
+  width: 46%;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, var(--psg-primary-muted-strong), transparent 70%);
+}
+.brand-glow--b {
+  bottom: -16%;
+  left: -8%;
+  width: 38%;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, var(--psg-primary-muted), transparent 70%);
 }
 
 .brand-editorial {
@@ -782,29 +779,31 @@ function submitRegister() {
 }
 
 .brand-eyebrow {
-  font-family: var(--psg-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--psg-text-secondary);
+  color: var(--psg-primary);
 }
 
 .brand-wordmark {
-  margin: 14px 0 0;
-  font-family: var(--psg-font-mono);
-  font-size: clamp(28px, 3.0vw, 42px);
+  margin: 18px 0 0;
+  font-size: clamp(30px, 3.2vw, 44px);
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  line-height: 1.14;
+  letter-spacing: -0.02em;
   color: var(--psg-text);
 }
 
 .brand-divider {
-  width: 48px;
-  height: 3px;
+  width: 40px;
+  height: 4px;
+  border-radius: var(--psg-radius-full);
   background: var(--psg-primary);
-  margin: 30px 0 22px;
+  margin: 26px 0 20px;
 }
 
 .brand-caption {
@@ -818,9 +817,8 @@ function submitRegister() {
 .brand-footnote {
   position: relative;
   z-index: 1;
-  font-family: var(--psg-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.18em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--psg-text-muted);
 }
@@ -846,8 +844,9 @@ function submitRegister() {
   width: 100%;
   max-width: 408px;
   background: var(--psg-surface);
-  border: 1px solid var(--psg-border-strong);
-  border-top: 3px solid var(--psg-primary);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-lg);
+  box-shadow: var(--psg-shadow-lg);
   padding: 40px 36px 26px;
   display: flex;
   flex-direction: column;
@@ -856,6 +855,7 @@ function submitRegister() {
   @media (max-width: 420px) {
     padding: 28px 18px 20px;
     max-width: 100%;
+    border-radius: var(--psg-radius-md);
   }
 }
 
@@ -894,12 +894,11 @@ function submitRegister() {
 }
 
 .form-eyebrow {
-  font-family: var(--psg-font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--psg-text-secondary);
+  color: var(--psg-primary);
   margin-bottom: 12px;
 }
 
@@ -935,17 +934,19 @@ function submitRegister() {
 }
 
 :deep(.el-input__wrapper) {
-  border-radius: var(--psg-radius-sm) !important;
+  border-radius: var(--psg-radius-md) !important;
   height: 46px;
-  background: var(--psg-surface) !important;
+  background: var(--psg-surface-muted) !important;
   box-shadow: 0 0 0 1px var(--psg-border) !important;
-  transition: box-shadow 0.15s ease !important;
+  transition: box-shadow 0.15s ease, background 0.15s ease !important;
 }
 :deep(.el-input__wrapper:hover) {
+  background: var(--psg-surface) !important;
   box-shadow: 0 0 0 1px var(--psg-text-secondary) !important;
 }
 :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--psg-focus), 0 0 0 3px var(--psg-surface-active) !important;
+  background: var(--psg-surface) !important;
+  box-shadow: 0 0 0 1.5px var(--psg-focus), 0 0 0 4px var(--psg-primary-muted) !important;
 }
 :deep(.el-input__inner) {
   font-size: 14px !important;
@@ -959,8 +960,8 @@ function submitRegister() {
   border-bottom: 1px solid var(--psg-border) !important;
   border-left:   1px solid var(--psg-border) !important;
   border-right:  none !important;
-  border-radius: var(--psg-radius-sm) !important;
-  background: var(--psg-surface) !important;
+  border-radius: var(--psg-radius-md) !important;
+  background: var(--psg-surface-muted) !important;
   height: 46px;
   transition: border-color 0.15s !important;
 }
@@ -974,8 +975,8 @@ function submitRegister() {
   border-right:  1px solid var(--psg-border) !important;
   border-bottom: 1px solid var(--psg-border) !important;
   border-left:   1px solid var(--psg-border) !important;
-  border-radius: var(--psg-radius-sm) !important;
-  background: var(--psg-surface-muted) !important;
+  border-radius: var(--psg-radius-md) !important;
+  background: var(--psg-surface-active) !important;
   padding: 0 12px !important;
   height: 46px;
   font-size: 13px !important;
@@ -1014,9 +1015,9 @@ function submitRegister() {
 .btn {
   height: 46px;
   width: 100%;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   font-size: 14px;
 }
 .btn-oauth { margin-top: 12px; }
@@ -1026,11 +1027,21 @@ function submitRegister() {
   border-color: var(--psg-primary) !important;
   color: var(--psg-on-primary) !important;
   font-weight: 600 !important;
-  border-radius: var(--psg-radius-sm) !important;
-  letter-spacing: 0.02em !important;
+  border-radius: var(--psg-radius-md) !important;
+  letter-spacing: 0.01em !important;
+  box-shadow: var(--psg-shadow-sm) !important;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease !important;
 
   &:hover, &:focus {
-    opacity: .88;
+    background: var(--psg-primary-hover) !important;
+    border-color: var(--psg-primary-hover) !important;
+    box-shadow: var(--psg-shadow-md) !important;
+  }
+  &:active {
+    background: var(--psg-primary-active) !important;
+    border-color: var(--psg-primary-active) !important;
+    transform: translateY(1px);
+    box-shadow: var(--psg-shadow-xs) !important;
   }
   &.is-loading { opacity: 0.75; }
 }
@@ -1044,9 +1055,9 @@ function submitRegister() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
@@ -1055,9 +1066,9 @@ function submitRegister() {
   color: var(--psg-text);
   transition: border-color 0.15s, background 0.15s;
 
-  svg { color: var(--psg-text-secondary); }
+  svg { color: var(--psg-primary); }
 
-  &:hover { border-color: var(--psg-border-strong); background: var(--psg-surface-muted); }
+  &:hover { border-color: var(--psg-primary); background: var(--psg-primary-muted); }
 }
 
 /* ── Switch + note ──────────────────────────────────────────── */
@@ -1173,16 +1184,19 @@ function submitRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--psg-radius-full);
   border: 1px solid var(--psg-border);
   background: var(--psg-surface);
+  box-shadow: var(--psg-shadow-sm);
   cursor: pointer;
   color: var(--psg-text-secondary);
-  transition: border-color 0.1s, color 0.1s;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
 
   @media (hover: hover) {
     &:hover {
-      border-color: var(--psg-border-strong);
-      color: var(--psg-text);
+      border-color: var(--psg-primary);
+      color: var(--psg-primary);
+      box-shadow: var(--psg-shadow-md);
     }
   }
 }

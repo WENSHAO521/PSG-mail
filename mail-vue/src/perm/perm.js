@@ -22,25 +22,33 @@ export default {
 
 export function hasPerm(permKey) {
     const {permKeys} = useUserStore().user;
-    return permKeys.includes('*') || permKeys.includes(permKey);
+    if (permKeys.includes('*')) return true;
+    return Array.isArray(permKey)
+        ? permKey.some(key => permKeys.includes(key))
+        : permKeys.includes(permKey);
 }
 
 
 export function permsToRouter(permKeys) {
-    const routerList = []
+    const routerMap = new Map()
     Object.keys(routers).forEach(perm => {
         if (permKeys.includes(perm) || permKeys.includes('*')) {
-            routerList.push(...routers[perm])
+            routers[perm].forEach(route => routerMap.set(route.name, route))
         }
     })
-    return routerList;
+    return [...routerMap.values()];
 }
 
 export function preloadAdminRoutes(permKeys) {
     const load = () => {
+        const seen = new Set()
         Object.keys(routers).forEach(perm => {
             if (permKeys.includes(perm) || permKeys.includes('*')) {
-                routers[perm].forEach(route => route.component())
+                routers[perm].forEach(route => {
+                    if (seen.has(route.name)) return
+                    seen.add(route.name)
+                    route.component()
+                })
             }
         })
     }
@@ -48,6 +56,17 @@ export function preloadAdminRoutes(permKeys) {
         requestIdleCallback(load, { timeout: 5000 })
     } else {
         setTimeout(load, 2000)
+    }
+}
+
+const accessManagementRoute = {
+    path: '/access-management',
+    name: 'access-mgmt',
+    component: () => import('@/views/access-management/index.vue'),
+    meta: {
+        title: 'accessManagement',
+        name: 'access-mgmt',
+        menu: true
     }
 }
 
@@ -74,26 +93,9 @@ const routers = {
             }
         }
     ],
-    'user:query': [{
-        path: '/all-users',
-        name: 'user',
-        component: () => import('@/views/user/index.vue'),
-        meta: {
-            title: 'allUsers',
-            name: 'user',
-            menu: true
-        }
-    }],
-    'role:query': [{
-        path: '/role',
-        name: 'role',
-        component: () => import('@/views/role/index.vue'),
-        meta: {
-            title: 'permissions',
-            name: 'role',
-            menu: true
-        }
-    }],
+    'user:query': [accessManagementRoute],
+    'role:query': [accessManagementRoute],
+    'reg-key:query': [accessManagementRoute],
     'setting:query': [{
         path: '/system-setting',
         name: 'sys-setting',
@@ -101,16 +103,6 @@ const routers = {
         meta: {
             title: 'SystemSettings',
             name: 'sys-setting',
-            menu: true
-        }
-    }],
-    'reg-key:query': [{
-        path: '/invite-code',
-        name: 'reg-key',
-        component: () => import('@/views/reg-key/index.vue'),
-        meta: {
-            title: 'inviteCode',
-            name: 'reg-key',
             menu: true
         }
     }],

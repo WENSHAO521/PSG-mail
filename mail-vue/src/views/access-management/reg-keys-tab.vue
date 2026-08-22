@@ -1,73 +1,66 @@
 <template>
-  <div class="page-outer">
-    <div class="space-y">
-    <div class="header-actions">
-      <Icon class="icon" icon="solar:add-circle-linear" width="20" height="20" @click="openAdd"/>
+  <div class="tab-panel">
+    <div class="summary-line">{{ $t('validKeysCount', { n: validCount }) }}</div>
+
+    <div class="toolbar">
       <div class="search">
-        <el-input
-            v-model="params.code"
-            class="search-input"
-            :placeholder="$t('searchRegKeyDesc')"
-        >
-        </el-input>
+        <el-input v-model="params.code" class="search-input" :placeholder="$t('searchRegKeyDesc')" @keyup.enter="search"/>
       </div>
-      <Icon class="icon" icon="solar:magnifer-linear" @click="search" width="18" height="18"/>
-      <Icon class="icon" icon="solar:refresh-linear" width="18" height="18" @click="refresh"/>
-      <Icon class="icon icon-danger" icon="solar:broom-linear" width="18" height="18" @click="clearNotUse"/>
+      <div class="status-pills">
+        <button type="button" class="pill" :class="{ active: statusFilter === 'all' }" @click="statusFilter = 'all'">{{ $t('all') }}</button>
+        <button type="button" class="pill" :class="{ active: statusFilter === 'valid' }" @click="statusFilter = 'valid'">{{ $t('valid') }}</button>
+        <button type="button" class="pill" :class="{ active: statusFilter === 'exhausted' }" @click="statusFilter = 'exhausted'">{{ $t('exhausted') }}</button>
+        <button type="button" class="pill" :class="{ active: statusFilter === 'expired' }" @click="statusFilter = 'expired'">{{ $t('expired') }}</button>
+      </div>
+      <MoreMenu aria-label="More">
+        <el-dropdown-item @click="clearNotUse">{{ $t('clearUnusedKeys') }}</el-dropdown-item>
+      </MoreMenu>
     </div>
 
     <div class="keys-body">
-      <div  class="loading" :class="regKeyLoading ? 'loading-show' : 'loading-hide'" :style="regKeyFirst ? 'background: transparent' : ''">
+      <div class="loading" :class="regKeyLoading ? 'loading-show' : 'loading-hide'" :style="regKeyFirst ? 'background: transparent' : ''">
         <loading/>
       </div>
-      <div class="code-box">
-        <div class="code-item" v-for="item in regKeyData">
-          <div class="code-info">
-            <div class="info-left">
-              <div class="info-left-item">
-                <span class="code" @click="copyCode(item.code)">{{ item.code }}</span>
-              </div>
-              <div class="info-left-item">
-                <div>{{ $t('remainingUses') }}：</div>
-                <div v-if="item.count">{{ item.count }}</div>
-                <el-tag v-else type="danger">{{ $t('exhausted') }}</el-tag>
-              </div>
-              <div class="info-left-item">
-                <div>{{ $t('roleDesc') }}：</div>
-                <el-tag>{{ item.roleName }}</el-tag>
-              </div>
-              <div class="info-left-item">
-                <div>{{ $t('validUntil') }}：</div>
-                <div v-if="item.expireTime">{{ formatExpireTime(item.expireTime) }}</div>
-                <el-tag v-else type="danger">{{ $t('expired') }}</el-tag>
-              </div>
-            </div>
-            <div class="info-right">
-              <el-dropdown class="setting">
-                <Icon icon="solar:settings-bold" width="21" height="21" style="color: var(--psg-text-secondary)"/>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="copyCode(item.code)">{{ $t('copy') }}</el-dropdown-item>
-                    <el-dropdown-item @click="openHistory(item)">{{ $t('history') }}</el-dropdown-item>
-                    <el-dropdown-item @click="deleteRegKey(item)">{{ $t('delete') }}</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
+      <EmptyState v-if="!regKeyLoading && !regKeyFirst && regKeyData.length === 0 && !hasFilters"
+                  icon="psg:key" :title="$t('emptyKeysTitle')" :description="$t('emptyKeysDesc')"
+                  :cta-text="$t('createFirstKey')" @cta="openAdd"/>
+      <EmptyState v-else-if="!regKeyLoading && !regKeyFirst && filteredKeys.length === 0"
+                  icon="psg:search" :title="$t('searchEmptyTitle')" :cta-text="$t('clearFilters')" @cta="clearFiltersFn"/>
+      <div class="code-box" v-else>
+        <div class="code-item" v-for="item in filteredKeys" :key="item.regKeyId">
+          <div class="code-item-head">
+            <span class="code" @click="copyCode(item.code)">{{ item.code }}</span>
+            <MoreMenu aria-label="Key actions">
+              <el-dropdown-item @click="copyCode(item.code)">{{ $t('copy') }}</el-dropdown-item>
+              <el-dropdown-item @click="openHistory(item)">{{ $t('history') }}</el-dropdown-item>
+              <el-dropdown-item class="danger" divided @click="deleteRegKey(item)">{{ $t('delete') }}</el-dropdown-item>
+            </MoreMenu>
+          </div>
+          <StatusBadge :tone="keyStatus(item) === 'valid' ? 'success' : 'neutral'"
+                        :label="keyStatus(item) === 'valid' ? $t('valid') : keyStatus(item) === 'exhausted' ? $t('exhausted') : $t('expired')"/>
+          <div class="info-row">
+            <span class="info-label">{{ $t('remainingUses') }}</span>
+            <span>{{ item.count }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">{{ $t('roleDesc') }}</span>
+            <el-tag>{{ item.roleName }}</el-tag>
+          </div>
+          <div class="info-row">
+            <span class="info-label">{{ $t('validUntil') }}</span>
+            <span v-if="item.expireTime">{{ formatExpireTime(item.expireTime) }}</span>
+            <span v-else>{{ $t('expired') }}</span>
           </div>
         </div>
       </div>
-      <div class="empty" v-if="regKeyData.length === 0">
-        <el-empty v-if="!regKeyFirst" :image-size="isMobile ? 120 : null" :description="$t('noCodeFound')"/>
-      </div>
     </div><!-- /keys-body -->
-    </div><!-- /space-y -->
-  </div><!-- /page-outer -->
-  <el-dialog v-model="showAdd" :title="$t('addRegKey')">
+
+    <el-drawer v-model="showAdd" direction="rtl" size="min(400px, 100vw)" :title="$t('createKey')"
+               :close-on-click-modal="false" @closed="resetForm">
       <div class="container">
         <el-input v-model="addForm.code" :placeholder="$t('regKey')">
           <template #suffix>
-            <Icon @click.stop="genCode" class="gen-code" icon="solar:refresh-bold" width="24" height="24"/>
+            <Icon @click.stop="genCode" class="gen-code" icon="psg:refresh" width="24" height="24"/>
           </template>
         </el-input>
         <el-select v-model="addForm.roleId" :placeholder="$t('roleDesc')">
@@ -79,11 +72,13 @@
             :placeholder="$t('validUntil')"
         />
         <el-input-number v-model="addForm.count" :min="1" :max="99999"/>
-        <el-button class="btn" type="primary" @click="submit" :loading="addLoading"
-        >{{ $t('add') }}
-        </el-button>
       </div>
-    </el-dialog>
+      <template #footer>
+        <el-button @click="showAdd = false">{{ $t('cancel') }}</el-button>
+        <el-button type="primary" @click="submit" :loading="addLoading">{{ $t('createKey') }}</el-button>
+      </template>
+    </el-drawer>
+
     <el-dialog class="history-list" v-model="showRegKeyHistory" :title="$t('useHistory')">
       <div class="loading" :class="historyLoading ? 'loading-show' : 'loading-hide'">
         <loading/>
@@ -95,12 +90,16 @@
                          :label="$t('date')" fixed="right" :show-overflow-tooltip="true"/>
       </el-table>
     </el-dialog>
+  </div>
 </template>
 
 <script setup>
-import {defineOptions, nextTick, reactive, ref, watch} from "vue"
+import {computed, defineExpose, reactive, ref, watch} from "vue"
 import {Icon} from "@iconify/vue";
 import loading from "@/components/loading/index.vue";
+import StatusBadge from "./components/StatusBadge.vue";
+import MoreMenu from "./components/MoreMenu.vue";
+import EmptyState from "./components/EmptyState.vue";
 import {useSettingStore} from "@/store/setting.js";
 import {roleSelectUse} from "@/request/role.js";
 import {useRoleStore} from "@/store/role.js";
@@ -109,10 +108,6 @@ import {getTextWidth} from "@/utils/text.js";
 import dayjs from "dayjs";
 import {tzDayjs} from "@/utils/day.js";
 import {useI18n} from "vue-i18n";
-
-defineOptions({
-  name: 'reg-key'
-})
 
 const roleStore = useRoleStore();
 const settingStore = useSettingStore();
@@ -131,7 +126,7 @@ const historyList = reactive([])
 const emailColumnWidth = ref(0)
 const createTimeColumnWidth = ref(0)
 const historyLoading = ref(false)
-const isMobile = window.innerWidth < 1025
+const statusFilter = ref('all')
 
 const addForm = reactive({
   code: '',
@@ -141,6 +136,27 @@ const addForm = reactive({
 })
 
 const regKeyData = reactive([])
+
+const hasFilters = computed(() => !!params.code || statusFilter.value !== 'all')
+
+function keyStatus(item) {
+  if (!item.expireTime) return 'expired'
+  if (!item.count) return 'exhausted'
+  return 'valid'
+}
+
+const validCount = computed(() => regKeyData.filter(item => keyStatus(item) === 'valid').length)
+
+const filteredKeys = computed(() => {
+  if (statusFilter.value === 'all') return regKeyData
+  return regKeyData.filter(item => keyStatus(item) === statusFilter.value)
+})
+
+function clearFiltersFn() {
+  params.code = ''
+  statusFilter.value = 'all'
+  getList(true)
+}
 
 getList(true)
 
@@ -237,11 +253,6 @@ function formatExpireTime(expireTime) {
   }
 }
 
-function refresh() {
-  params.code = null
-  getList(true)
-}
-
 function search() {
   getList(true)
 }
@@ -312,7 +323,7 @@ function submit() {
 
   if (!addForm.code) {
     ElMessage({
-      message: $('emptyRegKeyMsg'),
+      message: t('emptyRegKeyMsg'),
       type: "error",
       plain: true
     })
@@ -387,29 +398,29 @@ function openAdd() {
   showAdd.value = true
 }
 
+defineExpose({ openCreate: openAdd })
 </script>
 
 <style scoped lang="scss">
-.page-outer {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 24px 32px 56px;
-  @media (max-width: 960px)  { padding: 20px 24px 40px; }
-  @media (max-width: 640px)  { padding: 16px 16px 32px; }
-}
-
-.space-y {
+.tab-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.header-actions {
-  padding: 0 12px;
-  height: 44px;
+.summary-line {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--psg-text-secondary);
+  padding: 0 2px;
+}
+
+.toolbar {
+  padding: 8px 12px;
+  min-height: 44px;
   display: flex;
-  gap: 4px;
-  flex-wrap: nowrap;
+  gap: 8px;
+  flex-wrap: wrap;
   align-items: center;
   background: var(--psg-surface);
   border-radius: var(--psg-radius-md);
@@ -428,99 +439,97 @@ function openAdd() {
   }
 
   .search-input {
-    width: min(200px, calc(100vw - 200px));
+    width: min(220px, calc(100vw - 200px));
   }
+}
 
-  .icon {
-    cursor: pointer;
-    color: var(--psg-text-muted);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    border: 1px solid transparent;
-    border-radius: var(--psg-radius-sm);
+.status-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin-left: auto;
+
+  .pill {
     flex-shrink: 0;
-    transition: border-color 0.10s, color 0.10s;
+    padding: 5px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: var(--psg-font-sans);
+    color: var(--psg-text-secondary);
+    background: transparent;
+    border: 1px solid var(--psg-border);
+    border-radius: var(--psg-radius-full);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
 
     @media (hover: hover) {
-      &:hover {
-        border-color: transparent;
-        background: var(--psg-surface-active);
-        color: var(--psg-text);
-      }
-      &.icon-danger:hover {
-        border-color: transparent;
-        background: var(--psg-danger-muted);
-        color: var(--psg-danger);
-      }
+      &:not(.active):hover { border-color: var(--psg-border-strong); color: var(--psg-text); }
+    }
+
+    &.active {
+      background: var(--psg-primary-muted);
+      border-color: transparent;
+      color: var(--psg-primary);
     }
   }
 }
 
 .keys-body {
   position: relative;
+  min-height: 140px;
 
   .code-box {
-    padding: 20px 20px 32px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
 
     .code-item {
       background: var(--psg-surface);
       border-radius: var(--psg-radius-md);
       border: 1px solid var(--psg-border);
       padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       transition: border-color 0.16s ease;
 
       @media (hover: hover) {
         &:hover { border-color: var(--psg-border-strong); }
       }
 
-      .code-info {
+      .code-item-head {
         display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
 
-        .info-left {
-          flex: 1;
-          min-width: 0;
+      .code {
+        font-weight: 700;
+        font-family: var(--psg-font-mono);
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+        color: var(--psg-text);
+      }
 
-          .info-left-item {
-            display: flex;
-            padding-top: 5px;
+      .info-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        color: var(--psg-text-secondary);
+      }
 
-            .code {
-              font-weight: bold;;
-              font-size: 16px;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              cursor: pointer;
-            }
-          }
-
-          .info-left-item:first-child {
-            padding-top: 0;
-          }
-        }
-
-        .info-right {
-          display: flex;
-          flex-direction: column;
-          padding-top: 2px;
-          gap: 5px;
-        }
+      .info-label {
+        color: var(--psg-text-muted);
       }
     }
   }
-}
-
-.empty {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
 }
 
 :deep(.history-list.el-dialog) {
@@ -576,19 +585,7 @@ function openAdd() {
   display: grid;
   grid-template-columns: 1fr;
   gap: 15px;
-}
-
-:deep(.el-dialog) {
-  width: 400px !important;
-  @media (max-width: 440px) {
-    width: calc(100% - 40px) !important;
-    margin-right: 20px !important;
-    margin-left: 20px !important;
-  }
-}
-
-.setting {
-  cursor: pointer;
+  padding: 0 20px;
 }
 
 .gen-code {
@@ -596,9 +593,7 @@ function openAdd() {
   cursor: pointer;
 }
 
-
 :deep(.el-table__inner-wrapper:before) {
   background: var(--psg-surface);
 }
-
 </style>

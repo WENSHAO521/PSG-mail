@@ -13,7 +13,7 @@
   >
     <template #first>
       <div class="trash-retention-hint" :title="$t('autoDeleteDaysUserWarn', { n: retentionDays })">
-        <Icon icon="solar:danger-triangle-linear" width="13" height="13" />
+        <Icon icon="psg:warning" width="13" height="13" />
         <span>{{ $t('trashRetentionHint', { n: retentionDays }) }}</span>
       </div>
     </template>

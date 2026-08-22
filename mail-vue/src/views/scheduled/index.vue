@@ -9,12 +9,12 @@
           </div>
         </div>
         <button class="act-btn" :title="$t('refresh')" @click="load">
-          <Icon icon="solar:refresh-linear" width="16" height="16"/>
+          <Icon icon="psg:refresh" width="16" height="16"/>
         </button>
       </div>
 
       <div v-if="!list.length" class="empty-state">
-        <Icon icon="solar:clock-circle-linear" width="32" height="32" class="empty-icon"/>
+        <Icon icon="psg:clock" width="32" height="32" class="empty-icon"/>
         <div class="empty-title">{{ $t('scheduledEmpty') }}</div>
       </div>
 
@@ -32,7 +32,7 @@
               <span class="status-badge" :class="'status-' + row.status">{{ $t('scheduledStatus' + statusKey(row.status)) }}</span>
               <span class="item-sub">{{ $t('scheduledSendAt') }}: {{ formatTime(row.status === 'sent' ? row.sentTime : row.scheduledAt) }}</span>
               <span class="item-sub" v-if="row.attachmentCount">
-                <Icon icon="solar:paperclip-linear" width="12" height="12"/> {{ row.attachmentCount }}
+                <Icon icon="psg:paperclip" width="12" height="12"/> {{ row.attachmentCount }}
               </span>
             </div>
             <div class="item-meta" v-if="row.status === 'failed' && row.lastError">
@@ -41,13 +41,13 @@
           </div>
           <div class="item-actions" v-if="row.status === 'pending'">
             <button class="act-btn" :title="$t('scheduledEdit')" @click="edit(row)">
-              <Icon icon="solar:pen-linear" width="14" height="14"/>
+              <Icon icon="psg:edit" width="14" height="14"/>
             </button>
             <button class="act-btn" :title="$t('scheduledSendNow')" @click="sendNow(row)">
-              <Icon icon="solar:plain-3-linear" width="14" height="14"/>
+              <Icon icon="psg:send" width="14" height="14"/>
             </button>
             <button class="act-btn danger" :title="$t('cancelSchedule')" @click="cancel(row)">
-              <Icon icon="solar:close-circle-linear" width="14" height="14"/>
+              <Icon icon="psg:close-circle" width="14" height="14"/>
             </button>
           </div>
         </div>
@@ -89,12 +89,12 @@ function statusKey(status) {
 
 function statusIcon(status) {
   return {
-    pending: 'solar:clock-circle-linear',
-    processing: 'solar:refresh-linear',
-    sent: 'solar:check-circle-linear',
-    failed: 'solar:danger-triangle-linear',
-    cancelled: 'solar:close-circle-linear',
-  }[status] || 'solar:clock-circle-linear'
+    pending: 'psg:clock',
+    processing: 'psg:refresh',
+    sent: 'psg:check-circle',
+    failed: 'psg:warning',
+    cancelled: 'psg:close-circle',
+  }[status] || 'psg:clock'
 }
 
 function cancel(row) {

@@ -6,7 +6,7 @@
     </button>
 
     <button class="m-tab" @click="openSearch">
-      <Icon icon="solar:magnifer-linear" width="22" height="22"/>
+      <Icon icon="psg:search" width="22" height="22"/>
       <span>{{ $t('search') }}</span>
     </button>
 

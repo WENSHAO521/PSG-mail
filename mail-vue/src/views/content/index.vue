@@ -1,7 +1,7 @@
 <template>
   <!-- Empty state: no email selected — matches vfasky's empty detail panel -->
   <div v-if="!email" class="detail-empty surface-card">
-    <Icon icon="solar:letter-unread-linear" width="40" height="40" class="empty-icon"/>
+    <Icon icon="psg:mail" width="40" height="40" class="empty-icon"/>
     <span class="empty-text">{{ $t('selectEmailHint') }}</span>
   </div>
 
@@ -13,50 +13,50 @@
       <div class="header-left">
         <!-- Back button: always visible; clears selection on desktop, triggers mobile nav -->
         <button class="icon-btn detail-back-btn" @click="handleBack">
-          <Icon icon="solar:alt-arrow-left-linear" width="20" height="20" />
+          <Icon icon="psg:chevron-left" width="20" height="20" />
         </button>
         <template v-if="emailStore.contentData.showReply">
           <button class="icon-btn" v-perm="'email:send'" @click="openReply">
-            <Icon icon="solar:reply-linear" width="21" height="21" />
+            <Icon icon="psg:reply" width="21" height="21" />
           </button>
           <button class="icon-btn" v-perm="'email:send'" @click="openReplyAll">
-            <Icon icon="solar:reply-all-linear" width="22" height="22" />
+            <Icon icon="psg:reply-all" width="22" height="22" />
           </button>
           <button class="icon-btn" v-perm="'email:send'" @click="openForward">
-            <Icon icon="solar:arrow-right-up-linear" width="20" height="20" />
+            <Icon icon="psg:forward" width="20" height="20" />
           </button>
         </template>
         <button class="icon-btn" @click="changeStar" v-if="emailStore.contentData.showStar">
-          <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'solar:star-line-duotone'"
+          <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'psg:star'"
                 :width="email.isStar ? 20 : 18" :height="email.isStar ? 20 : 18" />
         </button>
         <!-- Destructive action: kept last (never adjacent to Back/Reply muscle-memory
              position) and visually quiet at rest — only turns --psg-danger on hover. -->
         <button v-perm="'email:delete'" class="icon-btn icon-danger" @click="handleDelete" :title="$t('delete')">
-          <Icon icon="solar:trash-bin-trash-linear" width="19" height="19" />
+          <Icon icon="psg:trash" width="19" height="19" />
         </button>
       </div>
       <div class="header-right">
         <el-tooltip :content="$t('markAsUnread')" placement="bottom"
                     v-if="emailStore.contentData.showUnread">
           <button class="icon-btn" @click="handleMarkAsUnread">
-            <Icon icon="solar:letter-linear" width="19" height="19" />
+            <Icon icon="psg:mail" width="19" height="19" />
           </button>
         </el-tooltip>
         <el-tooltip :content="$t('printEmail')" placement="bottom">
           <button class="icon-btn" @click="handlePrint">
-            <Icon icon="solar:printer-linear" width="19" height="19" />
+            <Icon icon="psg:printer" width="19" height="19" />
           </button>
         </el-tooltip>
         <el-tooltip :content="$t('downloadEml')" placement="bottom">
           <button class="icon-btn" @click="handleDownloadEml">
-            <Icon icon="solar:download-linear" width="19" height="19" />
+            <Icon icon="psg:download" width="19" height="19" />
           </button>
         </el-tooltip>
         <el-popover placement="bottom-end" width="220" trigger="click">
           <template #reference>
             <button class="icon-btn" :title="$t('labelApply')">
-              <Icon icon="solar:tag-linear" width="19" height="19" />
+              <Icon icon="psg:tag" width="19" height="19" />
             </button>
           </template>
           <div class="label-popover-list">
@@ -64,7 +64,7 @@
             <div v-for="l in labelStore.labels" :key="l.labelId" class="label-popover-item" @click="toggleLabel(l)">
               <span class="label-dot" :style="{ background: l.color }"></span>
               <span class="label-popover-name">{{ l.name }}</span>
-              <Icon v-if="isLabelApplied(l.labelId)" icon="solar:check-circle-bold" width="16" height="16" class="label-popover-check"/>
+              <Icon v-if="isLabelApplied(l.labelId)" icon="psg:check-circle" width="16" height="16" class="label-popover-check"/>
             </div>
           </div>
         </el-popover>
@@ -72,10 +72,10 @@
           <button class="icon-btn" :class="{ 'icon-btn--active': showTranslation }"
                   @click="handleTranslate" :disabled="translating">
             <Icon v-if="translating" icon="svg-spinners:3-dots-fade" width="20" height="20" />
-            <Icon v-else icon="solar:global-linear" width="19" height="19" />
+            <Icon v-else icon="psg:globe" width="19" height="19" />
           </button>
         </el-tooltip>
-        <span class="page-counter" v-if="emailStore.contentData.emailTotal > 0">
+        <span class="page-counter" v-if="emailStore.contentData.emailTotal > 0" :title="$t('emailPositionHint')">
           {{ emailStore.contentData.emailIndex }}&thinsp;/&thinsp;{{ emailStore.contentData.emailTotal }}
         </span>
       </div>
@@ -139,7 +139,7 @@
         <div v-if="showTranslation" class="translate-panel">
           <div class="translate-panel-header">
             <span class="translate-panel-title">
-              <Icon icon="solar:global-linear" width="15" height="15" />
+              <Icon icon="psg:globe" width="15" height="15" />
               {{ $t('translatedResult') }}
               <span class="translate-lang-tag">{{ translateTargetLang === 'zh' ? $t('translateToZh') : $t('translateToEn') }}</span>
             </span>
@@ -148,7 +148,7 @@
                 {{ translateTargetLang === 'zh' ? $t('translateToEn') : $t('translateToZh') }}
               </button>
               <button class="icon-btn-sm" @click="showTranslation = false">
-                <Icon icon="solar:close-linear" width="15" height="15" />
+                <Icon icon="psg:close" width="15" height="15" />
               </button>
             </div>
           </div>
@@ -170,14 +170,26 @@
               <span class="att-size">{{ formatBytes(att.size) }}</span>
               <div class="att-actions">
                 <button v-if="isImage(att.filename)" class="icon-btn-sm" @click.stop="showImage(att.key)">
-                  <Icon icon="solar:eye-linear" width="18" height="18" />
+                  <Icon icon="psg:eye" width="18" height="18" />
                 </button>
                 <a class="icon-btn-sm" :href="cvtR2Url(att.key)" download @click.stop>
-                  <Icon icon="solar:download-linear" width="18" height="18" />
+                  <Icon icon="psg:download" width="18" height="18" />
                 </a>
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="reply-action-bar" v-if="emailStore.contentData.showReply">
+          <button class="reply-action-btn" v-perm="'email:send'" @click="openReply">
+            <Icon icon="psg:reply" width="17" height="17" />{{ $t('reply') }}
+          </button>
+          <button class="reply-action-btn" v-perm="'email:send'" @click="openReplyAll">
+            <Icon icon="psg:reply-all" width="17" height="17" />{{ $t('replyAll') }}
+          </button>
+          <button class="reply-action-btn" v-perm="'email:send'" @click="openForward">
+            <Icon icon="psg:forward" width="16" height="16" />{{ $t('forward') }}
+          </button>
         </div>
 
       </div>
@@ -469,6 +481,9 @@ function handleDelete() {
   justify-content: center;
   gap: 12px;
   background: var(--psg-canvas);
+  /* Centered reads as an error state on a tall/wide reader pane with nothing
+     selected — nudge it above true center so it reads as "waiting", not "empty". */
+  transform: translateY(-12%);
 
   .empty-icon { color: var(--psg-text-muted); opacity: 0.5; }
 
@@ -516,6 +531,7 @@ function handleDelete() {
   width: 36px;
   height: 36px;
   border: none;
+  border-radius: var(--psg-radius-md);
   background: transparent;
   cursor: pointer;
   color: var(--psg-text-secondary);
@@ -535,6 +551,7 @@ function handleDelete() {
   width: 30px;
   height: 30px;
   border: none;
+  border-radius: var(--psg-radius-sm);
   background: transparent;
   cursor: pointer;
   color: var(--psg-text-secondary);
@@ -560,10 +577,10 @@ function handleDelete() {
 
 .detail-content {
   /* Editorial reading measure — the pane itself can stretch on wide
-     monitors, but prose stays capped at ~76ch for readability. */
-  max-width: 780px;
+     monitors, but prose stays capped for readability. */
+  max-width: 880px;
   margin: 0 auto;
-  padding: 28px 32px 48px;
+  padding: 28px 40px 48px;
   @media (max-width: 1280px) { padding: 24px 24px 40px; }
   @media (max-width: 1024px) { padding: 20px 20px 36px; }
   @media (max-width: 767px)  { padding: 16px 16px 32px; }
@@ -654,10 +671,11 @@ function handleDelete() {
 .meta-card {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 12px 14px;
   border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-md);
+  box-shadow: var(--psg-shadow-xs);
   margin-bottom: 0;
   background: var(--psg-surface);
 
@@ -668,8 +686,8 @@ function handleDelete() {
 }
 
 .meta-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -790,11 +808,6 @@ function handleDelete() {
   word-break: break-word;
 }
 
-.shadow-html::after {
-  content: ""; position: absolute; inset: 0;
-  background: var(--psg-html-dim); pointer-events: none;
-}
-
 .email-text {
   font-family: var(--psg-font-mono);
   white-space: pre-wrap; word-break: break-word;
@@ -834,6 +847,39 @@ function handleDelete() {
   .att-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--psg-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .att-size { font-family: var(--psg-font-mono); font-size: 11px; color: var(--psg-text-muted); flex-shrink: 0; white-space: nowrap; }
   .att-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+}
+
+/* ── Reply / Reply All / Forward — the everyday next action, restated at
+   the point the reader is done, not just as toolbar icons up top. ── */
+.reply-action-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 40px;
+}
+
+.reply-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-full);
+  background: var(--psg-surface);
+  color: var(--psg-text);
+  font-family: var(--psg-font-sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+
+  @media (hover: hover) {
+    &:hover {
+      background: var(--psg-primary-muted);
+      border-color: var(--psg-primary);
+      color: var(--psg-primary);
+    }
+  }
 }
 
 /* ── Translation panel ─────────────────────────────── */

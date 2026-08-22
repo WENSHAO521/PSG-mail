@@ -1,75 +1,58 @@
 <template>
-  <div class="page-outer">
-    <div class="space-y">
-    <div class="header-actions">
-      <Icon class="icon" icon="solar:add-circle-linear" width="20" height="20" @click="openAddRole"/>
-      <Icon class="icon" icon="solar:refresh-linear" width="18" height="18" @click="refresh"/>
+  <div class="tab-panel">
+    <div class="toolbar">
+      <div class="roles-count">{{ $t('rolesCountLabel', { n: roles.length }) }}</div>
+      <Icon class="icon" icon="psg:refresh" width="18" height="18" @click="refresh"/>
     </div>
-    <div class="table-card">
+
+    <div class="cards-area">
       <div class="loading" :class="tableLoading ? 'loading-show' : 'loading-hide'"
            :style="first ? 'background: transparent' : ''">
         <loading/>
       </div>
-      <el-table
-          :data="roles"
-          style="height: 100%;"
-          :empty-text="''"
-      >
-        <el-table-column width="10"/>
-        <el-table-column :label="$t('role')" prop="name" :min-width="roleWidth">
-          <template #default="props">
-            <div class="role-name">
-              <span>{{ props.row.name }}</span>
-              <span v-if="props.row.isDefault"><el-tag class="def-tag">{{ $t('default') }}</el-tag></span>
+      <EmptyState v-if="!tableLoading && !first && roles.length === 0"
+                  icon="psg:lock" :title="$t('emptyRolesTitle')" :description="$t('emptyRolesDesc')"
+                  :cta-text="$t('addRoleTitle')" @cta="openAddRole"/>
+      <div class="role-grid" v-else>
+        <div class="role-card" v-for="role in roles" :key="role.roleId">
+          <div class="role-card-head">
+            <div class="role-card-name">
+              <span>{{ role.name }}</span>
+              <StatusBadge v-if="role.isDefault" variant="pill" tone="success" :label="$t('default')"/>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column :label="$t('order')" :width="sortWidth" prop="sort"/>
-        <el-table-column v-if="desShow" :label="$t('description')" min-width="200" prop="description">
-          <template #default="props">
-            <div class="description">
-              <span>{{ props.row.description }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column :label="$t('tabSetting')" :width="settingWidth">
-          <template #default="props">
-            <el-dropdown trigger="click">
-              <el-button size="small" type="primary">{{ $t('action') }}</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="openRoleSet(props.row)">{{ $t('change') }}</el-dropdown-item>
-                  <el-dropdown-item @click="setDef(props.row)">{{ $t('default') }}</el-dropdown-item>
-                  <el-dropdown-item @click="delRole(props.row)">{{ $t('delete') }}</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div><!-- /table-card -->
-    </div><!-- /space-y -->
-  </div><!-- /page-outer -->
-  <el-dialog top="5vh" class="dialog" v-model="roleFormShow" @closed="resetForm">
-      <template #header>
-        <span style="font-size: 18px">{{ dialogType.title }}</span>
-        <el-popover
-            width="340"
-            :title="t('featDesc')"
-            placement="bottom"
-        >
-          <template #reference>
-            <Icon class="warning" icon="solar:danger-triangle-linear" width="18" height="18"/>
-          </template>
-          <div style="font-weight: bold;;margin-bottom: 2px;">{{ t('emailInterception') }}</div>
-          <div>{{ t('emailInterceptionDesc') }}</div>
-          <div style="font-weight: bold;;margin-top: 10px;margin-bottom: 2px;">{{ t('availableDomains') }}</div>
-          <div>
-            {{ t('availableDomainsDesc') }}
+            <MoreMenu>
+              <el-dropdown-item @click="openRoleSet(role)">{{ $t('editRole') }}</el-dropdown-item>
+              <el-dropdown-item v-if="!role.isDefault" @click="setDef(role)">{{ $t('default') }}</el-dropdown-item>
+              <el-tooltip v-if="role.isDefault" :content="$t('defaultRoleProtectedTooltip')" placement="left">
+                <el-dropdown-item class="danger is-disabled" divided disabled>{{ $t('delete') }}</el-dropdown-item>
+              </el-tooltip>
+              <el-dropdown-item v-else class="danger" divided @click="delRole(role)">{{ $t('delete') }}</el-dropdown-item>
+            </MoreMenu>
           </div>
+          <p class="role-card-desc" v-if="role.description">{{ role.description }}</p>
+          <div class="role-card-meta">
+            <span>{{ $t('permissionsCountLabel', { n: (role.permIds || []).length }) }}</span>
+            <span v-if="role.userCount != null"> · {{ $t('usersCountLabel', { n: role.userCount }) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <el-drawer v-model="roleFormShow" direction="rtl" size="min(420px, 100vw)"
+               :close-on-click-modal="false" @closed="resetForm">
+      <template #header>
+        <span class="drawer-title">{{ dialogType.title }}</span>
+        <el-popover width="340" :title="t('featDesc')" placement="bottom">
+          <template #reference>
+            <Icon class="warning" icon="psg:warning" width="18" height="18"/>
+          </template>
+          <div style="font-weight: bold;margin-bottom: 2px;">{{ t('emailInterception') }}</div>
+          <div>{{ t('emailInterceptionDesc') }}</div>
+          <div style="font-weight: bold;margin-top: 10px;margin-bottom: 2px;">{{ t('availableDomains') }}</div>
+          <div>{{ t('availableDomainsDesc') }}</div>
         </el-popover>
       </template>
-      <div class="dialog-box">
+      <div class="drawer-body">
         <el-input class="dialog-input" v-model="form.name" type="text" :maxlength="12" :placeholder="$t('roleName')"
                   autocomplete="off"/>
         <el-input class="dialog-input" v-model="form.description" :maxlength="30" type="text"
@@ -111,9 +94,7 @@
             show-checkbox
             node-key="permId"
             :default-expand-all="expand"
-            :props="{
-              label: 'name'
-            }"
+            :props="{ label: 'name' }"
         >
           <template #default="{ node, data }">
             <div>
@@ -138,26 +119,28 @@
             </div>
           </template>
         </el-tree>
-        <el-button class="btn" type="primary" :loading="permLoading" @click="roleFormClick"
-        >{{ $t('save') }}
-        </el-button>
       </div>
-    </el-dialog>
+      <template #footer>
+        <el-button @click="roleFormShow = false">{{ $t('cancel') }}</el-button>
+        <el-button type="primary" :loading="permLoading" @click="roleFormClick">{{ $t('save') }}</el-button>
+      </template>
+    </el-drawer>
+  </div>
 </template>
+
 <script setup>
 import {Icon} from "@iconify/vue";
-import {defineOptions, nextTick, onMounted, onUnmounted, reactive, ref} from "vue";
+import {defineExpose, nextTick, reactive, ref} from "vue";
 import {roleAdd, roleDelete, rolePermTree, roleRoleList, roleSet, roleSetDef} from "@/request/role.js";
 import loading from '@/components/loading/index.vue';
+import StatusBadge from "./components/StatusBadge.vue";
+import MoreMenu from "./components/MoreMenu.vue";
+import EmptyState from "./components/EmptyState.vue";
 import {useRoleStore} from "@/store/role.js";
 import {useUserStore} from "@/store/user.js";
 import {useSettingStore} from "@/store/setting.js";
 import {isEmail, isDomain} from "@/utils/verify-utils.js";
 import {useI18n} from "vue-i18n";
-
-defineOptions({
-  name: 'role'
-})
 
 const {domainList} = useSettingStore();
 const {t, locale} = useI18n();
@@ -169,10 +152,6 @@ const roles = ref([])
 const tree = ref({})
 const permLoading = ref(false)
 const tableLoading = ref(false)
-const desShow = ref(true)
-const settingWidth = ref(null)
-const sortWidth = ref(null)
-const roleWidth = ref(200)
 const first = ref(true)
 
 const dialogType = reactive({
@@ -254,6 +233,7 @@ function setDef(role) {
 }
 
 function delRole(role) {
+  if (role.isDefault) return
   ElMessageBox.confirm(t('delConfirm', {msg: role.name}), {
     confirmButtonText: t('confirm'),
     cancelButtonText: t('confirm'),
@@ -385,7 +365,7 @@ function addRole() {
 
 function refresh() {
   tableLoading.value = true
-  roles.length = 0
+  roles.value = []
   getRoleList()
 }
 
@@ -400,56 +380,17 @@ function getRoleList() {
   })
 }
 
-function adjustWidth() {
-  desShow.value = window.innerWidth > 767
-  settingWidth.value = window.innerWidth < 480 ? (locale.value === 'en' ? 85 : 75) : null
-  sortWidth.value = window.innerWidth < 480 ? 75 : null
-  roleWidth.value = window.innerWidth < 480 ? 180 : 200
-}
-
-onMounted(() => { adjustWidth(); window.addEventListener('resize', adjustWidth) })
-onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
-
-
+defineExpose({ openCreate: openAddRole })
 </script>
 <style scoped lang="scss">
 
-.page-outer {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 24px 32px 56px;
-  @media (max-width: 960px)  { padding: 20px 24px 40px; }
-  @media (max-width: 640px)  { padding: 16px 16px 32px; }
-}
-
-.space-y {
+.tab-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.table-card {
-  width: 100%;
-  overflow: hidden;
-  background: var(--psg-surface);
-  border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
-}
-
-.send-num {
-  margin-left: 10px;
-
-  .el-input-number {
-    width: 95px;
-  }
-}
-
-.def-tag {
-  margin-left: 10px;
-  height: 20px;
-}
-
-.header-actions {
+.toolbar {
   padding: 0 12px;
   height: 44px;
   display: flex;
@@ -459,6 +400,13 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
   border-radius: var(--psg-radius-md);
   border: 1px solid var(--psg-border);
   flex-shrink: 0;
+
+  .roles-count {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--psg-text-secondary);
+  }
 
   .icon {
     cursor: pointer;
@@ -483,21 +431,95 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
   }
 }
 
+.cards-area {
+  position: relative;
+  min-height: 140px;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.role-card {
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.16s ease;
+
+  @media (hover: hover) {
+    &:hover { border-color: var(--psg-border-strong); }
+  }
+}
+
+.role-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.role-card-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--psg-text);
+  min-width: 0;
+
+  span:first-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.role-card-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--psg-text-secondary);
+  line-height: 1.5;
+}
+
+.role-card-meta {
+  font-size: 12px;
+  color: var(--psg-text-muted);
+  font-weight: 600;
+}
+
 .warning {
   position: relative;
   left: 5px;
   top: 2px;
-  color: gray;
+  color: var(--psg-text-muted);
   cursor: pointer;
 }
 
-:deep(.description) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.drawer-title { font-size: 18px; font-weight: 700; }
+
+.drawer-body {
+  .dialog-input { margin-bottom: 15px; }
 }
 
-.table-card { position: relative; }
+.send-num {
+  margin-left: 10px;
+
+  .el-input-number {
+    width: 95px;
+  }
+}
+
+.perm-expand {
+  margin-bottom: 5px;
+  position: relative;
+  bottom: 5px;
+}
 
 .loading {
   position: absolute;
@@ -519,57 +541,5 @@ onUnmounted(() => { window.removeEventListener('resize', adjustWidth) })
   pointer-events: none;
   transition: all 200ms;
   opacity: 0;
-}
-
-.role-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.description {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-
-:deep(.el-segmented--small .el-segmented__item) {
-  border-radius: var(--psg-radius-sm) !important;
-  overflow: hidden;
-}
-
-.dialog-box {
-  .dialog-input {
-    margin-bottom: 15px !important;
-  }
-}
-
-.perm-expand {
-  margin-bottom: 5px;
-  --el-border-radius-base: 0px;
-  position: relative;
-  bottom: 5px;
-}
-
-
-:deep(.el-dialog) {
-  margin-bottom: 20px !important;
-  width: 460px !important;
-  @media (max-width: 500px) {
-    width: calc(100% - 40px) !important;
-    margin-right: 20px !important;
-    margin-left: 20px !important;
-
-  }
-}
-
-:deep(.el-scrollbar__view) {
-  height: 100%;
-}
-
-.btn {
-  width: 100%;
-  margin-top: 15px;
 }
 </style>
