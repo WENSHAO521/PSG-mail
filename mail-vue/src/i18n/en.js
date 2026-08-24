@@ -382,6 +382,8 @@ const en = {
     memberSince: 'Member since',
     planLimits: 'Plan & limits',
     dailySendLimit: 'Daily send limit',
+    totalSendQuota: 'Total send quota',
+    sendQuotaReached: 'Send quota reached',
     mailboxLimit: 'Linked mailboxes',
     roleLabel: 'Role',
     action: 'Action',

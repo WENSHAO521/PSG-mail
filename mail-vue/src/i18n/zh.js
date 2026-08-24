@@ -382,6 +382,8 @@ const zh = {
     memberSince: '加入时间',
     planLimits: '额度与权限',
     dailySendLimit: '每日发送额度',
+    totalSendQuota: '累计发送额度',
+    sendQuotaReached: '发送额度已用完',
     mailboxLimit: '可绑定邮箱数',
     roleLabel: '角色',
     action: '操作',
