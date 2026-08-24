@@ -1,3 +1,7 @@
+// Must load before anything that might touch the S3 client — see the file
+// for why (@aws-sdk/client-s3's XML parser needs a DOMParser/Node global
+// that workerd doesn't provide).
+import './utils/xml-parser-polyfill';
 import app from './hono/webs';
 import { email } from './email/email';
 import userService from './service/user-service';
