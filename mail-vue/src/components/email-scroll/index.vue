@@ -1328,12 +1328,20 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     grid-row: 2 / 4;
     display: flex;
     flex-direction: column;
+    /* Base .row-subject-cell (row-direction, desktop) sets align-items:center
+       to vertically center subject+preview side by side. In this stacked
+       column layout that same property means "center each line horizontally
+       at its own content width" instead — without overriding it here, a
+       nowrap subject/preview line renders at full intrinsic width and floats
+       centered, overflowing both edges of the row with no ellipsis visible. */
+    align-items: flex-start;
     justify-content: center;
     min-width: 0;
     padding-bottom: 0;
 
     .subject-text {
       display: block;
+      width: 100%;
       font-size: 14px;
       font-weight: 700;
       line-height: 1.35;
@@ -1345,6 +1353,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
     .mail-preview-inline {
       display: block !important;
+      width: 100%;
       margin-top: 2px;
       font-size: 12px;
       line-height: 1.35;
@@ -1565,12 +1574,20 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     grid-row: 2 / 4;
     display: flex;
     flex-direction: column;
+    /* Base .row-subject-cell (row-direction, desktop) sets align-items:center
+       to vertically center subject+preview side by side. In this stacked
+       column layout that same property means "center each line horizontally
+       at its own content width" instead — without overriding it here, a
+       nowrap subject/preview line renders at full intrinsic width and floats
+       centered, overflowing both edges of the row with no ellipsis visible. */
+    align-items: flex-start;
     justify-content: center;
     min-width: 0;
     padding-bottom: 0;
 
     .subject-text {
       display: block;
+      width: 100%;
       font-size: 14px;
       font-weight: 700;
       line-height: 1.35;
@@ -1582,6 +1599,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
     .mail-preview-inline {
       display: block !important;
+      width: 100%;
       margin-top: 2px;
       font-size: 12px;
       line-height: 1.35;
