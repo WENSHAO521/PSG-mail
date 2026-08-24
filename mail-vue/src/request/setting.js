@@ -12,6 +12,10 @@ export function websiteConfig(forRegister) {
     return http.get('/setting/websiteConfig', forRegister ? {params: {forRegister: 1}} : undefined)
 }
 
+export function providerUsage() {
+    return http.get('/setting/providerUsage')
+}
+
 export function setBackground(background) {
     return http.put('/setting/setBackground',{background})
 }

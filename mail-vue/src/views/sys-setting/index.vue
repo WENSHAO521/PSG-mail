@@ -320,6 +320,31 @@
             </div>
           </div>
 
+          <!-- Mail Sending Service Card -->
+          <div v-show="activeSettingSection === 'mail-provider'" class="settings-card">
+            <div class="card-title">{{ $t('mailSendingService') }}</div>
+            <div class="card-content provider-card-grid">
+              <MailProviderCard
+                  name="Resend"
+                  :configured="resendConfigured"
+                  :today-sent="providerUsage.resend.todaySent"
+                  :daily-quota="setting.resendDailyQuota || 0"
+                  :month-sent="providerUsage.resend.monthSent"
+                  :monthly-quota="setting.resendMonthlyQuota || 0"
+                  @configure="openResendQuotaForm"
+              />
+              <MailProviderCard
+                  name="Mailjet"
+                  :configured="!!setting.mailjetApiKey"
+                  :today-sent="providerUsage.mailjet.todaySent"
+                  :daily-quota="setting.mailjetDailyQuota || 0"
+                  :month-sent="providerUsage.mailjet.monthSent"
+                  :monthly-quota="setting.mailjetMonthlyQuota || 0"
+                  @configure="openMailjetForm"
+              />
+            </div>
+          </div>
+
           <!-- Object Storage Card -->
           <div v-show="activeSettingSection === 'storage'" class="settings-card">
             <div class="card-title">{{ $t('oss') }}</div>
@@ -715,6 +740,74 @@
                            :show-overflow-tooltip="true"/>
         </el-table>
       </el-dialog>
+      <el-dialog v-model="resendQuotaFormShow" class="provider-config-dialog" width="380"
+                 :title="$t('providerConfigTitle', { name: 'Resend' })">
+        <div class="provider-config-section">
+          <div class="provider-config-label">API Key</div>
+          <p class="provider-config-hint">
+            {{ resendConfigured ? $t('resendTokenList') + `: ${resendList.length}` : $t('providerNotConfiguredDesc', { name: 'Resend' }) }}
+            — {{ $t('resendToken') }} ({{ $t('emailSetting') }})
+          </p>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerDailyQuota') }}</div>
+          <el-input-number v-model="resendQuotaForm.dailyQuota" :min="0" :max="1000000" size="small"/>
+          <p class="provider-config-hint">{{ $t('providerQuotaZeroHint') }}</p>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerMonthlyQuota') }}</div>
+          <el-input-number v-model="resendQuotaForm.monthlyQuota" :min="0" :max="10000000" size="small"/>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerCurrentUsage') }}</div>
+          <div class="provider-usage-readout">
+            <span>{{ $t('providerTodaySent') }}: {{ providerUsage.resend.todaySent.toLocaleString() }}</span>
+            <span>{{ $t('providerMonthSent') }}: {{ providerUsage.resend.monthSent.toLocaleString() }}</span>
+          </div>
+        </div>
+        <p class="provider-config-note">{{ $t('providerQuotaObservationNote') }}</p>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="resendQuotaFormShow = false">{{ $t('cancel') }}</el-button>
+            <el-button type="primary" :loading="settingLoading" @click="saveResendQuota">{{ $t('saveChanges') }}</el-button>
+          </div>
+        </template>
+      </el-dialog>
+      <el-dialog v-model="mailjetFormShow" class="provider-config-dialog" width="380"
+                 :title="$t('providerConfigTitle', { name: 'Mailjet' })" @closed="cleanMailjetForm">
+        <div class="provider-config-section">
+          <div class="provider-config-label">API Key</div>
+          <el-input v-model="mailjetForm.apiKey" :placeholder="setting.mailjetApiKey || $t('mailjetApiKeyPlaceholder')"/>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">Secret Key</div>
+          <el-input v-model="mailjetForm.secretKey" type="password" show-password
+                    :placeholder="setting.mailjetSecretKey || $t('mailjetSecretKeyPlaceholder')"/>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerDailyQuota') }}</div>
+          <el-input-number v-model="mailjetForm.dailyQuota" :min="0" :max="1000000" size="small"/>
+          <p class="provider-config-hint">{{ $t('providerQuotaZeroHint') }}</p>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerMonthlyQuota') }}</div>
+          <el-input-number v-model="mailjetForm.monthlyQuota" :min="0" :max="10000000" size="small"/>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerCurrentUsage') }}</div>
+          <div class="provider-usage-readout">
+            <span>{{ $t('providerTodaySent') }}: {{ providerUsage.mailjet.todaySent.toLocaleString() }}</span>
+            <span>{{ $t('providerMonthSent') }}: {{ providerUsage.mailjet.monthSent.toLocaleString() }}</span>
+          </div>
+        </div>
+        <p class="provider-config-note">{{ $t('providerQuotaObservationNote') }}</p>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="mailjetFormShow = false">{{ $t('cancel') }}</el-button>
+            <el-button type="primary" :loading="settingLoading" @click="saveMailjetForm">{{ $t('saveChanges') }}</el-button>
+          </div>
+        </template>
+      </el-dialog>
       <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
                  @closed="regVerifyCount = setting.regVerifyCount">
         <form>
@@ -886,7 +979,7 @@
 
 <script setup>
 import {computed, defineOptions, nextTick, onActivated, reactive, ref, watch} from "vue";
-import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet} from "@/request/setting.js";
+import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet, providerUsage as fetchProviderUsage} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
@@ -901,6 +994,7 @@ import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
 import AdminForwarding from '@/components/admin-forwarding/index.vue'
+import MailProviderCard from './components/MailProviderCard.vue'
 
 defineOptions({
   name: 'sys-setting'
@@ -932,6 +1026,7 @@ onActivated(() => {
 function openSettingsSection(key) {
   activeSettingSection.value = key
   mobileSettingsDetail.value = true
+  if (key === 'mail-provider') loadProviderUsage()
 }
 const backgroundImage = ref('')
 const localUpShow = ref(false)
@@ -948,6 +1043,8 @@ const thirdEmailShow = ref(false)
 const forwardRulesShow = ref(false)
 const emailPrefixShow = ref(false)
 const showResendList = ref(false)
+const resendQuotaFormShow = ref(false)
+const mailjetFormShow = ref(false)
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
 const mobileNavigation = useMobileNavigationStore();
@@ -972,6 +1069,20 @@ const regVerifyCountShow = ref(false)
 const resendTokenForm = reactive({
   domain: '',
   token: '',
+})
+const resendQuotaForm = reactive({
+  dailyQuota: 0,
+  monthlyQuota: 0,
+})
+const mailjetForm = reactive({
+  apiKey: '',
+  secretKey: '',
+  dailyQuota: 0,
+  monthlyQuota: 0,
+})
+const providerUsage = reactive({
+  resend: { todaySent: 0, monthSent: 0 },
+  mailjet: { todaySent: 0, monthSent: 0 },
 })
 const turnstileForm = reactive({
   siteKey: '',
@@ -1040,6 +1151,7 @@ const systemSettingNav = computed(() => [
   {key: 'website', label: t('websiteSetting'), icon: 'lucide:globe-2', desc: t('sysWebsiteDesc')},
   {key: 'customization', label: t('customization'), icon: 'lucide:palette', desc: t('sysCustomizationDesc')},
   {key: 'email', label: t('emailSetting'), icon: 'lucide:mail', desc: t('sysEmailDesc')},
+  {key: 'mail-provider', label: t('mailSendingService'), icon: 'lucide:activity', desc: t('sysMailProviderDesc')},
   {key: 'storage', label: t('oss'), icon: 'lucide:database', desc: t('sysStorageDesc')},
   {key: 'push', label: '通知与转发', icon: 'lucide:send', desc: t('sysPushDesc')},
   {key: 'verify', label: t('turnstileSetting'), icon: 'lucide:shield-check', desc: t('sysVerifyDesc')},
@@ -1154,6 +1266,54 @@ const resendList = computed(() => {
 
   return list;
 });
+
+const resendConfigured = computed(() => resendList.value.length > 0)
+
+function loadProviderUsage() {
+  fetchProviderUsage().then(data => {
+    providerUsage.resend = data.resend
+    providerUsage.mailjet = data.mailjet
+  }).catch(() => {})
+}
+
+function openResendQuotaForm() {
+  resendQuotaForm.dailyQuota = setting.value.resendDailyQuota || 0
+  resendQuotaForm.monthlyQuota = setting.value.resendMonthlyQuota || 0
+  resendQuotaFormShow.value = true
+}
+
+function saveResendQuota() {
+  editSetting({
+    resendDailyQuota: resendQuotaForm.dailyQuota,
+    resendMonthlyQuota: resendQuotaForm.monthlyQuota,
+  })
+}
+
+function openMailjetForm() {
+  mailjetForm.apiKey = ''
+  mailjetForm.secretKey = ''
+  mailjetForm.dailyQuota = setting.value.mailjetDailyQuota || 0
+  mailjetForm.monthlyQuota = setting.value.mailjetMonthlyQuota || 0
+  mailjetFormShow.value = true
+}
+
+function cleanMailjetForm() {
+  mailjetForm.apiKey = ''
+  mailjetForm.secretKey = ''
+}
+
+function saveMailjetForm() {
+  const form = {
+    mailjetDailyQuota: mailjetForm.dailyQuota,
+    mailjetMonthlyQuota: mailjetForm.monthlyQuota,
+  }
+  // Leave-blank-means-unchanged, same guard S3's saveS3() uses for its two
+  // secret fields — never submit an empty string that would overwrite an
+  // already-saved credential.
+  if (mailjetForm.apiKey) form.mailjetApiKey = mailjetForm.apiKey
+  if (mailjetForm.secretKey) form.mailjetSecretKey = mailjetForm.secretKey
+  editSetting(form)
+}
 
 function saveAddVerifyCount() {
   if (!addVerifyCount.value) {
@@ -1568,6 +1728,8 @@ function change(e) {
   delete settingForm.s3SecretKey
   delete settingForm.tgBotToken
   delete settingForm.resendTokens
+  delete settingForm.mailjetApiKey
+  delete settingForm.mailjetSecretKey
   editSetting(settingForm, false)
 }
 
@@ -1584,6 +1746,8 @@ function saveActiveSetting() {
     delete settingForm.s3SecretKey
     delete settingForm.tgBotToken
     delete settingForm.resendTokens
+    delete settingForm.mailjetApiKey
+    delete settingForm.mailjetSecretKey
     editSetting(settingForm, false)
     return
   }
@@ -1623,6 +1787,8 @@ function editSetting(settingForm, refreshStatus = true) {
     }
     r2DomainShow.value = false
     resendTokenFormShow.value = false
+    resendQuotaFormShow.value = false
+    mailjetFormShow.value = false
     turnstileShow.value = false
     tgSettingShow.value = false
     thirdEmailShow.value = false
@@ -2116,6 +2282,47 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .card-title {
   display: none;
+}
+
+.provider-card-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.provider-config-section {
+  margin-bottom: 16px;
+
+  .el-input-number { width: 100%; }
+}
+
+.provider-config-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--psg-text);
+  margin-bottom: 6px;
+}
+
+.provider-config-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--psg-text-secondary);
+}
+
+.provider-config-note {
+  font-size: 12px;
+  color: var(--psg-text-muted);
+  border-top: 1px solid var(--psg-border);
+  padding-top: 12px;
+}
+
+.provider-usage-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--psg-text);
 }
 
 .card-content {
