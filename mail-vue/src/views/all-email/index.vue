@@ -1,13 +1,29 @@
 <template>
-  <div class="email-list-box">
-    <!-- ── Page header: identity, not a database-browser title bar ── -->
-    <div class="explorer-header">
-      <h2 class="explorer-title">{{ $t('allMail') }}</h2>
-      <p class="explorer-subtitle">{{ $t('allMailSubtitle') }}</p>
-    </div>
-
-    <!-- ── Search: the input itself performs the search, no separate icon button ── -->
-    <div class="explorer-search-row">
+  <!-- Same emailScroll shell every other folder uses (shared header/search-row/
+       toolbar markup and CSS) — All Mail only needs to override the search
+       input itself, since it routes queries by field (sender/subject/user/
+       account) to the backend instead of filtering the loaded list locally. -->
+  <emailScroll ref="sysEmailScroll"
+               :get-emailList="getEmailList"
+               :email-delete="allEmailDelete"
+               :star-add="starAdd"
+               :star-cancel="starCancel"
+               :show-star="false"
+               show-user-info
+               show-status
+               actionLeft="4px"
+               :show-account-icon="false"
+               :time-sort="params.timeSort"
+               :item-height="88"
+               :hide-inline-search="true"
+               :explorer-title="$t('allMail')"
+               :explorer-subtitle="$t('allMailSubtitle')"
+               @jump="jumpContent"
+               @refresh-before="refreshBefore"
+               @right-search="rightSearch"
+               :type="'all-email'"
+  >
+    <template #explorer-search>
       <Icon icon="psg:search" width="15" height="15" class="explorer-search-icon"/>
       <input v-model="searchValue" class="explorer-search-input"
              :placeholder="$t('searchAllMailPlaceholder')" @keydown.enter="search"/>
@@ -16,28 +32,8 @@
               @click="searchValue = ''; search()">
         <Icon icon="psg:close-circle" width="14" height="14" aria-hidden="true"/>
       </button>
-    </div>
-
-    <emailScroll ref="sysEmailScroll"
-                 class="explorer-body"
-                 :get-emailList="getEmailList"
-                 :email-delete="allEmailDelete"
-                 :star-add="starAdd"
-                 :star-cancel="starCancel"
-                 :show-star="false"
-                 show-user-info
-                 show-status
-                 actionLeft="4px"
-                 :show-account-icon="false"
-                 :time-sort="params.timeSort"
-                 :item-height="88"
-                 :hide-inline-search="true"
-                 @jump="jumpContent"
-                 @refresh-before="refreshBefore"
-                 @right-search="rightSearch"
-                 :type="'all-email'"
-    >
-      <template #first>
+    </template>
+    <template #first>
         <!-- ── Status chips + advanced filter + sort + refresh + overflow ── -->
         <div class="explorer-filters">
           <div class="filter-chips">
@@ -130,8 +126,7 @@
           <el-button :loading="clearLoading" type="primary" @click="batchDelete">{{ t('clear') }}</el-button>
         </div>
       </div>
-    </el-dialog>
-  </div>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -378,56 +373,6 @@ function getEmailList(emailId, size) {
 
 </style>
 <style scoped lang="scss">
-.email-list-box {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: var(--psg-surface);
-}
-
-/* ── Page header: title + one-line purpose statement ──────── */
-.explorer-header {
-  flex-shrink: 0;
-  padding: 14px 16px 2px;
-}
-
-.explorer-title {
-  margin: 0;
-  font-family: var(--psg-font-sans);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0;
-  color: var(--psg-text);
-}
-
-.explorer-subtitle {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--psg-text-secondary);
-}
-
-/* ── Search: the input itself is the action, no separate button ──── */
-.explorer-search-row {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  margin: 10px 16px 0;
-  padding: 0 10px;
-  background: var(--psg-canvas);
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-md);
-  transition: border-color 0.12s ease;
-
-  &:focus-within {
-    border-color: var(--psg-primary);
-    box-shadow: 0 0 0 3px var(--psg-primary-muted);
-  }
-}
-
 .explorer-search-icon {
   color: var(--psg-text-muted);
   flex-shrink: 0;
@@ -459,12 +404,6 @@ function getEmailList(emailId, size) {
   cursor: pointer;
   flex-shrink: 0;
   &:hover { color: var(--psg-text); }
-}
-
-/* ── List body: emailScroll fills whatever's left ─────────── */
-.explorer-body {
-  flex: 1;
-  min-height: 0;
 }
 
 /* ── Filter row: rendered into emailScroll's own 44px toolbar slot ── */
@@ -595,11 +534,6 @@ function getEmailList(emailId, size) {
   gap: 10px;
 
   &.danger { color: var(--psg-danger); }
-}
-
-@media (max-width: 767px) {
-  .explorer-header { padding: 12px 14px 0; }
-  .explorer-search-row { margin: 8px 14px 0; height: 40px; }
 }
 
 /* At the smallest supported phone width, keep every mail action reachable

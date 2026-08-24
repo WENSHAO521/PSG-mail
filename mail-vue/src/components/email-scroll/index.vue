@@ -1,8 +1,5 @@
 <template>
-  <div class="email-container" :class="{
-    'received-mail-list': props.type === 'email',
-    'explorer-list': !!props.explorerTitle,
-  }">
+  <div class="email-container" :class="{ 'explorer-list': !!props.explorerTitle }">
 
     <!-- Shared folder header: every mail folder uses the same explorer rhythm. -->
     <div v-if="props.explorerTitle" class="explorer-head">
@@ -12,18 +9,24 @@
       </div>
 
       <div class="explorer-search-row">
-        <Icon icon="psg:search" width="15" height="15" class="explorer-search-icon" aria-hidden="true" />
-        <input
-          v-model="searchQuery"
-          class="explorer-search-input"
-          :placeholder="props.explorerSearchPlaceholder || $t('searchPlaceholder')"
-          :aria-label="props.explorerSearchPlaceholder || $t('searchPlaceholder')"
-          @keydown.esc="searchQuery = ''"
-        />
-        <button v-if="searchQuery" type="button" class="explorer-search-clear"
-                :aria-label="$t('clear')" :title="$t('clear')" @click="searchQuery = ''">
-          <Icon icon="psg:close-circle" width="14" height="14" aria-hidden="true" />
-        </button>
+        <!-- All Mail needs backend multi-field search (sender/subject/user/account)
+             instead of the plain client-side filter below — it supplies its own
+             input here so every folder still shares one header/search-row
+             markup and CSS instead of a second hand-copied implementation. -->
+        <slot name="explorer-search">
+          <Icon icon="psg:search" width="15" height="15" class="explorer-search-icon" aria-hidden="true" />
+          <input
+            v-model="searchQuery"
+            class="explorer-search-input"
+            :placeholder="props.explorerSearchPlaceholder || $t('searchPlaceholder')"
+            :aria-label="props.explorerSearchPlaceholder || $t('searchPlaceholder')"
+            @keydown.esc="searchQuery = ''"
+          />
+          <button v-if="searchQuery" type="button" class="explorer-search-clear"
+                  :aria-label="$t('clear')" :title="$t('clear')" @click="searchQuery = ''">
+            <Icon icon="psg:close-circle" width="14" height="14" aria-hidden="true" />
+          </button>
+        </slot>
       </div>
     </div>
 
@@ -920,14 +923,6 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     grid-template-rows: auto auto minmax(0, 1fr);
   }
 
-  /* Inbox and All Inboxes share the same compact toolbar. Keep a small,
-     deliberate breathing space before the first row so the list does not
-     appear glued to the toolbar, while preserving the denser mail-reader
-     layout used by the other folders. */
-  &.received-mail-list .virtual--received {
-    box-sizing: border-box;
-    padding-top: 10px;
-  }
 }
 
 /* ── Shared folder explorer header ───────────────────────── */
@@ -1197,10 +1192,6 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 }
 
 @media (max-width: 768px) {
-  .email-container.received-mail-list .virtual--received {
-    padding-top: 8px;
-  }
-
   .explorer-header {
     padding: 12px 14px 0;
   }
