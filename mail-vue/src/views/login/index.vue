@@ -1125,7 +1125,15 @@ function submitRegister() {
   border-bottom: 1px solid var(--psg-border) !important;
   border-left:   1px solid var(--psg-border) !important;
   border-right:  none !important;
-  border-radius: var(--psg-radius-md) !important;
+  /* Rounded on the outer (left) edge only — the right edge butts against
+     the domain append box below, which carries the matching outer-right
+     rounding. Rounding all four corners on both halves (the previous
+     bug) made them render as two disconnected pill-shaped boxes with a
+     visible gap instead of one seamless input group. */
+  border-top-left-radius: var(--psg-radius-md) !important;
+  border-bottom-left-radius: var(--psg-radius-md) !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
   background: var(--psg-surface-muted) !important;
   height: 46px;
   transition: border-color 0.15s !important;
@@ -1140,7 +1148,10 @@ function submitRegister() {
   border-right:  1px solid var(--psg-border) !important;
   border-bottom: 1px solid var(--psg-border) !important;
   border-left:   1px solid var(--psg-border) !important;
-  border-radius: var(--psg-radius-md) !important;
+  border-top-right-radius: var(--psg-radius-md) !important;
+  border-bottom-right-radius: var(--psg-radius-md) !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
   background: var(--psg-surface-active) !important;
   padding: 0 12px !important;
   height: 46px;
@@ -1275,8 +1286,7 @@ function submitRegister() {
 
 /* ── Misc (preserved) ───────────────────────────────────────── */
 .setting-icon {
-  position: relative;
-  top: 6px;
+  flex: none;
 }
 
 .select {
@@ -1285,6 +1295,24 @@ function submitRegister() {
   width: 100px;
   opacity: 0;
   pointer-events: none;
+}
+
+/* The append slot's content is a plain <div><div><span>domain</span>
+   <Icon/></div></div> with no layout of its own, so the chevron (an
+   inline svg) sat on its own line below the domain text instead of
+   beside it — the ".setting-icon{top:6px}" offset above was a failed
+   attempt to nudge it into place without ever giving the row a flex
+   context. Centering both wrapper divs as a single-line flex row (and
+   dropping that offset) puts the text and chevron on one baseline. */
+.email-input :deep(.el-input-group__append) > div {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+.email-input :deep(.el-input-group__append) > div > div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .register-turnstile {
