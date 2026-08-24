@@ -531,8 +531,13 @@ const openSelect = () => {
   mySelect.value.toggleMenu()
 }
 
-const getFullEmail = (email) => {
-  return hideLoginDomain.value ? email : email + suffix.value
+// Registration ignores hideLoginDomain: its email input always shows and
+// requires picking one of domainList's suffixes (see the template comment
+// above the register email field), so the suffix must always be appended
+// there. Login/bind still respect the admin's hide-domain setting, where a
+// hidden domain means the user types their full existing address instead.
+const getFullEmail = (email, alwaysAppendDomain = false) => {
+  return (!alwaysAppendDomain && hideLoginDomain.value) ? email : email + suffix.value
 }
 
 const getEmailName = (email) => {
@@ -735,7 +740,7 @@ function submitRegister() {
     return
   }
 
-  const email = getFullEmail(registerForm.email);
+  const email = getFullEmail(registerForm.email, true);
 
   if (!isEmail(email)) {
     ElMessage({
