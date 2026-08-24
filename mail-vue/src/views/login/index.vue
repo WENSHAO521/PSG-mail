@@ -141,7 +141,7 @@
           </el-button>
         </div>
         <template v-if="settingStore.settings.register === 0">
-          <div class="switch" @click="show = 'register'" v-if="show === 'login'">{{ $t('noAccount') }}
+          <div class="switch" @click="openRegister" v-if="show === 'login'">{{ $t('noAccount') }}
             <span>{{ $t('regSwitch') }}</span></div>
           <div class="switch" @click="show = 'login'" v-else>{{ $t('hasAccount') }} <span>{{ $t('loginSwitch') }}</span>
           </div>
@@ -717,6 +717,26 @@ function refreshWebsiteConfig() {
     }
     document.title = setting.title
   }).catch(() => {})
+}
+
+// The boot-time websiteConfig() call (init.js) returns an empty domainList
+// whenever the admin's "hide sign-in domain" setting is on, since that
+// request can't tell login and register apart. Registration needs the real
+// list regardless — re-fetch it with forRegister=1 the moment the user
+// actually switches to the register tab, which the backend only honors
+// while registration is open (see setting-service.js websiteConfig()).
+function openRegister() {
+  show.value = 'register'
+  if (domainList.length === 0) {
+    websiteConfig(true).then(setting => {
+      settingStore.domainList = setting.domainList
+      domainList.length = 0
+      domainList.push(...setting.domainList)
+      if (!suffix.value && setting.domainList.length > 0) {
+        suffix.value = setting.domainList[0]
+      }
+    }).catch(() => {})
+  }
 }
 
 

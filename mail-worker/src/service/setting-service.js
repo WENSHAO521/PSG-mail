@@ -331,6 +331,15 @@ const settingService = {
 
 		const settingRow = await this.get(c, true);
 		const token = await userContext.getToken(c);
+		// loginDomain hides the domain suffix from the *login* page to stop
+		// domain enumeration by anyone just visiting it. Registration can't
+		// honor that hiding, though — a registrant must be told which of
+		// domainList's suffixes their new address will get, since they can't
+		// pick an arbitrary one. The frontend marks that intent with
+		// ?forRegister=1 (only sent once the user actually switches to the
+		// register tab); only bypass the hide when registration is open, so
+		// a closed registration form can't be used to probe domains.
+		const forRegister = c.req.query('forRegister') === '1' && settingRow.register === 0;
 
 		return {
 			register: settingRow.register,
@@ -350,7 +359,7 @@ const settingService = {
 			background: settingRow.background,
 			loginOpacity: settingRow.loginOpacity,
 			loginDarkenFactor: settingRow.loginDarkenFactor,
-			domainList: settingRow.loginDomain === 1 && !token ? [] : settingRow.domainList,
+			domainList: settingRow.loginDomain === 1 && !token && !forRegister ? [] : settingRow.domainList,
 			regKey: settingRow.regKey,
 			regVerifyOpen: settingRow.regVerifyOpen,
 			addVerifyOpen: settingRow.addVerifyOpen,

@@ -8,8 +8,8 @@ export function settingQuery() {
     return http.get('/setting/query')
 }
 
-export function websiteConfig() {
-    return http.get('/setting/websiteConfig')
+export function websiteConfig(forRegister) {
+    return http.get('/setting/websiteConfig', forRegister ? {params: {forRegister: 1}} : undefined)
 }
 
 export function setBackground(background) {
