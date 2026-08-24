@@ -458,7 +458,7 @@ const list = computed(() => {
 })
 
 const itemHeight = computed(() => {
-  if (viewportWidth.value <= 768) return props.type === 'all-email' ? 112 : 104;
+  if (viewportWidth.value <= 768) return props.type === 'all-email' ? 112 : 80;
   if (props.type === 'all-email') return isMobile.value ? 72 : 68;
   return isMobile.value ? 64 : 60;
 })
@@ -1258,10 +1258,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
   :deep(.mail-row) {
     grid-template-columns: 34px minmax(0, 1fr) auto;
-    grid-template-rows: 24px 28px 24px;
-    gap: 2px 10px;
-    min-height: 84px;
-    padding: 12px 16px 10px 12px;
+    grid-template-rows: 24px 33px;
+    gap: 3px 10px;
+    min-height: 80px;
+    padding: 10px 18px 10px 14px;
     border-radius: var(--psg-radius-xs);
     align-items: center;
 
@@ -1272,7 +1272,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
   :deep(.row-check) {
     grid-column: 1;
-    grid-row: 1 / 4;
+    grid-row: 1 / 3;
     align-self: center;
     padding-left: 0;
     justify-content: center;
@@ -1285,14 +1285,19 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     }
   }
 
+  /* Sender name, time, and subject/preview now match .mail-row.all-email's
+     own numbers exactly (13.5/700 name, 11.5 time with no forced weight,
+     13/600 subject) — one shared row typography for every folder instead of
+     a second, heavier scale (was 15/800 name, bold-always 11px time,
+     14/700 subject) that only non-all-email folders got. */
   :deep(.row-sender) {
     grid-column: 2;
     grid-row: 1;
     padding-top: 0;
 
     .mail-name {
-      font-size: 15px;
-      font-weight: 800;
+      font-size: 13.5px;
+      font-weight: 700;
       color: var(--psg-text);
     }
   }
@@ -1304,19 +1309,22 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     padding-top: 0;
 
     .mail-time {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 11.5px;
       color: var(--psg-text-muted);
     }
 
+    /* !important: the base (unconditional) .row-meta .mail-actions{display:flex}
+       rule sits after this block in source order, so a plain override here
+       loses the cascade (equal specificity, later wins) despite this
+       media/container condition matching. */
     .mail-actions {
-      display: none;
+      display: none !important;
     }
   }
 
   :deep(.row-subject-cell) {
     grid-column: 2 / 4;
-    grid-row: 2 / 4;
+    grid-row: 2;
     display: flex;
     flex-direction: column;
     /* Base .row-subject-cell (row-direction, desktop) sets align-items:center
@@ -1326,16 +1334,17 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
        nowrap subject/preview line renders at full intrinsic width and floats
        centered, overflowing both edges of the row with no ellipsis visible. */
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     min-width: 0;
     padding-bottom: 0;
 
     .subject-text {
       display: block;
       width: 100%;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.35;
+      height: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 16px;
       color: var(--psg-text-secondary);
       overflow: hidden;
       white-space: nowrap;
@@ -1345,9 +1354,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     .mail-preview-inline {
       display: block !important;
       width: 100%;
+      height: 15px;
       margin-top: 2px;
       font-size: 12px;
-      line-height: 1.35;
+      line-height: 15px;
       color: var(--psg-text-muted);
       overflow: hidden;
       white-space: nowrap;
@@ -1523,16 +1533,16 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
      here regardless of this query matching) — not touched by this block. */
   :deep(.mail-row) {
     grid-template-columns: 34px minmax(0, 1fr) auto;
-    grid-template-rows: 24px 28px 24px;
-    gap: 2px 10px;
-    min-height: 84px;
-    padding: 12px 16px 10px 12px;
+    grid-template-rows: 24px 33px;
+    gap: 3px 10px;
+    min-height: 80px;
+    padding: 10px 18px 10px 14px;
     align-items: center;
   }
 
   :deep(.row-check) {
     grid-column: 1;
-    grid-row: 1 / 4;
+    grid-row: 1 / 3;
     align-self: center;
     padding-left: 0;
     justify-content: center;
@@ -1547,7 +1557,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     grid-row: 1;
     padding-top: 0;
 
-    .mail-name { font-size: 15px; font-weight: 800; color: var(--psg-text); }
+    .mail-name { font-size: 13.5px; font-weight: 700; color: var(--psg-text); }
   }
 
   :deep(.row-meta) {
@@ -1556,13 +1566,13 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     align-items: flex-end;
     padding-top: 0;
 
-    .mail-time { font-size: 11px; font-weight: 700; color: var(--psg-text-muted); }
-    .mail-actions { display: none; }
+    .mail-time { font-size: 11.5px; color: var(--psg-text-muted); }
+    .mail-actions { display: none !important; }
   }
 
   :deep(.row-subject-cell) {
     grid-column: 2 / 4;
-    grid-row: 2 / 4;
+    grid-row: 2;
     display: flex;
     flex-direction: column;
     /* Base .row-subject-cell (row-direction, desktop) sets align-items:center
@@ -1572,16 +1582,17 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
        nowrap subject/preview line renders at full intrinsic width and floats
        centered, overflowing both edges of the row with no ellipsis visible. */
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     min-width: 0;
     padding-bottom: 0;
 
     .subject-text {
       display: block;
       width: 100%;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.35;
+      height: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 16px;
       color: var(--psg-text-secondary);
       overflow: hidden;
       white-space: nowrap;
@@ -1591,9 +1602,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     .mail-preview-inline {
       display: block !important;
       width: 100%;
+      height: 15px;
       margin-top: 2px;
       font-size: 12px;
-      line-height: 1.35;
+      line-height: 15px;
       color: var(--psg-text-muted);
       overflow: hidden;
       white-space: nowrap;
