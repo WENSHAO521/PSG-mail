@@ -1,6 +1,7 @@
 import app from '../hono/hono';
 import result from '../model/result';
 import settingService from '../service/setting-service';
+import emailService from '../service/email-service';
 import userContext from "../security/user-context";
 
 app.put('/setting/set', async (c) => {
@@ -32,4 +33,9 @@ app.put('/setting/setBlacklist', async (c) => {
 	const setting = await settingService.setBlacklist(c, await c.req.json());
 	return c.json(result.ok(setting));
 })
+
+app.get('/setting/providerUsage', async (c) => {
+	const usage = await emailService.getProviderUsage(c);
+	return c.json(result.ok(usage));
+});
 

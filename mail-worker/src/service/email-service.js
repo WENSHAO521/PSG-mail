@@ -643,7 +643,7 @@ const emailService = {
 			attachments = [] //附件
 		} = params;
 
-		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
+		const { resendTokens, r2Domain, send, domainList, mailjetApiKey, mailjetSecretKey } = await settingService.query(c);
 
 		let { imageDataList, html } = await attService.toImageUrlHtml(c, content);
 
@@ -719,9 +719,14 @@ const emailService = {
 		const domain = emailUtils.getDomain(accountRow.email);
 		const resendToken = resendTokens[domain];
 		const useCloudflareEmail = !!c.env.email;
+		// Static fallback order (Cloudflare > Resend > Mailjet), same shape as
+		// the pre-existing Cloudflare/Resend choice below — not a dynamic
+		// router: whichever of these is configured is used, in this fixed
+		// order, with no quota-based or failure-based switching between them.
+		const mailjetConfigured = !!(mailjetApiKey && mailjetSecretKey);
 
 		//如果接收方存在站外邮箱，又没有发信服务
-		if (!useCloudflareEmail && !resendToken && !allInternal) {
+		if (!useCloudflareEmail && !resendToken && !mailjetConfigured && !allInternal) {
 			throw new BizError(t('noSendProvider'));
 		}
 
@@ -746,38 +751,34 @@ const emailService = {
 		}
 
 		let sendResult = {};
+		let provider = 'internal';
 
-		//存在站外邮箱时，如果配置了 Cloudflare Email Service 就优先使用，否则使用 Resend
+		//存在站外邮箱时，如果配置了 Cloudflare Email Service 就优先使用，否则使用 Resend，再否则使用 Mailjet
 		if (!allInternal) {
 
+			const sendParams = {
+				name,
+				accountEmail: accountRow.email,
+				receiveEmail,
+				cc,
+				bcc,
+				subject,
+				text,
+				html,
+				attachments: [...imageDataList, ...attachments],
+				sendType,
+				messageId: emailRow.messageId
+			};
+
 			if (useCloudflareEmail) {
-				sendResult = await this.sendByCloudflareEmail(c, {
-					name,
-					accountEmail: accountRow.email,
-					receiveEmail,
-					cc,
-					bcc,
-					subject,
-					text,
-					html,
-					attachments: [...imageDataList, ...attachments],
-					sendType,
-					messageId: emailRow.messageId
-				});
+				provider = 'cloudflare';
+				sendResult = await this.sendByCloudflareEmail(c, sendParams);
+			} else if (resendToken) {
+				provider = 'resend';
+				sendResult = await this.sendByResend(resendToken, sendParams);
 			} else {
-				sendResult = await this.sendByResend(resendToken, {
-					name,
-					accountEmail: accountRow.email,
-					receiveEmail,
-					cc,
-					bcc,
-					subject,
-					text,
-					html,
-					attachments: [...imageDataList, ...attachments],
-					sendType,
-					messageId: emailRow.messageId
-				});
+				provider = 'mailjet';
+				sendResult = await this.sendByMailjet({ apiKey: mailjetApiKey, secretKey: mailjetSecretKey }, sendParams);
 			}
 
 		}
@@ -806,6 +807,7 @@ const emailService = {
 		emailData.type = emailConst.type.SEND;
 		emailData.userId = userId;
 		emailData.resendEmailId = data?.id;
+		emailData.provider = provider;
 
 		const recipient = [];
 		receiveEmail.forEach(item => {
@@ -944,6 +946,89 @@ const emailService = {
 		}
 
 		return await resend.emails.send(sendForm);
+	},
+
+	// Mailjet has no Workers-compatible SDK, so this calls its v3.1 Send REST
+	// API directly (Basic auth over apiKey:secretKey, same two credentials
+	// the sys-setting Mailjet dialog collects). Returns the same {data,error}
+	// shape sendByResend does (mirroring the Resend SDK's own return value)
+	// so send()'s post-call handling above needs no provider-specific branch.
+	async sendByMailjet(mailjetCreds, params) {
+		const toRecipients = list => list.map(e => (typeof e === 'string' ? { Email: e } : e));
+
+		const message = {
+			From: { Email: params.accountEmail, Name: params.name },
+			To: toRecipients(params.receiveEmail),
+			Subject: params.subject
+		};
+
+		if (params.cc?.length > 0) message.Cc = toRecipients(params.cc);
+		if (params.bcc?.length > 0) message.Bcc = toRecipients(params.bcc);
+		if (params.text) message.TextPart = params.text;
+		if (params.html) message.HTMLPart = params.html;
+
+		const attachments = await this.toResendAttachments(params.attachments);
+		const regular = [];
+		const inline = [];
+		attachments.forEach(att => {
+			const entry = { ContentType: att.contentType, Filename: att.filename, Base64Content: att.content };
+			if (att.contentId) {
+				entry.ContentID = att.contentId.replace(/^<|>$/g, '');
+				inline.push(entry);
+			} else {
+				regular.push(entry);
+			}
+		});
+		if (regular.length > 0) message.Attachments = regular;
+		if (inline.length > 0) message.InlinedAttachments = inline;
+
+		if (params.sendType === 'reply' && params.messageId) {
+			message.Headers = { 'In-Reply-To': params.messageId, 'References': params.messageId };
+		}
+
+		const auth = btoa(`${mailjetCreds.apiKey}:${mailjetCreds.secretKey}`);
+		const response = await fetch('https://api.mailjet.com/v3.1/send', {
+			method: 'POST',
+			headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+			body: JSON.stringify({ Messages: [message] })
+		});
+
+		const body = await response.json().catch(() => ({}));
+		const result = body?.Messages?.[0];
+
+		if (!response.ok || result?.Status === 'error') {
+			const errorMessage = body?.ErrorMessage
+				|| result?.Errors?.[0]?.ErrorMessage
+				|| `Mailjet send failed (${response.status})`;
+			return { data: null, error: { message: errorMessage } };
+		}
+
+		const messageId = result?.To?.[0]?.MessageID ? String(result.To[0].MessageID) : null;
+		return { data: { id: messageId }, error: null };
+	},
+
+	// today/month send counts per provider, for the sys-setting "发件服务" usage
+	// cards — every row here already represents an accepted/submitted send:
+	// send() throws (and never inserts an `email` row) on a provider error,
+	// so a failed API call never gets counted. Deliberately not filtered by
+	// isDel — the provider already accepted it even if the user later
+	// deletes their local copy.
+	async getProviderUsage(c) {
+		const dayStart = dayjs().startOf('day').format('YYYY-MM-DD HH:mm:ss');
+		const monthStart = dayjs().startOf('month').format('YYYY-MM-DD HH:mm:ss');
+		const usage = {};
+
+		for (const provider of ['resend', 'mailjet']) {
+			const [today, month] = await Promise.all([
+				orm(c).select({ total: count() }).from(email)
+					.where(and(eq(email.provider, provider), eq(email.type, emailConst.type.SEND), gte(email.createTime, dayStart))).get(),
+				orm(c).select({ total: count() }).from(email)
+					.where(and(eq(email.provider, provider), eq(email.type, emailConst.type.SEND), gte(email.createTime, monthStart))).get()
+			]);
+			usage[provider] = { todaySent: today?.total || 0, monthSent: month?.total || 0 };
+		}
+
+		return usage;
 	},
 
 	async toCloudflareAttachments(attachments) {

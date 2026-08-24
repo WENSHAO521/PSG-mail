@@ -22,6 +22,16 @@ const FEATURE_DEFAULTS = {
 	aiDefaultModel: '',
 	aiFallbackModel: '',
 	aiDailyQuota: 0,
+	// Resend/Mailjet observation quotas — app-layer usage ceilings PSG Mail
+	// tracks for its own progress bars/warnings, NOT the provider's real
+	// account plan (see the sys-setting UI copy shown alongside these). 0
+	// means "no quota set," matching aiDailyQuota's convention above.
+	resendDailyQuota: 0,
+	resendMonthlyQuota: 0,
+	mailjetApiKey: '',
+	mailjetSecretKey: '',
+	mailjetDailyQuota: 0,
+	mailjetMonthlyQuota: 0,
 };
 
 const FEATURE_COLUMNS = {
@@ -35,6 +45,12 @@ const FEATURE_COLUMNS = {
 	aiDefaultModel: 'ai_default_model',
 	aiFallbackModel: 'ai_fallback_model',
 	aiDailyQuota: 'ai_daily_quota',
+	resendDailyQuota: 'resend_daily_quota',
+	resendMonthlyQuota: 'resend_monthly_quota',
+	mailjetApiKey: 'mailjet_api_key',
+	mailjetSecretKey: 'mailjet_secret_key',
+	mailjetDailyQuota: 'mailjet_daily_quota',
+	mailjetMonthlyQuota: 'mailjet_monthly_quota',
 };
 
 // Polling is a recovery path for missed push signals and for Electron. A
@@ -69,6 +85,12 @@ async function readFeatureSetting(c) {
 			aiDefaultModel: row.ai_default_model || '',
 			aiFallbackModel: row.ai_fallback_model || '',
 			aiDailyQuota: Math.max(0, Number(row.ai_daily_quota ?? FEATURE_DEFAULTS.aiDailyQuota)),
+			resendDailyQuota: Math.max(0, Number(row.resend_daily_quota ?? FEATURE_DEFAULTS.resendDailyQuota)),
+			resendMonthlyQuota: Math.max(0, Number(row.resend_monthly_quota ?? FEATURE_DEFAULTS.resendMonthlyQuota)),
+			mailjetApiKey: row.mailjet_api_key || '',
+			mailjetSecretKey: row.mailjet_secret_key || '',
+			mailjetDailyQuota: Math.max(0, Number(row.mailjet_daily_quota ?? FEATURE_DEFAULTS.mailjetDailyQuota)),
+			mailjetMonthlyQuota: Math.max(0, Number(row.mailjet_monthly_quota ?? FEATURE_DEFAULTS.mailjetMonthlyQuota)),
 		};
 	} catch {
 		// A deployment can briefly run before the new migration is applied. Keep
@@ -188,6 +210,8 @@ const settingService = {
 		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
 		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
 		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
+		settingRow.mailjetApiKey = settingRow.mailjetApiKey ? `${settingRow.mailjetApiKey.slice(0, 12)}******` : null;
+		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
 		settingRow.hasR2 = !!c.env.r2
 		settingRow.hasCfEmail = !!c.env.email
 		settingRow.hasAi = !!c.env.ai
@@ -253,7 +277,7 @@ const settingService = {
 		for (const [key, column] of Object.entries(FEATURE_COLUMNS)) {
 			if (!Object.prototype.hasOwnProperty.call(featureParams, key)) continue;
 			let value = featureParams[key];
-			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel'].includes(key)) {
+			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey'].includes(key)) {
 				value = Array.isArray(value) ? value.join(',') : String(value ?? '').trim();
 			} else {
 				value = Math.max(0, Number(value));

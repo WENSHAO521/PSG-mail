@@ -178,7 +178,8 @@ const forwardingService = {
 		const domain = emailUtils.getDomain(sender.email);
 		const token = setting.resendTokens?.[domain];
 		const useCloudflareEmail = !!ctx.env.email;
-		if (!useCloudflareEmail && !token) throw new BizError('发信服务未配置，暂时无法发送转发验证或通知', 503);
+		const mailjetConfigured = !!(setting.mailjetApiKey && setting.mailjetSecretKey);
+		if (!useCloudflareEmail && !token && !mailjetConfigured) throw new BizError('发信服务未配置，暂时无法发送转发验证或通知', 503);
 
 		const params = {
 			name: sender.name || emailUtils.getName(sender.email),
@@ -191,7 +192,9 @@ const forwardingService = {
 		};
 		const response = useCloudflareEmail
 			? await emailService.sendByCloudflareEmail(ctx, params)
-			: await emailService.sendByResend(token, params);
+			: token
+				? await emailService.sendByResend(token, params)
+				: await emailService.sendByMailjet({ apiKey: setting.mailjetApiKey, secretKey: setting.mailjetSecretKey }, params);
 		if (response?.error) throw new BizError(response.error.message || '转发邮件发送失败', 502);
 		return response?.data || {};
 	},
