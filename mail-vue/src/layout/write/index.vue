@@ -1,9 +1,13 @@
 <template>
   <div class="send" v-show="show" :data-state="windowState">
-    <div class="write-box" :data-state="windowState">
+    <div class="write-box" :data-state="windowState" ref="writeBoxRef"
+         :style="windowState !== 'minimized' && (dragOffset.x || dragOffset.y)
+           ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` } : null">
 
-      <!-- ── Header ─────────────────────────────── -->
-      <div class="wh" @click="windowState === 'minimized' && toggleMinimize()">
+      <!-- ── Header — mousedown here drags the window; a plain click (no
+           movement) still falls through to the minimize-restore toggle. ── -->
+      <div class="wh" :class="{ 'wh-draggable': windowState !== 'minimized' }"
+           @mousedown="startDrag" @click="windowState === 'minimized' && toggleMinimize()">
         <div class="wh-left">
           <div class="wh-badge">
             <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
@@ -411,6 +415,58 @@ function toggleMinimize() {
 }
 function toggleMaximize() {
   windowState.value = windowState.value === 'maximized' ? 'normal' : 'maximized'
+}
+
+// ── Draggable compose window (desktop only — .send docks it bottom-right
+// by default via flex alignment; this just adds a transform offset on top
+// of that, same "offset from a fixed base" approach as layout/index.vue's
+// pane-divider drag). Disabled while minimized, where the header's click
+// handler above owns restoring instead. ──────────────────────────────────
+const writeBoxRef = ref(null)
+const dragOffset = reactive({ x: 0, y: 0 })
+let dragStartX = 0
+let dragStartY = 0
+let dragStartOffsetX = 0
+let dragStartOffsetY = 0
+let dragBaseRect = null
+
+function startDrag(e) {
+  if (windowState.value === 'minimized') return
+  if (window.innerWidth < 768) return
+  if (e.target.closest('button, .el-dropdown, .wh-sender')) return
+  const box = writeBoxRef.value
+  if (!box) return
+  const rect = box.getBoundingClientRect()
+  dragBaseRect = { left: rect.left - dragOffset.x, top: rect.top - dragOffset.y, width: rect.width, height: rect.height }
+  dragStartX = e.clientX
+  dragStartY = e.clientY
+  dragStartOffsetX = dragOffset.x
+  dragStartOffsetY = dragOffset.y
+  document.body.style.userSelect = 'none'
+  window.addEventListener('mousemove', onDrag)
+  window.addEventListener('mouseup', stopDrag)
+}
+
+function onDrag(e) {
+  if (!dragBaseRect) return
+  const nextX = dragStartOffsetX + (e.clientX - dragStartX)
+  const nextY = dragStartOffsetY + (e.clientY - dragStartY)
+  // Keep at least `margin` px of the box reachable on every edge, so it
+  // can never be dragged fully off-screen and lost.
+  const margin = 40
+  const minX = margin - (dragBaseRect.left + dragBaseRect.width)
+  const maxX = window.innerWidth - margin - dragBaseRect.left
+  const minY = margin - (dragBaseRect.top + dragBaseRect.height)
+  const maxY = window.innerHeight - margin - dragBaseRect.top
+  dragOffset.x = Math.min(maxX, Math.max(minX, nextX))
+  dragOffset.y = Math.min(maxY, Math.max(minY, nextY))
+}
+
+function stopDrag() {
+  dragBaseRect = null
+  document.body.style.userSelect = ''
+  window.removeEventListener('mousemove', onDrag)
+  window.removeEventListener('mouseup', stopDrag)
 }
 const showCc = ref(false);
 const showBcc = ref(false);
@@ -1309,6 +1365,8 @@ function _showWindow() {
   }
   show.value = true;
   windowState.value = 'normal'
+  dragOffset.x = 0
+  dragOffset.y = 0
   try { editor.value.focus() } catch {}
   loadTemplates()
   loadSenderAccounts()
@@ -1425,6 +1483,8 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
   clearInterval(autoSaveTimer)
+  window.removeEventListener('mousemove', onDrag)
+  window.removeEventListener('mouseup', stopDrag)
 });
 
 function close() {
@@ -1620,6 +1680,12 @@ function close() {
   height: 52px;
   flex-shrink: 0;
   border-bottom: 2px solid var(--psg-primary);
+}
+
+.wh-draggable {
+  cursor: move;
+
+  .wh-sender, .wh-action-btn { cursor: pointer; }
 }
 
 .wh-left {
