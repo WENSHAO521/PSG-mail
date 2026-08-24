@@ -85,9 +85,14 @@
           </el-button>
         </div>
         <div v-show="show !== 'login'">
-          <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
+          <!-- Registration always shows the domain, regardless of the admin's
+               "hide sign-in domain" setting: that toggle is meant to stop
+               login-page domain enumeration, but hiding it here just leaves
+               new registrants with no way to know what @domain their new
+               address will get. -->
+          <el-input class="email-input" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
                     autocomplete="off">
-            <template #append v-if="!hideLoginDomain">
+            <template #append>
               <div @click.stop="openSelect">
                 <el-select
                     v-if="show !== 'login'"
@@ -450,9 +455,24 @@ let verifyToken = ''
 let turnstileId = null
 let botJsError = ref(false)
 let verifyErrorCount = 0
+// Cloudflare's hosted Turnstile script can fail internally (seen in the
+// wild as an uncaught "DOMParser is not defined" from within its own code)
+// without ever calling data-error-callback — the widget just never
+// completes. Only the synchronous render() throw was covered before, so a
+// user hitting this got stuck on the register form with no feedback at
+// all. This watchdog surfaces the existing "verification module failed"
+// message if the challenge hasn't succeeded a few seconds after showing.
+let turnstileWatchdog = null
+function startTurnstileWatchdog() {
+  clearTimeout(turnstileWatchdog)
+  turnstileWatchdog = setTimeout(() => {
+    if (!verifyToken && !botJsError.value) botJsError.value = true
+  }, 8000)
+}
 
 window.onTurnstileSuccess = (token) => {
   verifyToken = token;
+  clearTimeout(turnstileWatchdog)
 };
 
 window.onTurnstileError = (e) => {
@@ -771,6 +791,7 @@ function submitRegister() {
   if (!verifyToken && (settingStore.settings.registerVerify === 0 || (settingStore.settings.registerVerify === 2 && settingStore.settings.regVerifyOpen))) {
     if (!verifyShow.value) {
       verifyShow.value = true
+      startTurnstileWatchdog()
       nextTick(() => {
         if (!turnstileId) {
           try {
@@ -825,6 +846,7 @@ function submitRegister() {
     if (res.code === 400) {
       verifyToken = ''
       settingStore.settings.regVerifyOpen = true
+      startTurnstileWatchdog()
       if (turnstileId) {
         window.turnstile.reset(turnstileId)
       } else {
