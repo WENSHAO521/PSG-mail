@@ -485,6 +485,8 @@ const en = {
     loginDomain: 'Hide Sign-In Domain',
     multipleEmail: 'Multiple Email Address',
     multipleEmailDesc: 'Enable this feature to allow users to add multiple email',
+    syncDelete: 'Sync Delete',
+    syncDeleteDesc: 'When enabled, inbox and mailbox deletes are immediate and permanent instead of soft-deleted',
     customization: 'Login Appearance',
     websiteTitle: 'Sign-In Page Title',
     loginTitleDesc: 'Also used as the browser tab title.',

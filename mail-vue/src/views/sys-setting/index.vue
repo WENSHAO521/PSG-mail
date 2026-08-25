@@ -105,6 +105,19 @@
               </div>
               <div class="setting-item">
                 <div>
+                  <span>{{ $t('syncDelete') }}</span>
+                  <el-tooltip effect="dark" :content="$t('syncDeleteDesc')">
+                    <Icon class="warning" icon="psg:warning" width="18" height="18"/>
+                  </el-tooltip>
+                  <p>{{ $t('syncDeleteDesc') }}</p>
+                </div>
+                <div>
+                  <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             :active-text="$t('enabled')" :inactive-text="$t('disabled')" v-model="setting.syncDelete"/>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div>
                   <span>{{ $t('minEmailPrefix', {msg: minEmailPrefix}) }}</span>
                   <p>{{ $t('sysEmailPrefixLengthDesc') }}</p>
                 </div>

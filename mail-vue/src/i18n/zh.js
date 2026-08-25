@@ -485,6 +485,8 @@ const zh = {
     loginDomain: '隐藏登录域名',
     multipleEmail: '多号模式',
     multipleEmailDesc: '开启后账号栏出现一个用户可以添加多个邮箱',
+    syncDelete: '同步删除',
+    syncDeleteDesc: '开启后收件箱和邮箱不再假删，直接彻底删除',
     customization: '登录页外观',
     websiteTitle: '登录页标题',
     loginTitleDesc: '同时用于浏览器标签页标题。',
