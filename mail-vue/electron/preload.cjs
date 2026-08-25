@@ -31,8 +31,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateAvailable:    (cb) => { ipcRenderer.removeAllListeners('update-available');    ipcRenderer.on('update-available',    (_, info) => cb(info)) },
   onUpdateProgress:     (cb) => { ipcRenderer.removeAllListeners('update-progress');     ipcRenderer.on('update-progress',     (_, pct)  => cb(pct)) },
   onUpdateDownloaded:   (cb) => { ipcRenderer.removeAllListeners('update-downloaded');   ipcRenderer.on('update-downloaded',   ()        => cb()) },
-  onUpdateNotAvailable: (cb) => { ipcRenderer.removeAllListeners('update-not-available');ipcRenderer.on('update-not-available',()        => cb()) },
-  onUpdateError:        (cb) => { ipcRenderer.removeAllListeners('update-error');        ipcRenderer.on('update-error',        (_, msg)  => cb(msg)) },
+  onUpdateNotAvailable: (cb) => { ipcRenderer.removeAllListeners('update-not-available');ipcRenderer.on('update-not-available',(_, data) => cb(data)) },
+  onUpdateError:        (cb) => { ipcRenderer.removeAllListeners('update-error');        ipcRenderer.on('update-error',        (_, data) => cb(data)) },
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   installUpdate:   () => ipcRenderer.send('install-update'),
 })

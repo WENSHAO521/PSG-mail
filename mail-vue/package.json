@@ -41,6 +41,7 @@
     "dayjs": "^1.11.13",
     "dexie": "^4.0.11",
     "echarts": "^6.1.0",
+    "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
     "element-plus": "^2.13.1",
     "firebase": "^12.18.0",

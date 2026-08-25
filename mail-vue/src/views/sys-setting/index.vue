@@ -561,7 +561,13 @@
             </div>
           </main>
         </div>
-        <div class="settings-footer">PSG Mail {{ currentVersion }}</div>
+        <div class="settings-footer">
+          PSG Mail {{ currentVersion }}
+          <el-button v-if="hasElectronUpdater" link type="primary" size="small"
+                     :loading="checkingUpdate" @click="checkForUpdatesManually">
+            {{ checkingUpdate ? $t('checkingForUpdates') : $t('checkForUpdates') }}
+          </el-button>
+        </div>
       </div>
 
       <!-- Dialogs remain the same -->
@@ -1014,6 +1020,21 @@ defineOptions({
 })
 
 const currentVersion = 'v3.0.0'
+
+// Desktop-only manual update check (electron-updater's actual check/download/
+// install flow lives in layout/index.vue, which already listens for every
+// update-* IPC event for the app's whole lifetime — this button only fires
+// the check; the result (found → the persistent update bar, not found/error
+// → a toast) surfaces from those existing global listeners, since ElMessage
+// renders to document.body regardless of which settings section is open.
+const hasElectronUpdater = !!window.electronAPI?.checkForUpdates
+const checkingUpdate = ref(false)
+function checkForUpdatesManually() {
+  if (checkingUpdate.value) return
+  checkingUpdate.value = true
+  window.electronAPI.checkForUpdates()
+  setTimeout(() => { checkingUpdate.value = false }, 3000)
+}
 const {t, locale} = useI18n();
 const firstLoading = ref(true)
 const settingReady = ref(false)

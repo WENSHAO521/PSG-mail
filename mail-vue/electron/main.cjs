@@ -13,6 +13,7 @@ if (process.env.ELECTRON_RUN_AS_NODE) {
 const { app, BrowserWindow, ipcMain, Notification, nativeImage, shell, Menu, Tray, nativeTheme } = require('electron')
 const path = require('path')
 const { autoUpdater } = require('electron-updater')
+const log = require('electron-log')
 
 const isDev  = process.env.NODE_ENV === 'development'
 const isMac  = process.platform === 'darwin'
@@ -331,10 +332,25 @@ function createWindow() {
 nativeTheme.on('updated', refreshThemeIcons)
 
 // ── Auto-updater ──────────────────────────────────────────────
+// electron-updater is otherwise silent in a packaged app — without this,
+// a failed/skipped check has no trace anywhere. Log file lives in the OS
+// default userData/logs location (see electron-log's docs for the exact
+// path per platform).
+log.transports.file.level = 'info'
+autoUpdater.logger = log
+
 autoUpdater.autoDownload = true
 autoUpdater.autoInstallOnAppQuit = true
 
+// Set right before a check triggered by the renderer's "Check for Updates"
+// button (see the check-for-updates handler below), so update-not-available/
+// error can tell the renderer whether to surface a toast — the automatic
+// 8-second-after-launch check should stay silent when there's nothing new,
+// but a manual click should always get feedback either way.
+let manualCheckInFlight = false
+
 autoUpdater.on('update-available', (info) => {
+  manualCheckInFlight = false
   win?.webContents.send('update-available', { version: info.version })
 })
 
@@ -347,11 +363,14 @@ autoUpdater.on('update-downloaded', () => {
 })
 
 autoUpdater.on('update-not-available', () => {
-  win?.webContents.send('update-not-available')
+  win?.webContents.send('update-not-available', { manual: manualCheckInFlight })
+  manualCheckInFlight = false
 })
 
 autoUpdater.on('error', (err) => {
-  win?.webContents.send('update-error', err.message)
+  log.error('autoUpdater error:', err)
+  win?.webContents.send('update-error', { message: err.message, manual: manualCheckInFlight })
+  manualCheckInFlight = false
 })
 
 ipcMain.on('install-update', () => {
@@ -360,7 +379,9 @@ ipcMain.on('install-update', () => {
 })
 
 ipcMain.on('check-for-updates', () => {
-  if (!isDev) autoUpdater.checkForUpdates()
+  if (isDev) return
+  manualCheckInFlight = true
+  autoUpdater.checkForUpdates()
 })
 
 // ── App lifecycle ─────────────────────────────────────────────

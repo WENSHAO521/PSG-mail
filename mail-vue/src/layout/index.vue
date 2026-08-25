@@ -122,7 +122,10 @@ import { checkAndDownloadAndroidUpdate } from '@/utils/android-update-service.js
 import {
   resetSyncState, startFallbackPolling, stopFallbackPolling, installLifecycleSync,
 } from '@/utils/mail-sync-service.js'
+import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const uiStore = useUiStore()
@@ -348,6 +351,20 @@ if (window.electronAPI?.onUpdateAvailable) {
   window.electronAPI.onUpdateDownloaded(() => {
     updateState.stage = 'ready'
     updateState.progress = 100
+  })
+  // Both fire on the silent 8-second-after-launch check too — only surface
+  // a toast when `manual` says this was a "Check for Updates" button click
+  // (sys-setting's footer), so launching the app doesn't pop a message
+  // every single time there's nothing new.
+  window.electronAPI.onUpdateNotAvailable((data) => {
+    if (data?.manual) {
+      ElMessage({ message: t('updateUpToDate'), type: 'success', plain: true })
+    }
+  })
+  window.electronAPI.onUpdateError((data) => {
+    if (data?.manual) {
+      ElMessage({ message: `${t('updateCheckFailed')}: ${data.message}`, type: 'error', plain: true })
+    }
   })
 }
 
