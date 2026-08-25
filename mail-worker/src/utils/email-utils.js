@@ -14,6 +14,17 @@ const emailUtils = {
 		return parts.length === 2 ? parts[0] : '';
 	},
 
+	// Plus-addressing (RFC 5233 style): user+tag@domain.com collapses to the
+	// base user@domain.com — used to fall back to the base mailbox when an
+	// exact sub-address account was never explicitly registered.
+	getBaseEmail(email) {
+		if (typeof email !== 'string') return '';
+		const parts = email.split('@');
+		if (parts.length !== 2) return '';
+		const localPart = parts[0].split('+')[0];
+		return localPart + '@' + parts[1];
+	},
+
 	formatText(text) {
 		if (!text) return ''
 		return text

@@ -388,6 +388,18 @@ const emailService = {
 		const accessCond = sharedIds.length > 0
 			? or(ownerCond, inArray(email.accountId, sharedIds))
 			: ownerCond;
+
+		const { syncDelete } = await settingService.query(c);
+		if (syncDelete === settingConst.syncDelete.OPEN) {
+			const owned = await orm(c).select({ emailId: email.emailId }).from(email)
+				.where(and(accessCond, inArray(email.emailId, emailIdList))).all();
+			const ownedIds = owned.map(row => row.emailId);
+			if (ownedIds.length > 0) {
+				await this.physicsDelete(c, { emailIds: ownedIds.join(',') });
+			}
+			return;
+		}
+
 		try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN delete_time TEXT;`).run(); } catch {}
 		await orm(c).update(email).set({ isDel: isDel.DELETE }).where(
 			and(accessCond, inArray(email.emailId, emailIdList)))
@@ -1146,8 +1158,26 @@ const emailService = {
 		//查询所有收件人账号信息
 		let accountList = await orm(c).select().from(account).where(inArray(account.email, receiveEmail)).all();
 
+		// 对于含+未精确匹配的收件人（未注册的子地址），获取基础地址账号
+		const plusEmails = receiveEmail.filter(
+			e => e.includes('+') && !accountList.some(a => a.email === e)
+		);
+		const baseAccounts = [];
+		if (plusEmails.length > 0) {
+			const baseEmails = [...new Set(plusEmails.map(e => emailUtils.getBaseEmail(e)).filter(Boolean))];
+			const existing = new Set(accountList.map(a => a.email));
+			const needed = baseEmails.filter(e => !existing.has(e));
+			if (needed.length > 0) {
+				const rows = await orm(c).select().from(account).where(inArray(account.email, needed)).all();
+				baseAccounts.push(...rows);
+			}
+		}
+
+		// 合并精确匹配和基础地址匹配的账号用于权限查询
+		const allAccounts = [...accountList, ...baseAccounts];
+
 		//查询所有收件人权限身份
-		const userIds = accountList.map(accountRow => accountRow.userId);
+		const userIds = allAccounts.map(accountRow => accountRow.userId);
 		let roleList = await roleService.selectByUserIds(c, userIds);
 
 		//封装数据库准备保存到数据库
@@ -1163,7 +1193,13 @@ const emailService = {
 			emailValues.toName = emailUtils.getName(email);
 			emailValues.emailId = null;
 
-			const accountRow = accountList.find(accountRow => accountRow.email === email);
+			let accountRow = allAccounts.find(accountRow => accountRow.email === email);
+
+			// 精确匹配不到时回退到主地址（去掉 +tag）
+			if (!accountRow && email.includes('+')) {
+				const baseEmail = emailUtils.getBaseEmail(email);
+				accountRow = allAccounts.find(accountRow => accountRow.email === baseEmail);
+			}
 
 			//如果收件人存在就把邮件信息改成收件人的
 			if (accountRow) {

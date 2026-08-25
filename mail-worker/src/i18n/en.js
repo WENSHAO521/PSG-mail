@@ -13,6 +13,7 @@ const en = {
 	notExistDomain: 'Email domain does not exist',
 	isDelAccount: 'This Email has been deleted',
 	isRegAccount: 'This Email is already registered',
+	notOwner: 'Base email does not belong to you',
 	accountLimit: 'Email address limit reached',
 	delMyAccount: 'Cannot delete your own email',
 	noUserAccount: 'This email does not belong to the current user',

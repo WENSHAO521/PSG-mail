@@ -32,6 +32,9 @@ const FEATURE_DEFAULTS = {
 	mailjetSecretKey: '',
 	mailjetDailyQuota: 0,
 	mailjetMonthlyQuota: 0,
+	// Ported from maillab/cloud-mail v3.1.0. CLOSE (1) preserves the existing
+	// isDel soft-delete behavior everywhere unless an admin opts in.
+	syncDelete: 1,
 };
 
 const FEATURE_COLUMNS = {
@@ -51,6 +54,7 @@ const FEATURE_COLUMNS = {
 	mailjetSecretKey: 'mailjet_secret_key',
 	mailjetDailyQuota: 'mailjet_daily_quota',
 	mailjetMonthlyQuota: 'mailjet_monthly_quota',
+	syncDelete: 'sync_delete',
 };
 
 // Polling is a recovery path for missed push signals and for Electron. A
@@ -91,6 +95,7 @@ async function readFeatureSetting(c) {
 			mailjetSecretKey: row.mailjet_secret_key || '',
 			mailjetDailyQuota: Math.max(0, Number(row.mailjet_daily_quota ?? FEATURE_DEFAULTS.mailjetDailyQuota)),
 			mailjetMonthlyQuota: Math.max(0, Number(row.mailjet_monthly_quota ?? FEATURE_DEFAULTS.mailjetMonthlyQuota)),
+			syncDelete: Number(row.sync_delete ?? FEATURE_DEFAULTS.syncDelete),
 		};
 	} catch {
 		// A deployment can briefly run before the new migration is applied. Keep
