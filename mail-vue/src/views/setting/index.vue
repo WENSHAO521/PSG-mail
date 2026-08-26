@@ -419,6 +419,12 @@
 
           </main>
         </div>
+        <div v-if="hasElectronUpdater" class="settings-footer">
+          <el-button link type="primary" size="small"
+                     :loading="checkingUpdate" @click="checkForUpdatesManually">
+            {{ checkingUpdate ? $t('checkingForUpdates') : $t('checkForUpdates') }}
+          </el-button>
+        </div>
       </div>
     </el-scrollbar>
 
@@ -474,6 +480,22 @@ const settingStore = useSettingStore()
 const uiStore = useUiStore()
 const mobileNavigation = useMobileNavigationStore()
 const userStore = useUserStore()
+// Desktop-only manual update check — every user can reach their own
+// personal settings regardless of role, unlike sys-setting (admin-only),
+// so this is where a non-admin actually has a way to trigger one. The
+// real check/download/install flow lives in layout/index.vue, which
+// already listens for every update-* IPC event for the app's whole
+// lifetime; this button only fires the check, and the result (found →
+// the persistent update bar, not found/error → a toast) surfaces from
+// those existing global listeners regardless of which page is open.
+const hasElectronUpdater = !!window.electronAPI?.checkForUpdates
+const checkingUpdate = ref(false)
+function checkForUpdatesManually() {
+  if (checkingUpdate.value) return
+  checkingUpdate.value = true
+  window.electronAPI.checkForUpdates()
+  setTimeout(() => { checkingUpdate.value = false }, 3000)
+}
 const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
@@ -1260,6 +1282,12 @@ function submitPwd() {
 }
 
 /* ── Panel ── */
+.settings-footer {
+  margin-top: 14px;
+  padding: 4px 4px 0;
+  text-align: center;
+}
+
 .settings-panel-header {
   min-height: 84px;
   padding: 18px 20px 16px;
