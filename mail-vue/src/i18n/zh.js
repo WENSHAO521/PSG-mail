@@ -879,6 +879,7 @@ const zh = {
     checkingForUpdates: '正在检查更新...',
     updateUpToDate: '已是最新版本',
     updateCheckFailed: '检查更新失败',
+    updateDownloadStarted: '发现新版本 v{version}，已打开下载页面',
     keyboardShortcuts: '键盘快捷键',
     shortcutsTitle: '键盘快捷键',
     shortcutCompose: '写新邮件',

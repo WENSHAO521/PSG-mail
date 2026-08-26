@@ -879,6 +879,7 @@ const en = {
     checkingForUpdates: 'Checking for updates...',
     updateUpToDate: 'You\'re on the latest version',
     updateCheckFailed: 'Update check failed',
+    updateDownloadStarted: 'New version v{version} found, download page opened',
     keyboardShortcuts: 'Keyboard Shortcuts',
     shortcutsTitle: 'Keyboard Shortcuts',
     shortcutCompose: 'Compose new email',

@@ -419,7 +419,7 @@
 
           </main>
         </div>
-        <div v-if="hasElectronUpdater" class="settings-footer">
+        <div v-if="showUpdateCheck" class="settings-footer">
           <el-button link type="primary" size="small"
                      :loading="checkingUpdate" @click="checkForUpdatesManually">
             {{ checkingUpdate ? $t('checkingForUpdates') : $t('checkForUpdates') }}
@@ -473,6 +473,7 @@ import { useNotificationStore } from "@/store/notification.js"
 import { Capacitor } from "@capacitor/core"
 import dayjs from "dayjs"
 import PersonalForwarding from '@/components/personal-forwarding/index.vue'
+import { checkAndDownloadAndroidUpdate, isAndroidApp } from '@/utils/android-update-service.js'
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -480,21 +481,54 @@ const settingStore = useSettingStore()
 const uiStore = useUiStore()
 const mobileNavigation = useMobileNavigationStore()
 const userStore = useUserStore()
-// Desktop-only manual update check — every user can reach their own
-// personal settings regardless of role, unlike sys-setting (admin-only),
-// so this is where a non-admin actually has a way to trigger one. The
-// real check/download/install flow lives in layout/index.vue, which
-// already listens for every update-* IPC event for the app's whole
-// lifetime; this button only fires the check, and the result (found →
-// the persistent update bar, not found/error → a toast) surfaces from
-// those existing global listeners regardless of which page is open.
+// Manual update check — every user can reach their own personal settings
+// regardless of role, unlike sys-setting (admin-only), so this is where a
+// non-admin actually has a way to trigger one. Not shown on web: there's
+// nothing to "update" there, a page refresh always serves the latest
+// deployed build.
+//
+// Desktop: fires the IPC check; the real check/download/install flow
+// lives in layout/index.vue, which already listens for every update-*
+// event for the app's whole lifetime, so the result (found → the
+// persistent update bar, not found/error → a toast) surfaces from those
+// existing global listeners regardless of which page is open here.
+//
+// Android: no silent auto-download-and-install exists (or is possible)
+// like desktop's — checkAndDownloadAndroidUpdate() hits GitHub's releases
+// API directly and opens the browser to the APK download when a newer
+// version exists, same as the automatic 8-second-after-launch check in
+// layout/index.vue already does; `force: true` here additionally
+// re-opens that download even if the automatic check already tried it
+// once for this version, since the user explicitly asked again.
 const hasElectronUpdater = !!window.electronAPI?.checkForUpdates
+const isAndroid = isAndroidApp()
+const showUpdateCheck = hasElectronUpdater || isAndroid
 const checkingUpdate = ref(false)
-function checkForUpdatesManually() {
+
+async function checkForUpdatesManually() {
   if (checkingUpdate.value) return
   checkingUpdate.value = true
-  window.electronAPI.checkForUpdates()
-  setTimeout(() => { checkingUpdate.value = false }, 3000)
+
+  if (hasElectronUpdater) {
+    window.electronAPI.checkForUpdates()
+    setTimeout(() => { checkingUpdate.value = false }, 3000)
+    return
+  }
+
+  try {
+    const result = await checkAndDownloadAndroidUpdate(true)
+    if (result?.status === 'current') {
+      ElMessage({ message: t('updateUpToDate'), type: 'success', plain: true })
+    } else if (result?.status === 'download-started' || result?.status === 'already-started') {
+      ElMessage({ message: t('updateDownloadStarted', { version: result.remoteVersion }), type: 'success', plain: true })
+    } else if (result?.status === 'missing-apk') {
+      ElMessage({ message: t('updateCheckFailed'), type: 'error', plain: true })
+    }
+  } catch (error) {
+    ElMessage({ message: `${t('updateCheckFailed')}: ${error.message}`, type: 'error', plain: true })
+  } finally {
+    checkingUpdate.value = false
+  }
 }
 const setPwdLoading = ref(false)
 const setNameShow = ref(false)

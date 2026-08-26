@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core'
 const RELEASE_API = 'https://api.github.com/repos/WENSHAO521/PSG-mail/releases/latest'
 const DOWNLOAD_KEY_PREFIX = 'psg-mail-android-update-download:'
 
-function isAndroidApp() {
+export function isAndroidApp() {
   return Capacitor?.isNativePlatform?.() === true && Capacitor.getPlatform?.() === 'android'
 }
 
@@ -46,7 +46,11 @@ async function openDownload(url) {
   }
 }
 
-export async function checkAndDownloadAndroidUpdate() {
+// `force` skips the already-started dedup: the automatic 8-second-after-
+// launch check should never re-open a browser tab the user already
+// dismissed once, but a manual "check for updates" click should — the
+// user explicitly asked to check again.
+export async function checkAndDownloadAndroidUpdate(force = false) {
   if (!isAndroidApp()) return null
 
   const response = await fetch(RELEASE_API, {
@@ -64,7 +68,7 @@ export async function checkAndDownloadAndroidUpdate() {
   if (!apk?.browser_download_url) return { status: 'missing-apk', remoteVersion }
 
   const downloadKey = `${DOWNLOAD_KEY_PREFIX}${remoteVersion}`
-  if (localStorage.getItem(downloadKey) === '1') {
+  if (!force && localStorage.getItem(downloadKey) === '1') {
     return { status: 'already-started', remoteVersion, url: apk.browser_download_url }
   }
 
