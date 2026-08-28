@@ -12,10 +12,16 @@
       {{ $t('providerNotConfiguredDesc', { name }) }}
     </p>
 
-    <template v-else>
+    <div v-if="region || host || sender" class="provider-meta">
+      <span v-if="region">{{ region }}</span>
+      <span v-if="host">{{ host }}<template v-if="port"> : {{ port }}</template></span>
+      <span v-if="sender" class="provider-sender">{{ sender }}</span>
+    </div>
+
+    <div class="provider-usage">
       <div v-if="dailyQuota > 0" class="provider-usage-row">
         <div class="usage-label-row">
-          <span>{{ $t('providerTodaySent') }}</span>
+          <span>{{ usageLabel || $t('providerTodaySent') }}</span>
           <span class="usage-percent" :class="toneClass(dailyPercent)">{{ formatPercent(dailyPercent) }}</span>
         </div>
         <div class="usage-numbers">{{ formatNum(todaySent) }} / {{ formatNum(dailyQuota) }}</div>
@@ -35,7 +41,7 @@
 
       <div v-if="monthlyQuota > 0" class="provider-usage-row">
         <div class="usage-label-row">
-          <span>{{ $t('providerMonthSent') }}</span>
+          <span>{{ monthlyUsageLabel || $t('providerMonthSent') }}</span>
           <span class="usage-percent" :class="toneClass(monthlyPercent)">{{ formatPercent(monthlyPercent) }}</span>
         </div>
         <div class="usage-numbers">{{ formatNum(monthSent) }} / {{ formatNum(monthlyQuota) }}</div>
@@ -52,9 +58,12 @@
           {{ monthlyPercent > 100 ? $t('providerQuotaExceeded') : $t('providerQuotaReachedMonth') }}
         </div>
       </div>
-    </template>
+    </div>
 
     <div class="provider-card-foot">
+      <el-button v-if="testable" size="small" :disabled="!configured" @click="$emit('test')">
+        {{ testLabel || $t('providerSendTestNotification') }}
+      </el-button>
       <el-button size="small" @click="$emit('configure')">{{ $t('providerConfigure') }}</el-button>
     </div>
   </div>
@@ -71,8 +80,16 @@ const props = defineProps({
   dailyQuota: { type: Number, default: 0 },
   monthSent: { type: Number, default: 0 },
   monthlyQuota: { type: Number, default: 0 },
+  region: { type: String, default: '' },
+  host: { type: String, default: '' },
+  port: { type: [String, Number], default: '' },
+  sender: { type: String, default: '' },
+  usageLabel: { type: String, default: '' },
+  monthlyUsageLabel: { type: String, default: '' },
+  testable: { type: Boolean, default: false },
+  testLabel: { type: String, default: '' },
 })
-defineEmits(['configure'])
+defineEmits(['configure', 'test'])
 
 // 0 quota means "no observation quota set" (this backend's existing
 // convention, same as aiDailyQuota) — the row for that period is hidden
@@ -123,6 +140,21 @@ function formatNum(n) {
   margin: 0;
   font-size: 13px;
   color: var(--psg-text-secondary);
+}
+
+.provider-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--psg-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.provider-sender {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .provider-usage-row {
@@ -182,6 +214,8 @@ function formatNum(n) {
 
 .provider-card-foot {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
 }
 

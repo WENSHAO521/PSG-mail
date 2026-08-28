@@ -10,6 +10,7 @@ import BizError from '../error/biz-error';
 import {t} from '../i18n/i18n'
 import verifyRecordService from './verify-record-service';
 import userContext from '../security/user-context';
+import verifyUtils from '../utils/verify-utils';
 
 const FEATURE_DEFAULTS = {
 	allowPersonalForward: 1,
@@ -32,6 +33,13 @@ const FEATURE_DEFAULTS = {
 	mailjetSecretKey: '',
 	mailjetDailyQuota: 0,
 	mailjetMonthlyQuota: 0,
+	// Alibaba Cloud DirectMail is reserved for external/system notifications.
+	// These are app-layer observation quotas, not Alibaba account limits.
+	alibabaDirectmailSenderEmail: '',
+	alibabaDirectmailSmtpPassword: '',
+	alibabaDirectmailSenderName: 'PSG Mail Notifications',
+	alibabaDirectmailDailyQuota: 2000,
+	alibabaDirectmailMonthlyQuota: 60000,
 	// Ported from maillab/cloud-mail v3.1.0. CLOSE (1) preserves the existing
 	// isDel soft-delete behavior everywhere unless an admin opts in.
 	syncDelete: 1,
@@ -54,6 +62,11 @@ const FEATURE_COLUMNS = {
 	mailjetSecretKey: 'mailjet_secret_key',
 	mailjetDailyQuota: 'mailjet_daily_quota',
 	mailjetMonthlyQuota: 'mailjet_monthly_quota',
+	alibabaDirectmailSenderEmail: 'alibaba_directmail_sender_email',
+	alibabaDirectmailSmtpPassword: 'alibaba_directmail_smtp_password',
+	alibabaDirectmailSenderName: 'alibaba_directmail_sender_name',
+	alibabaDirectmailDailyQuota: 'alibaba_directmail_daily_quota',
+	alibabaDirectmailMonthlyQuota: 'alibaba_directmail_monthly_quota',
 	syncDelete: 'sync_delete',
 };
 
@@ -67,6 +80,12 @@ function normalizeAutoRefresh(value) {
 	const seconds = Number(value);
 	if (!Number.isFinite(seconds) || seconds <= 0) return SAFE_AUTO_REFRESH_SECONDS;
 	return Math.max(SAFE_AUTO_REFRESH_SECONDS, Math.round(seconds));
+}
+
+function normalizeObservationQuota(value, fallback) {
+	const number = Number(value);
+	if (!Number.isFinite(number)) return fallback;
+	return Math.min(100_000_000, Math.max(0, Math.round(number)));
 }
 
 function normalizeSettingRow(row) {
@@ -95,6 +114,11 @@ async function readFeatureSetting(c) {
 			mailjetSecretKey: row.mailjet_secret_key || '',
 			mailjetDailyQuota: Math.max(0, Number(row.mailjet_daily_quota ?? FEATURE_DEFAULTS.mailjetDailyQuota)),
 			mailjetMonthlyQuota: Math.max(0, Number(row.mailjet_monthly_quota ?? FEATURE_DEFAULTS.mailjetMonthlyQuota)),
+			alibabaDirectmailSenderEmail: String(row.alibaba_directmail_sender_email || '').trim(),
+			alibabaDirectmailSmtpPassword: row.alibaba_directmail_smtp_password || '',
+			alibabaDirectmailSenderName: String(row.alibaba_directmail_sender_name || FEATURE_DEFAULTS.alibabaDirectmailSenderName).trim() || FEATURE_DEFAULTS.alibabaDirectmailSenderName,
+			alibabaDirectmailDailyQuota: normalizeObservationQuota(row.alibaba_directmail_daily_quota, FEATURE_DEFAULTS.alibabaDirectmailDailyQuota),
+			alibabaDirectmailMonthlyQuota: normalizeObservationQuota(row.alibaba_directmail_monthly_quota, FEATURE_DEFAULTS.alibabaDirectmailMonthlyQuota),
 			syncDelete: Number(row.sync_delete ?? FEATURE_DEFAULTS.syncDelete),
 		};
 	} catch {
@@ -217,6 +241,14 @@ const settingService = {
 		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
 		settingRow.mailjetApiKey = settingRow.mailjetApiKey ? `${settingRow.mailjetApiKey.slice(0, 12)}******` : null;
 		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
+		settingRow.alibabaDirectmailConfigured = !!(
+			verifyUtils.isEmail(settingRow.alibabaDirectmailSenderEmail) && settingRow.alibabaDirectmailSmtpPassword
+		);
+		// Never return the DirectMail SMTP password, even as a partial prefix.
+		// The client only needs a boolean/configured mask to render the field.
+		settingRow.alibabaDirectmailSmtpPassword = settingRow.alibabaDirectmailConfigured
+			? '••••••••••••••••'
+			: '';
 		settingRow.hasR2 = !!c.env.r2
 		settingRow.hasCfEmail = !!c.env.email
 		settingRow.hasAi = !!c.env.ai
@@ -282,8 +314,21 @@ const settingService = {
 		for (const [key, column] of Object.entries(FEATURE_COLUMNS)) {
 			if (!Object.prototype.hasOwnProperty.call(featureParams, key)) continue;
 			let value = featureParams[key];
-			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey'].includes(key)) {
+			if (key === 'alibabaDirectmailSmtpPassword') {
+				// The settings response contains a visual mask. Treat an empty or
+				// masked value as "keep the existing password" so saving another
+				// field can never erase the stored secret.
+				const secret = String(value ?? '');
+				if (!secret || /^•+$/.test(secret)) continue;
+				value = secret;
+			} else if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey', 'alibabaDirectmailSenderEmail', 'alibabaDirectmailSenderName'].includes(key)) {
 				value = Array.isArray(value) ? value.join(',') : String(value ?? '').trim();
+				if (key === 'alibabaDirectmailSenderEmail' && value && !verifyUtils.isEmail(value)) {
+					throw new BizError('请输入有效的阿里云 DirectMail 发信地址', 400);
+				}
+				if (key === 'alibabaDirectmailSenderName') value = value.slice(0, 120);
+			} else if (['alibabaDirectmailDailyQuota', 'alibabaDirectmailMonthlyQuota'].includes(key)) {
+				value = normalizeObservationQuota(value, 0);
 			} else {
 				value = Math.max(0, Number(value));
 				if (key === 'forwardMaxAddresses') value = Math.min(20, Math.max(1, value || 3));
