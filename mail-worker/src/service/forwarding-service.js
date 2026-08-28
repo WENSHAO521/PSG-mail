@@ -6,7 +6,6 @@ import settingService from './setting-service';
 import userService from './user-service';
 import emailUtils from '../utils/email-utils';
 import verifyUtils from '../utils/verify-utils';
-import alibabaDirectmailService from './alibaba-directmail-service';
 
 const VERIFICATION_TTL_SECONDS = 15 * 60;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -169,20 +168,9 @@ const forwardingService = {
 		).bind(Number(id), userId).first();
 	},
 
-	async sendExternal(c, { userId, targetEmail, subject, text, html, attachments = [], preferAlibaba = false, eventType = 'external_email' }) {
+	async sendExternal(c, { userId, targetEmail, subject, text, html, attachments = [] }) {
 		const ctx = contextOf(c);
 		const setting = await settingService.query(ctx);
-		const directmailConfig = alibabaDirectmailService.getConfig(setting);
-		if (preferAlibaba && alibabaDirectmailService.isConfigured(directmailConfig)) {
-			return alibabaDirectmailService.send(ctx, {
-				userId,
-				targetEmail,
-				subject,
-				text,
-				html,
-				eventType,
-			});
-		}
 		const user = await userService.selectById(ctx, userId);
 		const sender = user && await accountService.selectByEmailIncludeDel(ctx, user.email);
 		if (!sender) throw new BizError('当前用户没有可用的 PSG Mail 发件地址', 503);
@@ -228,15 +216,7 @@ const forwardingService = {
 			const subject = 'PSG Mail 转发邮箱验证';
 			const text = `你正在为 PSG Mail 设置个人转发地址：${target}\n\n验证码：${code}\n\n验证码 15 分钟内有效。如果不是你本人操作，请忽略此邮件。`;
 			const html = `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#202622"><p>你正在为 PSG Mail 设置个人转发地址：</p><p><strong>${escapeHtml(target)}</strong></p><p style="font-size:28px;letter-spacing:.25em;font-weight:700">${code}</p><p>验证码 15 分钟内有效。如果不是你本人操作，请忽略此邮件。</p></div>`;
-			await this.sendExternal(c, {
-				userId,
-				targetEmail: target,
-				subject,
-				text,
-				html,
-				preferAlibaba: true,
-				eventType: 'external_email_verification',
-			});
+			await this.sendExternal(c, { userId, targetEmail: target, subject, text, html });
 		} catch (error) {
 			await c.env.db.prepare(
 				`UPDATE personal_forwarding SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`
@@ -424,27 +404,16 @@ const forwardingService = {
 			if (!isPublicAppUrl(policy.publicAppUrl)) throw new BizError('管理员尚未配置有效的 PSG Mail 公共访问地址', 503);
 			const base = policy.publicAppUrl.replace(/\/$/, '');
 			const link = `${base}/inbox?openEmail=${encodeURIComponent(emailRow.emailId)}`;
-			const subject = '[PSG Mail] 您收到一封新邮件';
-			const originalSender = emailRow.name
-				? `${emailRow.name} <${emailRow.sendEmail || ''}>`
-				: (emailRow.sendEmail || '');
+			const subject = `新邮件：${emailRow.subject || '无主题'}`;
 			const text = [
-				'您在 PSG Mail 收到了一封新邮件。',
-				`原邮件发件人：${originalSender}`,
+				'你有一封新的 PSG Mail 邮件。',
+				`发件人：${emailRow.name || emailRow.sendEmail || ''} <${emailRow.sendEmail || ''}>`,
 				`主题：${emailRow.subject || '无主题'}`,
 				`时间：${emailRow.createTime || emailRow.create_time || nowSql()}`,
 				`打开 PSG Mail：${link}`,
 			].join('\n');
-			const html = `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#202622"><p>您在 PSG Mail 收到了一封新邮件。</p><p><strong>原邮件发件人：</strong>${escapeHtml(originalSender)}</p><p><strong>主题：</strong>${escapeHtml(emailRow.subject || '无主题')}</p><p><strong>收到时间：</strong>${escapeHtml(emailRow.createTime || emailRow.create_time || nowSql())}</p><p><a href="${escapeHtml(link)}">打开 PSG Mail</a></p></div>`;
-			return this.sendExternal(c, {
-				userId,
-				targetEmail: rule.target_email,
-				subject,
-				text,
-				html,
-				preferAlibaba: true,
-				eventType: 'external_email_notification',
-			});
+			const html = `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#202622"><p>你有一封新的 PSG Mail 邮件。</p><p><strong>发件人：</strong>${escapeHtml(emailRow.name || '')} &lt;${escapeHtml(emailRow.sendEmail || '')}&gt;</p><p><strong>主题：</strong>${escapeHtml(emailRow.subject || '无主题')}</p><p><strong>时间：</strong>${escapeHtml(emailRow.createTime || emailRow.create_time || nowSql())}</p><p><a href="${escapeHtml(link)}">打开 PSG Mail</a></p></div>`;
+			return this.sendExternal(c, { userId, targetEmail: rule.target_email, subject, text, html });
 		}
 
 		if (!policy.allowPersonalForward || !policy.allowForwardFullCopy) throw new BizError('管理员已关闭完整副本转发', 503);
@@ -489,9 +458,8 @@ const forwardingService = {
 				`UPDATE forward_delivery_log SET status = 'sent', provider_message_id = ?, last_error = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 			).bind(result?.id || null, log.id).run();
 		} catch (error) {
-			const retryable = error?.retryable !== false;
 			const delay = DEFAULT_BACKOFF_SECONDS[Math.min(nextAttempt - 1, DEFAULT_BACKOFF_SECONDS.length - 1)];
-			const nextAt = retryable ? dayjs().add(delay, 'second').format('YYYY-MM-DD HH:mm:ss') : null;
+			const nextAt = dayjs().add(delay, 'second').format('YYYY-MM-DD HH:mm:ss');
 			await c.env.db.prepare(
 				`UPDATE forward_delivery_log SET status = 'failed', next_attempt_at = ?, last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 			).bind(nextAt, String(error?.message || 'forwarding delivery failed').slice(0, 500), log.id).run();
@@ -520,7 +488,7 @@ const forwardingService = {
 			 JOIN personal_forwarding f ON f.id = l.forwarding_id
 			 JOIN email e ON e.email_id = l.source_email_id
 			 WHERE l.status = 'failed' AND f.status = 'enabled'
-			   AND l.attempt_count < ? AND l.next_attempt_at IS NOT NULL AND l.next_attempt_at <= CURRENT_TIMESTAMP
+			   AND l.attempt_count < ? AND (l.next_attempt_at IS NULL OR l.next_attempt_at <= CURRENT_TIMESTAMP)
 			 ORDER BY l.next_attempt_at ASC, l.id ASC LIMIT 50`
 		).bind(MAX_DELIVERY_ATTEMPTS).all();
 		for (const row of results || []) {

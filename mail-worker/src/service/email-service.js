@@ -25,7 +25,6 @@ import telegramService from './telegram-service';
 import kvCache from '../cache/kv-cache';
 import r2Service from './r2-service';
 import labelService from './label-service';
-import alibabaDirectmailService from './alibaba-directmail-service';
 
 // ── Per-request helpers ────────────────────────────────────────────────────
 
@@ -1040,8 +1039,6 @@ const emailService = {
 			]);
 			usage[provider] = { todaySent: today?.total || 0, monthSent: month?.total || 0 };
 		}
-
-		usage.alibabaDirectmail = await alibabaDirectmailService.getUsage(c);
 
 		return usage;
 	},

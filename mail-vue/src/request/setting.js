@@ -16,14 +16,6 @@ export function providerUsage() {
     return http.get('/setting/providerUsage')
 }
 
-export function alibabaDirectmailTestConnection(config) {
-    return http.post('/setting/alibaba-directmail/test-connection', config || {}, { noMsg: true })
-}
-
-export function alibabaDirectmailTestNotification(recipient) {
-    return http.post('/setting/alibaba-directmail/test-notification', { recipient }, { noMsg: true })
-}
-
 export function setBackground(background) {
     return http.put('/setting/setBackground',{background})
 }

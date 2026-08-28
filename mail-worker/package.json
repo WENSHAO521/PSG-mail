@@ -3,7 +3,6 @@
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {
-		"build": "node scripts/build-mail-vue.mjs",
 		"dev": "wrangler dev --config wrangler-dev.toml",
 		"test": "vitest run",
 		"deploy:test-env": "wrangler deploy --config wrangler-test.toml",

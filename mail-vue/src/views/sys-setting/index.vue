@@ -402,33 +402,6 @@
           <div v-show="activeSettingSection === 'push'" class="settings-card">
             <div class="card-title">通知与转发</div>
             <div class="card-content">
-              <section class="notification-channel-section" aria-labelledby="notification-channel-title">
-                <div class="notification-channel-heading">
-                  <div>
-                    <h2 id="notification-channel-title">{{ $t('notificationChannels') }}</h2>
-                    <p>{{ $t('notificationChannelsDesc') }}</p>
-                  </div>
-                </div>
-                <div class="provider-card-grid">
-                  <MailProviderCard
-                      :name="$t('alibabaDirectmailTitle')"
-                      :configured="directmailConfigured"
-                      :region="directmailRegion"
-                      :host="setting.alibabaDirectmailSmtpHost || ''"
-                      :port="setting.alibabaDirectmailSmtpPort || ''"
-                      :sender="setting.alibabaDirectmailSenderEmail || ''"
-                      :today-sent="providerUsage.alibabaDirectmail.todaySent"
-                      :daily-quota="setting.alibabaDirectmailDailyQuota ?? 0"
-                      :month-sent="providerUsage.alibabaDirectmail.monthSent"
-                      :monthly-quota="setting.alibabaDirectmailMonthlyQuota ?? 0"
-                      :usage-label="$t('providerTodayNotice')"
-                      :monthly-usage-label="$t('providerMonthNotice')"
-                      testable
-                      @configure="openAlibabaForm"
-                      @test="openAlibabaTestDialog"
-                  />
-                </div>
-              </section>
               <div class="setting-item">
                 <div><span>{{ $t('tgBot') }}</span></div>
                 <div class="forward">
@@ -848,93 +821,6 @@
           </div>
         </template>
       </el-dialog>
-      <el-dialog v-model="alibabaFormShow" append-to-body class="provider-config-dialog alibaba-dialog" width="460"
-                 :title="$t('alibabaDirectmailTitle')" @closed="cleanAlibabaForm">
-        <p class="provider-config-lead">{{ $t('alibabaDirectmailDesc') }}</p>
-        <div class="provider-config-section">
-          <label class="provider-config-label" for="alibaba-region">{{ $t('alibabaDirectmailRegionLabel') }}</label>
-          <el-input id="alibaba-region" v-model="alibabaForm.regionName" />
-        </div>
-        <div class="provider-config-section">
-          <label class="provider-config-label" for="alibaba-region-id">{{ $t('alibabaDirectmailRegionIdLabel') }}</label>
-          <el-input id="alibaba-region-id" v-model="alibabaForm.regionId" />
-        </div>
-        <div class="provider-config-section">
-          <label class="provider-config-label" for="alibaba-host">{{ $t('alibabaDirectmailSmtpServer') }}</label>
-          <el-input id="alibaba-host" v-model="alibabaForm.smtpHost" />
-        </div>
-        <div class="provider-config-section config-inline-grid">
-          <div>
-            <label class="provider-config-label" for="alibaba-port">{{ $t('alibabaDirectmailPort') }}</label>
-            <el-input-number id="alibaba-port" v-model="alibabaForm.smtpPort" :min="1" :max="65535" size="small" />
-          </div>
-          <div>
-            <label class="provider-config-label" for="alibaba-encryption">{{ $t('alibabaDirectmailEncryption') }}</label>
-            <el-input id="alibaba-encryption" v-model="alibabaForm.encryption" />
-          </div>
-        </div>
-        <div class="provider-config-section">
-          <label class="provider-config-label" for="alibaba-sender-email">{{ $t('alibabaDirectmailSenderEmail') }}</label>
-          <el-input id="alibaba-sender-email" v-model="alibabaForm.senderEmail" type="email"
-                    autocomplete="email" :placeholder="$t('alibabaDirectmailSenderEmailPlaceholder')" />
-          <p class="provider-config-hint">{{ $t('alibabaDirectmailSenderEmailHint') }}</p>
-        </div>
-        <div class="provider-config-section">
-          <label class="provider-config-label" for="alibaba-smtp-password">{{ $t('alibabaDirectmailSmtpPassword') }}</label>
-          <el-input id="alibaba-smtp-password" v-model="alibabaForm.smtpPassword" type="password"
-                    show-password autocomplete="new-password"
-                    :placeholder="setting.alibabaDirectmailConfigured ? setting.alibabaDirectmailSmtpPassword : $t('alibabaDirectmailSmtpPasswordPlaceholder')" />
-          <p class="provider-config-hint">{{ $t('alibabaDirectmailSmtpPasswordHint') }}</p>
-        </div>
-        <div class="provider-config-section">
-          <label class="provider-config-label" for="alibaba-sender-name">{{ $t('alibabaDirectmailSenderName') }}</label>
-          <el-input id="alibaba-sender-name" v-model="alibabaForm.senderName" maxlength="120" />
-        </div>
-        <div class="provider-config-section config-inline-grid">
-          <div>
-            <label class="provider-config-label" for="alibaba-daily-quota">{{ $t('providerDailyQuota') }}</label>
-            <el-input-number id="alibaba-daily-quota" v-model="alibabaForm.dailyQuota" :min="0" :max="100000000" size="small" />
-          </div>
-          <div>
-            <label class="provider-config-label" for="alibaba-monthly-quota">{{ $t('providerMonthlyQuota') }}</label>
-            <el-input-number id="alibaba-monthly-quota" v-model="alibabaForm.monthlyQuota" :min="0" :max="100000000" size="small" />
-          </div>
-        </div>
-        <p class="provider-config-hint">{{ $t('alibabaDirectmailQuotaHint') }}</p>
-        <div class="provider-config-section">
-          <div class="provider-config-label">{{ $t('providerCurrentUsage') }}</div>
-          <div class="provider-usage-readout">
-            <span>{{ $t('providerTodayNotice') }}: {{ providerUsage.alibabaDirectmail.todayAccepted.toLocaleString() }} / {{ providerUsage.alibabaDirectmail.todayAttempted.toLocaleString() }}</span>
-            <span>{{ $t('providerMonthNotice') }}: {{ providerUsage.alibabaDirectmail.monthAccepted.toLocaleString() }} / {{ providerUsage.alibabaDirectmail.monthAttempted.toLocaleString() }}</span>
-            <span class="provider-failure-readout">{{ $t('providerFailed') }}: {{ providerUsage.alibabaDirectmail.todayFailed.toLocaleString() }} / {{ providerUsage.alibabaDirectmail.monthFailed.toLocaleString() }}</span>
-          </div>
-        </div>
-        <p class="provider-config-note">{{ $t('providerQuotaObservationNote') }}</p>
-        <template #footer>
-          <div class="dialog-footer alibaba-dialog-footer">
-            <el-button :loading="alibabaConnectionLoading" @click="testAlibabaConnection">{{ $t('alibabaDirectmailTestConnection') }}</el-button>
-            <div>
-              <el-button @click="alibabaFormShow = false">{{ $t('cancel') }}</el-button>
-              <el-button type="primary" :loading="settingLoading" @click="saveAlibabaForm">{{ $t('saveChanges') }}</el-button>
-            </div>
-          </div>
-        </template>
-      </el-dialog>
-      <el-dialog v-model="alibabaTestShow" append-to-body class="provider-config-dialog" width="380"
-                 :title="$t('alibabaDirectmailTestNotificationTitle')">
-        <p class="provider-config-lead">{{ $t('alibabaDirectmailTestNotificationDesc') }}</p>
-        <div class="provider-config-section">
-          <label class="provider-config-label" for="alibaba-test-recipient">{{ $t('alibabaDirectmailTestRecipient') }}</label>
-          <el-input id="alibaba-test-recipient" v-model="alibabaTestRecipient" type="email"
-                    autocomplete="email" @keyup.enter="sendAlibabaTestNotification" />
-        </div>
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button @click="alibabaTestShow = false">{{ $t('cancel') }}</el-button>
-            <el-button type="primary" :loading="alibabaTestLoading" @click="sendAlibabaTestNotification">{{ $t('providerSendTestNotification') }}</el-button>
-          </div>
-        </template>
-      </el-dialog>
       <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
                  @closed="regVerifyCount = setting.regVerifyCount">
         <form>
@@ -1106,7 +992,7 @@
 
 <script setup>
 import {computed, defineOptions, nextTick, onActivated, reactive, ref, watch} from "vue";
-import {alibabaDirectmailTestConnection, alibabaDirectmailTestNotification, deleteBackground, setBackground, setBlackList, settingQuery, settingSet, providerUsage as fetchProviderUsage} from "@/request/setting.js";
+import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet, providerUsage as fetchProviderUsage} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
@@ -1153,7 +1039,7 @@ onActivated(() => {
 function openSettingsSection(key) {
   activeSettingSection.value = key
   mobileSettingsDetail.value = true
-  if (key === 'mail-provider' || key === 'push') loadProviderUsage()
+  if (key === 'mail-provider') loadProviderUsage()
 }
 const backgroundImage = ref('')
 const localUpShow = ref(false)
@@ -1172,11 +1058,6 @@ const emailPrefixShow = ref(false)
 const showResendList = ref(false)
 const resendQuotaFormShow = ref(false)
 const mailjetFormShow = ref(false)
-const alibabaFormShow = ref(false)
-const alibabaTestShow = ref(false)
-const alibabaConnectionLoading = ref(false)
-const alibabaTestLoading = ref(false)
-const alibabaTestRecipient = ref('')
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
 const mobileNavigation = useMobileNavigationStore();
@@ -1212,26 +1093,9 @@ const mailjetForm = reactive({
   dailyQuota: 0,
   monthlyQuota: 0,
 })
-const alibabaForm = reactive({
-  senderEmail: '',
-  smtpPassword: '',
-  senderName: '',
-  regionName: '',
-  regionId: '',
-  smtpHost: '',
-  smtpPort: null,
-  encryption: '',
-  dailyQuota: 0,
-  monthlyQuota: 0,
-})
 const providerUsage = reactive({
   resend: { todaySent: 0, monthSent: 0 },
   mailjet: { todaySent: 0, monthSent: 0 },
-  alibabaDirectmail: {
-    todaySent: 0, monthSent: 0,
-    todayAttempted: 0, todayAccepted: 0, todayFailed: 0,
-    monthAttempted: 0, monthAccepted: 0, monthFailed: 0,
-  },
 })
 const turnstileForm = reactive({
   siteKey: '',
@@ -1296,11 +1160,6 @@ const tgMsgFromOption = [{label: t('show'), value: 'show'}, {label: t('hide'), v
 const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
 const tgMsgTextOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
 const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
-const directmailConfigured = computed(() => !!setting.value.alibabaDirectmailConfigured)
-const directmailRegion = computed(() => [
-  setting.value.alibabaDirectmailRegionName,
-  setting.value.alibabaDirectmailRegionId,
-].filter(Boolean).join(' · '))
 const systemSettingNav = computed(() => [
   {key: 'website', label: t('websiteSetting'), icon: 'lucide:globe-2', desc: t('sysWebsiteDesc')},
   {key: 'customization', label: t('customization'), icon: 'lucide:palette', desc: t('sysCustomizationDesc')},
@@ -1427,10 +1286,6 @@ function loadProviderUsage() {
   fetchProviderUsage().then(data => {
     providerUsage.resend = data.resend
     providerUsage.mailjet = data.mailjet
-    providerUsage.alibabaDirectmail = {
-      ...providerUsage.alibabaDirectmail,
-      ...(data.alibabaDirectmail || {}),
-    }
   }).catch(() => {})
 }
 
@@ -1471,88 +1326,6 @@ function saveMailjetForm() {
   if (mailjetForm.apiKey) form.mailjetApiKey = mailjetForm.apiKey
   if (mailjetForm.secretKey) form.mailjetSecretKey = mailjetForm.secretKey
   editSetting(form)
-}
-
-function openAlibabaForm() {
-  alibabaForm.senderEmail = setting.value.alibabaDirectmailSenderEmail || ''
-  alibabaForm.smtpPassword = ''
-  alibabaForm.senderName = setting.value.alibabaDirectmailSenderName || ''
-  alibabaForm.regionName = setting.value.alibabaDirectmailRegionName || ''
-  alibabaForm.regionId = setting.value.alibabaDirectmailRegionId || ''
-  alibabaForm.smtpHost = setting.value.alibabaDirectmailSmtpHost || ''
-  alibabaForm.smtpPort = setting.value.alibabaDirectmailSmtpPort ?? null
-  alibabaForm.encryption = setting.value.alibabaDirectmailEncryption || ''
-  alibabaForm.dailyQuota = setting.value.alibabaDirectmailDailyQuota ?? 0
-  alibabaForm.monthlyQuota = setting.value.alibabaDirectmailMonthlyQuota ?? 0
-  alibabaFormShow.value = true
-}
-
-function cleanAlibabaForm() {
-  alibabaForm.smtpPassword = ''
-}
-
-async function testAlibabaConnection() {
-  if (alibabaConnectionLoading.value) return
-  alibabaConnectionLoading.value = true
-  try {
-    await alibabaDirectmailTestConnection({
-      senderEmail: alibabaForm.senderEmail.trim(),
-      smtpPassword: alibabaForm.smtpPassword,
-      regionName: alibabaForm.regionName.trim(),
-      regionId: alibabaForm.regionId.trim(),
-      smtpHost: alibabaForm.smtpHost.trim(),
-      smtpPort: alibabaForm.smtpPort,
-      encryption: alibabaForm.encryption.trim(),
-    })
-    ElMessage({ message: t('alibabaDirectmailConnectionSuccess'), type: 'success', plain: true })
-  } catch {
-    ElMessage({ message: t('alibabaDirectmailConnectionFailure'), type: 'error', plain: true })
-  } finally {
-    alibabaConnectionLoading.value = false
-  }
-}
-
-function saveAlibabaForm() {
-  const form = {
-    alibabaDirectmailSenderEmail: alibabaForm.senderEmail.trim(),
-    alibabaDirectmailSenderName: alibabaForm.senderName.trim(),
-    alibabaDirectmailRegionName: alibabaForm.regionName.trim(),
-    alibabaDirectmailRegionId: alibabaForm.regionId.trim(),
-    alibabaDirectmailSmtpHost: alibabaForm.smtpHost.trim(),
-    alibabaDirectmailSmtpPort: alibabaForm.smtpPort,
-    alibabaDirectmailEncryption: alibabaForm.encryption.trim(),
-    alibabaDirectmailDailyQuota: alibabaForm.dailyQuota,
-    alibabaDirectmailMonthlyQuota: alibabaForm.monthlyQuota,
-  }
-  // Empty means unchanged. The API also rejects the visual mask as a secret,
-  // so saving quotas/name can never erase an existing SMTP password.
-  if (alibabaForm.smtpPassword) form.alibabaDirectmailSmtpPassword = alibabaForm.smtpPassword
-  editSetting(form)
-}
-
-function openAlibabaTestDialog() {
-  alibabaTestRecipient.value = ''
-  alibabaTestShow.value = true
-}
-
-async function sendAlibabaTestNotification() {
-  const recipient = alibabaTestRecipient.value.trim()
-  if (!isEmail(recipient)) {
-    ElMessage({ message: t('notEmailMsg'), type: 'warning', plain: true })
-    return
-  }
-  if (alibabaTestLoading.value) return
-  alibabaTestLoading.value = true
-  try {
-    await alibabaDirectmailTestNotification(recipient)
-    ElMessage({ message: t('alibabaDirectmailTestNotificationSuccess'), type: 'success', plain: true })
-    alibabaTestShow.value = false
-    loadProviderUsage()
-  } catch {
-    ElMessage({ message: t('alibabaDirectmailTestNotificationFailure'), type: 'error', plain: true })
-  } finally {
-    alibabaTestLoading.value = false
-  }
 }
 
 function saveAddVerifyCount() {
@@ -1970,7 +1743,6 @@ function change(e) {
   delete settingForm.resendTokens
   delete settingForm.mailjetApiKey
   delete settingForm.mailjetSecretKey
-  delete settingForm.alibabaDirectmailSmtpPassword
   editSetting(settingForm, false)
 }
 
@@ -1989,7 +1761,6 @@ function saveActiveSetting() {
     delete settingForm.resendTokens
     delete settingForm.mailjetApiKey
     delete settingForm.mailjetSecretKey
-    delete settingForm.alibabaDirectmailSmtpPassword
     editSetting(settingForm, false)
     return
   }
@@ -2031,8 +1802,6 @@ function editSetting(settingForm, refreshStatus = true) {
     resendTokenFormShow.value = false
     resendQuotaFormShow.value = false
     mailjetFormShow.value = false
-    alibabaFormShow.value = false
-    alibabaTestShow.value = false
     turnstileShow.value = false
     tgSettingShow.value = false
     thirdEmailShow.value = false
@@ -2540,56 +2309,6 @@ function editSetting(settingForm, refreshStatus = true) {
   .el-input-number { width: 100%; }
 }
 
-.notification-channel-section {
-  padding: 18px 20px 20px;
-  border-bottom: 1px solid var(--psg-border);
-}
-
-.notification-channel-heading {
-  margin-bottom: 14px;
-
-  h2 {
-    margin: 0;
-    color: var(--psg-text);
-    font-size: 15px;
-    line-height: 1.35;
-  }
-
-  p {
-    margin: 5px 0 0;
-    color: var(--psg-text-secondary);
-    font-size: 12.5px;
-    line-height: 1.5;
-  }
-}
-
-.provider-config-lead {
-  margin: 0 0 18px;
-  color: var(--psg-text-secondary);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.config-inline-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.provider-failure-readout {
-  color: var(--psg-danger);
-}
-
-.alibaba-dialog-footer {
-  align-items: center;
-  gap: 12px;
-
-  > div {
-    display: flex;
-    gap: 8px;
-  }
-}
-
 .provider-config-label {
   font-size: 13px;
   font-weight: 600;
@@ -2794,17 +2513,6 @@ function editSetting(settingForm, refreshStatus = true) {
     margin-right: 20px !important;
     margin-left: 20px !important;
   }
-}
-
-:deep(.alibaba-dialog.el-dialog) {
-  width: min(460px, calc(100% - 40px)) !important;
-}
-
-@media (max-width: 560px) {
-  .notification-channel-section { padding: 14px; }
-  .config-inline-grid { grid-template-columns: 1fr; gap: 0; }
-  .alibaba-dialog-footer { align-items: stretch; flex-direction: column; }
-  .alibaba-dialog-footer > div { justify-content: flex-end; }
 }
 
 :deep(.resend-table.el-dialog) {
