@@ -61,10 +61,10 @@
     </div>
 
     <div class="provider-card-foot">
-      <el-button v-if="testable" size="small" :disabled="!configured" @click="$emit('test')">
+      <el-button v-if="testable" size="small" :disabled="!configured" @click="emit('test')">
         {{ testLabel || $t('providerSendTestNotification') }}
       </el-button>
-      <el-button size="small" @click="$emit('configure')">{{ $t('providerConfigure') }}</el-button>
+      <el-button size="small" @click="emit('configure')">{{ $t('providerConfigure') }}</el-button>
     </div>
   </div>
 </template>
@@ -89,7 +89,7 @@ const props = defineProps({
   testable: { type: Boolean, default: false },
   testLabel: { type: String, default: '' },
 })
-defineEmits(['configure', 'test'])
+const emit = defineEmits(['configure', 'test'])
 
 // 0 quota means "no observation quota set" (this backend's existing
 // convention, same as aiDailyQuota) — the row for that period is hidden

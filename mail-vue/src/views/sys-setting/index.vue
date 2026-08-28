@@ -848,7 +848,7 @@
           </div>
         </template>
       </el-dialog>
-      <el-dialog v-model="alibabaFormShow" class="provider-config-dialog alibaba-dialog" width="460"
+      <el-dialog v-model="alibabaFormShow" append-to-body class="provider-config-dialog alibaba-dialog" width="460"
                  :title="$t('alibabaDirectmailTitle')" @closed="cleanAlibabaForm">
         <p class="provider-config-lead">{{ $t('alibabaDirectmailDesc') }}</p>
         <div class="provider-config-section">
@@ -916,7 +916,7 @@
           </div>
         </template>
       </el-dialog>
-      <el-dialog v-model="alibabaTestShow" class="provider-config-dialog" width="380"
+      <el-dialog v-model="alibabaTestShow" append-to-body class="provider-config-dialog" width="380"
                  :title="$t('alibabaDirectmailTestNotificationTitle')">
         <p class="provider-config-lead">{{ $t('alibabaDirectmailTestNotificationDesc') }}</p>
         <div class="provider-config-section">
