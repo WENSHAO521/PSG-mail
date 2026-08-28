@@ -6,11 +6,11 @@ import verifyUtils from '../utils/verify-utils';
 
 export const ALIBABA_DIRECTMAIL = Object.freeze({
 	provider: 'alibaba_directmail',
-	region: 'cn-hangzhou',
-	regionName: '华东1（杭州）',
-	host: 'smtpdm.aliyun.com',
-	port: 465,
-	encryption: 'SSL/TLS',
+	defaultRegion: 'cn-hangzhou',
+	defaultRegionName: '华东1（杭州）',
+	defaultHost: 'smtpdm.aliyun.com',
+	defaultPort: 465,
+	defaultEncryption: 'SSL/TLS',
 	defaultSenderName: 'PSG Mail Notifications',
 	defaultDailyQuota: 2000,
 	defaultMonthlyQuota: 60000,
@@ -134,9 +134,23 @@ function normalizeQuota(value, fallback) {
 	return Number.isFinite(number) ? Math.min(100_000_000, Math.max(0, Math.round(number))) : fallback;
 }
 
+function normalizePort(value, fallback) {
+	const number = Number(value);
+	return Number.isInteger(number) && number >= 1 && number <= 65535 ? number : fallback;
+}
+
+function configuredValue(setting, key, fallback) {
+	return setting[key] === undefined || setting[key] === null ? fallback : setting[key];
+}
+
 export function getConfig(setting = {}) {
 	return {
 		...ALIBABA_DIRECTMAIL,
+		region: String(configuredValue(setting, 'alibabaDirectmailRegionId', ALIBABA_DIRECTMAIL.defaultRegion)).trim(),
+		regionName: String(configuredValue(setting, 'alibabaDirectmailRegionName', ALIBABA_DIRECTMAIL.defaultRegionName)).trim(),
+		host: String(configuredValue(setting, 'alibabaDirectmailSmtpHost', ALIBABA_DIRECTMAIL.defaultHost)).trim(),
+		port: normalizePort(configuredValue(setting, 'alibabaDirectmailSmtpPort', ALIBABA_DIRECTMAIL.defaultPort), ALIBABA_DIRECTMAIL.defaultPort),
+		encryption: String(configuredValue(setting, 'alibabaDirectmailEncryption', ALIBABA_DIRECTMAIL.defaultEncryption)).trim(),
 		senderEmail: String(setting.alibabaDirectmailSenderEmail || '').trim().toLowerCase(),
 		smtpPassword: String(setting.alibabaDirectmailSmtpPassword || ''),
 		senderName: String(setting.alibabaDirectmailSenderName || ALIBABA_DIRECTMAIL.defaultSenderName).trim() || ALIBABA_DIRECTMAIL.defaultSenderName,
@@ -150,7 +164,14 @@ export function isConfigured(config) {
 		config &&
 		verifyUtils.isEmail(config.senderEmail) &&
 		config.smtpPassword &&
-		config.smtpPassword !== PASSWORD_MASK
+		config.smtpPassword !== PASSWORD_MASK &&
+		config.region &&
+		config.regionName &&
+		config.host &&
+		Number.isInteger(config.port) &&
+		config.port >= 1 &&
+		config.port <= 65535 &&
+		config.encryption === 'SSL/TLS'
 	);
 }
 
@@ -357,6 +378,21 @@ const alibabaDirectmailService = {
 		if (Object.prototype.hasOwnProperty.call(safeOverrides, 'senderEmail')) {
 			testSetting.alibabaDirectmailSenderEmail = safeOverrides.senderEmail;
 		}
+		if (Object.prototype.hasOwnProperty.call(safeOverrides, 'regionName')) {
+			testSetting.alibabaDirectmailRegionName = safeOverrides.regionName;
+		}
+		if (Object.prototype.hasOwnProperty.call(safeOverrides, 'regionId')) {
+			testSetting.alibabaDirectmailRegionId = safeOverrides.regionId;
+		}
+		if (Object.prototype.hasOwnProperty.call(safeOverrides, 'smtpHost')) {
+			testSetting.alibabaDirectmailSmtpHost = safeOverrides.smtpHost;
+		}
+		if (Object.prototype.hasOwnProperty.call(safeOverrides, 'smtpPort')) {
+			testSetting.alibabaDirectmailSmtpPort = safeOverrides.smtpPort;
+		}
+		if (Object.prototype.hasOwnProperty.call(safeOverrides, 'encryption')) {
+			testSetting.alibabaDirectmailEncryption = safeOverrides.encryption;
+		}
 		if (safeOverrides.smtpPassword && safeOverrides.smtpPassword !== PASSWORD_MASK) {
 			testSetting.alibabaDirectmailSmtpPassword = safeOverrides.smtpPassword;
 		}
@@ -366,7 +402,11 @@ const alibabaDirectmailService = {
 			await smtpSession(config);
 			return {
 				provider: ALIBABA_DIRECTMAIL.provider,
-				region: ALIBABA_DIRECTMAIL.region,
+				region: config.region,
+				regionName: config.regionName,
+				host: config.host,
+				port: config.port,
+				encryption: config.encryption,
 				authenticated: true,
 			};
 		} catch (error) {

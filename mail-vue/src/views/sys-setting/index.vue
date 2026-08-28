@@ -413,14 +413,14 @@
                   <MailProviderCard
                       :name="$t('alibabaDirectmailTitle')"
                       :configured="directmailConfigured"
-                      :region="$t('alibabaDirectmailRegion')"
-                      host="smtpdm.aliyun.com"
-                      port="465"
+                      :region="directmailRegion"
+                      :host="setting.alibabaDirectmailSmtpHost || ''"
+                      :port="setting.alibabaDirectmailSmtpPort || ''"
                       :sender="setting.alibabaDirectmailSenderEmail || ''"
                       :today-sent="providerUsage.alibabaDirectmail.todaySent"
-                      :daily-quota="setting.alibabaDirectmailDailyQuota ?? 2000"
+                      :daily-quota="setting.alibabaDirectmailDailyQuota ?? 0"
                       :month-sent="providerUsage.alibabaDirectmail.monthSent"
-                      :monthly-quota="setting.alibabaDirectmailMonthlyQuota ?? 60000"
+                      :monthly-quota="setting.alibabaDirectmailMonthlyQuota ?? 0"
                       :usage-label="$t('providerTodayNotice')"
                       :monthly-usage-label="$t('providerMonthNotice')"
                       testable
@@ -853,20 +853,24 @@
         <p class="provider-config-lead">{{ $t('alibabaDirectmailDesc') }}</p>
         <div class="provider-config-section">
           <label class="provider-config-label" for="alibaba-region">{{ $t('alibabaDirectmailRegionLabel') }}</label>
-          <el-input id="alibaba-region" model-value="华东1（杭州） · cn-hangzhou" readonly />
+          <el-input id="alibaba-region" v-model="alibabaForm.regionName" />
+        </div>
+        <div class="provider-config-section">
+          <label class="provider-config-label" for="alibaba-region-id">{{ $t('alibabaDirectmailRegionIdLabel') }}</label>
+          <el-input id="alibaba-region-id" v-model="alibabaForm.regionId" />
         </div>
         <div class="provider-config-section">
           <label class="provider-config-label" for="alibaba-host">{{ $t('alibabaDirectmailSmtpServer') }}</label>
-          <el-input id="alibaba-host" model-value="smtpdm.aliyun.com" readonly />
+          <el-input id="alibaba-host" v-model="alibabaForm.smtpHost" />
         </div>
         <div class="provider-config-section config-inline-grid">
           <div>
             <label class="provider-config-label" for="alibaba-port">{{ $t('alibabaDirectmailPort') }}</label>
-            <el-input id="alibaba-port" model-value="465" readonly />
+            <el-input-number id="alibaba-port" v-model="alibabaForm.smtpPort" :min="1" :max="65535" size="small" />
           </div>
           <div>
             <label class="provider-config-label" for="alibaba-encryption">{{ $t('alibabaDirectmailEncryption') }}</label>
-            <el-input id="alibaba-encryption" model-value="SSL/TLS" readonly />
+            <el-input id="alibaba-encryption" v-model="alibabaForm.encryption" />
           </div>
         </div>
         <div class="provider-config-section">
@@ -1211,9 +1215,14 @@ const mailjetForm = reactive({
 const alibabaForm = reactive({
   senderEmail: '',
   smtpPassword: '',
-  senderName: 'PSG Mail Notifications',
-  dailyQuota: 2000,
-  monthlyQuota: 60000,
+  senderName: '',
+  regionName: '',
+  regionId: '',
+  smtpHost: '',
+  smtpPort: null,
+  encryption: '',
+  dailyQuota: 0,
+  monthlyQuota: 0,
 })
 const providerUsage = reactive({
   resend: { todaySent: 0, monthSent: 0 },
@@ -1288,6 +1297,10 @@ const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), val
 const tgMsgTextOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
 const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
 const directmailConfigured = computed(() => !!setting.value.alibabaDirectmailConfigured)
+const directmailRegion = computed(() => [
+  setting.value.alibabaDirectmailRegionName,
+  setting.value.alibabaDirectmailRegionId,
+].filter(Boolean).join(' · '))
 const systemSettingNav = computed(() => [
   {key: 'website', label: t('websiteSetting'), icon: 'lucide:globe-2', desc: t('sysWebsiteDesc')},
   {key: 'customization', label: t('customization'), icon: 'lucide:palette', desc: t('sysCustomizationDesc')},
@@ -1463,9 +1476,14 @@ function saveMailjetForm() {
 function openAlibabaForm() {
   alibabaForm.senderEmail = setting.value.alibabaDirectmailSenderEmail || ''
   alibabaForm.smtpPassword = ''
-  alibabaForm.senderName = setting.value.alibabaDirectmailSenderName || 'PSG Mail Notifications'
-  alibabaForm.dailyQuota = setting.value.alibabaDirectmailDailyQuota ?? 2000
-  alibabaForm.monthlyQuota = setting.value.alibabaDirectmailMonthlyQuota ?? 60000
+  alibabaForm.senderName = setting.value.alibabaDirectmailSenderName || ''
+  alibabaForm.regionName = setting.value.alibabaDirectmailRegionName || ''
+  alibabaForm.regionId = setting.value.alibabaDirectmailRegionId || ''
+  alibabaForm.smtpHost = setting.value.alibabaDirectmailSmtpHost || ''
+  alibabaForm.smtpPort = setting.value.alibabaDirectmailSmtpPort ?? null
+  alibabaForm.encryption = setting.value.alibabaDirectmailEncryption || ''
+  alibabaForm.dailyQuota = setting.value.alibabaDirectmailDailyQuota ?? 0
+  alibabaForm.monthlyQuota = setting.value.alibabaDirectmailMonthlyQuota ?? 0
   alibabaFormShow.value = true
 }
 
@@ -1480,6 +1498,11 @@ async function testAlibabaConnection() {
     await alibabaDirectmailTestConnection({
       senderEmail: alibabaForm.senderEmail.trim(),
       smtpPassword: alibabaForm.smtpPassword,
+      regionName: alibabaForm.regionName.trim(),
+      regionId: alibabaForm.regionId.trim(),
+      smtpHost: alibabaForm.smtpHost.trim(),
+      smtpPort: alibabaForm.smtpPort,
+      encryption: alibabaForm.encryption.trim(),
     })
     ElMessage({ message: t('alibabaDirectmailConnectionSuccess'), type: 'success', plain: true })
   } catch {
@@ -1492,7 +1515,12 @@ async function testAlibabaConnection() {
 function saveAlibabaForm() {
   const form = {
     alibabaDirectmailSenderEmail: alibabaForm.senderEmail.trim(),
-    alibabaDirectmailSenderName: alibabaForm.senderName.trim() || 'PSG Mail Notifications',
+    alibabaDirectmailSenderName: alibabaForm.senderName.trim(),
+    alibabaDirectmailRegionName: alibabaForm.regionName.trim(),
+    alibabaDirectmailRegionId: alibabaForm.regionId.trim(),
+    alibabaDirectmailSmtpHost: alibabaForm.smtpHost.trim(),
+    alibabaDirectmailSmtpPort: alibabaForm.smtpPort,
+    alibabaDirectmailEncryption: alibabaForm.encryption.trim(),
     alibabaDirectmailDailyQuota: alibabaForm.dailyQuota,
     alibabaDirectmailMonthlyQuota: alibabaForm.monthlyQuota,
   }

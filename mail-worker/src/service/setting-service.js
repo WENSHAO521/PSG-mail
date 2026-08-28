@@ -38,6 +38,11 @@ const FEATURE_DEFAULTS = {
 	alibabaDirectmailSenderEmail: '',
 	alibabaDirectmailSmtpPassword: '',
 	alibabaDirectmailSenderName: 'PSG Mail Notifications',
+	alibabaDirectmailRegionName: '华东1（杭州）',
+	alibabaDirectmailRegionId: 'cn-hangzhou',
+	alibabaDirectmailSmtpHost: 'smtpdm.aliyun.com',
+	alibabaDirectmailSmtpPort: 465,
+	alibabaDirectmailEncryption: 'SSL/TLS',
 	alibabaDirectmailDailyQuota: 2000,
 	alibabaDirectmailMonthlyQuota: 60000,
 	// Ported from maillab/cloud-mail v3.1.0. CLOSE (1) preserves the existing
@@ -65,6 +70,11 @@ const FEATURE_COLUMNS = {
 	alibabaDirectmailSenderEmail: 'alibaba_directmail_sender_email',
 	alibabaDirectmailSmtpPassword: 'alibaba_directmail_smtp_password',
 	alibabaDirectmailSenderName: 'alibaba_directmail_sender_name',
+	alibabaDirectmailRegionName: 'alibaba_directmail_region_name',
+	alibabaDirectmailRegionId: 'alibaba_directmail_region_id',
+	alibabaDirectmailSmtpHost: 'alibaba_directmail_smtp_host',
+	alibabaDirectmailSmtpPort: 'alibaba_directmail_smtp_port',
+	alibabaDirectmailEncryption: 'alibaba_directmail_encryption',
 	alibabaDirectmailDailyQuota: 'alibaba_directmail_daily_quota',
 	alibabaDirectmailMonthlyQuota: 'alibaba_directmail_monthly_quota',
 	syncDelete: 'sync_delete',
@@ -86,6 +96,12 @@ function normalizeObservationQuota(value, fallback) {
 	const number = Number(value);
 	if (!Number.isFinite(number)) return fallback;
 	return Math.min(100_000_000, Math.max(0, Math.round(number)));
+}
+
+function normalizeSmtpPort(value, fallback = FEATURE_DEFAULTS.alibabaDirectmailSmtpPort) {
+	const number = Number(value);
+	if (!Number.isInteger(number) || number < 1 || number > 65535) return fallback;
+	return number;
 }
 
 function normalizeSettingRow(row) {
@@ -117,6 +133,11 @@ async function readFeatureSetting(c) {
 			alibabaDirectmailSenderEmail: String(row.alibaba_directmail_sender_email || '').trim(),
 			alibabaDirectmailSmtpPassword: row.alibaba_directmail_smtp_password || '',
 			alibabaDirectmailSenderName: String(row.alibaba_directmail_sender_name || FEATURE_DEFAULTS.alibabaDirectmailSenderName).trim() || FEATURE_DEFAULTS.alibabaDirectmailSenderName,
+			alibabaDirectmailRegionName: String(row.alibaba_directmail_region_name ?? FEATURE_DEFAULTS.alibabaDirectmailRegionName).trim(),
+			alibabaDirectmailRegionId: String(row.alibaba_directmail_region_id ?? FEATURE_DEFAULTS.alibabaDirectmailRegionId).trim(),
+			alibabaDirectmailSmtpHost: String(row.alibaba_directmail_smtp_host ?? FEATURE_DEFAULTS.alibabaDirectmailSmtpHost).trim(),
+			alibabaDirectmailSmtpPort: normalizeSmtpPort(row.alibaba_directmail_smtp_port, FEATURE_DEFAULTS.alibabaDirectmailSmtpPort),
+			alibabaDirectmailEncryption: String(row.alibaba_directmail_encryption ?? FEATURE_DEFAULTS.alibabaDirectmailEncryption).trim(),
 			alibabaDirectmailDailyQuota: normalizeObservationQuota(row.alibaba_directmail_daily_quota, FEATURE_DEFAULTS.alibabaDirectmailDailyQuota),
 			alibabaDirectmailMonthlyQuota: normalizeObservationQuota(row.alibaba_directmail_monthly_quota, FEATURE_DEFAULTS.alibabaDirectmailMonthlyQuota),
 			syncDelete: Number(row.sync_delete ?? FEATURE_DEFAULTS.syncDelete),
@@ -243,6 +264,9 @@ const settingService = {
 		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
 		settingRow.alibabaDirectmailConfigured = !!(
 			verifyUtils.isEmail(settingRow.alibabaDirectmailSenderEmail) && settingRow.alibabaDirectmailSmtpPassword
+			&& settingRow.alibabaDirectmailRegionName && settingRow.alibabaDirectmailRegionId
+			&& settingRow.alibabaDirectmailSmtpHost && settingRow.alibabaDirectmailSmtpPort
+			&& settingRow.alibabaDirectmailEncryption === 'SSL/TLS'
 		);
 		// Never return the DirectMail SMTP password, even as a partial prefix.
 		// The client only needs a boolean/configured mask to render the field.
@@ -321,12 +345,18 @@ const settingService = {
 				const secret = String(value ?? '');
 				if (!secret || /^•+$/.test(secret)) continue;
 				value = secret;
-			} else if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey', 'alibabaDirectmailSenderEmail', 'alibabaDirectmailSenderName'].includes(key)) {
+			} else if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey', 'alibabaDirectmailSenderEmail', 'alibabaDirectmailSenderName', 'alibabaDirectmailRegionName', 'alibabaDirectmailRegionId', 'alibabaDirectmailSmtpHost', 'alibabaDirectmailEncryption'].includes(key)) {
 				value = Array.isArray(value) ? value.join(',') : String(value ?? '').trim();
 				if (key === 'alibabaDirectmailSenderEmail' && value && !verifyUtils.isEmail(value)) {
 					throw new BizError('请输入有效的阿里云 DirectMail 发信地址', 400);
 				}
 				if (key === 'alibabaDirectmailSenderName') value = value.slice(0, 120);
+			} else if (key === 'alibabaDirectmailSmtpPort') {
+				const port = Number(value);
+				if (!Number.isInteger(port) || port < 1 || port > 65535) {
+					throw new BizError('SMTP 端口必须是 1 到 65535 之间的整数', 400);
+				}
+				value = port;
 			} else if (['alibabaDirectmailDailyQuota', 'alibabaDirectmailMonthlyQuota'].includes(key)) {
 				value = normalizeObservationQuota(value, 0);
 			} else {
