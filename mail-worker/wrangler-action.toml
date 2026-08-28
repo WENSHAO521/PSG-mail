@@ -76,30 +76,8 @@ linuxdo_switch = "${LINUXDO_SWITCH}"
 # workbox-precaching"). Confirmed by reproducing both this and the
 # NODE_ENV issue below locally against the real package.json.
 #
-# NODE_ENV=development on the `install` half only (not `run build`) —
-# `wrangler deploy` itself sets NODE_ENV=production for this child
-# process (targetConsumer === "deploy" in Wrangler's own source), which
-# makes `npm install` skip devDependencies. vite and its plugins live in
-# mail-vue's devDependencies, so without this override the build fails
-# with `sh: 1: vite: not found`. `&&` scopes the override to `install`
-# only; `run build` keeps Wrangler's NODE_ENV=production, which is
-# correct for a release build.
-#
-# scripts/check-vite-env.sh runs between install and build as a presence
-# preflight for VITE_WEB_PUSH_VAPID_PUBLIC_KEY (standards Web Push) and the
-# legacy VITE_FIREBASE_* vars (see that file) — it executes inside this
-# exact subprocess, so it doubles as direct proof that wrangler's [build]
-# command actually inherits the job-level env set in
-# .github/workflows/deploy-cloudflare.yml, rather than an assumption.
-#
-# scripts/build-mail-vue.sh then does the actual `vite build --mode
-# release`, but first writes whichever of those vars are set into a
-# short-lived mail-vue/.env.release.local (loadEnv() in
-# mail-vue/vite.config.js reads it) and afterwards runs
-# check-built-web-push-env.mjs against the real built output in
-# mail-worker/dist — proof the value reached the bundle itself, not just
-# this subprocess's env. See both scripts for why: a passing
-# check-vite-env.sh only proves the env var exists here, not that Vite's
-# define/import.meta.env replacement actually picked it up.
+# Keep the frontend build in mail-worker/package.json so direct Wrangler
+# deploys and Cloudflare Workers Builds use the same entrypoint. The script
+# installs and builds mail-vue, then verifies the generated assets in dist.
 [build]
-command = "ELECTRON_SKIP_BINARY_DOWNLOAD=1 NODE_ENV=development npm --prefix ../mail-vue install --legacy-peer-deps && sh ./scripts/check-vite-env.sh && sh ./scripts/build-mail-vue.sh"
+command = "npm run build"
