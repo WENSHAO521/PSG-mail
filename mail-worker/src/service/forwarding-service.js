@@ -528,7 +528,7 @@ const forwardingService = {
 		for (const rule of rows.results || []) {
 			if (policyTargetIsInternal(await this.policy(c), rule.target_email)) continue;
 			const log = await this.createDeliveryLog(c, rule.id, emailRow);
-			await this.deliverLog(c, log, rule, accountRow.userId);
+			await this.deliverLog(c, log, rule, emailRow, accountRow.userId);
 		}
 	},
 
