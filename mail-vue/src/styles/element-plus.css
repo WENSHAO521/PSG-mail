@@ -216,3 +216,15 @@ html.dark {
 .el-checkbox__inner {
   border-radius: var(--psg-radius-xs) !important;
 }
+
+/* Every other hoverable row in this app (sidebar nav links, etc.) is inset
+   from its container with a small margin and has rounded corners on its own
+   hover/active background — see .sidebar-nav-link in layout/aside/index.vue.
+   Element Plus's dropdown-menu item ships with none of that: it's a
+   full-bleed rectangle with square corners, which reads as a visually
+   distinct (non-PSG) design system the moment it's hovered/focused, even
+   though the menu's own outer corners are already rounded above. */
+.el-dropdown-menu__item {
+  margin: 0 6px !important;
+  border-radius: var(--psg-radius-xs) !important;
+}
