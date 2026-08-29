@@ -27,3 +27,11 @@ export function deleteBackground() {
 export function setBlackList(params) {
     return http.put('/setting/setBlacklist', params)
 }
+
+export function alibabaTestConnection() {
+    return http.post('/setting/alibaba/testConnection')
+}
+
+export function alibabaTestNotification(targetEmail) {
+    return http.post('/setting/alibaba/testNotification', {targetEmail})
+}

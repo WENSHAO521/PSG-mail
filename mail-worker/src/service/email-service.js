@@ -1040,6 +1040,27 @@ const emailService = {
 			usage[provider] = { todaySent: today?.total || 0, monthSent: month?.total || 0 };
 		}
 
+		// Alibaba DirectMail never writes to the `email` table (it only ever
+		// sends notification/verification mail, not user mail), so its usage
+		// comes from notification_send_log instead — accepted counts only,
+		// matching the "Accepted" definition the quota progress bars use
+		// (see forwarding-service.js's sendNotificationExternal, which is the
+		// only writer of this table). A missing table (pre-migration-0008
+		// deploy window) degrades to zero rather than failing the whole call.
+		try {
+			const [todayRow, monthRow] = await Promise.all([
+				c.env.db.prepare(
+					`SELECT COUNT(*) AS total FROM notification_send_log WHERE provider = 'alibaba' AND status = 'accepted' AND created_at >= ?`
+				).bind(dayStart).first(),
+				c.env.db.prepare(
+					`SELECT COUNT(*) AS total FROM notification_send_log WHERE provider = 'alibaba' AND status = 'accepted' AND created_at >= ?`
+				).bind(monthStart).first(),
+			]);
+			usage.alibaba = { todaySent: todayRow?.total || 0, monthSent: monthRow?.total || 0 };
+		} catch {
+			usage.alibaba = { todaySent: 0, monthSent: 0 };
+		}
+
 		return usage;
 	},
 

@@ -10,6 +10,7 @@ import BizError from '../error/biz-error';
 import {t} from '../i18n/i18n'
 import verifyRecordService from './verify-record-service';
 import userContext from '../security/user-context';
+import alibabaDirectmailService from './alibaba-directmail-service';
 
 const FEATURE_DEFAULTS = {
 	allowPersonalForward: 1,
@@ -32,6 +33,19 @@ const FEATURE_DEFAULTS = {
 	mailjetSecretKey: '',
 	mailjetDailyQuota: 0,
 	mailjetMonthlyQuota: 0,
+	// Alibaba Cloud DirectMail (阿里云邮件推送) — a separate SMTP channel used
+	// only for external-email notifications/verification codes (see
+	// forwarding-service.js's sendNotificationExternal), never for normal
+	// user mail. Host/port/region are fixed constants in
+	// alibaba-directmail-service.js, not settings, so an admin can't
+	// misconfigure the endpoint for a different Alibaba region. Non-zero
+	// quota defaults (unlike Resend/Mailjet's 0) match the spec's example
+	// admin-facing defaults; 0 still means "no quota observed" if cleared.
+	alibabaSmtpUser: '',
+	alibabaSmtpPassword: '',
+	alibabaSenderName: 'PSG Mail Notifications',
+	alibabaDailyQuota: 2000,
+	alibabaMonthlyQuota: 60000,
 	// Ported from maillab/cloud-mail v3.1.0. CLOSE (1) preserves the existing
 	// isDel soft-delete behavior everywhere unless an admin opts in.
 	syncDelete: 1,
@@ -54,6 +68,11 @@ const FEATURE_COLUMNS = {
 	mailjetSecretKey: 'mailjet_secret_key',
 	mailjetDailyQuota: 'mailjet_daily_quota',
 	mailjetMonthlyQuota: 'mailjet_monthly_quota',
+	alibabaSmtpUser: 'alibaba_smtp_user',
+	alibabaSmtpPassword: 'alibaba_smtp_password',
+	alibabaSenderName: 'alibaba_sender_name',
+	alibabaDailyQuota: 'alibaba_daily_quota',
+	alibabaMonthlyQuota: 'alibaba_monthly_quota',
 	syncDelete: 'sync_delete',
 };
 
@@ -95,6 +114,11 @@ async function readFeatureSetting(c) {
 			mailjetSecretKey: row.mailjet_secret_key || '',
 			mailjetDailyQuota: Math.max(0, Number(row.mailjet_daily_quota ?? FEATURE_DEFAULTS.mailjetDailyQuota)),
 			mailjetMonthlyQuota: Math.max(0, Number(row.mailjet_monthly_quota ?? FEATURE_DEFAULTS.mailjetMonthlyQuota)),
+			alibabaSmtpUser: row.alibaba_smtp_user || '',
+			alibabaSmtpPassword: row.alibaba_smtp_password || '',
+			alibabaSenderName: row.alibaba_sender_name || FEATURE_DEFAULTS.alibabaSenderName,
+			alibabaDailyQuota: Math.max(0, Number(row.alibaba_daily_quota ?? FEATURE_DEFAULTS.alibabaDailyQuota)),
+			alibabaMonthlyQuota: Math.max(0, Number(row.alibaba_monthly_quota ?? FEATURE_DEFAULTS.alibabaMonthlyQuota)),
 			syncDelete: Number(row.sync_delete ?? FEATURE_DEFAULTS.syncDelete),
 		};
 	} catch {
@@ -217,6 +241,18 @@ const settingService = {
 		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
 		settingRow.mailjetApiKey = settingRow.mailjetApiKey ? `${settingRow.mailjetApiKey.slice(0, 12)}******` : null;
 		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
+		// SMTP password for a real mailbox — unlike the API-key-shaped secrets
+		// above, no partial reveal at all. The frontend only ever learns
+		// whether a password is set, never any part of its value.
+		settingRow.alibabaSmtpConfigured = !!(settingRow.alibabaSmtpUser && settingRow.alibabaSmtpPassword);
+		delete settingRow.alibabaSmtpPassword;
+		settingRow.alibabaConnection = {
+			host: alibabaDirectmailService.ALIBABA_SMTP_HOST,
+			port: alibabaDirectmailService.ALIBABA_SMTP_PORT,
+			regionId: alibabaDirectmailService.ALIBABA_REGION_ID,
+			regionLabel: alibabaDirectmailService.ALIBABA_REGION_LABEL,
+			encryption: 'SSL/TLS',
+		};
 		settingRow.hasR2 = !!c.env.r2
 		settingRow.hasCfEmail = !!c.env.email
 		settingRow.hasAi = !!c.env.ai
@@ -282,7 +318,7 @@ const settingService = {
 		for (const [key, column] of Object.entries(FEATURE_COLUMNS)) {
 			if (!Object.prototype.hasOwnProperty.call(featureParams, key)) continue;
 			let value = featureParams[key];
-			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey'].includes(key)) {
+			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey', 'alibabaSmtpUser', 'alibabaSmtpPassword', 'alibabaSenderName'].includes(key)) {
 				value = Array.isArray(value) ? value.join(',') : String(value ?? '').trim();
 			} else {
 				value = Math.max(0, Number(value));

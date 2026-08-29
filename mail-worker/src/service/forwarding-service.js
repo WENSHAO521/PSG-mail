@@ -6,6 +6,7 @@ import settingService from './setting-service';
 import userService from './user-service';
 import emailUtils from '../utils/email-utils';
 import verifyUtils from '../utils/verify-utils';
+import alibabaDirectmailService from './alibaba-directmail-service';
 
 const VERIFICATION_TTL_SECONDS = 15 * 60;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -199,6 +200,51 @@ const forwardingService = {
 		return response?.data || {};
 	},
 
+	async logNotificationSend(c, { provider, sendType, recipient, status, providerMessageId = null, errorMessage = null }) {
+		try {
+			await contextOf(c).env.db.prepare(
+				`INSERT INTO notification_send_log (provider, send_type, recipient, status, provider_message_id, error_message) VALUES (?, ?, ?, ?, ?, ?)`
+			).bind(provider, sendType, recipient, status, providerMessageId, errorMessage).run();
+		} catch (logError) {
+			console.error('notification_send_log insert failed', logError?.message || logError);
+		}
+	},
+
+	// Sends a notification-only email (new-mail notice or verification code —
+	// never real user mail content) via Alibaba Cloud DirectMail SMTP when the
+	// admin has configured it, using the admin-configured sender identity
+	// ("PSG Mail Notifications <发信地址>"), NOT the end user's own PSG Mail
+	// account — this is the deliberate divergence from sendExternal() above,
+	// which sends as the user. Falls back to the exact existing
+	// Cloudflare/Resend/Mailjet chain (via sendExternal) when Alibaba isn't
+	// configured, so installs that never touch it are unaffected.
+	async sendNotificationExternal(c, { userId, targetEmail, subject, text, html, sendType = 'notification' }) {
+		const ctx = contextOf(c);
+		const setting = await settingService.query(ctx);
+		const configured = !!(setting.alibabaSmtpUser && setting.alibabaSmtpPassword);
+		if (!configured) {
+			return this.sendExternal(ctx, { userId, targetEmail, subject, text, html });
+		}
+		try {
+			const result = await alibabaDirectmailService.sendMail({
+				username: setting.alibabaSmtpUser,
+				password: setting.alibabaSmtpPassword,
+				fromName: setting.alibabaSenderName || 'PSG Mail Notifications',
+				fromEmail: setting.alibabaSmtpUser,
+			}, { to: targetEmail, subject, text, html });
+			await this.logNotificationSend(ctx, {
+				provider: 'alibaba', sendType, recipient: targetEmail, status: 'accepted', providerMessageId: result?.messageId || null,
+			});
+			return { id: result?.messageId || null };
+		} catch (error) {
+			await this.logNotificationSend(ctx, {
+				provider: 'alibaba', sendType, recipient: targetEmail, status: 'failed',
+				errorMessage: String(error?.message || 'alibaba smtp send failed').slice(0, 500),
+			});
+			throw error;
+		}
+	},
+
 	async issueVerification(c, row, userId) {
 		const code = randomCode();
 		const target = row.target_email;
@@ -216,7 +262,7 @@ const forwardingService = {
 			const subject = 'PSG Mail 转发邮箱验证';
 			const text = `你正在为 PSG Mail 设置个人转发地址：${target}\n\n验证码：${code}\n\n验证码 15 分钟内有效。如果不是你本人操作，请忽略此邮件。`;
 			const html = `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#202622"><p>你正在为 PSG Mail 设置个人转发地址：</p><p><strong>${escapeHtml(target)}</strong></p><p style="font-size:28px;letter-spacing:.25em;font-weight:700">${code}</p><p>验证码 15 分钟内有效。如果不是你本人操作，请忽略此邮件。</p></div>`;
-			await this.sendExternal(c, { userId, targetEmail: target, subject, text, html });
+			await this.sendNotificationExternal(c, { userId, targetEmail: target, subject, text, html, sendType: 'verification' });
 		} catch (error) {
 			await c.env.db.prepare(
 				`UPDATE personal_forwarding SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`
@@ -413,7 +459,7 @@ const forwardingService = {
 				`打开 PSG Mail：${link}`,
 			].join('\n');
 			const html = `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#202622"><p>你有一封新的 PSG Mail 邮件。</p><p><strong>发件人：</strong>${escapeHtml(emailRow.name || '')} &lt;${escapeHtml(emailRow.sendEmail || '')}&gt;</p><p><strong>主题：</strong>${escapeHtml(emailRow.subject || '无主题')}</p><p><strong>时间：</strong>${escapeHtml(emailRow.createTime || emailRow.create_time || nowSql())}</p><p><a href="${escapeHtml(link)}">打开 PSG Mail</a></p></div>`;
-			return this.sendExternal(c, { userId, targetEmail: rule.target_email, subject, text, html });
+			return this.sendNotificationExternal(c, { userId, targetEmail: rule.target_email, subject, text, html });
 		}
 
 		if (!policy.allowPersonalForward || !policy.allowForwardFullCopy) throw new BizError('管理员已关闭完整副本转发', 503);
@@ -458,11 +504,18 @@ const forwardingService = {
 				`UPDATE forward_delivery_log SET status = 'sent', provider_message_id = ?, last_error = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 			).bind(result?.id || null, log.id).run();
 		} catch (error) {
-			const delay = DEFAULT_BACKOFF_SECONDS[Math.min(nextAttempt - 1, DEFAULT_BACKOFF_SECONDS.length - 1)];
-			const nextAt = dayjs().add(delay, 'second').format('YYYY-MM-DD HH:mm:ss');
+			// A permanent error (bad credentials, unknown recipient — flagged
+			// by alibaba-directmail-service.js as `retryable: false`) should
+			// not consume the retry ladder; jump attempt_count straight to the
+			// cap so processDue()'s `attempt_count < MAX_DELIVERY_ATTEMPTS`
+			// guard stops picking it up, without needing a new terminal status.
+			const isPermanent = error?.retryable === false;
+			const nextAt = isPermanent ? null : dayjs().add(
+				DEFAULT_BACKOFF_SECONDS[Math.min(nextAttempt - 1, DEFAULT_BACKOFF_SECONDS.length - 1)], 'second'
+			).format('YYYY-MM-DD HH:mm:ss');
 			await c.env.db.prepare(
-				`UPDATE forward_delivery_log SET status = 'failed', next_attempt_at = ?, last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-			).bind(nextAt, String(error?.message || 'forwarding delivery failed').slice(0, 500), log.id).run();
+				`UPDATE forward_delivery_log SET status = 'failed', attempt_count = ?, next_attempt_at = ?, last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+			).bind(isPermanent ? MAX_DELIVERY_ATTEMPTS : nextAttempt, nextAt, String(error?.message || 'forwarding delivery failed').slice(0, 500), log.id).run();
 			console.error('personal forwarding delivery failed', rule.id, emailRow.emailId, error?.message || error);
 		}
 	},

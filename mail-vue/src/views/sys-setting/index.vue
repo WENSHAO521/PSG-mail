@@ -430,6 +430,17 @@
                 </div>
               </div>
             </div>
+            <div class="card-content provider-card-grid">
+              <MailProviderCard
+                  name="阿里云邮件推送"
+                  :configured="!!setting.alibabaSmtpConfigured"
+                  :today-sent="providerUsage.alibaba.todaySent"
+                  :daily-quota="setting.alibabaDailyQuota || 0"
+                  :month-sent="providerUsage.alibaba.monthSent"
+                  :monthly-quota="setting.alibabaMonthlyQuota || 0"
+                  @configure="openAlibabaForm"
+              />
+            </div>
             <AdminForwarding :setting="setting" @saved="getSettings" />
           </div>
 
@@ -821,6 +832,74 @@
           </div>
         </template>
       </el-dialog>
+      <el-dialog v-model="alibabaFormShow" class="provider-config-dialog" width="420"
+                 :title="$t('providerConfigTitle', { name: '阿里云邮件推送' })" @closed="cleanAlibabaForm">
+        <p class="provider-config-hint" style="margin: -4px 0 12px;">{{ $t('alibabaDirectmailDesc') }}</p>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('alibabaDirectmailRegion') }} / {{ $t('alibabaDirectmailSmtpServer') }}</div>
+          <p class="provider-config-hint">
+            {{ setting.alibabaConnection?.regionLabel }} · {{ setting.alibabaConnection?.host }}:{{ setting.alibabaConnection?.port }} · {{ setting.alibabaConnection?.encryption }}
+          </p>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('alibabaDirectmailSenderEmail') }}</div>
+          <el-input v-model="alibabaForm.smtpUser" :placeholder="$t('alibabaDirectmailSenderEmailPlaceholder')"/>
+          <p class="provider-config-hint">{{ $t('alibabaDirectmailSenderEmailHint') }}</p>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('alibabaDirectmailSmtpPassword') }}</div>
+          <el-input v-model="alibabaForm.smtpPassword" type="password" show-password
+                    :placeholder="setting.alibabaSmtpConfigured ? '••••••••••••••••' : $t('alibabaDirectmailSmtpPasswordPlaceholder')"/>
+          <p class="provider-config-hint">{{ $t('alibabaDirectmailSmtpPasswordSetHint') }}</p>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('alibabaDirectmailSenderName') }}</div>
+          <el-input v-model="alibabaForm.senderName" maxlength="120"/>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerDailyQuota') }}</div>
+          <el-input-number v-model="alibabaForm.dailyQuota" :min="0" :max="1000000" size="small"/>
+          <p class="provider-config-hint">{{ $t('providerQuotaZeroHint') }}</p>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerMonthlyQuota') }}</div>
+          <el-input-number v-model="alibabaForm.monthlyQuota" :min="0" :max="10000000" size="small"/>
+        </div>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('providerCurrentUsage') }}</div>
+          <div class="provider-usage-readout">
+            <span>{{ $t('providerTodaySent') }}: {{ providerUsage.alibaba.todaySent.toLocaleString() }}</span>
+            <span>{{ $t('providerMonthSent') }}: {{ providerUsage.alibaba.monthSent.toLocaleString() }}</span>
+          </div>
+        </div>
+        <p class="provider-config-note">{{ $t('providerQuotaObservationNote') }}</p>
+        <template #footer>
+          <div class="dialog-footer alibaba-dialog-footer">
+            <div class="alibaba-dialog-footer-group">
+              <el-button :loading="alibabaTestConnectionLoading" @click="handleAlibabaTestConnection">{{ $t('alibabaDirectmailTestConnection') }}</el-button>
+              <el-button @click="openAlibabaTestDialog">{{ $t('alibabaDirectmailSendTestNotification') }}</el-button>
+            </div>
+            <div class="alibaba-dialog-footer-group">
+              <el-button @click="alibabaFormShow = false">{{ $t('cancel') }}</el-button>
+              <el-button type="primary" :loading="settingLoading" @click="saveAlibabaForm">{{ $t('saveChanges') }}</el-button>
+            </div>
+          </div>
+        </template>
+      </el-dialog>
+      <el-dialog v-model="alibabaTestShow" class="provider-config-dialog" width="360"
+                 :title="$t('alibabaDirectmailTestNotificationTitle')">
+        <p class="provider-config-hint">{{ $t('alibabaDirectmailTestNotificationDesc') }}</p>
+        <div class="provider-config-section">
+          <div class="provider-config-label">{{ $t('alibabaDirectmailTestRecipient') }}</div>
+          <el-input v-model="alibabaTestRecipient" type="email" @keyup.enter="handleAlibabaTestNotification"/>
+        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="alibabaTestShow = false">{{ $t('cancel') }}</el-button>
+            <el-button type="primary" :loading="alibabaTestNotificationLoading" @click="handleAlibabaTestNotification">{{ $t('alibabaDirectmailSendTestNotification') }}</el-button>
+          </div>
+        </template>
+      </el-dialog>
       <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
                  @closed="regVerifyCount = setting.regVerifyCount">
         <form>
@@ -992,7 +1071,7 @@
 
 <script setup>
 import {computed, defineOptions, nextTick, onActivated, reactive, ref, watch} from "vue";
-import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet, providerUsage as fetchProviderUsage} from "@/request/setting.js";
+import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet, providerUsage as fetchProviderUsage, alibabaTestConnection, alibabaTestNotification} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
@@ -1039,7 +1118,7 @@ onActivated(() => {
 function openSettingsSection(key) {
   activeSettingSection.value = key
   mobileSettingsDetail.value = true
-  if (key === 'mail-provider') loadProviderUsage()
+  if (key === 'mail-provider' || key === 'push') loadProviderUsage()
 }
 const backgroundImage = ref('')
 const localUpShow = ref(false)
@@ -1058,6 +1137,11 @@ const emailPrefixShow = ref(false)
 const showResendList = ref(false)
 const resendQuotaFormShow = ref(false)
 const mailjetFormShow = ref(false)
+const alibabaFormShow = ref(false)
+const alibabaTestShow = ref(false)
+const alibabaTestConnectionLoading = ref(false)
+const alibabaTestNotificationLoading = ref(false)
+const alibabaTestRecipient = ref('')
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
 const mobileNavigation = useMobileNavigationStore();
@@ -1093,9 +1177,17 @@ const mailjetForm = reactive({
   dailyQuota: 0,
   monthlyQuota: 0,
 })
+const alibabaForm = reactive({
+  smtpUser: '',
+  smtpPassword: '',
+  senderName: '',
+  dailyQuota: 0,
+  monthlyQuota: 0,
+})
 const providerUsage = reactive({
   resend: { todaySent: 0, monthSent: 0 },
   mailjet: { todaySent: 0, monthSent: 0 },
+  alibaba: { todaySent: 0, monthSent: 0 },
 })
 const turnstileForm = reactive({
   siteKey: '',
@@ -1286,6 +1378,7 @@ function loadProviderUsage() {
   fetchProviderUsage().then(data => {
     providerUsage.resend = data.resend
     providerUsage.mailjet = data.mailjet
+    providerUsage.alibaba = data.alibaba
   }).catch(() => {})
 }
 
@@ -1326,6 +1419,67 @@ function saveMailjetForm() {
   if (mailjetForm.apiKey) form.mailjetApiKey = mailjetForm.apiKey
   if (mailjetForm.secretKey) form.mailjetSecretKey = mailjetForm.secretKey
   editSetting(form)
+}
+
+function openAlibabaForm() {
+  alibabaForm.smtpUser = setting.value.alibabaSmtpUser || ''
+  alibabaForm.smtpPassword = ''
+  alibabaForm.senderName = setting.value.alibabaSenderName || ''
+  alibabaForm.dailyQuota = setting.value.alibabaDailyQuota || 0
+  alibabaForm.monthlyQuota = setting.value.alibabaMonthlyQuota || 0
+  alibabaFormShow.value = true
+}
+
+function cleanAlibabaForm() {
+  alibabaForm.smtpPassword = ''
+}
+
+function saveAlibabaForm() {
+  const form = {
+    alibabaSmtpUser: alibabaForm.smtpUser.trim(),
+    alibabaSenderName: alibabaForm.senderName.trim(),
+    alibabaDailyQuota: alibabaForm.dailyQuota,
+    alibabaMonthlyQuota: alibabaForm.monthlyQuota,
+  }
+  // Leave-blank-means-unchanged, same guard Mailjet's saveMailjetForm() uses
+  // above — never submit an empty string that would overwrite an
+  // already-saved SMTP password.
+  if (alibabaForm.smtpPassword) form.alibabaSmtpPassword = alibabaForm.smtpPassword
+  editSetting(form)
+}
+
+function handleAlibabaTestConnection() {
+  if (alibabaTestConnectionLoading.value) return
+  alibabaTestConnectionLoading.value = true
+  alibabaTestConnection().then(() => {
+    ElMessage({message: t('alibabaDirectmailTestConnectionSuccess'), type: 'success', plain: true})
+  }).catch(() => {
+    ElMessage({message: t('alibabaDirectmailTestConnectionFailed'), type: 'error', plain: true})
+  }).finally(() => {
+    alibabaTestConnectionLoading.value = false
+  })
+}
+
+function openAlibabaTestDialog() {
+  alibabaTestRecipient.value = ''
+  alibabaTestShow.value = true
+}
+
+function handleAlibabaTestNotification() {
+  if (alibabaTestNotificationLoading.value) return
+  if (!isEmail(alibabaTestRecipient.value)) {
+    ElMessage({message: t('alibabaDirectmailTestRecipientInvalid'), type: 'error', plain: true})
+    return
+  }
+  alibabaTestNotificationLoading.value = true
+  alibabaTestNotification(alibabaTestRecipient.value.trim()).then(() => {
+    ElMessage({message: t('alibabaDirectmailTestNotificationSuccess'), type: 'success', plain: true})
+    alibabaTestShow.value = false
+  }).catch(() => {
+    ElMessage({message: t('alibabaDirectmailTestNotificationFailed'), type: 'error', plain: true})
+  }).finally(() => {
+    alibabaTestNotificationLoading.value = false
+  })
 }
 
 function saveAddVerifyCount() {
@@ -1802,6 +1956,7 @@ function editSetting(settingForm, refreshStatus = true) {
     resendTokenFormShow.value = false
     resendQuotaFormShow.value = false
     mailjetFormShow.value = false
+    alibabaFormShow.value = false
     turnstileShow.value = false
     tgSettingShow.value = false
     thirdEmailShow.value = false
@@ -2477,6 +2632,12 @@ function editSetting(settingForm, refreshStatus = true) {
 .dialog-footer {
   display: flex;
   justify-content: space-between;
+}
+
+.alibaba-dialog-footer-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .notice-popup-item {
