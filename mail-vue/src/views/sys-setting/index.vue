@@ -432,7 +432,7 @@
             </div>
             <div class="card-content provider-card-grid">
               <MailProviderCard
-                  name="阿里云邮件推送"
+                  :name="$t('alibabaDirectmailTitle')"
                   :configured="!!setting.alibabaSmtpConfigured"
                   :today-sent="providerUsage.alibaba.todaySent"
                   :daily-quota="setting.alibabaDailyQuota || 0"
@@ -833,7 +833,7 @@
         </template>
       </el-dialog>
       <el-dialog v-model="alibabaFormShow" append-to-body class="provider-config-dialog" width="420"
-                 :title="$t('providerConfigTitle', { name: '阿里云邮件推送' })" @closed="cleanAlibabaForm">
+                 :title="$t('providerConfigTitle', { name: $t('alibabaDirectmailTitle') })" @closed="cleanAlibabaForm">
         <p class="provider-config-hint" style="margin: -4px 0 12px;">{{ $t('alibabaDirectmailDesc') }}</p>
         <div class="provider-config-section">
           <div class="provider-config-label">{{ $t('alibabaDirectmailRegion') }} / {{ $t('alibabaDirectmailSmtpServer') }}</div>
@@ -1378,7 +1378,7 @@ function loadProviderUsage() {
   fetchProviderUsage().then(data => {
     providerUsage.resend = data.resend
     providerUsage.mailjet = data.mailjet
-    providerUsage.alibaba = data.alibaba
+    providerUsage.alibaba = data.alibaba || { todaySent: 0, monthSent: 0 }
   }).catch(() => {})
 }
 

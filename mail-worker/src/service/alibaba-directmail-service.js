@@ -46,6 +46,17 @@ function isRetryableCode(code) {
 	return code >= 400 && code < 500;
 }
 
+// Addresses land raw in SMTP command lines (`MAIL FROM:<...>`) and in the
+// `From`/`To` MIME headers — an embedded CR/LF would inject extra SMTP
+// commands or header lines. setting-service.js already validates
+// alibabaSmtpUser as a plain email on save, but this client shouldn't rely
+// solely on callers upstream getting that right.
+function assertNoCrlf(value, label) {
+	if (/[\r\n]/.test(String(value ?? ''))) {
+		throw new AlibabaSmtpError(`${label}中包含非法字符`, { retryable: false });
+	}
+}
+
 function utf8ToBase64(str) {
 	const bytes = new TextEncoder().encode(String(str ?? ''));
 	let binary = '';
@@ -205,12 +216,20 @@ async function openConnection({ host, port, username, password }) {
 	}
 
 	const conn = new SmtpConnection(socket);
-	await conn.expect(220);
-	await conn.command('EHLO psgmail', 250);
-	await conn.command('AUTH LOGIN', 334);
-	await conn.command(utf8ToBase64(username), 334);
-	await conn.command(utf8ToBase64(password), 235);
-	return conn;
+	try {
+		await conn.expect(220);
+		await conn.command('EHLO psgmail', 250);
+		await conn.command('AUTH LOGIN', 334);
+		await conn.command(utf8ToBase64(username), 334);
+		await conn.command(utf8ToBase64(password), 235);
+		return conn;
+	} catch (error) {
+		// A failed handshake (e.g. bad password on "测试连接") must not leak the
+		// underlying TCP socket — callers never get a `conn` back to clean up
+		// themselves when this throws.
+		await conn.quit();
+		throw error;
+	}
 }
 
 // SMTP handshake + auth only, no message sent — for the settings page's
@@ -229,6 +248,8 @@ async function testConnection({ host = ALIBABA_SMTP_HOST, port = ALIBABA_SMTP_PO
 async function sendMail({ host = ALIBABA_SMTP_HOST, port = ALIBABA_SMTP_PORT, username, password, fromName, fromEmail }, { to, subject, text, html }) {
 	if (!username || !password) throw new AlibabaSmtpError('阿里云邮件推送 SMTP 未配置', { retryable: false });
 	const sender = fromEmail || username;
+	assertNoCrlf(sender, '发信地址');
+	assertNoCrlf(to, '收件地址');
 	const conn = await openConnection({ host, port, username, password });
 	try {
 		await conn.command(`MAIL FROM:<${sender}>`, 250);

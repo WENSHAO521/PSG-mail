@@ -11,6 +11,7 @@ import {t} from '../i18n/i18n'
 import verifyRecordService from './verify-record-service';
 import userContext from '../security/user-context';
 import alibabaDirectmailService from './alibaba-directmail-service';
+import verifyUtils from '../utils/verify-utils';
 
 const FEATURE_DEFAULTS = {
 	allowPersonalForward: 1,
@@ -320,6 +321,14 @@ const settingService = {
 			let value = featureParams[key];
 			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey', 'alibabaSmtpUser', 'alibabaSmtpPassword', 'alibabaSenderName'].includes(key)) {
 				value = Array.isArray(value) ? value.join(',') : String(value ?? '').trim();
+				// alibabaSmtpUser (发信地址) ends up interpolated into raw SMTP
+				// command lines (MAIL FROM:<...>) and MIME headers in
+				// alibaba-directmail-service.js — reject anything that isn't a
+				// plain email address here, at the point it's saved, rather than
+				// trusting it downstream.
+				if (key === 'alibabaSmtpUser' && value && !verifyUtils.isEmail(value)) {
+					throw new BizError('请输入有效的阿里云邮件推送发信地址', 400);
+				}
 			} else {
 				value = Math.max(0, Number(value));
 				if (key === 'forwardMaxAddresses') value = Math.min(20, Math.max(1, value || 3));

@@ -41,4 +41,19 @@ describe('Alibaba Cloud DirectMail notification channel', () => {
 		});
 		expect(message).toContain('Subject: New mail notification');
 	});
+
+	it('rejects a CRLF-embedded sender/recipient before ever opening a socket', async () => {
+		// These calls must reject synchronously-ish, before openConnection()'s
+		// `cloudflare:sockets` connect() runs — otherwise this test would need
+		// a real/mocked TCP connection to exercise.
+		await expect(alibabaDirectmailService.sendMail(
+			{ username: 'notification@notify.example.com', password: 'secret', fromEmail: 'evil@example.com\r\nRCPT TO:<attacker@evil.example>' },
+			{ to: 'user@example.net', subject: 'x', text: 'x', html: 'x' }
+		)).rejects.toThrow(/非法字符/);
+
+		await expect(alibabaDirectmailService.sendMail(
+			{ username: 'notification@notify.example.com', password: 'secret' },
+			{ to: 'user@example.net\r\nDATA', subject: 'x', text: 'x', html: 'x' }
+		)).rejects.toThrow(/非法字符/);
+	});
 });
