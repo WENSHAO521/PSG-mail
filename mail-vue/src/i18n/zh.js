@@ -573,7 +573,6 @@ const zh = {
     alibabaDirectmailPort: '端口',
     alibabaDirectmailEncryption: '加密方式',
     alibabaDirectmailSenderEmail: '发信地址',
-    alibabaDirectmailSenderEmailPlaceholder: 'notification@notify.example.com',
     alibabaDirectmailSenderEmailHint: '阿里云邮件推送控制台中创建的完整发信地址。',
     alibabaDirectmailSmtpPassword: 'SMTP 密码',
     alibabaDirectmailSmtpPasswordPlaceholder: '未设置',

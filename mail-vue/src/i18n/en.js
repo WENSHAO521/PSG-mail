@@ -573,7 +573,6 @@ const en = {
     alibabaDirectmailPort: 'Port',
     alibabaDirectmailEncryption: 'Encryption',
     alibabaDirectmailSenderEmail: 'Sender address',
-    alibabaDirectmailSenderEmailPlaceholder: 'notification@notify.example.com',
     alibabaDirectmailSenderEmailHint: 'The full sending address created in the Alibaba Cloud DirectMail console.',
     alibabaDirectmailSmtpPassword: 'SMTP password',
     alibabaDirectmailSmtpPasswordPlaceholder: 'Not set',

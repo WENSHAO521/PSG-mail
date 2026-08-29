@@ -832,7 +832,7 @@
           </div>
         </template>
       </el-dialog>
-      <el-dialog v-model="alibabaFormShow" class="provider-config-dialog" width="420"
+      <el-dialog v-model="alibabaFormShow" append-to-body class="provider-config-dialog" width="420"
                  :title="$t('providerConfigTitle', { name: '阿里云邮件推送' })" @closed="cleanAlibabaForm">
         <p class="provider-config-hint" style="margin: -4px 0 12px;">{{ $t('alibabaDirectmailDesc') }}</p>
         <div class="provider-config-section">
@@ -843,7 +843,7 @@
         </div>
         <div class="provider-config-section">
           <div class="provider-config-label">{{ $t('alibabaDirectmailSenderEmail') }}</div>
-          <el-input v-model="alibabaForm.smtpUser" :placeholder="$t('alibabaDirectmailSenderEmailPlaceholder')"/>
+          <el-input v-model="alibabaForm.smtpUser" placeholder="notification@notify.example.com"/>
           <p class="provider-config-hint">{{ $t('alibabaDirectmailSenderEmailHint') }}</p>
         </div>
         <div class="provider-config-section">
@@ -886,7 +886,7 @@
           </div>
         </template>
       </el-dialog>
-      <el-dialog v-model="alibabaTestShow" class="provider-config-dialog" width="360"
+      <el-dialog v-model="alibabaTestShow" append-to-body class="provider-config-dialog" width="360"
                  :title="$t('alibabaDirectmailTestNotificationTitle')">
         <p class="provider-config-hint">{{ $t('alibabaDirectmailTestNotificationDesc') }}</p>
         <div class="provider-config-section">
