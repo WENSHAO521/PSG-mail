@@ -36,4 +36,5 @@ import '../api/search-api'
 import '../api/forwarding-api'
 import '../api/notification-event-api'
 import '../api/ai-mail-api'
+import '../api/ai-assistant-api'
 export default app;

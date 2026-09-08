@@ -78,6 +78,9 @@ const zh = {
 	notAdmin: '输入的邮箱不是管理员邮箱',
 	emailExistDatabase: '有邮箱已存在数据库中',
 	notConfigOss: '对象存储未配置',
+	aiAssistantDisabled: 'AI 邮件助手当前已禁用',
+	aiAssistantConfirmExpired: '确认已过期，请重试',
+	aiAssistantTooManySteps: '助手执行步骤过多仍未完成，请重试',
 	perms: {
 		"邮件": "邮件",
 		"邮件发送": "邮件发送",

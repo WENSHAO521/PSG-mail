@@ -18,6 +18,7 @@ export const useUiStore = defineStore('ui', {
         asideCollapsed: false,
         commandPaletteShow: false,
         accountShow: false,
+        aiAssistantShow: false,
         mobileDetailOpen: false,
         backgroundLoading: true,
         changeNotice: 0,

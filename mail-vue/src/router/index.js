@@ -129,6 +129,12 @@ const routes = [
                 component: () => import('@/views/vpn/index.vue'),
                 meta: { title: 'vpn', name: 'vpn', menu: true }
             },
+            {
+                path: '/about',
+                name: 'about',
+                component: () => import('@/views/about/index.vue'),
+                meta: { title: 'aboutApp', name: 'about', menu: true }
+            },
         ]
 
     },

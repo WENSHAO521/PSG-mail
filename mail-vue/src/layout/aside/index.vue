@@ -154,6 +154,12 @@
             </button>
           </el-tooltip>
 
+          <el-tooltip :content="$t('aiAssistant')" placement="right">
+            <button type="button" class="util-btn" :aria-label="$t('aiAssistant')" @click="uiStore.aiAssistantShow = true">
+              <Icon icon="solar:magic-stick-3-bold-duotone" width="18" height="18" />
+            </button>
+          </el-tooltip>
+
           <div class="notif-trigger-wrap">
             <NotificationPanel />
           </div>
@@ -182,6 +188,12 @@
                   <div class="drop-item">
                     <Icon icon="psg:shield" width="17" height="17" />
                     <span>{{ $t('vpn') }}</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item @click="router.push({ name: 'about' })">
+                  <div class="drop-item">
+                    <Icon icon="solar:info-circle-linear" width="17" height="17" />
+                    <span>{{ $t('aboutApp') }}</span>
                   </div>
                 </el-dropdown-item>
                 <el-dropdown-item divided disabled>

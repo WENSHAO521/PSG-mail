@@ -78,6 +78,9 @@ const en = {
 	notAdmin: 'The entered email is not an administrator email',
 	emailExistDatabase: 'Email already exists in the database',
 	notConfigOss: 'Object storage not configured',
+	aiAssistantDisabled: 'The AI mail assistant is currently disabled',
+	aiAssistantConfirmExpired: 'This confirmation has expired, please try again',
+	aiAssistantTooManySteps: 'The assistant took too many steps without finishing, please try again',
 	perms: {
 		"邮件": "Emails",
 		"邮件发送": "Send Email",
