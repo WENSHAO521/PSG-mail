@@ -145,18 +145,12 @@
           <span>{{ $t('compose') }}</span>
         </button>
 
-        <!-- Utility cluster: search / notifications / AI assistant / more, grouped as one unit -->
+        <!-- Utility cluster: search / notifications / more, grouped as one unit -->
         <div class="sidebar-util-cluster">
           <!-- Real backend mail search — distinct from Command Palette (Ctrl+K) -->
           <el-tooltip :content="$t('search') + ' (/)'" placement="right">
             <button type="button" class="util-btn" :aria-label="$t('search')" @click="router.push({ name: 'search' })">
               <Icon icon="psg:search" width="18" height="18" />
-            </button>
-          </el-tooltip>
-
-          <el-tooltip :content="$t('aiAssistant')" placement="right">
-            <button type="button" class="util-btn" :aria-label="$t('aiAssistant')" @click="uiStore.aiAssistantShow = true">
-              <Icon icon="solar:magic-stick-3-bold-duotone" width="18" height="18" />
             </button>
           </el-tooltip>
 
@@ -172,6 +166,12 @@
             </button>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item @click="uiStore.aiAssistantShow = true">
+                  <div class="drop-item">
+                    <Icon icon="solar:magic-stick-3-bold-duotone" width="17" height="17" />
+                    <span>{{ $t('aiAssistant') }}</span>
+                  </div>
+                </el-dropdown-item>
                 <el-dropdown-item @click="router.push({ name: 'setting' })">
                   <div class="drop-item">
                     <Icon icon="psg:settings" width="17" height="17" />

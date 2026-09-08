@@ -212,8 +212,22 @@ function parseToolCalls(resp) {
 		if (typeof args === 'string') {
 			try { args = JSON.parse(args); } catch { args = {}; }
 		}
-		return { name, args };
+		const id = call.id || crypto.randomUUID();
+		return { id, name, args };
 	}).filter(c => !!c.name);
+}
+
+// Cloudflare's OpenAI-compatible endpoint validates the conversation history
+// against the strict ChatCompletionMessageToolCallParam schema, so a
+// re-injected assistant message must carry each tool call's id/type/function
+// shape back -- not the {name, args} shape parseToolCalls() simplifies to
+// for our own reading.
+function toOpenAiToolCalls(calls) {
+	return calls.map(call => ({
+		id: call.id,
+		type: 'function',
+		function: { name: call.name, arguments: JSON.stringify(call.args) }
+	}));
 }
 
 function replyText(resp) {
@@ -249,14 +263,14 @@ const aiAssistantService = {
 
 		if (!approve) {
 			const convo = pending.convo.concat([
-				{ role: 'tool', name: pending.name, content: JSON.stringify({ cancelled: true }) }
+				{ role: 'tool', tool_call_id: pending.id, content: JSON.stringify({ cancelled: true }) }
 			]);
 			return await this._runLoop(c, userId, convo, pending.stepsUsed);
 		}
 
 		const toolResult = await TOOL_IMPL[pending.name](c, userId, pending.args);
 		const convo = pending.convo.concat([
-			{ role: 'tool', name: pending.name, content: JSON.stringify(toolResult) }
+			{ role: 'tool', tool_call_id: pending.id, content: JSON.stringify(toolResult) }
 		]);
 		return await this._runLoop(c, userId, convo, pending.stepsUsed);
 	},
@@ -273,13 +287,13 @@ const aiAssistantService = {
 				return { reply: replyText(resp) };
 			}
 
-			convo.push({ role: 'assistant', content: replyText(resp), tool_calls: toolCalls });
+			convo.push({ role: 'assistant', content: replyText(resp), tool_calls: toOpenAiToolCalls(toolCalls) });
 
 			for (const call of toolCalls) {
 				if (CONFIRM_TOOLS.has(call.name)) {
 					const confirmId = crypto.randomUUID();
 					await c.env.kv.put('pending_action:' + confirmId, JSON.stringify({
-						userId, name: call.name, args: call.args, convo, stepsUsed: step + 1
+						userId, id: call.id, name: call.name, args: call.args, convo, stepsUsed: step + 1
 					}), { expirationTtl: CONFIRM_TTL });
 					return { pendingConfirmation: { confirmId, tool: call.name, args: call.args } };
 				}
@@ -290,7 +304,7 @@ const aiAssistantService = {
 				} catch (e) {
 					toolResult = { error: e.message || String(e) };
 				}
-				convo.push({ role: 'tool', name: call.name, content: JSON.stringify(toolResult) });
+				convo.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(toolResult) });
 			}
 		}
 
