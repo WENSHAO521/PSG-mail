@@ -52,6 +52,7 @@ export default {
 		await userService.resetDaySendCount({ env })
 		await emailService.completeReceiveAll({ env })
 		await emailService.purgeExpiredTrash({ env })
+		await emailService.autoClean({ env })
 		await oauthService.clearNoBindOathUser({ env })
 		await analysisService.refreshEchartsCache({ env })
 	},

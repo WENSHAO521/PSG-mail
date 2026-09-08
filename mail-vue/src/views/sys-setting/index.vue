@@ -146,6 +146,18 @@
                   <el-input-number class="setting-number" @change="change" v-model="setting.autoDeleteDays" :min="0" :max="365" :step="1"/>
                 </div>
               </div>
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('autoClean') }}</span>
+                  <p>{{ $t('autoCleanDesc') }}</p>
+                </div>
+                <div class="forward">
+                  <span>{{ setting.autoCleanDays > 0 ? $t('autoCleanRetain', { days: setting.autoCleanDays }) : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openAutoClean">
+                    <Icon icon="psg:settings" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -416,6 +428,15 @@
                 <div class="forward">
                   <span>{{ setting.forwardStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="openThirdEmailSetting">
+                    <Icon icon="psg:settings" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('webhook') }}</span></div>
+                <div class="forward">
+                  <span>{{ setting.webhookStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openWebhookSetting">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -723,6 +744,38 @@
             <el-switch v-model="forwardStatus" :active-value="0" :inactive-value="1" :active-text="$t('enable')"
                        :inactive-text="$t('disable')"/>
             <el-button :loading="settingLoading" type="primary" @click="forwardEmailSave">
+              {{ $t('save') }}
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
+      <el-dialog
+          v-model="webhookShow"
+          class="forward-dialog"
+          @closed="cleanWebhookForm"
+      >
+        <template #header>
+          <div class="forward-head">
+            <span class="forward-set-title">{{ $t('webhook') }}</span>
+            <el-tooltip effect="dark" :content="$t('webhookDesc')">
+              <Icon class="warning" icon="psg:warning" width="18" height="18"/>
+            </el-tooltip>
+          </div>
+        </template>
+        <div class="forward-set-body">
+          <el-input :placeholder="$t('webhookUrl')" v-model="webhookForm.url" @keyup.enter="webhookSave"/>
+          <el-input v-model="webhookForm.secret" type="password" show-password
+                    :placeholder="setting.webhookSecret || $t('webhookSecret')" @keyup.enter="webhookSave"/>
+          <div class="tg-msg-label">
+            <span>{{ $t('webhookRetry') }}</span>
+            <el-input-number v-model="webhookForm.retry" :min="0" :max="5" controls-position="right"/>
+          </div>
+        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-switch v-model="webhookStatus" :active-value="0" :inactive-value="1" :active-text="$t('enable')"
+                       :inactive-text="$t('disable')"/>
+            <el-button :loading="settingLoading" type="primary" @click="webhookSave">
               {{ $t('save') }}
             </el-button>
           </div>
@@ -1049,6 +1102,30 @@
         </el-form>
         <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveBlackList">{{ $t('save') }}</el-button>
       </el-dialog>
+      <el-dialog v-model="autoCleanShow" class="forward-dialog" @closed="resetAutoClean">
+        <template #header>
+          <div class="forward-head">
+            <span class="forward-set-title">{{ $t('autoClean') }}</span>
+            <el-tooltip effect="dark" :content="$t('autoCleanDesc')">
+              <Icon class="warning" icon="psg:warning" width="18" height="18"/>
+            </el-tooltip>
+          </div>
+        </template>
+        <el-form>
+          <el-form-item :label="t('autoCleanDays')" label-position="top">
+            <el-input-number v-model="autoCleanDaysForm" :min="0" :max="3650" style="width: 100%"/>
+          </el-form-item>
+          <el-form-item :label="t('autoCleanExclude')" label-position="top">
+            <el-input-tag
+                tag-type="warning"
+                :placeholder="$t('autoCleanExcludeDesc')"
+                v-model="autoCleanExclude"
+                @add-tag="autoCleanExcludeAddTag"
+            />
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveAutoClean">{{ $t('save') }}</el-button>
+      </el-dialog>
       <el-dialog v-model="aiCodeFilterShow" class="forward-dialog" @closed="resetAiCodeFilter">
         <template #header>
           <div class="forward-head">
@@ -1078,9 +1155,9 @@ import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
 import {useUserStore} from "@/store/user.js";
 import {useAccountStore} from "@/store/account.js";
 import {Icon} from "@iconify/vue";
-import {cvtR2Url} from "@/utils/convert.js";
+import {cvtR2Url, toOssDomain} from "@/utils/convert.js";
 import {storeToRefs} from "pinia";
-import {isDomain, isEmail} from "@/utils/verify-utils.js";
+import {isDomain, isEmail, isIpUrl} from "@/utils/verify-utils.js";
 import loading from "@/components/loading/index.vue";
 import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
@@ -1126,12 +1203,14 @@ const accountStore = useAccountStore();
 const userStore = useUserStore();
 const resendTokenFormShow = ref(false)
 const blackFormShow = ref(false)
+const autoCleanShow = ref(false)
 const aiCodeFilterShow = ref(false)
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
 const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
+const webhookShow = ref(false)
 const forwardRulesShow = ref(false)
 const emailPrefixShow = ref(false)
 const showResendList = ref(false)
@@ -1225,6 +1304,8 @@ const blackListForm = ref({
   blackContent: [],
   blackFrom: []
 })
+const autoCleanDaysForm = ref(0)
+const autoCleanExclude = ref([])
 const aiCodeFilter = ref([])
 
 const authRefreshOptions = computed(() => [
@@ -1240,6 +1321,8 @@ const tgBotStatus = ref(0)
 const tgBotToken = ref('')
 const forwardEmail = ref([])
 const forwardStatus = ref(0)
+const webhookStatus = ref(0)
+const webhookForm = reactive({ url: '', secret: '', retry: 0 })
 const emailColumnWidth = ref(0)
 const tokenColumnWidth = ref(0)
 const ruleType = ref(0)
@@ -1566,6 +1649,18 @@ function openThirdEmailSetting() {
   thirdEmailShow.value = true
 }
 
+function openWebhookSetting() {
+  webhookStatus.value = setting.value.webhookStatus
+  webhookForm.url = setting.value.webhookUrl || ''
+  webhookForm.retry = setting.value.webhookRetry ?? 0
+  webhookForm.secret = ''
+  webhookShow.value = true
+}
+
+function cleanWebhookForm() {
+  webhookForm.secret = ''
+}
+
 function openEmailPrefix() {
   emailPrefixShow.value = true
 }
@@ -1673,6 +1768,30 @@ function forwardEmailSave() {
   editSetting(form)
 }
 
+function webhookSave() {
+  let retry = Number(webhookForm.retry)
+  if (isNaN(retry) || retry < 0) {
+    retry = 0
+  }
+  const url = toOssDomain(webhookForm.url.trim())
+  if (isIpUrl(url)) {
+    ElMessage({
+      message: t('webhookIpNotSupported'),
+      type: 'warning',
+      plain: true
+    })
+    return
+  }
+  const form = {
+    webhookStatus: webhookStatus.value,
+    webhookUrl: url,
+    webhookRetry: retry
+  }
+  // Leave-blank-means-unchanged, same guard the Mailjet/S3 secret fields use.
+  if (webhookForm.secret) form.webhookSecret = webhookForm.secret
+  editSetting(form)
+}
+
 
 function ruleEmailSave() {
   const form = {
@@ -1703,6 +1822,35 @@ function resetAiCodeFilter() {
   aiCodeFilter.value = setting.value.aiCodeFilter ? setting.value.aiCodeFilter.split(',') : []
 }
 
+function openAutoClean() {
+  autoCleanDaysForm.value = setting.value.autoCleanDays ?? 0
+  autoCleanExclude.value = setting.value.autoCleanExclude
+      ? setting.value.autoCleanExclude.split(',').filter(Boolean)
+      : []
+  autoCleanShow.value = true
+}
+
+function resetAutoClean() {
+  autoCleanDaysForm.value = setting.value.autoCleanDays ?? 0
+  autoCleanExclude.value = setting.value.autoCleanExclude
+      ? setting.value.autoCleanExclude.split(',').filter(Boolean)
+      : []
+}
+
+function autoCleanExcludeAddTag(val) {
+  const emails = Array.from(new Set(
+      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
+  ));
+
+  autoCleanExclude.value.splice(autoCleanExclude.value.length - 1, 1)
+
+  emails.forEach(email => {
+    if (isEmail(email) && !autoCleanExclude.value.includes(email)) {
+      autoCleanExclude.value.push(email)
+    }
+  })
+}
+
 function saveEmailPrefix() {
   const form = {}
   form.minEmailPrefix = minEmailPrefix.value
@@ -1712,6 +1860,13 @@ function saveEmailPrefix() {
 
 function saveAiCodeFilter() {
   editSetting({aiCodeFilter: aiCodeFilter.value + ''})
+}
+
+function saveAutoClean() {
+  editSetting({
+    autoCleanDays: autoCleanDaysForm.value,
+    autoCleanExclude: autoCleanExclude.value + ''
+  }, true)
 }
 
 function saveBlackList() {
@@ -1960,6 +2115,7 @@ function editSetting(settingForm, refreshStatus = true) {
     turnstileShow.value = false
     tgSettingShow.value = false
     thirdEmailShow.value = false
+    webhookShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
     regVerifyCountShow.value = false
@@ -1967,6 +2123,7 @@ function editSetting(settingForm, refreshStatus = true) {
     addS3Show.value = false
     emailPrefixShow.value = false
     aiCodeFilterShow.value = false
+    autoCleanShow.value = false
   }).catch((e) => {
     panelOpacityPercent.value = factorToPercent(setting.value.loginOpacity)
     maskPercent.value = factorToPercent(setting.value.loginDarkenFactor)

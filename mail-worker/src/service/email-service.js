@@ -1,7 +1,7 @@
 import orm from '../entity/orm';
 import email from '../entity/email';
 import { attConst, emailConst, isDel, settingConst } from '../const/entity-const';
-import { and, desc, eq, gt, inArray, lt, count, asc, sql, ne, or, like, lte, gte } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, notInArray, lt, count, asc, sql, ne, or, like, lte, gte } from 'drizzle-orm';
 import { star } from '../entity/star';
 import settingService from './setting-service';
 import accountService from './account-service';
@@ -1643,6 +1643,62 @@ const emailService = {
 			`UPDATE email SET status = ${emailConst.status.NOONE}, is_del = ${isDel.NORMAL}
 			 WHERE status = ${emailConst.status.SAVING}`
 		).run();
+	},
+
+	// Global retention policy: hard-deletes ALL mail (received and sent,
+	// regardless of is_del/star) older than autoCleanDays, except for users
+	// listed in autoCleanExclude. Distinct from the trash-only autoDeleteDays
+	// purge -- this one runs on the whole mailbox, so it defaults off (0).
+	async autoClean(c) {
+		const { autoCleanDays, autoCleanExclude } = await settingService.query(c);
+		const days = Number(autoCleanDays);
+
+		if (!days || days <= 0) {
+			return;
+		}
+
+		const cutoff = dayjs().subtract(days, 'day').format('YYYY-MM-DD HH:mm:ss');
+		const excludeEmails = String(autoCleanExclude || '')
+			.split(/[,，]/)
+			.map(item => item.trim())
+			.filter(Boolean);
+
+		let excludeUserIds = [];
+		if (excludeEmails.length) {
+			const rows = await orm(c)
+				.select({ userId: user.userId })
+				.from(user)
+				.where(sql`lower(${user.email}) IN (${sql.join(excludeEmails.map(email => sql`${email.toLowerCase()}`), sql`, `)})`)
+				.all();
+			excludeUserIds = rows.map(row => row.userId);
+		}
+
+		const batchSize = 95;
+
+		while (true) {
+			const conditions = [lt(email.createTime, cutoff)];
+			if (excludeUserIds.length) {
+				conditions.push(notInArray(email.userId, excludeUserIds));
+			}
+
+			const rows = await orm(c)
+				.select({ emailId: email.emailId })
+				.from(email)
+				.where(and(...conditions))
+				.limit(batchSize)
+				.all();
+
+			if (!rows.length) {
+				break;
+			}
+
+			const emailIds = rows.map(row => row.emailId);
+			await this.physicsDelete(c, { emailIds: emailIds.join(',') });
+
+			if (rows.length < batchSize) {
+				break;
+			}
+		}
 	},
 
 	async batchDelete(c, params) {

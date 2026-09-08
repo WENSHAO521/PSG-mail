@@ -14,6 +14,7 @@ import aiService from '../service/ai-service';
 import notificationService from '../service/notification-service';
 import forwardingService from '../service/forwarding-service';
 import notificationEventService from '../service/notification-event-service';
+import webhookService from '../service/webhook-service';
 
 export async function email(message, env, ctx) {
 
@@ -25,6 +26,10 @@ export async function email(message, env, ctx) {
 			tgBotStatus,
 			forwardStatus,
 			forwardEmail,
+			webhookStatus,
+			webhookUrl,
+			webhookRetry,
+			webhookSecret,
 			ruleEmail,
 			ruleType,
 			r2Domain,
@@ -220,6 +225,11 @@ export async function email(message, env, ctx) {
 
 			}));
 
+		}
+
+		//转发到 Webhook
+		if (webhookStatus === settingConst.webhookStatus.OPEN && webhookUrl) {
+			await webhookService.sendEmail({ env }, emailRow, webhookUrl, webhookRetry, webhookSecret);
 		}
 
 		// 自动回复

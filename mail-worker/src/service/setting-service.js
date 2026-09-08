@@ -12,6 +12,7 @@ import verifyRecordService from './verify-record-service';
 import userContext from '../security/user-context';
 import alibabaDirectmailService from './alibaba-directmail-service';
 import verifyUtils from '../utils/verify-utils';
+import domainUtils from '../utils/domain-uitls';
 
 const FEATURE_DEFAULTS = {
 	allowPersonalForward: 1,
@@ -242,6 +243,7 @@ const settingService = {
 		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
 		settingRow.mailjetApiKey = settingRow.mailjetApiKey ? `${settingRow.mailjetApiKey.slice(0, 12)}******` : null;
 		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
+		settingRow.webhookSecret = settingRow.webhookSecret ? `${settingRow.webhookSecret.slice(0, 12)}******` : null;
 		// SMTP password for a real mailbox — unlike the API-key-shaped secrets
 		// above, no partial reveal at all. The frontend only ever learns
 		// whether a password is set, never any part of its value.
@@ -299,6 +301,10 @@ const settingService = {
 
 		if (Array.isArray(params.aiCodeFilter)) {
 			params.aiCodeFilter = params.aiCodeFilter + '';
+		}
+
+		if (params.webhookUrl !== undefined) {
+			params.webhookUrl = domainUtils.toOssDomain(params.webhookUrl) || '';
 		}
 
 		if (params.loginDarkenFactor !== undefined) {
