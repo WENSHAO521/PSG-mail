@@ -356,6 +356,9 @@ const translateBtnLabel = computed(() =>
   showTranslation.value ? t('showOriginal') : t('translateEmail')
 )
 
+// Only used to pick a sensible default translate direction on first click --
+// the actual translation request no longer sends this, since the AI model
+// auto-detects the source language far more reliably than this CJK-ratio guess.
 function detectLang(text) {
   const cjk = (text.match(/[一-鿿぀-ゟ゠-ヿ]/g) || []).length
   return cjk / Math.max(text.length, 1) > 0.1 ? 'zh' : 'en'
@@ -368,12 +371,10 @@ async function runTranslate(targetLang) {
   showTranslation.value = true
   translatedText.value = ''
   originalText.value = e.text || e.content || ''
-  const sourceLang = detectLang(e.text || e.content || '')
   try {
     const res = await translateEmail({
       html: e.content || undefined,
       text: e.content ? undefined : (e.text || ''),
-      source_lang: sourceLang,
       target_lang: targetLang,
     })
     translatedText.value = res?.translated_text || ''

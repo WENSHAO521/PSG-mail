@@ -3,7 +3,6 @@ import BizError from '../error/biz-error';
 import settingService from './setting-service';
 
 const DEFAULT_CHAT_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
-const DEFAULT_TRANSLATION_MODEL = '@cf/meta/m2m100-1.2b';
 
 function responseText(result) {
 	if (typeof result === 'string') return result;
@@ -18,14 +17,9 @@ function estimateUnits(input) {
 const aiProviderService = {
 	async models(c, task = 'chat') {
 		const setting = await settingService.query(c);
-		const isTranslation = task === 'translation';
-		// ai_model is a chat-completion model (expects { messages: [...] }).
-		// A translation task sends { text, source_lang, target_lang } instead,
-		// so it must never fall back to ai_model -- only to a translation model.
-		const model = setting.aiDefaultModel
-			|| (isTranslation
-				? (c.env.ai_translation_model || DEFAULT_TRANSLATION_MODEL)
-				: (c.env.ai_model || DEFAULT_CHAT_MODEL));
+		// Every task (including translation, which now sends chat-style
+		// { messages: [...] } like the rest) uses the same chat-completion model.
+		const model = setting.aiDefaultModel || c.env.ai_model || DEFAULT_CHAT_MODEL;
 		const fallbackModel = setting.aiFallbackModel || c.env.ai_fallback_model || c.env.ai_assistant_model || '';
 		return { model, fallbackModel, quota: Math.max(0, Number(setting.aiDailyQuota) || 0) };
 	},
@@ -76,5 +70,5 @@ const aiProviderService = {
 	},
 };
 
-export { DEFAULT_CHAT_MODEL, DEFAULT_TRANSLATION_MODEL };
+export { DEFAULT_CHAT_MODEL };
 export default aiProviderService;
