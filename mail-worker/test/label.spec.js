@@ -24,7 +24,7 @@ const SCHEMA = [
 		subject TEXT, code TEXT DEFAULT '', text TEXT, content TEXT, cc TEXT DEFAULT '[]', bcc TEXT DEFAULT '[]',
 		recipient TEXT, to_email TEXT DEFAULT '', to_name TEXT DEFAULT '', in_reply_to TEXT DEFAULT '',
 		relation TEXT DEFAULT '', message_id TEXT DEFAULT '', type INTEGER DEFAULT 0 NOT NULL,
-		status INTEGER DEFAULT 0 NOT NULL, resend_email_id TEXT, message TEXT, unread INTEGER DEFAULT 0 NOT NULL,
+		status INTEGER DEFAULT 0 NOT NULL, resend_email_id TEXT, provider TEXT DEFAULT '' NOT NULL, message TEXT, unread INTEGER DEFAULT 0 NOT NULL,
 		create_time TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL, is_del INTEGER DEFAULT 0 NOT NULL,
 		is_archive INTEGER DEFAULT 0 NOT NULL, is_spam INTEGER DEFAULT 0 NOT NULL, delete_time TEXT
 	)`,

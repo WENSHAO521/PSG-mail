@@ -1640,8 +1640,8 @@ const emailService = {
 			 WHERE status = ${emailConst.status.SAVING} AND EXISTS (SELECT 1 FROM account WHERE account_id = e.account_id)`
 		).run();
 		await c.env.db.prepare(
-			`UPDATE email as e SET status = ${emailConst.status.NOONE}, is_del = ${isDel.NORMAL}
-			 WHERE status = ${emailConst.status.SAVING} AND NOT EXISTS (SELECT 1 FROM account WHERE account_id = e.account_id)`
+			`UPDATE email SET status = ${emailConst.status.NOONE}, is_del = ${isDel.NORMAL}
+			 WHERE status = ${emailConst.status.SAVING}`
 		).run();
 	},
 

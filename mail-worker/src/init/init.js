@@ -302,6 +302,12 @@ const dbInit = {
 			console.warn(`跳过字段：${e.message}`);
 		}
 
+		try {
+			await c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_oauth_oauth_user_id ON oauth(oauth_user_id);`).run();
+		} catch (e) {
+			console.warn(`跳过索引：${e.message}`);
+		}
+
 	},
 
 	async v2_3DB(c) {
@@ -377,8 +383,11 @@ const dbInit = {
 			`CREATE INDEX IF NOT EXISTS idx_email_type ON email(type);`,
 			`CREATE INDEX IF NOT EXISTS idx_email_status ON email(status);`,
 			`CREATE INDEX IF NOT EXISTS idx_email_is_del ON email(is_del);`,
-			`CREATE INDEX IF NOT EXISTS idx_att_email_id ON att(email_id);`,
-			`CREATE INDEX IF NOT EXISTS idx_account_share_user_id ON account_share(user_id);`
+			`CREATE INDEX IF NOT EXISTS idx_att_email_id ON attachments(email_id);`,
+			`CREATE INDEX IF NOT EXISTS idx_account_share_user_id ON account_share(user_id);`,
+			`CREATE INDEX IF NOT EXISTS idx_attachments_email_type ON attachments(email_id, type);`,
+			`CREATE INDEX IF NOT EXISTS idx_role_perm_role_id ON role_perm(role_id);`,
+			`CREATE INDEX IF NOT EXISTS idx_email_saving_account ON email(account_id) WHERE status = ${emailConst.status.SAVING};`
 		];
 
 		const promises = ADD_COLUMN_SQL_LIST.map(async (sql) => {
