@@ -13,7 +13,7 @@
         <!-- ── Notice ── -->
         <div class="dl-notice">
           <Icon icon="psg:mail" width="15" />
-          {{ $t('vpnNotice') }}
+          {{ $t('vpnNotice') }}<a href="https://www.racknerd.com/specials/" target="_blank" rel="noopener" class="dl-notice-link">{{ $t('vpnNoticeVpsLink') }}</a>{{ $t('vpnNoticeMid') }}
           <a href="mailto:admin@panorama-sg.de" class="dl-notice-link">admin@panorama-sg.de</a>
         </div>
 
