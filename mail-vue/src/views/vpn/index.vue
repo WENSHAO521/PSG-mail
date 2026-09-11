@@ -12,9 +12,8 @@
 
         <!-- ── Notice ── -->
         <div class="dl-notice">
-          <Icon icon="psg:mail" width="15" />
-          {{ $t('vpnNotice') }}<a href="https://www.racknerd.com/specials/" target="_blank" rel="noopener" class="dl-notice-link">{{ $t('vpnNoticeVpsLink') }}</a>{{ $t('vpnNoticeMid') }}
-          <a href="mailto:admin@panorama-sg.de" class="dl-notice-link">admin@panorama-sg.de</a>
+          <Icon icon="psg:mail" width="15" class="dl-notice-icon" />
+          <span class="dl-notice-text">{{ $t('vpnNotice') }}<a href="https://www.racknerd.com/specials/" target="_blank" rel="noopener" class="dl-notice-link">{{ $t('vpnNoticeVpsLink') }}</a>{{ $t('vpnNoticeMid') }} <a href="mailto:admin@panorama-sg.de" class="dl-notice-link">admin@panorama-sg.de</a></span>
         </div>
 
         <!-- ── Loading skeleton ── -->
@@ -279,7 +278,7 @@ function formatDate(iso) {
 /* ── Notice ── */
 .dl-notice {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 10px 14px;
   margin-bottom: 24px;
@@ -288,7 +287,18 @@ function formatDate(iso) {
   border-left: 3px solid var(--psg-primary);
   font-size: 12px;
   color: var(--psg-text-secondary);
-  flex-wrap: wrap;
+}
+
+.dl-notice-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.dl-notice-text {
+  flex: 1;
+  min-width: 0;
+  text-align: justify;
+  line-height: 1.6;
 }
 
 .dl-notice-link {
