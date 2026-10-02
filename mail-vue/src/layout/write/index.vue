@@ -2562,7 +2562,7 @@ function close() {
 
 .write-select {
   position: absolute;
-  width: 300px;
+  width: min(300px, calc(100% - 72px));
   left: 60px;
   z-index: 0;
   opacity: 0;
@@ -2884,4 +2884,22 @@ function close() {
 .write-box:not([data-state="minimized"]) { overflow: visible; }
 .write-box:not([data-state="minimized"]) .editor-wrap { overflow: visible; }
 .write-box:not([data-state="minimized"]) .wh { border-radius: 28px 28px 0 0; }
+
+/* One column that never grows past the panel: without this the grid track
+   sizes to its widest unwrappable child (toolbar, From row), and with the
+   panel overflow-visible above that pushed the close and Send buttons
+   off-screen on phones. */
+.write-box { grid-template-columns: minmax(0, 1fr); }
+
+/* The sender dropdown's wrapper must be allowed to shrink, or a long
+   "Name <address>" pushes the From row past the screen edge on phones. */
+.from-row .el-dropdown { min-width: 0; max-width: 100%; }
+.from-chip { min-width: 0; }
+.from-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
+
+/* Phones: the composer is full-screen, so square corners all round. */
+@media (max-width: 767px) {
+  .write-box,
+  .write-box:not([data-state="minimized"]) .wh { border-radius: 0; }
+}
 </style>
