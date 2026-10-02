@@ -400,6 +400,7 @@ const zh = {
     from: '发件人',
     subject: '主题',
     sender: '发件人',
+    chooseSender: '选择发件地址',
     senderAutoPicked: '已按原邮件的收件地址自动选择',
     user: '用户',
     searchByContent: '输入内容查询',

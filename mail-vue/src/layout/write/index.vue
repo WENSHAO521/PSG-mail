@@ -53,6 +53,7 @@
           </button>
           <template #dropdown>
             <el-dropdown-menu>
+              <div class="sender-menu-head">{{ $t('chooseSender') }}</div>
               <el-dropdown-item
                 v-for="acc in senderAccounts"
                 :key="acc.accountId"
@@ -60,18 +61,17 @@
                 :class="{ 'is-active-sender': acc.accountId === form.accountId }"
               >
                 <div class="sender-option">
-                  <div class="sender-opt-avatar"
-                       :style="storedAvatar(acc.email) ? { background: 'transparent', border: 'none', padding: 0, overflow: 'hidden' }
-                                                       : { background: avatarBg(acc.email) + '18', borderColor: avatarBg(acc.email) + '40' }">
-                    <img v-if="storedAvatar(acc.email)" :src="storedAvatar(acc.email)" class="opt-avatar-img"/>
-                    <span v-else>{{ (acc.name || acc.email || '?')[0].toUpperCase() }}</span>
+                  <div class="sender-opt-avatar" :style="storedAvatar(acc.email) ? null : senderTint(acc.email)">
+                    <img v-if="storedAvatar(acc.email)" :src="storedAvatar(acc.email)" class="opt-avatar-img" alt=""/>
+                    <span v-else>{{ senderTitle(acc)[0].toUpperCase() }}</span>
+                    <i class="sender-opt-dot" :style="{ background: mailboxColor(acc.email) }"></i>
                   </div>
                   <div class="sender-opt-info">
-                    <span class="sender-opt-name" v-if="acc.name">{{ acc.name }}</span>
+                    <span class="sender-opt-name">{{ senderTitle(acc) }}</span>
                     <span class="sender-opt-email">{{ acc.email }}</span>
                   </div>
                   <Icon v-if="acc.accountId === form.accountId"
-                        icon="psg:check-circle" width="14" height="14" class="sender-opt-check"/>
+                        icon="psg:check" width="18" height="18" class="sender-opt-check"/>
                 </div>
               </el-dropdown-item>
             </el-dropdown-menu>
@@ -375,7 +375,21 @@ import undoSendRing from "@/components/undo-send-ring/index.vue"
 import {toOssDomain} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
-import {avatarBg, storedAvatar, mailboxColor} from "@/utils/avatar.js";
+import {storedAvatar, mailboxColor} from "@/utils/avatar.js";
+
+// Sender menu: the mailbox's own colour (same as its dot on the inbox
+// chips) as a soft tile, and a title that never just repeats the address.
+function senderTint(email) {
+  const hue = mailboxColor(email)
+  return { background: `color-mix(in srgb, ${hue} 16%, var(--psg-surface))`, color: `color-mix(in srgb, ${hue} 70%, var(--psg-text))` }
+}
+function senderTitle(acc) {
+  const local = (acc.email || '').split('@')[0]
+  if (acc.name && acc.name !== local) return acc.name
+  // No display name: "sebastian.lenz" reads as "Sebastian Lenz".
+  return local.split(/[._-]+/).filter(Boolean)
+    .map(w => w[0].toUpperCase() + w.slice(1)).join(' ') || local
+}
 import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
 import db from "@/db/db.js";
@@ -1612,9 +1626,26 @@ function close() {
   border-radius: var(--psg-radius-xs) !important;
 }
 
-.write-sender-dropdown,
 .write-template-dropdown {
   border-radius: var(--psg-radius-xs) !important;
+}
+
+/* Sender menu: roomy rounded rows; the chosen one gets a soft accent
+   wash and a check instead of the generic grey highlight. */
+.write-sender-dropdown {
+  border-radius: var(--psg-radius-lg) !important;
+}
+.write-sender-dropdown .el-dropdown-menu { padding: 6px; }
+.write-sender-dropdown .el-dropdown-menu__item {
+  margin: 1px 0;
+  padding: 6px 10px;
+  border-radius: var(--psg-radius-md);
+  line-height: normal;
+}
+.write-sender-dropdown .el-dropdown-menu__item.is-active-sender,
+.write-sender-dropdown .el-dropdown-menu__item.is-active-sender:hover,
+.write-sender-dropdown .el-dropdown-menu__item.is-active-sender:focus {
+  background: var(--psg-primary-muted) !important;
 }
 
 /* Send-later date/time popup — desktop widget is fine anchored to the field,
@@ -1840,36 +1871,54 @@ function close() {
 }
 
 /* Dropdown option rows */
+.sender-menu-head {
+  padding: 8px 12px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--psg-text-muted);
+}
+
 .sender-option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 220px;
-  padding: 2px 0;
+  gap: 12px;
+  width: 100%;
+  min-width: 280px;
+  padding: 4px 0;
 }
 
 .sender-opt-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--compose-radius);
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--psg-radius-sm);
   background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-border);
   color: var(--psg-text-secondary);
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  overflow: hidden;
 }
 
 .opt-avatar-img {
-  width: 28px;
-  height: 28px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: var(--compose-radius);
+  border-radius: inherit;
+}
+
+/* Mailbox colour dot, matching the inbox chips and the From field. */
+.sender-opt-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--psg-surface);
 }
 
 .sender-opt-info {
@@ -1877,12 +1926,13 @@ function close() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .sender-opt-name {
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.3;
   color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
@@ -1890,10 +1940,9 @@ function close() {
 }
 
 .sender-opt-email {
-  font-size: 11.5px;
-  font-family: var(--psg-font-sans);
-  font-variant-numeric: tabular-nums;
-  color: var(--psg-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: var(--psg-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1902,10 +1951,6 @@ function close() {
 .sender-opt-check {
   color: var(--psg-primary);
   flex-shrink: 0;
-}
-
-:deep(.is-active-sender) {
-  background: var(--psg-surface-active) !important;
 }
 
 .wh-avatar {

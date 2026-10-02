@@ -400,6 +400,7 @@ const en = {
     from: 'From',
     subject: 'Subject',
     sender: 'From',
+    chooseSender: 'Send from',
     senderAutoPicked: 'Picked from the address the original was sent to',
     user: 'User',
     searchByContent: 'Enter text to search',
