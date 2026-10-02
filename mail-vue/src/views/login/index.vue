@@ -7,7 +7,7 @@
     <div class="brand-panel">
       <div class="brand-card">
         <div class="brand-top">
-          <span class="brand-mark">P</span>
+          <BrandLogo class="brand-mark" />
           <span class="brand-name">PSG Mail</span>
         </div>
 
@@ -36,7 +36,7 @@
 
         <!-- Compact brand header (shown when brand panel is hidden) -->
         <div class="card-brand">
-          <span class="brand-mark">P</span>
+          <BrandLogo class="brand-mark" />
           <div class="card-brand-meta">
             <span class="card-brand-name">PSG Mail</span>
             <span class="card-brand-sub">Panorama Scholarly Group</span>
@@ -305,6 +305,7 @@
 </template>
 
 <script setup>
+import BrandLogo from "@/components/brand-logo/index.vue"
 import { avatarTint } from '@/utils/avatar.js'
 // Decorative sample rows for the sign-in brand card (not real mail).
 const previewRows = [
@@ -969,16 +970,10 @@ function submitRegister() {
 .brand-top { display: flex; align-items: center; gap: 12px; }
 
 .brand-mark {
-  width: 38px;
-  height: 38px;
+  width: 28px;
+  height: 34px;
   flex-shrink: 0;
-  border-radius: 12px;
-  background: var(--psg-text);
-  color: var(--psg-surface);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 17px;
+  color: var(--psg-text);
 }
 
 .brand-name { font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--psg-text); }

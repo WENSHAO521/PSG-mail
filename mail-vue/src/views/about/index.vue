@@ -5,7 +5,7 @@
 
         <!-- ── Brand header ── -->
         <div class="about-hero">
-          <div class="hero-mark" aria-hidden="true">P</div>
+          <BrandLogo class="hero-mark" aria-hidden="true" />
           <div class="hero-product">PSG Mail</div>
           <div class="hero-publisher">Panorama Scholarly Group</div>
           <div class="hero-version-chip">v{{ appVersion }}</div>
@@ -131,6 +131,7 @@
 </template>
 
 <script setup>
+import BrandLogo from "@/components/brand-logo/index.vue"
 import { ref, computed, onMounted, onUnmounted, defineOptions } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
@@ -306,18 +307,10 @@ onUnmounted(() => {
 }
 
 .hero-mark {
-  display: grid;
-  width: 64px;
-  height: 64px;
-  margin-bottom: 12px;
-  place-items: center;
-  color: var(--psg-on-primary);
-  background: var(--psg-text);
-  border-radius: var(--psg-radius-lg);
-  font-size: 28px;
-  font-weight: 700;
-
-  :global(html.dark) & { color: var(--psg-canvas); }
+  width: 52px;
+  height: 62px;
+  margin-bottom: 14px;
+  color: var(--psg-text);
 }
 
 .hero-publisher {

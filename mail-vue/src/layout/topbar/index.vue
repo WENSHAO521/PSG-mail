@@ -3,7 +3,7 @@
        notifications and the account menu. Replaces the old sidebar. -->
   <header class="topbar" :class="{ 'topbar--mac': isMac }">
     <div class="tb-brand" @click="router.push({ name: 'email' })">
-      <span class="tb-mark">P</span>
+      <BrandLogo class="tb-mark" />
       <span class="tb-name">PSG Mail</span>
     </div>
 
@@ -104,6 +104,7 @@
 </template>
 
 <script setup>
+import BrandLogo from "@/components/brand-logo/index.vue"
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
@@ -220,15 +221,9 @@ function clickLogout() {
 }
 
 .tb-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: var(--psg-text);
-  color: var(--psg-canvas);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 15px;
+  width: 26px;
+  height: 31px;
+  color: var(--psg-text);
 }
 
 .tb-name {
