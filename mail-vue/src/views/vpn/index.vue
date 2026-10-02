@@ -1,163 +1,97 @@
 <template>
-  <div class="download-view">
+  <div class="vpn-view">
     <el-scrollbar>
-      <div class="dl-body">
+      <div class="vpn-body">
 
-        <!-- ── Hero ── -->
-        <div class="dl-hero">
-          <div class="hero-publisher">Panorama Scholarly Group</div>
-          <div class="hero-product">PSG CONNECT</div>
-          <div class="hero-sub">{{ $t('vpnHeroSub') }}</div>
-        </div>
-
-        <!-- ── Notice ── -->
-        <div class="dl-notice">
-          <Icon icon="psg:mail" width="15" class="dl-notice-icon" />
-          <span class="dl-notice-text">{{ $t('vpnNotice') }}<a href="https://www.racknerd.com/specials/" target="_blank" rel="noopener" class="dl-notice-link">{{ $t('vpnNoticeVpsLink') }}</a>{{ $t('vpnNoticeMid') }} <a href="mailto:admin@panorama-sg.de" class="dl-notice-link">admin@panorama-sg.de</a></span>
-        </div>
-
-        <!-- ── Loading skeleton ── -->
-        <div v-if="loading" class="dl-grid">
-          <div v-for="i in 4" :key="i" class="dl-card dl-card--skeleton" />
-        </div>
-
-        <!-- ── Error ── -->
-        <div v-else-if="error" class="dl-error">
-          <Icon icon="psg:warning" width="20" />
-          {{ $t('vpnLoadError') }}
-          <a :href="RELEASES_URL" target="_blank" rel="noopener" class="dl-releases-link">
-            {{ $t('vpnViewOnGitHub') }}
+        <!-- ── Hero: product, latest version, one-click download for this device ── -->
+        <header class="vpn-hero">
+          <div class="vpn-hero-icon"><Icon icon="psg:shield" width="28" height="28" /></div>
+          <div class="vpn-hero-copy">
+            <h1>PSG Connect</h1>
+            <p>{{ $t('vpnHeroSub') }}</p>
+            <div v-if="latest" class="vpn-hero-meta">
+              <span class="vpn-chip">{{ latest.tag_name }}</span>
+              <span class="vpn-date">{{ formatDate(latest.published_at) }}</span>
+            </div>
+          </div>
+          <a v-if="primary" class="vpn-primary" :href="primary.asset.browser_download_url" target="_blank" rel="noopener">
+            <Icon icon="psg:download" width="18" height="18" />
+            {{ $t('vpnDownloadFor', { platform: primary.name }) }}
           </a>
-        </div>
+        </header>
 
-        <template v-else-if="latest">
+        <!-- ── Setup steps ── -->
+        <section class="vpn-steps" :aria-label="$t('vpnBeforeStart')">
+          <h2>{{ $t('vpnBeforeStart') }}</h2>
+          <ol>
+            <li>
+              <span class="vpn-step-no">1</span>
+              <div>
+                <strong>{{ $t('vpnStepServer') }}</strong>
+                <span>{{ $t('vpnStepServerDesc') }}
+                  <a href="https://www.racknerd.com/specials/" target="_blank" rel="noopener">{{ $t('vpnNoticeVpsLink') }}</a></span>
+              </div>
+            </li>
+            <li>
+              <span class="vpn-step-no">2</span>
+              <div>
+                <strong>{{ $t('vpnStepConfig') }}</strong>
+                <span><a href="mailto:admin@panorama-sg.de">admin@panorama-sg.de</a></span>
+              </div>
+            </li>
+            <li>
+              <span class="vpn-step-no">3</span>
+              <div>
+                <strong>{{ $t('vpnStepInstall') }}</strong>
+                <span>{{ $t('vpnStepInstallDesc') }}</span>
+              </div>
+            </li>
+          </ol>
+        </section>
 
-          <!-- ── Version meta ── -->
-          <div class="dl-section-meta">
-            <span class="section-tag">{{ latest.tag_name }}</span>
-            <span class="section-date">{{ formatDate(latest.published_at) }}</span>
+        <!-- ── Platforms ── -->
+        <section class="vpn-platforms">
+          <h2>{{ $t('vpnPlatforms') }}</h2>
+
+          <div v-if="loading" class="vpn-list">
+            <div v-for="i in 4" :key="i" class="vpn-row vpn-row--skeleton" />
           </div>
 
-          <!-- ── Platform cards ── -->
-          <div class="dl-grid">
-
-            <!-- Windows -->
-            <div class="dl-card" v-if="assets('win').length">
-              <div class="dl-card-icon">
-                <Icon icon="simple-icons:windows11" width="40" height="40" />
-              </div>
-              <div class="dl-card-info">
-                <div class="dl-card-platform">Windows</div>
-                <div class="dl-card-desc">{{ $t('vpnWindowsDesc') }}</div>
-                <div class="dl-card-meta">Windows 10 / 11</div>
-              </div>
-              <div class="dl-btn-group">
-                <a
-                  v-for="a in assets('win')"
-                  :key="a.name"
-                  class="dl-btn"
-                  :href="a.browser_download_url"
-                  target="_blank"
-                  rel="noopener"
-                  :title="a.name"
-                >
-                  <Icon icon="psg:download" width="14" height="14" />
-                  {{ archLabel(a.name) }}
-                </a>
-              </div>
+          <div v-else-if="error" class="vpn-error">
+            <Icon icon="psg:warning" width="22" height="22" />
+            <span>{{ $t('vpnLoadError') }}</span>
+            <div class="vpn-error-actions">
+              <button type="button" class="vpn-pill" @click="load">{{ $t('retry') }}</button>
+              <a class="vpn-pill" :href="RELEASES_URL" target="_blank" rel="noopener">{{ $t('vpnViewOnGitHub') }}</a>
             </div>
-
-            <!-- macOS -->
-            <div class="dl-card" v-if="assets('mac').length">
-              <div class="dl-card-icon">
-                <Icon icon="simple-icons:apple" width="40" height="40" />
-              </div>
-              <div class="dl-card-info">
-                <div class="dl-card-platform">macOS</div>
-                <div class="dl-card-desc">{{ $t('vpnMacDesc') }}</div>
-                <div class="dl-card-meta">macOS 12+</div>
-              </div>
-              <div class="dl-btn-group">
-                <a
-                  v-for="a in assets('mac')"
-                  :key="a.name"
-                  class="dl-btn"
-                  :href="a.browser_download_url"
-                  target="_blank"
-                  rel="noopener"
-                  :title="a.name"
-                >
-                  <Icon icon="psg:download" width="14" height="14" />
-                  {{ archLabel(a.name) }}
-                </a>
-              </div>
-            </div>
-
-            <!-- Android -->
-            <div class="dl-card" v-if="assets('android').length">
-              <div class="dl-card-icon">
-                <Icon icon="simple-icons:android" width="40" height="40" />
-              </div>
-              <div class="dl-card-info">
-                <div class="dl-card-platform">Android</div>
-                <div class="dl-card-desc">{{ $t('vpnAndroidDesc') }}</div>
-                <div class="dl-card-meta">Android 5.0+</div>
-              </div>
-              <div class="dl-btn-group">
-                <a
-                  v-for="a in assets('android')"
-                  :key="a.name"
-                  class="dl-btn"
-                  :href="a.browser_download_url"
-                  target="_blank"
-                  rel="noopener"
-                  :title="a.name"
-                >
-                  <Icon icon="psg:download" width="14" height="14" />
-                  {{ archLabel(a.name) }}
-                </a>
-              </div>
-            </div>
-
-            <!-- Linux -->
-            <div class="dl-card" v-if="assets('linux').length">
-              <div class="dl-card-icon">
-                <Icon icon="simple-icons:linux" width="40" height="40" />
-              </div>
-              <div class="dl-card-info">
-                <div class="dl-card-platform">Linux</div>
-                <div class="dl-card-desc">{{ $t('vpnLinuxDesc') }}</div>
-                <div class="dl-card-meta">Ubuntu 22.04+</div>
-              </div>
-              <div class="dl-btn-group">
-                <a
-                  v-for="a in assets('linux')"
-                  :key="a.name"
-                  class="dl-btn"
-                  :href="a.browser_download_url"
-                  target="_blank"
-                  rel="noopener"
-                  :title="a.name"
-                >
-                  <Icon icon="psg:download" width="14" height="14" />
-                  {{ archLabel(a.name) }}
-                </a>
-              </div>
-            </div>
-
           </div>
 
-          <!-- ── Footer ── -->
-          <div class="dl-footer">
-            <a class="dl-releases-link" :href="RELEASES_URL" target="_blank" rel="noopener">
-              <Icon icon="simple-icons:github" width="14" height="14" />
-              {{ $t('vpnAllReleases') }}
-            </a>
-            <span class="dl-version">{{ latest.tag_name }}</span>
+          <div v-else class="vpn-list">
+            <div v-for="p in platforms" :key="p.key" class="vpn-row" :class="{ 'vpn-row--current': p.key === detected }">
+              <div class="vpn-row-icon"><Icon :icon="p.icon" width="22" height="22" /></div>
+              <div class="vpn-row-info">
+                <div class="vpn-row-title">
+                  {{ p.name }}
+                  <span v-if="p.key === detected" class="vpn-current">{{ $t('vpnThisDevice') }}</span>
+                </div>
+                <div class="vpn-row-desc">{{ $t(p.descKey) }} · {{ p.req }}</div>
+              </div>
+              <div class="vpn-row-actions">
+                <a v-for="a in p.assets" :key="a.name" class="vpn-pill" :class="{ 'vpn-pill--accent': p.key === detected }"
+                   :href="a.browser_download_url" target="_blank" rel="noopener" :title="a.name">
+                  <Icon icon="psg:download" width="14" height="14" />
+                  {{ a.label }}
+                </a>
+              </div>
+            </div>
           </div>
+        </section>
 
-        </template>
-
+        <footer class="vpn-footer">
+          <a :href="RELEASES_URL" target="_blank" rel="noopener">
+            {{ $t('vpnAllReleases') }} <Icon icon="psg:chevron-right" width="14" height="14" />
+          </a>
+        </footer>
       </div>
     </el-scrollbar>
   </div>
@@ -174,7 +108,9 @@ const latest  = ref(null)
 const loading = ref(true)
 const error   = ref(false)
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
+  error.value = false
   try {
     const res = await fetch(GITHUB_API)
     if (!res.ok) throw new Error(res.status)
@@ -184,6 +120,35 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+onMounted(load)
+
+function detectPlatform() {
+  const ua = navigator.userAgent || ''
+  if (/Android/i.test(ua)) return 'android'
+  if (/Win/i.test(ua)) return 'win'
+  if (/Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) return 'mac'
+  if (/Linux/i.test(ua)) return 'linux'
+  return null
+}
+const detected = detectPlatform()
+
+const PLATFORMS = [
+  { key: 'win',     name: 'Windows', icon: 'simple-icons:windows11', descKey: 'vpnWindowsDesc', req: 'Windows 10 / 11' },
+  { key: 'mac',     name: 'macOS',   icon: 'simple-icons:apple',     descKey: 'vpnMacDesc',     req: 'macOS 12+' },
+  { key: 'android', name: 'Android', icon: 'simple-icons:android',   descKey: 'vpnAndroidDesc', req: 'Android 5.0+' },
+  { key: 'linux',   name: 'Linux',   icon: 'simple-icons:linux',     descKey: 'vpnLinuxDesc',   req: 'Ubuntu 22.04+' },
+]
+
+// Platforms that have a build in the latest release, this device first.
+const platforms = computed(() => PLATFORMS
+  .map(p => ({ ...p, assets: labelled(assets(p.key)) }))
+  .filter(p => p.assets.length)
+  .sort((a, b) => (b.key === detected) - (a.key === detected)))
+
+const primary = computed(() => {
+  const p = platforms.value.find(p => p.key === detected)
+  return p ? { name: p.name, asset: p.assets[0] } : null
 })
 
 // Return all assets for a given platform, excluding metadata files
@@ -198,6 +163,18 @@ function assets(platform) {
     if (platform === 'android') return n.endsWith('.apk') || n.endsWith('.aab')
     if (platform === 'linux')   return n.endsWith('.deb') || n.endsWith('.rpm') || n.endsWith('.appimage')
     return false
+  })
+}
+
+// Arch labels, with the file format added where two builds would otherwise
+// read the same (e.g. Linux x64 .deb and x64 AppImage).
+function labelled(list) {
+  const labels = list.map(a => archLabel(a.name))
+  return list.map((a, i) => {
+    const dup = labels.filter(l => l === labels[i]).length > 1
+    const ext = (a.name.match(/\.([a-zA-Z0-9]+)$/)?.[1] || '').toLowerCase()
+    const fmt = ext === 'appimage' ? 'AppImage' : ext.toUpperCase()
+    return { ...a, label: dup && fmt ? `${labels[i]} · ${fmt}` : labels[i] }
   })
 }
 
@@ -232,233 +209,270 @@ function formatDate(iso) {
 </script>
 
 <style lang="scss" scoped>
-.download-view {
-  height: 100%;
+.vpn-view { height: 100%; }
+
+.vpn-body {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 40px 32px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+
+  @media (max-width: 640px) { padding: 20px 16px 40px; gap: 22px; }
 }
 
-.dl-body {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 40px 24px 60px;
+h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--psg-text);
 }
 
 /* ── Hero ── */
-.dl-hero {
-  margin-bottom: 32px;
-}
-
-.hero-publisher {
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--psg-text-muted);
-  margin-bottom: 4px;
-}
-
-.hero-product {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  color: var(--psg-text);
-  line-height: 1.1;
-}
-
-.hero-sub {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--psg-text-muted);
-}
-
-/* ── Notice ── */
-.dl-notice {
+.vpn-hero {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 14px;
-  margin-bottom: 24px;
-  background: var(--psg-surface-muted);
-  border: 0;
-  border-left: 3px solid var(--psg-primary);
-  font-size: 12px;
-  color: var(--psg-text-secondary);
+  align-items: center;
+  gap: 18px;
+
+  @media (max-width: 640px) { flex-wrap: wrap; }
 }
 
-.dl-notice-icon {
+.vpn-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
   flex-shrink: 0;
-  margin-top: 1px;
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-primary-muted);
+  color: var(--psg-primary);
 }
 
-.dl-notice-text {
+.vpn-hero-copy {
   flex: 1;
   min-width: 0;
-  text-align: justify;
-  line-height: 1.6;
-}
 
-.dl-notice-link {
-  color: var(--psg-text);
-  text-decoration: none;
-  font-size: 12.5px;
-  font-weight: 600;
+  h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    line-height: 1.15;
+    color: var(--psg-text);
+  }
 
-  @media (hover: hover) {
-    &:hover { text-decoration: underline; }
+  p {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--psg-text-secondary);
+    line-height: 1.5;
   }
 }
 
-/* ── Version meta ── */
-.dl-section-meta {
+.vpn-hero-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.section-tag {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--psg-text);
-}
-
-.section-date {
-  font-size: 12px;
-  color: var(--psg-text-muted);
-}
-
-/* ── Grid ── */
-.dl-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  margin-bottom: 28px;
-}
-
-/* ── Card ── */
-.dl-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 22px 20px 18px;
-  border-radius: var(--psg-radius-lg);
+.vpn-chip {
+  padding: 3px 10px;
+  border-radius: var(--psg-radius-full);
   background: var(--psg-surface-muted);
-  border: 0;
-  border-top: 3px solid var(--psg-border);
-  transition: border-top-color 0.12s;
-
-  @media (hover: hover) {
-    &:hover { border-top-color: var(--psg-primary); }
-  }
-
-  &--skeleton {
-    height: 180px;
-    opacity: 0.35;
-    animation: dl-pulse 1.2s ease-in-out infinite;
-  }
-}
-
-.dl-card-icon {
-  color: var(--psg-text);
-  opacity: 0.75;
-}
-
-.dl-card-info { flex: 1; }
-
-.dl-card-platform {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0;
   color: var(--psg-text);
-  margin-bottom: 4px;
 }
 
-.dl-card-desc {
-  font-size: 12px;
-  color: var(--psg-text-muted);
-  line-height: 1.5;
-  margin-bottom: 6px;
-}
+.vpn-date { font-size: 12px; color: var(--psg-text-muted); }
 
-.dl-card-meta {
-  font-size: 12px;
-  color: var(--psg-text-muted);
-  letter-spacing: 0;
-}
-
-/* ── Button group (multiple arch variants) ── */
-.dl-btn-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.dl-btn {
+.vpn-primary {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: var(--psg-radius-sm);
+  gap: 8px;
+  height: 46px;
+  padding: 0 20px;
+  flex-shrink: 0;
+  border-radius: var(--psg-radius-md);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
-  font-family: var(--psg-font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
+  font-size: 14px;
+  font-weight: 700;
   text-decoration: none;
-  cursor: pointer;
-  border: none;
-  transition: opacity 0.12s;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  transition: background .14s ease;
 
-  @media (hover: hover) {
-    &:hover { opacity: .88; }
-  }
-  &:active { opacity: .88; }
+  @media (hover: hover) { &:hover { background: var(--psg-primary-hover); } }
+  @media (max-width: 640px) { width: 100%; justify-content: center; }
 }
 
-/* ── Error ── */
-.dl-error {
-  display: flex;
-  align-items: center;
+/* ── Steps ── */
+.vpn-steps ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  padding: 24px 0;
-  font-size: 13px;
-  color: var(--psg-danger);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (max-width: 720px) { grid-template-columns: 1fr; }
 }
 
-/* ── Footer ── */
-.dl-footer {
+.vpn-steps li {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-surface-muted);
+
+  > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+  strong { font-size: 14px; font-weight: 700; color: var(--psg-text); line-height: 1.35; }
+
+  span { font-size: 13px; color: var(--psg-text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
+
+  a { color: var(--psg-primary); font-weight: 600; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+}
+
+.vpn-step-no {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--psg-surface);
+  color: var(--psg-primary);
+  font-size: 13px !important;
+  font-weight: 700;
+}
+
+/* ── Platform list ── */
+.vpn-list { display: flex; flex-direction: column; gap: 8px; }
+
+.vpn-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding-top: 20px;
+  gap: 14px;
+  min-height: 72px;
+  padding: 14px 16px;
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-surface-muted);
+
+  &--current { box-shadow: inset 0 0 0 2px var(--psg-primary); }
+
+  &--skeleton { animation: vpn-pulse 1.2s ease-in-out infinite; }
+
+  @media (max-width: 640px) { flex-wrap: wrap; }
 }
 
-.dl-releases-link {
+.vpn-row-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--psg-radius-md);
+  background: var(--psg-surface);
+  color: var(--psg-text);
+}
+
+.vpn-row-info { flex: 1; min-width: 0; }
+
+.vpn-row-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--psg-text);
+}
+
+.vpn-current {
+  padding: 1px 8px;
+  border-radius: var(--psg-radius-full);
+  background: var(--psg-primary-muted);
+  color: var(--psg-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.vpn-row-desc {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--psg-text-muted);
+  line-height: 1.45;
+}
+
+.vpn-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+
+  @media (max-width: 640px) { width: 100%; justify-content: flex-start; padding-left: 58px; }
+}
+
+.vpn-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--psg-text-muted);
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--psg-radius-full);
+  background: var(--psg-surface);
+  color: var(--psg-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease;
 
-  @media (hover: hover) {
-    &:hover { color: var(--psg-text); }
+  @media (hover: hover) { &:hover { background: var(--psg-surface-active); } }
+
+  &--accent {
+    background: var(--psg-primary);
+    color: var(--psg-on-primary);
+
+    @media (hover: hover) { &:hover { background: var(--psg-primary-hover); } }
   }
 }
 
-.dl-version {
-  font-size: 11px;
-  color: var(--psg-text-muted);
-  margin-left: auto;
+.vpn-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 36px 20px;
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-surface-muted);
+  color: var(--psg-text-secondary);
+  font-size: 14px;
+
+  > svg { color: var(--psg-danger); }
 }
 
-@keyframes dl-pulse {
-  0%, 100% { opacity: 0.35; }
-  50%       { opacity: 0.15; }
+.vpn-error-actions { display: flex; gap: 8px; }
+
+.vpn-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--psg-text-muted);
+  text-decoration: none;
+
+  @media (hover: hover) { &:hover { color: var(--psg-text); } }
+}
+
+@keyframes vpn-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
 }
 </style>

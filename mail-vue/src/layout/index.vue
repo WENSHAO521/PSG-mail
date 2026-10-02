@@ -141,12 +141,34 @@ const platform = window.electronAPI?.platform ?? 'web'
 const isMobile = ref(window.innerWidth < 1025)
 
 // ── Draggable list/detail pane divider ──────────────────────────────────
-const LIST_WIDTH_KEY = 'psgMailListWidth'
-const DEFAULT_LIST_WIDTH = 440
-const listPaneWidth = ref(Number(localStorage.getItem(LIST_WIDTH_KEY)) || DEFAULT_LIST_WIDTH)
+// The list keeps a share of the window rather than a fixed pixel width, so
+// it grows and shrinks with the window; dragging changes the share and a
+// double-click goes back to the default.
+const LIST_SHARE_KEY = 'psgMailListShare'
+const DEFAULT_LIST_SHARE = 0.3
+const LIST_MIN = 340
+const viewportW = ref(window.innerWidth)
+const listShare = ref(loadListShare())
+const listPaneWidth = computed(() => clampListWidth(listShare.value * viewportW.value))
 let resizeStartX = 0
 let resizeStartWidth = 0
 const resizerDragging = ref(false)
+
+function loadListShare() {
+  const saved = Number(localStorage.getItem(LIST_SHARE_KEY))
+  if (saved > 0 && saved < 1) return saved
+  // One-off carry-over from the old fixed-pixel setting.
+  const px = Number(localStorage.getItem('psgMailListWidth'))
+  return px > 0 ? px / window.innerWidth : DEFAULT_LIST_SHARE
+}
+
+function clampListWidth(w) {
+  return Math.round(Math.min(Math.max(LIST_MIN, viewportW.value * 0.5), 760, Math.max(LIST_MIN, w)))
+}
+
+function onViewportResize() { viewportW.value = window.innerWidth }
+window.addEventListener('resize', onViewportResize)
+onBeforeUnmount(() => window.removeEventListener('resize', onViewportResize))
 
 function startListResize(e) {
   resizeStartX = e.clientX
@@ -159,22 +181,22 @@ function startListResize(e) {
 }
 
 function onListResize(e) {
-  const next = resizeStartWidth + (e.clientX - resizeStartX)
-  listPaneWidth.value = Math.min(650, Math.max(340, next))
+  const next = clampListWidth(resizeStartWidth + (e.clientX - resizeStartX))
+  listShare.value = next / viewportW.value
 }
 
 function stopListResize() {
   resizerDragging.value = false
   document.body.style.cursor = ''
   document.body.style.userSelect = ''
-  localStorage.setItem(LIST_WIDTH_KEY, String(listPaneWidth.value))
+  localStorage.setItem(LIST_SHARE_KEY, listShare.value.toFixed(4))
   window.removeEventListener('mousemove', onListResize)
   window.removeEventListener('mouseup', stopListResize)
 }
 
 function resetListWidth() {
-  listPaneWidth.value = DEFAULT_LIST_WIDTH
-  localStorage.setItem(LIST_WIDTH_KEY, String(DEFAULT_LIST_WIDTH))
+  listShare.value = DEFAULT_LIST_SHARE
+  localStorage.removeItem(LIST_SHARE_KEY)
 }
 let elNotification = null
 let noticeStyle = null
@@ -542,7 +564,7 @@ onBeforeUnmount(() => {
   grid-template-rows: 72px minmax(0, 1fr);
 
   &[data-mode="mail"] {
-    grid-template-columns: 200px clamp(340px, var(--mail-list-w, 420px), 620px) 16px minmax(360px, 1fr);
+    grid-template-columns: 200px var(--mail-list-w, 420px) 16px minmax(360px, 1fr);
     grid-template-areas:
       "top top top top"
       "folders list gap detail";
@@ -559,7 +581,7 @@ onBeforeUnmount(() => {
     padding: 0 16px 16px;
 
     &[data-mode="mail"] {
-      grid-template-columns: 184px clamp(300px, var(--mail-list-w, 360px), 460px) 12px minmax(0, 1fr);
+      grid-template-columns: 184px min(var(--mail-list-w, 360px), 42vw) 12px minmax(0, 1fr);
     }
   }
 
