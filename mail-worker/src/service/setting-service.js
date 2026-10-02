@@ -51,6 +51,9 @@ const FEATURE_DEFAULTS = {
 	// Ported from maillab/cloud-mail v3.1.0. CLOSE (1) preserves the existing
 	// isDel soft-delete behavior everywhere unless an admin opts in.
 	syncDelete: 1,
+	// AI spam screening of incoming mail (migrations/0010). CLOSE (1) by
+	// default: it sends message text to Workers AI, so an admin opts in.
+	aiSpam: 1,
 };
 
 const FEATURE_COLUMNS = {
@@ -76,6 +79,7 @@ const FEATURE_COLUMNS = {
 	alibabaDailyQuota: 'alibaba_daily_quota',
 	alibabaMonthlyQuota: 'alibaba_monthly_quota',
 	syncDelete: 'sync_delete',
+	aiSpam: 'ai_spam',
 };
 
 // Polling is a recovery path for missed push signals and for Electron. A
@@ -122,6 +126,7 @@ async function readFeatureSetting(c) {
 			alibabaDailyQuota: Math.max(0, Number(row.alibaba_daily_quota ?? FEATURE_DEFAULTS.alibabaDailyQuota)),
 			alibabaMonthlyQuota: Math.max(0, Number(row.alibaba_monthly_quota ?? FEATURE_DEFAULTS.alibabaMonthlyQuota)),
 			syncDelete: Number(row.sync_delete ?? FEATURE_DEFAULTS.syncDelete),
+			aiSpam: Number(row.ai_spam ?? FEATURE_DEFAULTS.aiSpam),
 		};
 	} catch {
 		// A deployment can briefly run before the new migration is applied. Keep

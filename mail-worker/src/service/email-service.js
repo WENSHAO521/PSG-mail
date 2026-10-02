@@ -1,3 +1,4 @@
+import spamService from './spam-service';
 import orm from '../entity/orm';
 import email from '../entity/email';
 import { attConst, emailConst, isDel, settingConst } from '../const/entity-const';
@@ -335,6 +336,26 @@ const emailService = {
 				`UPDATE email SET is_spam = 0 WHERE email_id IN (${placeholders}) AND ${unspamCond}`
 			).bind(...emailIdList, userId, ...unspamShared).run();
 		} catch {}
+		// "Not spam" also clears any AI verdict and trusts the senders for this
+		// user — limited to mail this user can actually access.
+		try {
+			const { results } = await c.env.db.prepare(
+				`SELECT email_id FROM email WHERE email_id IN (${placeholders}) AND ${unspamCond}`
+			).bind(...emailIdList, userId, ...unspamShared).all();
+			await spamService.trustSenders(c, userId, (results || []).map(r => r.email_id));
+		} catch {}
+	},
+
+	async spamVerdict(c, params, userId) {
+		const emailId = Number(params.emailId);
+		if (!emailId) return null;
+		const shared = await getSharedAccountIds(c, userId)
+		const cond = shared.length > 0
+			? `(user_id = ? OR account_id IN (${shared.map(() => '?').join(',')}))`
+			: `user_id = ?`;
+		const row = await c.env.db.prepare(`SELECT 1 FROM email WHERE email_id = ? AND ${cond}`)
+			.bind(emailId, userId, ...shared).first();
+		return row ? spamService.verdict(c, emailId) : null;
 	},
 
 	async spamList(c, params, userId) {

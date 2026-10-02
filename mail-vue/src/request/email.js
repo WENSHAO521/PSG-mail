@@ -35,6 +35,10 @@ export function emailUnmarkSpam(emailIds) {
     return http.put('/email/unspam', {emailIds: emailIds.join(',')})
 }
 
+export function emailSpamVerdict(emailId) {
+    return http.get('/email/spam/verdict', {params: {emailId}})
+}
+
 export function emailSpamList(accountId, allReceive, emailId, size) {
     return http.get('/email/spam/list', {params: {accountId, allReceive, emailId, size}})
 }

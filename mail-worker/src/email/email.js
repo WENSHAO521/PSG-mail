@@ -11,6 +11,7 @@ import roleService from '../service/role-service';
 import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
+import spamService from '../service/spam-service';
 import notificationService from '../service/notification-service';
 import forwardingService from '../service/forwarding-service';
 import notificationEventService from '../service/notification-event-service';
@@ -38,7 +39,8 @@ export async function email(message, env, ctx) {
 			blackContent,
 			blackFrom,
 			aiCode,
-			aiCodeFilter
+			aiCodeFilter,
+			aiSpam
 		} = await settingService.query({ env });
 
 		if (receive === settingConst.receive.CLOSE) {
@@ -162,19 +164,28 @@ export async function email(message, env, ctx) {
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
 
 		if (account) {
-			ctx.waitUntil(notificationEventService.createNewMail({
-				env,
-				userId: account.userId,
-				accountId: account.accountId,
-				email: emailRow
-			}));
-			ctx.waitUntil(notificationService.dispatchNewMail({
-				env,
-				userId: account.userId,
-				accountId: account.accountId,
-				email: emailRow
-			}));
-			ctx.waitUntil(forwardingService.dispatchIncoming({ env }, account, emailRow));
+			const notifyAndForward = () => Promise.all([
+				notificationEventService.createNewMail({
+					env,
+					userId: account.userId,
+					accountId: account.accountId,
+					email: emailRow
+				}),
+				notificationService.dispatchNewMail({
+					env,
+					userId: account.userId,
+					accountId: account.accountId,
+					email: emailRow
+				}),
+				forwardingService.dispatchIncoming({ env }, account, emailRow),
+			]);
+			// With AI spam screening on, the verdict comes first (capped at a
+			// few seconds) so spam neither pings the user nor gets forwarded.
+			// The mail itself is already stored and listed either way.
+			ctx.waitUntil(spamService.enabled({ aiSpam })
+				? spamService.screen({ env }, { email, emailRow, setting: { aiSpam } })
+					.then(isSpam => isSpam ? null : notifyAndForward())
+				: notifyAndForward());
 		}
 
 		// AI code extraction is a Workers AI inference call — can take

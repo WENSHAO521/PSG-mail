@@ -70,6 +70,11 @@ app.get('/email/archive/list', async (c) => {
 	return c.json(result.ok(data));
 })
 
+app.get('/email/spam/verdict', async (c) => {
+	const data = await emailService.spamVerdict(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
+
 app.get('/email/spam/list', async (c) => {
 	const data = await emailService.spamList(c, c.req.query(), userContext.getUserId(c));
 	return c.json(result.ok(data));

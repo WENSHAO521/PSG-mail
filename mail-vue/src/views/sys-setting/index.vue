@@ -576,6 +576,13 @@
                 </div>
               </div>
               <div class="setting-item">
+                <div><span>{{ $t('aiSpamDetection') }}</span><p>{{ $t('aiSpamDetectionDesc') }}</p></div>
+                <div>
+                  <el-switch @change="changeField('aiSpam', $event)" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.aiSpam"/>
+                </div>
+              </div>
+              <div class="setting-item">
                 <div><span>{{ $t('aiAssistant') }}</span></div>
                 <div>
                   <el-switch @change="changeField('aiAssistantStatus', $event)" :before-change="beforeChange" :active-value="0" :inactive-value="1"
