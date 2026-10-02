@@ -1883,7 +1883,8 @@ function close() {
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-width: 280px;
+  /* Room for the menu's own padding on 280-320px phones. */
+  min-width: min(280px, calc(100vw - 88px));
   padding: 4px 0;
 }
 
