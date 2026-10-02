@@ -998,7 +998,10 @@ async function sendWithUndo() {
   sending = true
   const snapshot = { ...toRaw(form) }
   const undoSeconds = undoSendSeconds()
-  const deadline = Date.now() + undoSeconds * 1000
+  // Whole seconds: scheduledAt below is serialized without milliseconds, so
+  // an unrounded deadline would let the ring (and Undo) outlive the real
+  // send by up to 999ms.
+  const deadline = Math.floor((Date.now() + undoSeconds * 1000) / 1000) * 1000
   const scheduledAt = new Date(deadline)
     .toISOString().slice(0, 19).replace('T', ' ')
 

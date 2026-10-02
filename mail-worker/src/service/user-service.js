@@ -79,24 +79,15 @@ const userService = {
 			user.avatar    = '';
 		}
 
-		// Separate queries so a deployment that hasn't added these columns yet
-		// still gets signature/avatar above; each falls back to its default.
+		// psg_user_pref (migrations/0009): no row yet means defaults.
+		let pref = null;
 		try {
-			const row = await c.env.db
-				.prepare('SELECT undo_send_seconds FROM user WHERE user_id = ?')
+			pref = await c.env.db
+				.prepare('SELECT undo_send_seconds, reply_from_received FROM psg_user_pref WHERE user_id = ?')
 				.bind(userId).first();
-			user.undoSendSeconds = row?.undo_send_seconds ?? DEFAULT_UNDO_SEND_SECONDS;
-		} catch {
-			user.undoSendSeconds = DEFAULT_UNDO_SEND_SECONDS;
-		}
-		try {
-			const row = await c.env.db
-				.prepare('SELECT reply_from_received FROM user WHERE user_id = ?')
-				.bind(userId).first();
-			user.replyFromReceived = (row?.reply_from_received ?? 1) === 1;
-		} catch {
-			user.replyFromReceived = true;
-		}
+		} catch {}
+		user.undoSendSeconds = pref?.undo_send_seconds ?? DEFAULT_UNDO_SEND_SECONDS;
+		user.replyFromReceived = (pref?.reply_from_received ?? 1) === 1;
 
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE;
@@ -168,25 +159,24 @@ const userService = {
 	},
 
 	async updateUndoSendSeconds(c, params, userId) {
-		const seconds = Number(params?.seconds);
-		if (!UNDO_SEND_SECONDS_OPTIONS.includes(seconds)) {
+		const seconds = params?.seconds;
+		if (!Number.isInteger(seconds) || !UNDO_SEND_SECONDS_OPTIONS.includes(seconds)) {
 			throw new BizError(t('invalidUndoSendSeconds'));
 		}
-		// Column comes from init.js v4_5DB (run by /api/init on every deploy);
-		// deliberately no per-call ALTER here — see migrations/README.md.
 		await c.env.db
-			.prepare('UPDATE user SET undo_send_seconds = ? WHERE user_id = ?')
-			.bind(seconds, userId).run();
+			.prepare(`INSERT INTO psg_user_pref (user_id, undo_send_seconds) VALUES (?, ?)
+				ON CONFLICT(user_id) DO UPDATE SET undo_send_seconds = excluded.undo_send_seconds`)
+			.bind(userId, seconds).run();
 	},
 
 	async updateReplyFromReceived(c, params, userId) {
 		if (typeof params?.enabled !== 'boolean') {
 			throw new BizError(t('invalidReplyFromReceived'));
 		}
-		// Column comes from init.js v4_5DB, same as undo_send_seconds above.
 		await c.env.db
-			.prepare('UPDATE user SET reply_from_received = ? WHERE user_id = ?')
-			.bind(params.enabled ? 1 : 0, userId).run();
+			.prepare(`INSERT INTO psg_user_pref (user_id, reply_from_received) VALUES (?, ?)
+				ON CONFLICT(user_id) DO UPDATE SET reply_from_received = excluded.reply_from_received`)
+			.bind(userId, params.enabled ? 1 : 0).run();
 	},
 
 	async directory(c) {
@@ -260,6 +250,11 @@ const userService = {
 		await accountService.physicsDeleteByUserIds(c, userIds);
 		await oauthService.deleteByUserIds(c, userIds);
 		await orm(c).delete(user).where(inArray(user.userId, userIds)).run();
+		try {
+			await c.env.db
+				.prepare(`DELETE FROM psg_user_pref WHERE user_id IN (${userIds.map(() => '?').join(',')})`)
+				.bind(...userIds).run();
+		} catch {}
 	},
 
 	async list(c, params) {
