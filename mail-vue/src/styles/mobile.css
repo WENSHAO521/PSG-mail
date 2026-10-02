@@ -503,3 +503,19 @@ body,
     min-height: 44px;
   }
 }
+
+/* Phones: the mobile header already shows the page name, so the large
+   in-page title would just repeat it — keep the description, drop the h1. */
+@media (max-width: 1024px) {
+  .workspace-hero h1,
+  .rules-hero h1,
+  .page-outer .page-header .page-title {
+    display: none;
+  }
+
+  .workspace-hero p,
+  .rules-hero p,
+  .page-outer .page-header .page-subtitle {
+    margin-top: 0;
+  }
+}

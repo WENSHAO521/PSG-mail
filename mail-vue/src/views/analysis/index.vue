@@ -897,6 +897,15 @@ function createEmailColumnChart() {
   gap: 16px;
   padding-bottom: 16px;
   flex-wrap: wrap;
+
+  /* Phones: stack the title and the toolbar (this scoped rule outranks the
+     shared one in styles/mobile.css, so it has to say so itself). */
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding-bottom: 4px;
+  }
 }
 
 .page-title {

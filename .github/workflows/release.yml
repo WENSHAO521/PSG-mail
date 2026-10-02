@@ -207,7 +207,7 @@ jobs:
               echo "keyPassword=$KEY_PASSWORD"
             } >> local.properties
           else
-            echo "ANDROID_KEYSTORE secret not set, falling back to debug signing."
+            echo "::warning title=Android APK is debug-signed::ANDROID_KEYSTORE secret not set. This APK is signed with a throwaway debug key that changes every build, so it will NOT install as an update over a previous PSG Mail APK (users must uninstall first). Add ANDROID_KEYSTORE / ANDROID_KEY_ALIAS / ANDROID_STORE_PASSWORD / ANDROID_KEY_PASSWORD secrets to sign every release with the same key."
           fi
 
       - name: Build Android APK

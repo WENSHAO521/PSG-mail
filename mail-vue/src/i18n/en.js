@@ -889,7 +889,7 @@ const en = {
     labelRemoved: 'Label removed',
     labelNone: 'No labels on this email',
     searchOperatorsPlaceholder: 'from: subject: has:attachment is:unread label: ...',
-    searchOperatorsHint: 'Operators: from: to: cc: subject: after: before: has:attachment is:unread is:read is:starred in:inbox|sent|archive|spam|trash label:',
+    searchOperatorsHint: 'Operators: from: to: cc: subject: after: before: has:attachment is:unread is:read is:starred in:inbox{\'|\'}sent{\'|\'}archive{\'|\'}spam{\'|\'}trash label:',
     recentSearches: 'Recent searches',
     loadMore: 'Load more',
     shortcutsTitle: 'Keyboard shortcuts',

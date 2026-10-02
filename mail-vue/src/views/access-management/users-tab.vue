@@ -1097,6 +1097,13 @@ defineExpose({ openCreate: openAdd })
     width: min(220px, calc(100vw - 260px));
   }
 
+  /* Phones: the search box takes whatever the filter and icons leave. */
+  @media (max-width: 640px) {
+    padding: 0 8px;
+    .search { flex: 1; min-width: 0; }
+    .search-input { width: 100%; }
+  }
+
   .icon {
     cursor: pointer;
     color: var(--psg-text-muted);

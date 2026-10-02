@@ -889,7 +889,7 @@ const zh = {
     labelRemoved: '已移除标签',
     labelNone: '该邮件暂无标签',
     searchOperatorsPlaceholder: 'from: subject: has:attachment is:unread label: ...',
-    searchOperatorsHint: '支持操作符：from: to: cc: subject: after: before: has:attachment is:unread is:read is:starred in:inbox|sent|archive|spam|trash label:',
+    searchOperatorsHint: '支持操作符：from: to: cc: subject: after: before: has:attachment is:unread is:read is:starred in:inbox{\'|\'}sent{\'|\'}archive{\'|\'}spam{\'|\'}trash label:',
     recentSearches: '最近搜索',
     loadMore: '加载更多',
     shortcutsTitle: '键盘快捷键',
