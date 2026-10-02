@@ -42,7 +42,7 @@ textarea {
 /* Shared surface primitive. Structural rows stay flat; actual cards and
    reading surfaces use the same compact corner as every ordinary control. */
 .surface-card {
-  border-radius: var(--psg-radius-xs);
+  border-radius: var(--psg-radius-xl);
 }
 
 a {

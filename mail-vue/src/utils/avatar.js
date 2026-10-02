@@ -1,7 +1,9 @@
-// Deterministic grayscale palette — stays on-brand without being uniform
+// Deterministic muted palette — tells senders apart at a glance while
+// staying quiet next to the green brand accent. Every tone carries white
+// initials at >= 4.5:1 and still reads against the dark theme's surfaces.
 const PALETTE = [
-  '#121212', '#2b2b2b', '#1a1a1a', '#333333',
-  '#555555', '#707070', '#444444', '#000000'
+  '#2F6FB0', '#7A4E9C', '#B05512', '#4C5E52',
+  '#1D7A70', '#9C3D54', '#3A4553', '#5E6B2E'
 ]
 
 export function avatarBg(seed) {
@@ -9,6 +11,35 @@ export function avatarBg(seed) {
   let h = 0
   for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0
   return PALETTE[Math.abs(h) % PALETTE.length]
+}
+
+// Mailbox identity colours (sidebar dot + "arrived on" chip in mail lists).
+// Unlike the grayscale avatars these must tell addresses apart, so they
+// differ in hue *and* lightness. Mid-tone on purpose: chips mix them toward
+// the theme's text colour, which keeps them readable in light and dark.
+const MAILBOX_PALETTE = ['#1E7A50', '#B57916', '#2F6FB0', '#A23E5A', '#6B4FA0', '#1D7A70']
+
+export function mailboxColor(email) {
+  const seed = (email || '').toLowerCase()
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0
+  return MAILBOX_PALETTE[Math.abs(h) % MAILBOX_PALETTE.length]
+}
+
+// Mist avatars: a soft tint with a deeper letter of the same hue, as on the
+// redesign's rounded-square avatars. Readable in light and dark (the tint is
+// translucent, the letter colour is mixed toward the theme's text).
+const TINT_HUES = ['#2F6FB0', '#7A2E6E', '#9A3C0C', '#25613A', '#463C9E', '#8F2D2D', '#1D6A73', '#6B5A12']
+
+export function avatarTint(seed) {
+  const key = (seed || '').toLowerCase()
+  let h = 0
+  for (let i = 0; i < key.length; i++) h = (Math.imul(31, h) + key.charCodeAt(i)) | 0
+  const hue = TINT_HUES[Math.abs(h) % TINT_HUES.length]
+  return {
+    background: `color-mix(in srgb, ${hue} 16%, var(--psg-surface))`,
+    color: `color-mix(in srgb, ${hue} 60%, var(--psg-text))`,
+  }
 }
 
 export function avatarLetter(name, email) {

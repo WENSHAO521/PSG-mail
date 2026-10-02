@@ -182,7 +182,7 @@ async function edit(row) {
 .item-icon {
   width: 32px; height: 32px; border-radius: var(--psg-radius-sm); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; margin-top: 2px;
-  background: var(--psg-surface-muted); border: 1px solid var(--psg-border); color: var(--psg-text-secondary);
+  background: var(--psg-surface-muted); border: 0; color: var(--psg-text-secondary);
   &.status-sent { background: var(--psg-surface-active); border-color: var(--psg-border-strong); color: var(--psg-text); }
   &.status-failed { background: var(--psg-danger-muted); border-color: var(--psg-danger); color: var(--psg-danger); }
   &.status-cancelled { background: var(--psg-surface-muted); border-color: var(--psg-border); color: var(--psg-text-secondary); }
@@ -194,8 +194,8 @@ async function edit(row) {
 .error-text { color: var(--psg-danger); }
 
 .status-badge {
-  font-size: 10.5px; font-weight: 700; padding: 1px 7px; white-space: nowrap;
-  color: var(--psg-text-secondary); background: var(--psg-surface-muted); border: 1px solid var(--psg-border);
+  font-size: 12px; font-weight: 700; padding: 1px 7px; white-space: nowrap;
+  color: var(--psg-text-secondary); background: var(--psg-surface-muted); border: 0;
   &.status-sent { color: var(--psg-text); background: var(--psg-surface-active); border-color: var(--psg-border-strong); }
   &.status-failed { color: var(--psg-danger); background: var(--psg-danger-muted); border-color: var(--psg-danger); }
   &.status-processing { color: var(--psg-primary); background: var(--psg-surface-muted); border-color: var(--psg-surface-active); }

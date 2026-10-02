@@ -14,7 +14,6 @@
                actionLeft="4px"
                :show-account-icon="false"
                :time-sort="params.timeSort"
-               :item-height="88"
                :hide-inline-search="true"
                :explorer-title="$t('allMail')"
                :explorer-subtitle="$t('allMailSubtitle')"
@@ -443,9 +442,9 @@ function getEmailList(emailId, size) {
   white-space: nowrap;
 
   &.active {
-    background: var(--psg-surface);
+    background: var(--psg-surface-muted);
     color: var(--psg-text);
-    border: 1px solid var(--psg-border);
+    border: 0;
     font-weight: 600;
   }
 }

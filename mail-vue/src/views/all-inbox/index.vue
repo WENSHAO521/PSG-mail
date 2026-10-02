@@ -9,6 +9,8 @@
                :time-sort="params.timeSort"
                :email-read="emailRead"
                :show-unread="true"
+               :show-mailbox-switch="true"
+               :show-mailbox="true"
                :explorer-title="$t('allInbox')"
                :explorer-subtitle="$t('allInboxSubtitle')"
                :explorer-search-placeholder="$t('searchPlaceholder')"

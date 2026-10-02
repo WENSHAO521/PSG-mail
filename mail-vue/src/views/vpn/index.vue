@@ -5,7 +5,7 @@
 
         <!-- ── Hero ── -->
         <div class="dl-hero">
-          <div class="hero-publisher">PANORAMA SCHOLARLY GROUP</div>
+          <div class="hero-publisher">Panorama Scholarly Group</div>
           <div class="hero-product">PSG CONNECT</div>
           <div class="hero-sub">{{ $t('vpnHeroSub') }}</div>
         </div>
@@ -234,7 +234,6 @@ function formatDate(iso) {
 <style lang="scss" scoped>
 .download-view {
   height: 100%;
-  background: var(--psg-canvas);
 }
 
 .dl-body {
@@ -246,25 +245,20 @@ function formatDate(iso) {
 /* ── Hero ── */
 .dl-hero {
   margin-bottom: 32px;
-  border-left: 4px solid var(--psg-primary);
-  padding-left: 18px;
 }
 
 .hero-publisher {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--psg-text-muted);
   margin-bottom: 4px;
 }
 
 .hero-product {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 28px;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: -.02em;
   color: var(--psg-text);
   line-height: 1.1;
 }
@@ -282,8 +276,8 @@ function formatDate(iso) {
   gap: 8px;
   padding: 10px 14px;
   margin-bottom: 24px;
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-left: 3px solid var(--psg-primary);
   font-size: 12px;
   color: var(--psg-text-secondary);
@@ -304,7 +298,6 @@ function formatDate(iso) {
 .dl-notice-link {
   color: var(--psg-text);
   text-decoration: none;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 12.5px;
   font-weight: 600;
 
@@ -319,7 +312,6 @@ function formatDate(iso) {
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
 }
 
 .section-tag {
@@ -330,7 +322,6 @@ function formatDate(iso) {
 
 .section-date {
   font-size: 12px;
-  font-family: 'IBM Plex Mono', monospace;
   color: var(--psg-text-muted);
 }
 
@@ -348,9 +339,9 @@ function formatDate(iso) {
   flex-direction: column;
   gap: 12px;
   padding: 22px 20px 18px;
-  border-radius: var(--psg-radius-md);
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-top: 3px solid var(--psg-border);
   transition: border-top-color 0.12s;
 
@@ -373,7 +364,6 @@ function formatDate(iso) {
 .dl-card-info { flex: 1; }
 
 .dl-card-platform {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0;
@@ -389,10 +379,9 @@ function formatDate(iso) {
 }
 
 .dl-card-meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--psg-text-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 /* ── Button group (multiple arch variants) ── */
@@ -446,7 +435,6 @@ function formatDate(iso) {
   align-items: center;
   gap: 16px;
   padding-top: 20px;
-  border-top: 1px solid var(--psg-border);
 }
 
 .dl-releases-link {
@@ -457,7 +445,6 @@ function formatDate(iso) {
   font-weight: 500;
   color: var(--psg-text-muted);
   text-decoration: none;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
 
   @media (hover: hover) {
     &:hover { color: var(--psg-text); }
@@ -465,7 +452,6 @@ function formatDate(iso) {
 }
 
 .dl-version {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--psg-text-muted);
   margin-left: auto;

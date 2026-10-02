@@ -2,7 +2,7 @@
   <div class="tab-panel">
     <div class="summary-line">{{ $t('validKeysCount', { n: validCount }) }}</div>
 
-    <div class="toolbar">
+    <div class="toolbar psg-well">
       <div class="search">
         <el-input v-model="params.code" class="search-input" :placeholder="$t('searchRegKeyDesc')" @keyup.enter="search"/>
       </div>
@@ -436,14 +436,15 @@ defineExpose({ openCreate: openAdd })
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
+  border: 0;
 
   :deep(.el-input__wrapper) {
     height: 30px;
     box-shadow: none !important;
-    border: 1px solid var(--psg-border);
+    border: 0;
+    background: var(--psg-surface-muted);
     border-radius: var(--psg-radius-sm);
     transition: border-color 0.12s;
     &:hover { border-color: var(--psg-border-strong); }
@@ -471,8 +472,8 @@ defineExpose({ openCreate: openAdd })
     font-weight: 600;
     font-family: var(--psg-font-sans);
     color: var(--psg-text-secondary);
-    background: transparent;
-    border: 1px solid var(--psg-border);
+    background: var(--psg-surface-muted);
+    border: 0;
     border-radius: var(--psg-radius-xs);
     cursor: pointer;
     white-space: nowrap;
@@ -500,9 +501,9 @@ defineExpose({ openCreate: openAdd })
     gap: 14px;
 
     .code-item {
-      background: var(--psg-surface);
+      background: var(--psg-surface-muted);
       border-radius: var(--psg-radius-md);
-      border: 1px solid var(--psg-border);
+      border: 0;
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -522,7 +523,6 @@ defineExpose({ openCreate: openAdd })
 
       .code {
         font-weight: 700;
-        font-family: var(--psg-font-mono);
         font-size: 14px;
         white-space: nowrap;
         overflow: hidden;

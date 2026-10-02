@@ -1227,9 +1227,9 @@ function submitPwd() {
   }
 
   .scroll-body {
-    max-width: 980px;
+    max-width: 1080px;
     margin: 0 auto;
-    padding: 16px 20px 36px;
+    padding: 28px 32px 48px;
 
     @media (max-width: 960px) { padding: 14px 16px 32px; }
     @media (max-width: 640px) { padding: 12px 12px 28px; }
@@ -1239,8 +1239,8 @@ function submitPwd() {
 /* ── Shell: sidebar + panel ── */
 .settings-shell {
   display: grid;
-  grid-template-columns: 270px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 40px;
   align-items: start;
 
   @media (max-width: 820px) {
@@ -1255,17 +1255,16 @@ function submitPwd() {
 /* ── Sidebar ── */
 .settings-sidebar,
 .settings-panel {
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-md);
-  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .settings-sidebar {
   position: sticky;
   top: 16px;
-  min-height: min(500px, calc(100vh - 32px));
-  padding: 8px 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1280,21 +1279,20 @@ function submitPwd() {
 }
 
 .settings-nav-item {
-  width: calc(100% - 16px);
-  min-height: 44px;
-  margin: 0 8px;
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
   padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 12px;
   border: none;
-  border-left: 3px solid transparent;
-  border-radius: var(--psg-radius-xs);
+  border-radius: var(--psg-radius-md);
   background: transparent;
-  color: var(--psg-text-secondary);
+  color: var(--psg-text);
   font-family: var(--psg-font-sans);
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
@@ -1306,30 +1304,23 @@ function submitPwd() {
   }
 
   &.active {
-    background: var(--psg-menu-active-bg);
-    color: var(--psg-menu-active-text);
+    background: var(--psg-surface-muted);
+    color: var(--psg-text);
     font-weight: 700;
+
+    .settings-nav-icon { color: var(--psg-primary); }
   }
 
   @media (max-width: 820px) {
-    width: calc(100% - 16px);
-    margin: 0 8px;
-    min-height: 48px;
+    min-height: 52px;
     white-space: normal;
     flex: 0 0 auto;
-    border-left: 3px solid transparent;
-    border-bottom: 0;
-    padding: 0 12px;
-
-    &.active {
-      background: var(--psg-menu-active-bg);
-    }
   }
 }
 
 .settings-nav-icon {
   flex: 0 0 auto;
-  color: currentColor;
+  color: var(--psg-text-muted);
 }
 
 /* ── Panel ── */
@@ -1340,22 +1331,21 @@ function submitPwd() {
 }
 
 .settings-panel-header {
-  min-height: 84px;
-  padding: 18px 20px 16px;
+  padding: 0 0 20px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--psg-border);
 
   h1 {
-    margin: 0 0 4px;
+    margin: 0 0 6px;
     color: var(--psg-text);
     font-family: var(--psg-font-sans);
-    font-size: 20px;
-    font-weight: 750;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -.02em;
     line-height: 1.2;
-    @media (max-width: 640px) { font-size: 16px; }
+    @media (max-width: 640px) { font-size: 22px; }
   }
 
   p {
@@ -1535,10 +1525,13 @@ function submitPwd() {
 
 /* ── Card body padding ── */
 .card-body {
-  padding: 20px 24px 24px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-lg);
 }
 
 .mail-body { padding: 0; }
@@ -1555,13 +1548,13 @@ function submitPwd() {
   display: flex;
   align-items: flex-start;
   gap: 20px;
-  padding: 20px 24px 0;
+  padding: 0 0 20px;
 }
 
 .avatar-wrap {
   position: relative;
   width: 76px; height: 76px;
-  border-radius: var(--psg-radius-sm); overflow: hidden;
+  border-radius: 22px; overflow: hidden;
   cursor: pointer; flex-shrink: 0;
   background: var(--psg-primary);
   &:hover .avatar-lens { opacity: 1; }
@@ -1598,7 +1591,8 @@ function submitPwd() {
 
 .meta-email {
   font-size: 12px;
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   color: var(--psg-text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -1621,7 +1615,9 @@ function submitPwd() {
 /* ── Data table ── */
 .data-table {
   display: flex; flex-direction: column;
-  padding: 0 24px 4px;
+  padding: 4px 22px;
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-lg);
 }
 
 .data-row {
@@ -1630,7 +1626,7 @@ function submitPwd() {
   align-items: center;
   min-height: 52px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--psg-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--psg-border) 80%, var(--psg-surface));
   gap: 16px;
 
   &.last, &:last-child { border-bottom: none; }
@@ -1643,9 +1639,7 @@ function submitPwd() {
 
 /* ── Plan & limits ── */
 .plan-strip {
-  padding: 20px 24px 24px;
-  border-top: 1px solid var(--psg-border);
-  margin-top: 4px;
+  padding: 24px 0 0;
 }
 
 .plan-label {
@@ -1669,10 +1663,10 @@ function submitPwd() {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 16px;
   background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-md);
+  border: 0;
+  border-radius: var(--psg-radius-lg);
   color: var(--psg-text-secondary);
 }
 
@@ -1704,7 +1698,8 @@ function submitPwd() {
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 
   &.mono {
-    font-family: var(--psg-font-mono);
+    font-family: var(--psg-font-sans);
+    font-variant-numeric: tabular-nums;
     font-size: 12px; color: var(--psg-text-secondary);
   }
 }

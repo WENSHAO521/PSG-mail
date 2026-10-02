@@ -1,6 +1,6 @@
 <template>
   <div class="tab-panel">
-    <div class="toolbar">
+    <div class="toolbar psg-well">
       <div class="roles-count">{{ $t('rolesCountLabel', { n: roles.length }) }}</div>
       <Icon class="icon" icon="psg:refresh" width="18" height="18" @click="refresh"/>
     </div>
@@ -402,9 +402,9 @@ defineExpose({ openCreate: openAddRole })
   display: flex;
   align-items: center;
   gap: 4px;
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
+  border: 0;
   flex-shrink: 0;
 
   .roles-count {
@@ -449,8 +449,8 @@ defineExpose({ openCreate: openAddRole })
 }
 
 .role-card {
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-md);
   padding: 16px;
   display: flex;

@@ -1,22 +1,18 @@
 <template>
+  <!-- Mist phone header: the page title doubles as the folder switcher. -->
   <header class="m-header">
-    <!-- Left: menu + brand / section title -->
-    <div class="m-left">
-      <button class="m-icon-btn" :aria-label="$t('menu')" @click="openDrawer">
-        <Icon icon="psg:menu" width="24" height="24"/>
-      </button>
-      <div class="m-brand">
-        <div class="m-title-block">
-          <span class="m-brand-name">PSG Mail</span>
-          <span class="m-title">{{ title }}</span>
-        </div>
-      </div>
-    </div>
-
+    <button type="button" class="m-title" :aria-label="$t('menu')" @click="uiStore.asideShow = true">
+      <span>{{ title }}</span>
+      <Icon icon="psg:chevron-down" width="16" height="16" />
+    </button>
+    <span class="m-spacer"></span>
     <div class="m-notif">
       <NotificationPanel />
     </div>
-
+    <button type="button" class="m-avatar" :aria-label="$t('settings')" @click="router.push({ name: 'setting' })">
+      <img v-if="userStore.avatar" :src="userStore.avatar" alt="" @error="e => e.target.style.display = 'none'" />
+      <span v-else>{{ initial }}</span>
+    </button>
   </header>
 </template>
 
@@ -25,107 +21,71 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
+import router from '@/router/index.js'
 import { useUiStore } from '@/store/ui.js'
+import { useUserStore } from '@/store/user.js'
 import NotificationPanel from '@/components/notification-panel/index.vue'
 
 const route = useRoute()
 const uiStore = useUiStore()
+const userStore = useUserStore()
 const { t } = useI18n()
 
 const title = computed(() => {
   const key = route.meta?.title
   return key ? t(key) : 'PSG Mail'
 })
-
-function openDrawer() {
-  uiStore.asideShow = true
-}
+const initial = computed(() => ((userStore.user?.name || userStore.user?.email || '?')[0] || '?').toUpperCase())
 </script>
 
 <style scoped lang="scss">
 .m-header {
   display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  align-items: center;
-  justify-content: space-between;
   height: calc(64px + env(safe-area-inset-top, 0px));
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px 8px;
-  background: var(--psg-surface);
-  border-bottom: 1px solid var(--psg-border);
-  gap: 10px;
-}
-
-.m-left {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  flex: 1;
-}
-
-.m-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.m-title-block {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 1px;
-}
-
-.m-brand-name {
-  flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--psg-text-muted);
-  line-height: 1.1;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px 18px;
+  background: var(--psg-canvas);
 }
 
 .m-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--psg-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-}
-
-/* 44px touch targets */
-.m-icon-btn {
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
+  border: 0;
+  padding: 0;
   background: transparent;
-  cursor: pointer;
-  color: var(--psg-text-secondary);
-  transition: background 0.12s, color 0.12s;
-  flex-shrink: 0;
-  border-radius: var(--psg-radius-sm);
+  color: var(--psg-text);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
 
-  &:active { background: var(--psg-surface-active); }
+  span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
-.m-notif :deep(.icon-btn) {
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--psg-text-secondary);
-  border-radius: var(--psg-radius-sm);
-  transition: background 0.12s, color 0.12s;
-  flex-shrink: 0;
+.m-spacer { flex: 1; }
 
-  &:active { background: var(--psg-surface-active); }
+.m-notif :deep(.icon-btn),
+.m-avatar {
+  width: 42px !important;
+  height: 42px !important;
+  border: 0 !important;
+  border-radius: var(--psg-radius-md) !important;
+  background: var(--psg-surface) !important;
+  color: var(--psg-text) !important;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
 }
 
+.m-avatar {
+  overflow: hidden;
+  font: inherit;
+  font-weight: 700;
+
+  img { width: 100%; height: 100%; object-fit: cover; }
+}
 </style>

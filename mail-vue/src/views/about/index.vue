@@ -5,8 +5,9 @@
 
         <!-- ── Brand header ── -->
         <div class="about-hero">
-          <div class="hero-publisher">PANORAMA SCHOLARLY GROUP</div>
-          <div class="hero-product">PSG MAIL</div>
+          <div class="hero-mark" aria-hidden="true">P</div>
+          <div class="hero-product">PSG Mail</div>
+          <div class="hero-publisher">Panorama Scholarly Group</div>
           <div class="hero-version-chip">v{{ appVersion }}</div>
         </div>
 
@@ -282,7 +283,6 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--psg-canvas);
 }
 
 .about-body {
@@ -297,66 +297,66 @@ onUnmounted(() => {
 
 /* ── Hero ─────────────────────────────────────────── */
 .about-hero {
-  border-left: 3px solid var(--psg-primary);
-  padding: 20px 24px;
-  background: var(--psg-surface);
-  border-bottom: 1px solid var(--psg-border);
+  padding: 28px 24px 8px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
+  text-align: center;
+}
+
+.hero-mark {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 12px;
+  place-items: center;
+  color: var(--psg-on-primary);
+  background: var(--psg-text);
+  border-radius: var(--psg-radius-lg);
+  font-size: 28px;
+  font-weight: 700;
+
+  :global(html.dark) & { color: var(--psg-canvas); }
 }
 
 .hero-publisher {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--psg-text-muted);
 }
 
 .hero-product {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
+  letter-spacing: -.02em;
   color: var(--psg-text);
   line-height: 1.2;
 }
 
 .hero-version-chip {
-  display: inline-block;
-  margin-top: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  margin-top: 10px;
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--psg-text);
-  border: 1px solid var(--psg-border-strong);
-  padding: 2px 8px;
-  letter-spacing: 0.06em;
-  align-self: flex-start;
+  color: var(--psg-text-secondary);
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-full);
 }
 
 /* ── Card ─────────────────────────────────────────── */
 .about-card {
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-md);
-  padding: 0;
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-lg);
+  padding: 4px 0;
   overflow: hidden;
 }
 
 .about-card-title {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--psg-text-muted);
-  padding: 12px 20px 10px;
-  border-bottom: 1px solid var(--psg-border);
-  background: var(--psg-surface-muted);
+  padding: 12px 20px 4px;
 }
 
 /* ── Row ──────────────────────────────────────────── */
@@ -364,35 +364,35 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 13px 20px;
+  padding: 14px 20px;
   gap: 16px;
-  border-bottom: 1px solid var(--psg-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--psg-border) 80%, var(--psg-surface));
 
   &:last-child { border-bottom: none; }
 }
 
 .about-label {
-  font-size: 13px;
-  color: var(--psg-text-muted);
+  font-size: 14px;
+  color: var(--psg-text-secondary);
   flex-shrink: 0;
 }
 
 .about-value {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--psg-text);
   text-align: right;
 
   &.mono {
-    font-family: 'JetBrains Mono', monospace;
     font-weight: 600;
   }
 }
 
 .about-link {
   font-family: var(--psg-font-sans);
-  font-size: 13px;
-  color: var(--psg-text);
-  text-decoration: underline;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--psg-primary);
+  text-decoration: none;
   text-underline-offset: 2px;
   transition: opacity 0.12s;
 
@@ -404,12 +404,11 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 12.5px;
   font-weight: 600;
   padding: 3px 10px;
   border-radius: var(--psg-radius-full);
-  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 12%, transparent);
 
   .status-dot {
     width: 6px;
@@ -448,7 +447,6 @@ onUnmounted(() => {
   border: 1px solid var(--psg-danger);
   background: var(--psg-danger-muted);
   color: var(--psg-danger);
-  font-family: var(--psg-font-mono);
   font-size: 11px;
   line-height: 1.5;
   word-break: break-word;
@@ -462,7 +460,6 @@ onUnmounted(() => {
 }
 
 .about-btn {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;

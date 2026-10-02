@@ -30,13 +30,11 @@
        :data-platform="platform"
        :style="{ '--mail-list-w': listPaneWidth + 'px' }">
 
-    <!-- Mobile sidebar backdrop -->
-    <div class="sidebar-backdrop"
-         :data-open="String(uiStore.asideShow)"
-         @click="closeMobileDrawer"/>
+    <!-- Desktop top bar (brand, sections, search, compose, account) -->
+    <Topbar class="shell-topbar" />
 
-    <!-- Sidebar ─ always column 1 -->
-    <Aside />
+    <!-- Folder column (desktop, mail mode) / slide-in sheet (phone) -->
+    <Folders class="shell-folders" />
 
     <!-- ── Mobile top bar (hidden on desktop) ── -->
     <div class="mobile-chrome mobile-chrome--top">
@@ -104,7 +102,8 @@
 
 <script setup>
 import { Icon } from '@iconify/vue'
-import Aside from '@/layout/aside/index.vue'
+import Topbar from '@/layout/topbar/index.vue'
+import Folders from '@/layout/folders/index.vue'
 import ContentPane from '@/views/content/index.vue'
 import CommandPalette from '@/components/command-palette/index.vue'
 import SendQuotaWidget from '@/components/send-quota-widget/index.vue'
@@ -531,87 +530,70 @@ onBeforeUnmount(() => {
 </style>
 
 <style lang="scss" scoped>
-/* ── Shell: CSS grid, replaces el-container/el-aside ───────── */
+/* ── Shell (Mist): top bar over folders | list card | reader card ── */
 .app-shell {
   height: 100vh;
   overflow: hidden;
   display: grid;
   position: fixed;
   inset: 0;
+  padding: 0 24px 24px;
+  background: var(--psg-canvas);
+  grid-template-rows: 72px minmax(0, 1fr);
 
-  /* Mail mode: sidebar | list | resizer | detail */
   &[data-mode="mail"] {
-    grid-template-columns: 256px clamp(340px, var(--mail-list-w, 440px), 650px) 6px minmax(340px, 1fr);
-
-    &[data-collapsed="true"] {
-      grid-template-columns: 72px clamp(340px, var(--mail-list-w, 440px), 650px) 6px minmax(340px, 1fr);
-    }
+    grid-template-columns: 200px clamp(340px, var(--mail-list-w, 420px), 620px) 16px minmax(360px, 1fr);
+    grid-template-areas:
+      "top top top top"
+      "folders list gap detail";
   }
 
-  /* Workspace mode: sidebar | content */
   &[data-mode="workspace"] {
-    grid-template-columns: 256px minmax(0, 1fr);
-
-    &[data-collapsed="true"] {
-      grid-template-columns: 72px minmax(0, 1fr);
-    }
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "top"
+      "main";
   }
 
-  /* Tablet: reduce list width */
   @media (max-width: 1280px) {
+    padding: 0 16px 16px;
+
     &[data-mode="mail"] {
-      grid-template-columns: 256px clamp(300px, var(--mail-list-w, 380px), 480px) 6px minmax(0, 1fr);
-      &[data-collapsed="true"] {
-        grid-template-columns: 72px clamp(300px, var(--mail-list-w, 380px), 480px) 6px minmax(0, 1fr);
-      }
+      grid-template-columns: 184px clamp(300px, var(--mail-list-w, 360px), 460px) 12px minmax(0, 1fr);
     }
   }
 
-  /* Mobile: single column */
+  /* Phone: single column; the mobile header/tab bar take over. */
   @media (max-width: 1024px) {
     display: block !important;
     height: 100dvh;
+    padding: 0;
   }
 }
 
-/* ── macOS: traffic-light safe area ────────────────────────── */
-/* hiddenInset puts traffic lights in top-left of the window (inside the sidebar).
-   The sidebar-brand block already has -webkit-app-region:drag which acts as the
-   drag handle. No extra padding needed — traffic lights sit at y=18 which aligns
-   naturally with the brand block padding. */
-.app-shell[data-platform="darwin"] {
-  /* nothing extra needed for now — handled per-pane below if required */
+.shell-topbar { grid-area: top; }
+
+.shell-folders {
+  grid-area: folders;
+  margin-right: 16px;
 }
 
-/* ── Sidebar backdrop (mobile) ─────────────────────────────── */
-.sidebar-backdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  pointer-events: none;
-  background: rgba(0, 0, 0, 0);
-  opacity: 0;
-  transition: opacity 160ms ease, background 160ms ease;
+.app-shell[data-mode="workspace"] .shell-folders {
+  @media (min-width: 1025px) { display: none; }
+}
 
-  @media (max-width: 1024px) {
-    display: block;
-
-    &[data-open="true"] {
-      pointer-events: auto;
-      background: rgba(0, 0, 0, 0.35);
-      opacity: 1;
-    }
-  }
+@media (max-width: 1024px) {
+  .shell-topbar { display: none; }
+  .shell-folders { margin: 0; }
 }
 
 /* ── Mail panes ────────────────────────────────────────────── */
 .mail-list-pane {
+  grid-area: list;
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid var(--psg-border);
   background: var(--psg-surface);
-  border-radius: var(--psg-radius-md);
+  border-radius: var(--psg-radius-xl);
 
   /* Mobile: sit between the fixed header and the bottom tab bar */
   @media (max-width: 1024px) {
@@ -631,6 +613,7 @@ onBeforeUnmount(() => {
    hover/drag, so it reads as "the gap between panes" at rest and
    as an obvious control the moment you reach for it. ── */
 .mail-list-resizer {
+  grid-area: gap;
   position: relative;
   cursor: col-resize;
   background: transparent;
@@ -658,16 +641,19 @@ onBeforeUnmount(() => {
 }
 
 .mail-detail-pane {
+  grid-area: detail;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   -webkit-overflow-scrolling: touch;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-xl);
   padding: 0;
 
   /* Mobile: a full-screen reading page (its own back button + actions) */
   @media (max-width: 1024px) {
     position: fixed;
     inset: 0;
+    border-radius: 0;
     height: auto;
     padding: 0;
     z-index: 35;
@@ -682,9 +668,11 @@ onBeforeUnmount(() => {
 
 /* ── Workspace pane ────────────────────────────────────────── */
 .workspace-pane {
+  grid-area: main;
   min-height: 0;
   overflow: hidden;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-xl);
   display: flex;
   flex-direction: column;
 
@@ -714,7 +702,7 @@ onBeforeUnmount(() => {
 @media (max-width: 1024px) {
   .app-shell {
     --m-header-h: calc(64px + env(safe-area-inset-top, 0px));
-    --m-tabbar-h: calc(62px + env(safe-area-inset-bottom, 0px));
+    --m-tabbar-h: calc(74px + env(safe-area-inset-bottom, 0px));
   }
 
   .mobile-chrome--top {

@@ -15,17 +15,6 @@
         <button type="button" class="icon-btn detail-back-btn" :aria-label="$t('back')" :title="$t('back')" @click="handleBack">
           <Icon icon="psg:chevron-left" width="20" height="20" />
         </button>
-        <template v-if="emailStore.contentData.showReply">
-          <button type="button" class="icon-btn" v-perm="'email:send'" :aria-label="$t('reply')" :title="$t('reply')" @click="openReply">
-            <Icon icon="psg:reply" width="21" height="21" />
-          </button>
-          <button type="button" class="icon-btn" v-perm="'email:send'" :aria-label="$t('replyAll')" :title="$t('replyAll')" @click="openReplyAll">
-            <Icon icon="psg:reply-all" width="22" height="22" />
-          </button>
-          <button type="button" class="icon-btn" v-perm="'email:send'" :aria-label="$t('forward')" :title="$t('forward')" @click="openForward">
-            <Icon icon="psg:forward" width="20" height="20" />
-          </button>
-        </template>
         <button type="button" class="icon-btn" @click="changeStar" v-if="emailStore.contentData.showStar"
                 :aria-label="$t('star')" :title="$t('star')">
           <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'psg:star'"
@@ -37,24 +26,14 @@
                 :title="$t('delete')" :aria-label="$t('delete')">
           <Icon icon="psg:trash" width="19" height="19" />
         </button>
-      </div>
-      <div class="header-right">
         <el-tooltip :content="$t('markAsUnread')" placement="bottom"
                     v-if="emailStore.contentData.showUnread">
           <button type="button" class="icon-btn" :aria-label="$t('markAsUnread')" @click="handleMarkAsUnread">
             <Icon icon="psg:mail" width="19" height="19" />
           </button>
         </el-tooltip>
-        <el-tooltip :content="$t('printEmail')" placement="bottom">
-          <button type="button" class="icon-btn" :aria-label="$t('printEmail')" @click="handlePrint">
-            <Icon icon="psg:printer" width="19" height="19" />
-          </button>
-        </el-tooltip>
-        <el-tooltip :content="$t('downloadEml')" placement="bottom">
-          <button type="button" class="icon-btn" :aria-label="$t('downloadEml')" @click="handleDownloadEml">
-            <Icon icon="psg:download" width="19" height="19" />
-          </button>
-        </el-tooltip>
+      </div>
+      <div class="header-right">
         <el-popover placement="bottom-end" width="220" trigger="click">
           <template #reference>
             <button type="button" class="icon-btn" :title="$t('labelApply')" :aria-label="$t('labelApply')">
@@ -82,7 +61,7 @@
           <template #reference>
             <button type="button" class="icon-btn" :class="{ 'icon-btn--active': !!aiPanel }"
                     :aria-label="$t('aiTransform')" :title="$t('aiTransform')">
-              <Icon icon="lucide:sparkles" width="18" height="18" />
+              <Icon icon="psg:sparkles" width="18" height="18" />
             </button>
           </template>
           <div class="reader-ai-actions">
@@ -94,6 +73,21 @@
             </button>
           </div>
         </el-popover>
+        <el-dropdown placement="bottom-end" trigger="click">
+          <button type="button" class="icon-btn" :aria-label="$t('more')" :title="$t('more')">
+            <Icon icon="psg:more" width="19" height="19" />
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="handlePrint">
+                <Icon icon="psg:printer" width="16" height="16" /> {{ $t('printEmail') }}
+              </el-dropdown-item>
+              <el-dropdown-item @click="handleDownloadEml">
+                <Icon icon="psg:download" width="16" height="16" /> {{ $t('downloadEml') }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <span class="page-counter" v-if="emailStore.contentData.emailTotal > 0" :title="$t('emailPositionHint')">
           {{ emailStore.contentData.emailIndex }}&thinsp;/&thinsp;{{ emailStore.contentData.emailTotal }}
         </span>
@@ -116,7 +110,7 @@
               <Icon icon="psg:globe" width="16" height="16" /> {{ translateBtnLabel }}
             </el-dropdown-item>
             <el-dropdown-item @click="runAiAction('summary')">
-              <Icon icon="lucide:sparkles" width="16" height="16" /> {{ $t('aiMailSummary') }}
+              <Icon icon="psg:sparkles" width="16" height="16" /> {{ $t('aiMailSummary') }}
             </el-dropdown-item>
             <el-dropdown-item @click="runAiAction('reply')" v-if="emailStore.contentData.showReply">
               <Icon icon="psg:reply" width="16" height="16" /> {{ $t('aiReplySuggestion') }}
@@ -141,43 +135,40 @@
           </span>
         </div>
 
-        <!-- Meta card: sender + fields + date all in one bordered block -->
+        <!-- Sender row: who, which of my addresses it was sent to, when. -->
         <div class="meta-card">
-          <div class="meta-avatar" :style="{ background: metaAvatarBg }">
+          <div class="meta-avatar" :style="avatarTint(email.sendEmail || email.name)">
             <span class="meta-initial">{{ (email.name || email.sendEmail || '?')[0].toUpperCase() }}</span>
-            <img v-if="metaAvatarImg" :src="metaAvatarImg" class="meta-avatar-img"
+            <img v-if="metaAvatarImg" :src="metaAvatarImg" class="meta-avatar-img" alt=""
                  @error="e => { e.target.style.display='none'; markGravatarMiss(email.sendEmail) }" />
           </div>
           <div class="meta-body">
             <div class="meta-sender-row">
               <span class="meta-sender-name">{{ email.name || email.sendEmail }}</span>
-              <span class="meta-date">{{ formatDetailDate(email.createTime) }}</span>
+              <span class="meta-sender-email" v-if="email.name">{{ email.sendEmail }}</span>
             </div>
-            <div class="meta-sender-email" v-if="email.name">{{ email.sendEmail }}</div>
-            <div class="meta-fields">
-              <div class="meta-field" v-if="formateReceive(email.recipient)">
-                <span class="meta-field-label">{{ $t('recipient') }}</span>
-                <span class="meta-field-value">{{ formateReceive(email.recipient) }}</span>
-              </div>
-              <div class="meta-field" v-if="parsedCc.length > 0">
-                <span class="meta-field-label">{{ $t('cc') }}</span>
-                <span class="meta-field-value">{{ parsedCc.join(', ') }}</span>
-              </div>
-              <div class="meta-field" v-if="parsedBcc.length > 0">
-                <span class="meta-field-label">{{ $t('bcc') }}</span>
-                <span class="meta-field-value">{{ parsedBcc.join(', ') }}</span>
-              </div>
+            <div class="meta-field" v-if="formateReceive(email.recipient)">
+              <span class="meta-field-label">{{ $t('sentTo') }}</span>
+              <span class="meta-field-value meta-field-value--to">{{ formateReceive(email.recipient) }}</span>
             </div>
-            <el-alert v-if="email.status === 3" :closable="false" :title="toMessage(email.message)"
-                      class="email-status-alert" type="error" show-icon />
-            <el-alert v-if="email.status === 4" :closable="false" :title="$t('complained')"
-                      class="email-status-alert" type="warning" show-icon />
-            <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')"
-                      class="email-status-alert" type="warning" show-icon />
+            <div class="meta-field" v-if="parsedCc.length > 0">
+              <span class="meta-field-label">{{ $t('cc') }}</span>
+              <span class="meta-field-value">{{ parsedCc.join(', ') }}</span>
+            </div>
+            <div class="meta-field" v-if="parsedBcc.length > 0">
+              <span class="meta-field-label">{{ $t('bcc') }}</span>
+              <span class="meta-field-value">{{ parsedBcc.join(', ') }}</span>
+            </div>
           </div>
+          <span class="meta-date">{{ formatDetailDate(email.createTime) }}</span>
         </div>
+        <el-alert v-if="email.status === 3" :closable="false" :title="toMessage(email.message)"
+                  class="email-status-alert" type="error" show-icon />
+        <el-alert v-if="email.status === 4" :closable="false" :title="$t('complained')"
+                  class="email-status-alert" type="warning" show-icon />
+        <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')"
+                  class="email-status-alert" type="warning" show-icon />
 
-        <div class="body-divider"></div>
 
         <div class="email-body">
           <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
@@ -217,7 +208,7 @@
 
         <div v-if="aiPanel" class="ai-mail-panel">
           <div class="translate-panel-header">
-            <span class="translate-panel-title"><Icon icon="lucide:sparkles" width="15" height="15" /> {{ aiPanelTitle }}</span>
+            <span class="translate-panel-title"><Icon icon="psg:sparkles" width="15" height="15" /> {{ aiPanelTitle }}</span>
             <button type="button" class="icon-btn-sm" :aria-label="$t('close')" @click="aiPanel = ''"><Icon icon="psg:close" width="15" height="15" /></button>
           </div>
           <div v-if="aiLoading" class="translate-loading"><Icon icon="svg-spinners:3-dots-fade" width="24" height="24" /></div>
@@ -248,20 +239,27 @@
           </div>
         </div>
 
-        <div class="reply-action-bar" v-if="emailStore.contentData.showReply">
-          <button class="reply-action-btn" v-perm="'email:send'" @click="openReply">
-            <Icon icon="psg:reply" width="17" height="17" />{{ $t('reply') }}
-          </button>
-          <button class="reply-action-btn" v-perm="'email:send'" @click="openReplyAll">
-            <Icon icon="psg:reply-all" width="17" height="17" />{{ $t('replyAll') }}
-          </button>
-          <button class="reply-action-btn" v-perm="'email:send'" @click="openForward">
-            <Icon icon="psg:forward" width="16" height="16" />{{ $t('forward') }}
-          </button>
-        </div>
-
       </div>
     </el-scrollbar>
+
+    <!-- Docked reply card: the everyday next action, always in reach. -->
+    <div v-if="emailStore.contentData.showReply && hasPerm('email:send')" class="quick-reply">
+      <button type="button" class="quick-reply-prompt" @click="openReply">
+        <Icon icon="psg:reply" width="16" height="16" />
+        <span>{{ $t('quickReplyTo', { name: email.name || email.sendEmail }) }}</span>
+      </button>
+      <div class="quick-reply-actions">
+        <button type="button" class="quick-reply-btn" @click="openReplyAll">
+          <Icon icon="psg:reply-all" width="16" height="16" />{{ $t('replyAll') }}
+        </button>
+        <button type="button" class="quick-reply-btn" @click="openForward">
+          <Icon icon="psg:forward" width="15" height="15" />{{ $t('forward') }}
+        </button>
+        <button type="button" class="quick-reply-btn quick-reply-btn--primary" @click="openReply">
+          <Icon icon="psg:reply" width="16" height="16" />{{ $t('reply') }}
+        </button>
+      </div>
+    </div>
 
     <nav v-if="emailStore.contentData.showReply" class="mobile-reader-actions" :aria-label="$t('emailActions')">
       <button type="button" @click="openReply">
@@ -299,12 +297,13 @@ import { getIconByName } from '@/utils/icon-utils.js'
 import { allEmailDelete } from '@/request/all-email.js'
 import { useI18n } from 'vue-i18n'
 import { EmailUnreadEnum } from '@/enums/email-enum.js'
-import { avatarBg, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
+import { avatarBg, avatarTint, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import { downloadEml } from '@/utils/download-eml.js'
 import { useLabelStore } from '@/store/label.js'
 import { labelApply, labelRemove } from '@/request/label.js'
 import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
+import { hasPerm } from '@/perm/perm.js'
 
 const emit = defineEmits(['back'])
 
@@ -638,10 +637,11 @@ function handleDelete() {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: var(--psg-canvas);
-  /* Centered reads as an error state on a tall/wide reader pane with nothing
-     selected — nudge it above true center so it reads as "waiting", not "empty". */
-  transform: translateY(-12%);
+  height: 100%;
+  background: var(--psg-surface);
+  /* Sits a little above centre so it reads as "waiting", not "empty". */
+  padding-bottom: 12%;
+  box-sizing: border-box;
 
   .empty-icon { color: var(--psg-text-muted); opacity: 0.5; }
 
@@ -659,23 +659,22 @@ function handleDelete() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
 }
 
 /* ── Header ──────────────────────────────────────────────── */
 .detail-header {
-  min-height: 56px;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 24px;
   background: var(--psg-surface);
-  border-bottom: 1px solid var(--psg-border);
   flex-shrink: 0;
 }
 
-.header-left  { display: flex; align-items: center; gap: 2px; }
-.header-right { display: flex; align-items: center; gap: 2px; }
+.header-left  { display: flex; align-items: center; gap: 6px; }
+.header-right { display: flex; align-items: center; gap: 6px; }
 .mobile-reader-menu { display: none; }
 .mobile-reader-actions { display: none; }
 
@@ -688,18 +687,18 @@ function handleDelete() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border: none;
-  border-radius: var(--psg-radius-md);
-  background: transparent;
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
   cursor: pointer;
-  color: var(--psg-text-secondary);
+  color: var(--psg-text);
   transition: background 0.12s ease, color 0.12s ease;
   flex-shrink: 0;
 
   @media (hover: hover) {
-    &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
+    &:hover { background: var(--psg-surface-active); color: var(--psg-text); }
     &.icon-danger:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
   }
 }
@@ -724,12 +723,12 @@ function handleDelete() {
 }
 
 .page-counter {
-  font-family: var(--psg-font-mono);
-  font-size: 12px;
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
   color: var(--psg-text-muted);
   white-space: nowrap;
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
+  margin-left: 6px;
 }
 
 /* ── Scroll ──────────────────────────────────────────────── */
@@ -738,9 +737,9 @@ function handleDelete() {
 .detail-content {
   /* Editorial reading measure — the pane itself can stretch on wide
      monitors, but prose stays capped for readability. */
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 28px 40px 48px;
+  max-width: 820px;
+  margin: 0;
+  padding: 8px 48px 40px;
   @media (max-width: 1280px) { padding: 24px 24px 40px; }
   @media (max-width: 1024px) { padding: 20px 20px 36px; }
   @media (max-width: 767px)  { padding: 16px 16px 32px; }
@@ -749,11 +748,13 @@ function handleDelete() {
 
 /* ── Subject ─────────────────────────────────────────────── */
 .email-title {
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 700;
-  line-height: 1.3;
+  letter-spacing: -.02em;
+  line-height: 1.25;
   color: var(--psg-text);
-  margin: 0 0 20px;
+  margin: 0 0 14px;
+  text-wrap: balance;
   word-break: break-word;
   font-family: var(--psg-font-sans);
   letter-spacing: -0.01em;
@@ -768,7 +769,7 @@ function handleDelete() {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: -10px 0 16px;
+  margin: -4px 0 16px;
 }
 
 .detail-label-chip {
@@ -832,32 +833,26 @@ function handleDelete() {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-md);
-  box-shadow: var(--psg-shadow-xs);
-  margin-bottom: 0;
-  background: var(--psg-surface);
+  margin-bottom: 24px;
 
   @media (max-width: 767px) {
-    padding: 12px 14px;
     gap: 10px;
+    margin-bottom: 16px;
   }
 }
 
 .meta-avatar {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  margin-top: 2px;
-  border-radius: var(--psg-radius-xs);
+  border-radius: var(--psg-radius-md);
 
-  .meta-initial { color: #fff; font-size: 15px; font-weight: 700; line-height: 1; }
+  .meta-initial { color: inherit; font-size: 16px; font-weight: 700; line-height: 1; }
   .meta-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 }
 
@@ -866,14 +861,13 @@ function handleDelete() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .meta-sender-row {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: nowrap;
 
   @media (max-width: 540px) {
@@ -894,18 +888,20 @@ function handleDelete() {
 }
 
 .meta-date {
-  font-family: var(--psg-font-mono);
-  font-size: 11px;
-  color: var(--psg-text-muted);
-  white-space: nowrap;
+  font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--psg-text-secondary);
+  white-space: nowrap;
   flex-shrink: 0;
+  padding-top: 2px;
 }
 
 .meta-sender-email {
-  font-family: var(--psg-font-mono);
-  font-size: 11px;
-  color: var(--psg-text-muted);
+  font-family: var(--psg-font-sans);
+  font-size: 13px;
+  color: var(--psg-text-secondary);
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -923,31 +919,30 @@ function handleDelete() {
 .meta-field {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  font-size: 12.5px;
+  gap: 6px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .meta-field-label {
   font-family: var(--psg-font-sans);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--psg-text-muted);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--psg-text-secondary);
   flex-shrink: 0;
-  min-width: 28px;
 }
 
 .meta-field-value {
   color: var(--psg-text);
   word-break: break-word;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
+
+  &--to { color: var(--psg-text); font-weight: 700; }
 }
 
 .email-status-alert {
-  margin-top: 10px;
+  margin: -12px 0 20px;
   :deep(.el-alert) { border-radius: var(--psg-radius-sm) !important; }
 }
 
@@ -1005,39 +1000,85 @@ function handleDelete() {
 
   .att-icon-file { flex-shrink: 0; color: var(--psg-text-muted); }
   .att-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--psg-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .att-size { font-family: var(--psg-font-mono); font-size: 11px; color: var(--psg-text-muted); flex-shrink: 0; white-space: nowrap; }
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   .att-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 }
 
-/* ── Reply / Reply All / Forward — the everyday next action, restated at
-   the point the reader is done, not just as toolbar icons up top. ── */
-.reply-action-bar {
+/* ── Docked quick-reply card ─────────────────────────────── */
+.quick-reply {
+  flex-shrink: 0;
   display: flex;
-  gap: 10px;
-  margin-top: 40px;
-}
-
-.reply-action-btn {
-  display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 38px;
-  padding: 0 18px;
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-xs);
-  background: var(--psg-surface);
-  color: var(--psg-text);
-  font-family: var(--psg-font-sans);
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  margin: 0 24px 24px;
+  padding: 8px 8px 8px 10px;
+  box-sizing: border-box;
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-surface-muted);
+
+  /* Phones get the fixed action bar instead (.mobile-reader-actions). */
+  @media (max-width: 768px) { display: none; }
+}
+
+.quick-reply-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--psg-radius-md);
+  background: transparent;
+  color: var(--psg-text-muted);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: text;
+
+  span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   @media (hover: hover) {
-    &:hover {
-      background: var(--psg-primary-muted);
-      border-color: var(--psg-primary);
-      color: var(--psg-primary);
+    &:hover { background: var(--psg-surface); color: var(--psg-text-secondary); }
+  }
+}
+
+.quick-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.quick-reply-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--psg-radius-md);
+  background: transparent;
+  color: var(--psg-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+
+  @media (hover: hover) {
+    &:hover { background: var(--psg-surface); color: var(--psg-text); }
+  }
+
+  &--primary {
+    padding: 0 20px;
+    font-weight: 700;
+    background: var(--psg-primary);
+    color: var(--psg-on-primary);
+    font-weight: 600;
+
+    @media (hover: hover) {
+      &:hover { background: var(--psg-primary-hover); color: var(--psg-on-primary); }
     }
   }
 }
@@ -1190,37 +1231,33 @@ function handleDelete() {
   }
 
   .meta-card {
-    border-left: none;
-    border-radius: var(--psg-radius-sm);
-    padding: 14px;
+    flex-wrap: wrap;
+    row-gap: 0;
   }
 
   .meta-avatar {
-    width: 44px;
-    height: 44px;
+    width: 38px;
+    height: 38px;
   }
 
   .meta-sender-row {
     flex-direction: column;
     align-items: flex-start;
-    gap: 2px;
+    gap: 0;
   }
 
   .meta-sender-name {
     font-size: 15px;
   }
 
-  .meta-date,
-  .meta-sender-email,
-  .meta-field-label {
-    letter-spacing: 0;
+  /* Date tucks under the sender block instead of fighting it for width. */
+  .meta-date {
+    order: 3;
+    flex-basis: 100%;
+    padding: 4px 0 0 48px;
   }
 
-  .meta-field {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 8px;
-  }
+  .meta-field-value { word-break: break-all; }
 
   .body-divider {
     margin: 18px 4px;
@@ -1260,10 +1297,8 @@ function handleDelete() {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
     background: var(--psg-surface);
-    border-top: 1px solid var(--psg-border);
-    box-shadow: 0 -6px 18px rgba(20, 24, 21, .08);
   }
 
   .mobile-reader-actions button {
@@ -1272,13 +1307,19 @@ function handleDelete() {
     align-items: center;
     justify-content: center;
     gap: 6px;
+    min-height: 48px;
     padding: 0 6px;
-    border: 1px solid var(--psg-border);
-    border-radius: var(--psg-radius-sm);
-    background: var(--psg-surface);
+    border: 0;
+    border-radius: var(--psg-radius-md);
+    background: var(--psg-surface-muted);
     color: var(--psg-text);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
+  }
+
+  .mobile-reader-actions button:first-child {
+    background: var(--psg-primary);
+    color: var(--psg-on-primary);
   }
 
   .mobile-reader-actions button:active {

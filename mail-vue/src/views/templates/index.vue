@@ -491,14 +491,14 @@ function useTemplate(tpl) {
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--psg-border);
   flex-wrap: wrap;
 }
 
 .page-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
+  letter-spacing: -.02em;
   color: var(--psg-text);
 }
 
@@ -531,14 +531,15 @@ function useTemplate(tpl) {
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
+  border: 0;
 
   :deep(.el-input__wrapper) {
     height: 30px;
     box-shadow: none !important;
-    border: 1px solid var(--psg-border);
+    border: 0;
+    background: var(--psg-surface-muted);
     border-radius: var(--psg-radius-sm);
     transition: border-color 0.12s;
     &:hover { border-color: var(--psg-border-strong); }
@@ -586,10 +587,10 @@ function useTemplate(tpl) {
 }
 
 .filter-count {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-border);
+  border: 0;
   padding: 0 4px;
   min-width: 16px;
   height: 16px;
@@ -609,8 +610,8 @@ function useTemplate(tpl) {
   display: flex; flex-direction: column;
   align-items: flex-start; gap: 6px;
   padding: 40px 24px;
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-md);
   max-width: 480px;
   margin: 8px auto 0;
@@ -633,8 +634,8 @@ function useTemplate(tpl) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-md);
   padding: 16px;
   transition: border-color 0.16s ease;
@@ -673,10 +674,10 @@ function useTemplate(tpl) {
 
 .tpl-cat {
   align-self: flex-start;
-  font-size: 10.5px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   color: var(--psg-primary);
   background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-surface-active);
+  border: 0;
   padding: 1px 7px;
   white-space: nowrap;
 }
@@ -689,8 +690,7 @@ function useTemplate(tpl) {
 }
 
 .tpl-field-lbl {
-  font-size: 9.5px; font-weight: 800;
-  text-transform: uppercase; letter-spacing: 0.08em;
+  font-size: 12px; font-weight: 700; letter-spacing: 0;
   color: var(--psg-text-muted);
 }
 
@@ -753,8 +753,7 @@ function useTemplate(tpl) {
 .preview-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
 
 .preview-label {
-  font-size: 10px; font-weight: 900;
-  text-transform: uppercase; letter-spacing: 0.10em;
+  font-size: 12px; font-weight: 700; letter-spacing: 0;
   color: var(--psg-text-secondary);
 }
 
@@ -765,10 +764,10 @@ function useTemplate(tpl) {
 .preview-html {
   height: 260px;
   overflow: auto;
-  border: 1px solid var(--psg-border);
+  border: 0;
   border-radius: var(--psg-radius-sm);
   padding: 14px 16px;
-  background: var(--psg-canvas);
+  background: var(--psg-surface-muted);
 }
 
 .preview-footer { display: flex; justify-content: flex-end; gap: 8px; }
@@ -818,15 +817,14 @@ function useTemplate(tpl) {
 }
 
 .field-label {
-  font-size: 10px; font-weight: 900;
-  text-transform: uppercase; letter-spacing: 0.10em;
+  font-size: 12px; font-weight: 700; letter-spacing: 0;
   color: var(--psg-text-secondary);
 }
 
 .var-btn {
   display: flex; align-items: center; gap: 4px;
-  background: transparent;
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-sm); cursor: pointer;
   font-size: 11.5px; font-weight: 700;
   color: var(--psg-text-secondary); padding: 4px 10px;
@@ -841,7 +839,8 @@ function useTemplate(tpl) {
 
 .editor-frame {
   height: 320px;
-  border: 1px solid var(--psg-border);
+  border: 0;
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-sm); overflow: hidden;
 }
 </style>

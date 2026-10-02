@@ -5,8 +5,9 @@
     <div v-if="props.explorerTitle" class="explorer-head">
       <div class="explorer-header">
         <h2 class="explorer-title">{{ props.explorerTitle }}</h2>
-        <p v-if="props.explorerSubtitle" class="explorer-subtitle">{{ props.explorerSubtitle }}</p>
       </div>
+
+      <MailboxChips v-if="props.showMailboxSwitch" />
 
       <div class="explorer-search-row">
         <!-- All Mail needs backend multi-field search (sender/subject/user/account)
@@ -139,83 +140,72 @@
             <div v-else class="swipe-bg swipe-bg--archive" :style="{ opacity: swipeArchiveOpacity(item) }">
               <Icon icon="psg:archive" width="18" /><span>{{ $t('archive') }}</span>
             </div>
+            <!-- Mist row: unread dot · avatar · name/time, subject, arrived-on
+                 chip + preview (the admin All Mail list shows owner → peer). -->
             <div
-              class="mail-row"
+              class="mrow"
               :style="rowSwipeStyle(item)"
-              :class="[props.type, {
+              :class="{
                 'is-unread': item.unread === EmailUnreadEnum.UNREAD && showUnread,
                 'is-open': !!item.emailId && emailStore.contentData.email?.emailId === item.emailId,
-              }]"
+                'is-checked': item.checked,
+                'is-selecting': selectionMode,
+              }"
               :data-active="item.rightChecked || undefined"
               @click="onRowClick($event, item)"
               @contextmenu="handleContextmenu($event, item)"
             >
-              <!-- Col 1: Checkbox + unread dot -->
-              <div class="row-check">
-                <div class="unread-indicator" :class="{ visible: item.unread === EmailUnreadEnum.UNREAD && showUnread }"></div>
-                <el-checkbox class="mail-cb"
-                             :class="{ 'mobile-selection-visible': selectionMode || item.checked }"
-                             v-model="item.checked" @click.stop />
+              <div class="mrow-lead">
+                <span class="mrow-dot" aria-hidden="true"></span>
               </div>
-
-              <!-- Col 2: Sender -->
-              <div class="row-sender">
-                <div class="sender-avatar" :style="{ background: senderBg(item) }">
-                  <span class="sender-avatar-letter">{{ senderLetter(item) }}</span>
-                  <img v-if="senderImg(item)" :src="senderImg(item)" class="sender-avatar-img"
-                       @error="e => { e.target.style.display = 'none'; markGravatarMiss(item.sendEmail) }" />
-                </div>
-                <div class="email-status-inline" v-if="showStatus">
-                  <el-tooltip effect="dark" :content="item.statusIcon?.content">
-                    <Icon :icon="item.statusIcon?.icon" :style="`color: ${item.statusIcon?.color}`"
-                          width="14" height="14" />
-                  </el-tooltip>
-                </div>
-                <span class="mail-name">
-                  <slot name="name" :email="item">{{ item.name }}</slot>
-                </span>
-                <Icon v-if="item.isStar && showStar" icon="fluent-color:star-16" width="12" height="12" class="sender-star" />
+              <div class="mrow-avatar" :style="avatarTint(item.sendEmail || item.name)">
+                <span class="mrow-avatar-letter">{{ senderLetter(item) }}</span>
+                <img v-if="senderImg(item)" :src="senderImg(item)" class="mrow-avatar-img" alt=""
+                     @error="e => { e.target.style.display = 'none'; markGravatarMiss(item.sendEmail) }" />
+                <el-checkbox class="mrow-cb" v-model="item.checked" @click.stop
+                             :aria-label="$t('select')" />
               </div>
-
-              <!-- Col 3: Subject + snippet -->
-              <div class="row-subject-cell">
-                <span v-if="item.code" class="code-tag" @click.stop="copyCode(item.code)">
-                  [{{ t('codeLabel') }}{{ item.code }}]
-                </span>
-                <span class="subject-text">
-                  <slot name="subject" :email="item">{{ item.subject || '​' }}</slot>
-                </span>
-                <span class="row-label-dots" v-if="item.labels && item.labels.length">
-                  <span v-for="l in item.labels" :key="l.labelId" class="row-label-dot" :style="{ background: l.color }" :title="l.name"></span>
-                </span>
-                <span class="mail-preview-inline">{{ item.formatText ? ' — ' + item.formatText : '' }}</span>
-                <div class="user-info-inline" v-if="showUserInfo">
-                  <span>{{ item.userEmail }}</span>
-                  <span>→ {{ item.type === 0 ? item.toEmail : item.sendEmail }}</span>
+              <div class="mrow-body">
+                <div class="mrow-line">
+                  <span v-if="showStatus" class="mrow-status">
+                    <el-tooltip effect="dark" :content="item.statusIcon?.content">
+                      <Icon :icon="item.statusIcon?.icon" :style="`color: ${item.statusIcon?.color}`" width="14" height="14" />
+                    </el-tooltip>
+                  </span>
+                  <span class="mrow-name"><slot name="name" :email="item">{{ item.name }}</slot></span>
+                  <Icon v-if="item.isStar && showStar" icon="fluent-color:star-16" width="13" height="13" class="mrow-star" />
+                  <span class="mrow-time">{{ item.formatCreateTime }}</span>
+                  <div class="mrow-actions">
+                    <button v-if="archiveEmail" type="button" class="icon-btn" :title="$t('archive')" :aria-label="$t('archive')"
+                            @click.stop="archiveEmail(item.emailId)">
+                      <Icon icon="psg:archive" width="15" height="15" />
+                    </button>
+                    <button v-if="restoreEmail" type="button" class="icon-btn" :title="$t('restore')" :aria-label="$t('restore')"
+                            @click.stop="restoreEmail(item.emailId)">
+                      <Icon icon="solar:inbox-out-linear" width="15" height="15" />
+                    </button>
+                    <button v-if="showStar" type="button" class="icon-btn" :title="$t('star')" :aria-label="$t('star')"
+                            @click.stop="starChange(item)">
+                      <Icon :icon="item.isStar ? 'fluent-color:star-16' : 'psg:star'" width="15" height="15" />
+                    </button>
+                    <button v-perm="'email:delete'" type="button" class="icon-btn icon-danger" :title="$t('delete')" :aria-label="$t('delete')"
+                            @click.stop="rightDeleteItem(item)">
+                      <Icon icon="psg:trash" width="15" height="15" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <!-- Col 4: Time + actions -->
-              <div class="row-meta">
-                <span class="mail-time">{{ item.formatCreateTime }}</span>
-                <div class="mail-actions">
-                  <button v-if="archiveEmail" type="button" class="icon-btn" :title="$t('archive')" :aria-label="$t('archive')"
-                          @click.stop="archiveEmail(item.emailId)">
-                    <Icon icon="psg:archive" width="14" height="14" />
-                  </button>
-                  <button v-if="restoreEmail" type="button" class="icon-btn" :title="$t('restore')" :aria-label="$t('restore')"
-                          @click.stop="restoreEmail(item.emailId)">
-                    <Icon icon="solar:inbox-out-linear" width="14" height="14" />
-                  </button>
-                  <button v-if="showStar" type="button" class="icon-btn" :title="$t('star')" :aria-label="$t('star')"
-                          @click.stop="starChange(item)">
-                    <Icon :icon="item.isStar ? 'fluent-color:star-16' : 'psg:star'"
-                          :width="14" :height="14" />
-                  </button>
-                  <button v-perm="'email:delete'" type="button" class="icon-btn icon-danger" :title="$t('delete')" :aria-label="$t('delete')"
-                          @click.stop="rightDeleteItem(item)">
-                    <Icon icon="psg:trash" width="14" height="14" />
-                  </button>
+                <div class="mrow-subject">
+                  <span v-if="item.code" class="code-tag" @click.stop="copyCode(item.code)">[{{ t('codeLabel') }}{{ item.code }}]</span>
+                  <span class="mrow-subject-text"><slot name="subject" :email="item">{{ item.subject || $t('noSubject') }}</slot></span>
+                  <span class="mrow-labels" v-if="item.labels && item.labels.length">
+                    <span v-for="l in item.labels" :key="l.labelId" class="mrow-label" :style="{ background: l.color }" :title="l.name"></span>
+                  </span>
+                </div>
+                <div class="mrow-line mrow-line--meta">
+                  <span v-if="mailboxChip(item)" class="mailbox-chip" :style="{ '--chip': mailboxColor(mailboxChip(item)) }"
+                        :title="mailboxChip(item)">{{ mailboxChip(item).split('@')[0] }}@</span>
+                  <span v-if="showUserInfo" class="mrow-preview">{{ item.userEmail }} → {{ item.type === 0 ? item.toEmail : item.sendEmail }}</span>
+                  <span v-else class="mrow-preview">{{ item.formatText }}</span>
                 </div>
               </div>
             </div>
@@ -318,12 +308,13 @@
 <script setup>
 import {Icon} from "@iconify/vue";
 import skeletonBlock from "@/components/email-scroll/skeleton/index.vue"
+import MailboxChips from "@/components/mailbox-chips/index.vue"
 import {computed, onActivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import {useEmailStore} from "@/store/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {sleep} from "@/utils/time-utils.js"
-import { avatarBg, avatarLetter, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
+import { avatarLetter, avatarTint, mailboxColor, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import {fromNow} from "@/utils/day.js";
 import {useI18n} from "vue-i18n";
@@ -333,6 +324,11 @@ import { useScroll } from '@vueuse/core'
 import { downloadEml } from '@/utils/download-eml.js'
 
 const props = defineProps({
+  // Tag each received row with the address it arrived on — for views that
+  // mix several mailboxes (All inboxes, or a catch-all account).
+  showMailbox: { type: Boolean, default: false },
+  // Address switcher chips above the list (inbox views).
+  showMailboxSwitch: { type: Boolean, default: false },
   getEmailList: Function,
   emailDelete: Function,
   emailRead: Function,
@@ -457,11 +453,12 @@ const list = computed(() => {
   return [...emailList, ...expandList]
 })
 
-const itemHeight = computed(() => {
-  if (viewportWidth.value <= 768) return props.type === 'all-email' ? 112 : 80;
-  if (props.type === 'all-email') return isMobile.value ? 72 : 68;
-  return isMobile.value ? 64 : 60;
-})
+function mailboxChip(item) {
+  return props.showMailbox && item.type === 0 && item.toEmail ? item.toEmail : ''
+}
+
+// .mrow: three text lines (name/time, subject, chip + preview) + 4px gap.
+const itemHeight = computed(() => 84)
 
 watch(itemHeight, () => { keyCount.value++ })
 
@@ -539,7 +536,6 @@ function cleanSpace(text) {
 }
 
 const avatarCache = useAvatarCacheStore()
-function senderBg(item) { return avatarBg(item.sendEmail || item.name || '') }
 function senderLetter(item) { return avatarLetter(item.name, item.sendEmail) }
 function senderImg(item) {
   return avatarCache.get(item.sendEmail) || storedAvatar(item.sendEmail) || gravatarCandidate(item.sendEmail)
@@ -726,14 +722,14 @@ function handleList(list) {
     email.formatCreateTime = fromNow(email.createTime);
     email.test = t('received')
     const statusIconMap = {
-      0: { icon: 'psg:mail', color: '#51C76B', content: t('received') },
-      1: { icon: 'bi:send-arrow-up-fill',    color: '#51C76B', content: t('sent') },
-      2: { icon: 'bi:send-check-fill',       color: '#51C76B', content: t('delivered') },
-      3: { icon: 'bi:send-x-fill',           color: '#F56C6C', content: t('bounced') },
-      8: { icon: 'bi:send-x-fill',           color: '#F56C6C', content: t('bounced') },
-      4: { icon: 'bi:send-exclamation-fill', color: '#FBBD08', content: t('complained') },
-      5: { icon: 'bi:send-arrow-up-fill',    color: '#FBBD08', content: t('delayed') },
-      7: { icon: 'psg:mail', color: '#FBBD08', content: t('noRecipient') },
+      0: { icon: 'psg:mail',         color: 'var(--psg-text-muted)', content: t('received') },
+      1: { icon: 'psg:send',         color: 'var(--psg-text-muted)', content: t('sent') },
+      2: { icon: 'psg:check-circle', color: 'var(--psg-success)',    content: t('delivered') },
+      3: { icon: 'psg:warning',      color: 'var(--psg-danger)',     content: t('bounced') },
+      8: { icon: 'psg:warning',      color: 'var(--psg-danger)',     content: t('bounced') },
+      4: { icon: 'psg:warning',      color: 'var(--psg-warning)',    content: t('complained') },
+      5: { icon: 'psg:clock',        color: 'var(--psg-warning)',    content: t('delayed') },
+      7: { icon: 'psg:mail',         color: 'var(--psg-warning)',    content: t('noRecipient') },
     };
     if (email.isDel) email.isDelContent = t('selectDeleted');
     email.statusIcon = statusIconMap[email.status];
@@ -910,7 +906,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   height: 100%;
   min-width: 0;
   overflow: hidden;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
   font-size: 14px;
   color: var(--psg-text);
   /* The list pane is a narrow column (~380-420px) even on a wide desktop
@@ -933,13 +929,14 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
 .explorer-header {
   min-width: 0;
-  padding: 14px 16px 2px;
+  padding: 20px 20px 0;
 }
 
 .explorer-title {
   margin: 0;
   font-family: var(--psg-font-sans);
-  font-size: 15px;
+  font-size: 22px;
+  letter-spacing: -.01em;
   font-weight: 700;
   letter-spacing: 0;
   color: var(--psg-text);
@@ -955,17 +952,17 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 36px;
-  margin: 10px 16px 0;
-  padding: 0 10px;
-  background: var(--psg-canvas);
-  border: 1px solid var(--psg-border);
+  height: 40px;
+  margin: 12px 20px 0;
+  padding: 0 12px;
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-md);
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  transition: box-shadow 0.12s ease, background 0.12s ease;
 
   &:focus-within {
-    border-color: var(--psg-primary);
-    box-shadow: 0 0 0 3px var(--psg-primary-muted);
+    background: var(--psg-surface);
+    box-shadow: 0 0 0 2px var(--psg-primary);
   }
 }
 
@@ -1005,11 +1002,11 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
 /* ── Toolbar ──────────────────────────────────────────────── */
 .mail-toolbar {
-  height: 44px;
+  height: 48px;
   display: flex;
   align-items: center;
-  padding: 0 0 0 10px;
-  border-bottom: 1px solid var(--psg-border);
+  padding: 0 10px 0 16px;
+  border-bottom: 0;
   background: var(--psg-surface);
   flex-shrink: 0;
 
@@ -1105,32 +1102,34 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 .filter-chips {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
+  gap: 6px;
   margin-left: 4px;
   flex-shrink: 0;
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-xs);
 }
 
+/* Pill filters, as in the redesign: active = filled ink, rest outlined. */
 .filter-chip {
-  border: none;
-  background: transparent;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--psg-border);
+  border-radius: 14px;
+  background: var(--psg-surface);
   cursor: pointer;
-  height: 24px;
-  padding: 0 11px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   font-family: var(--psg-font-sans);
-  color: var(--psg-text-secondary);
-  border-radius: var(--psg-radius-xs);
-  transition: background 0.14s ease, color 0.14s ease;
+  color: var(--psg-text);
+  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
   white-space: nowrap;
 
+  @media (hover: hover) {
+    &:hover:not(.active) { background: var(--psg-surface-muted); }
+  }
+
   &.active {
-    background: var(--psg-surface);
-    color: var(--psg-text);
-    border: 1px solid var(--psg-border);
+    background: var(--psg-text);
+    border-color: var(--psg-text);
+    color: var(--psg-surface);
     font-weight: 600;
   }
 }
@@ -1255,123 +1254,13 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   :deep(.mail-row-wrap) {
     padding: 0;
   }
-
-  :deep(.mail-row) {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
-    grid-template-rows: 24px 33px;
-    gap: 3px 10px;
-    min-height: 80px;
-    padding: 10px 18px 10px 14px;
-    border-radius: var(--psg-radius-xs);
-    align-items: center;
-
-    &.all-email {
-      min-height: 94px;
-    }
-  }
-
-  :deep(.row-check) {
-    grid-column: 1;
-    grid-row: 1 / 3;
-    align-self: center;
-    padding-left: 0;
-    justify-content: center;
-    flex-direction: column;
-    gap: 8px;
-
-    .unread-indicator {
-      width: 8px;
-      height: 8px;
-    }
-  }
-
-  /* Sender name, time, and subject/preview now match .mail-row.all-email's
-     own numbers exactly (13.5/700 name, 11.5 time with no forced weight,
-     13/600 subject) — one shared row typography for every folder instead of
-     a second, heavier scale (was 15/800 name, bold-always 11px time,
-     14/700 subject) that only non-all-email folders got. */
-  :deep(.row-sender) {
-    grid-column: 2;
-    grid-row: 1;
-    padding-top: 0;
-
-    .mail-name {
-      font-size: 13.5px;
-      font-weight: 700;
-      color: var(--psg-text);
-    }
-  }
-
-  :deep(.row-meta) {
-    grid-column: 3;
-    grid-row: 1;
-    align-items: flex-end;
-    padding-top: 0;
-
-    .mail-time {
-      font-size: 11.5px;
-      color: var(--psg-text-muted);
-    }
-
-    /* !important: the base (unconditional) .row-meta .mail-actions{display:flex}
-       rule sits after this block in source order, so a plain override here
-       loses the cascade (equal specificity, later wins) despite this
-       media/container condition matching. */
-    .mail-actions {
-      display: none !important;
-    }
-  }
-
-  :deep(.row-subject-cell) {
-    grid-column: 2 / 4;
-    grid-row: 2;
-    display: flex;
-    flex-direction: column;
-    /* Base .row-subject-cell (row-direction, desktop) sets align-items:center
-       to vertically center subject+preview side by side. In this stacked
-       column layout that same property means "center each line horizontally
-       at its own content width" instead — without overriding it here, a
-       nowrap subject/preview line renders at full intrinsic width and floats
-       centered, overflowing both edges of the row with no ellipsis visible. */
-    align-items: flex-start;
-    justify-content: flex-start;
-    min-width: 0;
-    padding-bottom: 0;
-
-    .subject-text {
-      display: block;
-      width: 100%;
-      height: 16px;
-      font-size: 13px;
-      font-weight: 600;
-      line-height: 16px;
-      color: var(--psg-text-secondary);
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-
-    .mail-preview-inline {
-      display: block !important;
-      width: 100%;
-      height: 15px;
-      margin-top: 2px;
-      font-size: 12px;
-      line-height: 15px;
-      color: var(--psg-text-muted);
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      max-width: 100%;
-    }
-  }
 }
 
 /* ── Scroll area ──────────────────────────────────────────── */
 .scroll {
   height: 100%;
   overflow: hidden;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
 
   .virtual { will-change: scroll-position; }
 
@@ -1431,81 +1320,6 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 }
 
 /* ── Mail row ──────────────────────────────────────────────── */
-:deep(.mail-row) {
-  position: relative;
-  display: grid;
-  grid-template-columns: 52px 180px 1fr 110px;
-  gap: 8px;
-  min-height: 60px;
-  padding: 10px 18px 10px 14px;
-  border-bottom: 1px solid var(--psg-border);
-  background: var(--psg-surface);
-  border-radius: var(--psg-radius-xs);
-  cursor: pointer;
-  align-items: center;
-  transition: background 120ms ease;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 10%;
-    bottom: 10%;
-    width: 3px;
-    background: var(--psg-primary);
-    opacity: 0;
-    transition: opacity 120ms ease;
-  }
-
-  /* Admin "all mail" rows carry more identity per email (sender, subject,
-     snippet, from→to flow) than a personal inbox row can show on one line —
-     so instead of the shared 4-column single-line grid, this variant always
-     uses a stacked 4-line card, regardless of how wide the list pane is
-     resized. (Every other type still gets the narrow/stacked treatment only
-     below the @container breakpoint further down — this one opts out of
-     that condition entirely, on purpose.) See the `.mail-row.all-email …`
-     rules below for the child-cell placement. */
-  /* Row tracks are fixed px, not auto — this list is a fixed-item-height
-     virtual list (see all-email/index.vue's :item-height), so the row's
-     rendered height must be deterministic, not content-dependent. */
-  &.all-email {
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-    grid-template-rows: 17px 48px;
-    row-gap: 3px;
-    column-gap: 10px;
-    height: 88px;
-    padding: 10px 18px 10px 14px;
-    align-items: start;
-  }
-
-  @media (max-width: 1280px) {
-    grid-template-columns: 44px 140px 1fr 88px;
-  }
-
-  /* ── Mobile: stacked 2-row layout ── (.all-email keeps its own fixed
-     88px card height, set unconditionally above — not touched here) */
-  @media (max-width: 768px) {
-    grid-template-columns: 36px 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 0 8px;
-    min-height: 64px;
-    padding: 10px 14px 10px 8px;
-    align-items: start;
-  }
-
-  @media (hover: hover) {
-    &:hover {
-      background: var(--psg-surface-muted);
-    }
-  }
-
-  &[data-active],
-  &.is-open {
-    background: var(--psg-primary-muted);
-
-    &::before { opacity: 1; }
-  }
-}
 
 /* ── Narrow list pane (desktop split view is ~380-420px wide even on a
    huge monitor): same stacked sender/subject/preview layout as mobile,
@@ -1527,342 +1341,28 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .sort-btn {
     padding: 0 6px;
   }
-
-  /* .all-email keeps its own fixed 88px card height, set unconditionally
-     above (higher specificity: `.mail-row.all-email` beats `.mail-row`
-     here regardless of this query matching) — not touched by this block. */
-  :deep(.mail-row) {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
-    grid-template-rows: 24px 33px;
-    gap: 3px 10px;
-    min-height: 80px;
-    padding: 10px 18px 10px 14px;
-    align-items: center;
-  }
-
-  :deep(.row-check) {
-    grid-column: 1;
-    grid-row: 1 / 3;
-    align-self: center;
-    padding-left: 0;
-    justify-content: center;
-    flex-direction: column;
-    gap: 8px;
-
-    .unread-indicator { width: 8px; height: 8px; }
-  }
-
-  :deep(.row-sender) {
-    grid-column: 2;
-    grid-row: 1;
-    padding-top: 0;
-
-    .mail-name { font-size: 13.5px; font-weight: 700; color: var(--psg-text); }
-  }
-
-  :deep(.row-meta) {
-    grid-column: 3;
-    grid-row: 1;
-    align-items: flex-end;
-    padding-top: 0;
-
-    .mail-time { font-size: 11.5px; color: var(--psg-text-muted); }
-    .mail-actions { display: none !important; }
-  }
-
-  :deep(.row-subject-cell) {
-    grid-column: 2 / 4;
-    grid-row: 2;
-    display: flex;
-    flex-direction: column;
-    /* Base .row-subject-cell (row-direction, desktop) sets align-items:center
-       to vertically center subject+preview side by side. In this stacked
-       column layout that same property means "center each line horizontally
-       at its own content width" instead — without overriding it here, a
-       nowrap subject/preview line renders at full intrinsic width and floats
-       centered, overflowing both edges of the row with no ellipsis visible. */
-    align-items: flex-start;
-    justify-content: flex-start;
-    min-width: 0;
-    padding-bottom: 0;
-
-    .subject-text {
-      display: block;
-      width: 100%;
-      height: 16px;
-      font-size: 13px;
-      font-weight: 600;
-      line-height: 16px;
-      color: var(--psg-text-secondary);
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-
-    .mail-preview-inline {
-      display: block !important;
-      width: 100%;
-      height: 15px;
-      margin-top: 2px;
-      font-size: 12px;
-      line-height: 15px;
-      color: var(--psg-text-muted);
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      max-width: 100%;
-    }
-  }
 }
 
-/* Mobile row cell placement */
 @media (max-width: 768px) {
   .mobile-selection-close { display: inline-grid; place-items: center; }
-  :deep(.mail-cb:not(.mobile-selection-visible)) { display: none; }
-
-  :deep(.row-check) {
-    grid-column: 1;
-    grid-row: 1 / 3;
-    align-self: center;
-  }
-  :deep(.row-sender) {
-    grid-column: 2;
-    grid-row: 1;
-    padding-top: 2px;
-  }
-  :deep(.row-meta) {
-    grid-column: 3;
-    grid-row: 1;
-    align-items: flex-start;
-    padding-top: 2px;
-  }
-  :deep(.row-subject-cell) {
-    grid-column: 2 / 4;
-    grid-row: 2;
-    padding-bottom: 4px;
-
-    /* Hide long preview on mobile to reduce clutter */
-    .mail-preview-inline { display: none; }
-  }
 }
 
 /* 480px: hide preview text, boost sender/subject readability */
 @media (max-width: 480px) {
-  :deep(.mail-preview-inline) { display: none !important; }
-  :deep(.row-sender .mail-name) { font-size: 15px; }
-  :deep(.row-subject-cell .subject-text) { font-size: 15px; }
 }
 
 /* ── Col 1: Checkbox + unread indicator ───────────────────── */
-:deep(.row-check) {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding-left: 8px;
-
-  .unread-indicator {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: transparent;
-    flex-shrink: 0;
-    transition: background 0.1s;
-
-    &.visible { background: var(--psg-primary); }
-  }
-
-  /* Select checkbox: out of the way at rest, not a permanent row of
-     empty circles — appears on hover, or once something is checked.
-     Touch devices have no hover to reveal it, so leave it visible there
-     (this whole treatment is mouse/desktop-only). */
-  @media (hover: hover) {
-    .mail-cb {
-      opacity: 0;
-      transition: opacity 0.12s ease;
-
-      &.is-checked { opacity: 1; }
-    }
-  }
-}
 
 @media (hover: hover) {
-  :deep(.mail-row):hover .mail-cb { opacity: 1; }
 }
 
 /* ── Col 2: Sender ────────────────────────────────────────── */
-:deep(.row-sender) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  overflow: hidden;
-
-  .sender-avatar {
-    position: relative;
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-    border-radius: var(--psg-radius-xs);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-
-    .sender-avatar-letter {
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 1;
-      font-family: var(--psg-font-sans);
-    }
-
-    .sender-avatar-img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  }
-
-  .mail-name {
-    font-size: 14px;
-    font-weight: 400;
-    color: var(--psg-text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .sender-star { flex-shrink: 0; }
-
-  .email-status-inline {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
 
 /* ── Col 3: Subject + snippet ─────────────────────────────── */
-:deep(.row-subject-cell) {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-
-  .subject-text {
-    font-size: 14px;
-    font-weight: 400;
-    color: var(--psg-text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 1;
-    min-width: 0;
-  }
-
-  .mail-preview-inline {
-    font-size: 13px;
-    color: var(--psg-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 2;
-    min-width: 0;
-  }
-
-  .code-tag {
-    font-family: var(--psg-font-mono);
-    font-size: 11px;
-    color: var(--psg-text);
-    cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    border: 1px solid var(--psg-border);
-    padding: 0 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .row-label-dots {
-    display: inline-flex;
-    gap: 3px;
-    flex-shrink: 0;
-  }
-
-  .row-label-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-  }
-
-  .user-info-inline {
-    display: flex;
-    gap: 8px;
-    font-family: var(--psg-font-mono);
-    font-size: 10px;
-    color: var(--psg-text-muted);
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-}
 
 /* ── Col 4: Time + actions ────────────────────────────────── */
-:deep(.row-meta) {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 4px;
-  flex-shrink: 0;
-
-  .mail-time {
-    font-family: var(--psg-font-mono);
-    font-size: 11px;
-    color: var(--psg-text-muted);
-    white-space: nowrap;
-    letter-spacing: 0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .mail-actions {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    opacity: 0;
-    transition: opacity 0.1s;
-  }
-}
-
-:deep(.mail-row:hover .row-meta .mail-actions),
-:deep(.mail-row[data-active] .row-meta .mail-actions) {
-  opacity: 1;
-}
 
 /* ── Unread state — stronger sender/subject, no separate row background ── */
-:deep(.mail-row.is-unread) {
-  .row-sender .mail-name {
-    font-weight: 700 !important;
-    color: var(--psg-text) !important;
-  }
-  .row-subject-cell .subject-text {
-    font-weight: 700 !important;
-    color: var(--psg-text) !important;
-  }
-  .row-meta .mail-time {
-    font-weight: 700 !important;
-    color: var(--psg-text) !important;
-  }
-}
-
-:deep(.mail-row:not(.is-unread)) {
-  .row-sender .mail-name { opacity: 0.65; }
-  .row-subject-cell .subject-text { opacity: 0.65; }
-}
 
 /* ── Admin "all mail" row: stacked card ──────────────────────
    Sender+date on the first line, subject on the second, snippet on the
@@ -1871,100 +1371,6 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
    above would otherwise mute every sender and subject permanently — these
    selectors are more specific (two classes) than that rule, so they win
    regardless of source order and keep sender/subject at full strength. ── */
-:deep(.mail-row.all-email) {
-  .row-check {
-    grid-column: 1;
-    grid-row: 1 / 3;
-    align-self: center;
-    padding-left: 0;
-  }
-
-  /* No avatar on the admin row — with 4 lines of real content to show
-     (sender+date, subject, snippet, from→to), the 24px avatar circle would
-     force track 1 taller than a text line needs and blow the row past a
-     comfortable height. The status icon (received/sent/bounced/…) still
-     carries the identity cue a circle would have. */
-  .row-sender {
-    grid-column: 2;
-    grid-row: 1;
-    height: 17px;
-
-    .sender-avatar { display: none; }
-
-    .mail-name {
-      font-size: 13.5px;
-      line-height: 17px;
-      font-weight: 700;
-      color: var(--psg-text);
-      opacity: 1;
-    }
-  }
-
-  .row-meta {
-    grid-column: 3;
-    grid-row: 1;
-    height: 17px;
-    align-items: flex-end;
-    justify-content: flex-start;
-
-    .mail-time {
-      line-height: 17px;
-      font-size: 11.5px;
-    }
-  }
-
-  .row-subject-cell {
-    grid-column: 2 / 4;
-    grid-row: 2;
-    height: 48px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 2px;
-
-    .subject-text {
-      display: block;
-      width: 100%;
-      height: 16px;
-      font-size: 13px;
-      line-height: 16px;
-      font-weight: 600;
-      color: var(--psg-text);
-      opacity: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex-shrink: 0;
-    }
-
-    .mail-preview-inline {
-      display: block;
-      width: 100%;
-      height: 15px;
-      font-size: 12px;
-      line-height: 15px;
-      color: var(--psg-text-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex-shrink: 0;
-    }
-
-    .user-info-inline {
-      width: 100%;
-      height: 13px;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      font-size: 11px;
-      line-height: 13px;
-      color: var(--psg-text-muted);
-      flex-shrink: 0;
-    }
-  }
-}
 
 /* ── Context menu ─────────────────────────────────────────── */
 .ctx-item {
@@ -2023,5 +1429,222 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     cursor: pointer;
     pointer-events: auto;
   }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Mail row (.mrow) — 2026 redesign. Three lines in a fixed 84px row
+   (the virtual list needs a constant height): name + time, subject,
+   arrived-on chip + preview. Unread = accent dot + weight, never fading
+   read mail. Every folder, the admin All Mail list included, uses it.
+   ══════════════════════════════════════════════════════════ */
+:deep(.mrow) {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  height: 80px;
+  box-sizing: border-box;
+  margin: 2px 10px;
+  padding: 12px 12px 12px 4px;
+  background: transparent;
+  border-radius: var(--psg-radius-lg);
+  cursor: pointer;
+  transition: background 120ms ease;
+
+  @media (hover: hover) {
+    &:hover { background: var(--psg-surface-muted); }
+  }
+
+  &.is-open,
+  &[data-active] {
+    background: var(--psg-surface-muted);
+  }
+
+  &.is-checked { background: var(--psg-primary-muted); }
+
+  .mrow-lead {
+    width: 8px;
+    flex-shrink: 0;
+    padding-top: 18px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .mrow-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  &.is-unread .mrow-dot { background: var(--psg-primary); }
+
+  /* Avatar doubles as the select target: checkbox shows on hover, once
+     checked, or while in (mobile long-press) selection mode. */
+  .mrow-avatar {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: var(--psg-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .mrow-avatar-letter {
+    color: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .mrow-avatar-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .mrow-cb {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    justify-content: center;
+    background: var(--psg-surface);
+    border-radius: var(--psg-radius-md);
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  @media (hover: hover) {
+    &:hover .mrow-cb { opacity: 1; }
+  }
+  &.is-checked .mrow-cb,
+  &.is-selecting .mrow-cb { opacity: 1; }
+
+  .mrow-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mrow-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    height: 20px;
+  }
+
+  .mrow-status { display: flex; flex-shrink: 0; }
+
+  .mrow-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--psg-text);
+  }
+
+  .mrow-star { flex-shrink: 0; }
+
+  .mrow-time {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--psg-text-secondary);
+    white-space: nowrap;
+  }
+
+  .mrow-actions {
+    display: none;
+    align-items: center;
+    flex-shrink: 0;
+    margin: -6px -8px -6px 0;
+
+    .icon-btn { width: 28px; height: 28px; }
+  }
+
+  @media (hover: hover) {
+    &:hover .mrow-time,
+    &[data-active] .mrow-time { display: none; }
+    &:hover .mrow-actions,
+    &[data-active] .mrow-actions { display: flex; }
+  }
+
+  .mrow-subject {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    height: 20px;
+    font-size: 14px;
+    color: var(--psg-text-secondary);
+
+    .code-tag {
+      flex-shrink: 0;
+      font-size: 11px;
+      color: var(--psg-text);
+      border: 1px solid var(--psg-border);
+      padding: 0 4px;
+      border-radius: 4px;
+    }
+  }
+
+  .mrow-subject-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mrow-labels { display: inline-flex; gap: 3px; flex-shrink: 0; }
+  .mrow-label { width: 7px; height: 7px; border-radius: 2px; }
+
+  .mrow-line--meta { height: 18px; }
+
+  .mrow-preview {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--psg-text-muted);
+  }
+
+  .mailbox-chip {
+    flex-shrink: 0;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    padding: 0 5px;
+    border-radius: 4px;
+    color: color-mix(in srgb, var(--chip) 60%, var(--psg-text));
+    background: color-mix(in srgb, var(--chip) 14%, transparent);
+  }
+
+  &.is-unread {
+    .mrow-name { font-weight: 700; }
+    .mrow-subject { color: var(--psg-text); font-weight: 600; }
+    .mrow-time { color: var(--psg-primary); font-weight: 600; }
+  }
+}
+
+/* The mobile header already names the folder. */
+@media (max-width: 768px) {
+  .explorer-header { display: none; }
 }
 </style>

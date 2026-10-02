@@ -323,22 +323,22 @@ const sendSeries = ref([])
 const headerDate = computed(() => locale.value === 'en' ? dayjs().format('MMM D, YYYY') : dayjs().format('YYYY年M月D日'))
 
 const topic = computed(() => ({
-  color: uiStore.dark ? '#E5EAF3' : '#303133',
-  background: uiStore.dark ? '#141414' : '#FFFFFF',
-  borderColor: uiStore.dark ? '#141414' : '#FFFFFF',
-  scaleLineColor: uiStore.dark ? '#636466' : '#CDD0D6',
-  crossColor: uiStore.dark ? '#8D9095' : '#A8ABB2',
-  axisColor: uiStore.dark ? '#A3A6AD' : '#909399',
-  splitLineColor: uiStore.dark ? '#58585B' : '#D4D7DE',
-  // Brand accent for echarts (canvas-rendered — cannot resolve CSS var(),
-  // so mirror tokens.css's --psg-primary light/dark values here directly)
-  accentGreen: uiStore.dark ? '#45B67D' : '#1E5940',
-  accentGreenRgb: uiStore.dark ? '69, 182, 125' : '30, 89, 64',
-  // Secondary series color — grayscale, for the non-primary metric only
-  accentSecondary: uiStore.dark ? '#8A8A85' : '#A3A3A3',
+  // Mist palette, mirrored from tokens.css (echarts draws on canvas and
+  // cannot resolve CSS var()). Charts sit on the grey --psg-surface-muted well.
+  color: uiStore.dark ? '#F2F2F7' : '#1C1C1E',
+  background: uiStore.dark ? '#2A2A2E' : '#F2F2F7',
+  borderColor: uiStore.dark ? '#2A2A2E' : '#F2F2F7',
+  scaleLineColor: uiStore.dark ? '#3A3A3F' : '#D1D1D6',
+  crossColor: uiStore.dark ? '#8E8E93' : '#AEAEB2',
+  axisColor: uiStore.dark ? '#8E8E93' : '#636366',
+  splitLineColor: uiStore.dark ? '#3A3A3F' : '#E5E5EA',
+  accentGreen: uiStore.dark ? '#FF8A50' : '#C2410C',
+  accentGreenRgb: uiStore.dark ? '255, 138, 80' : '194, 65, 12',
+  // Secondary series — quiet ink, so the accent stays the one loud colour
+  accentSecondary: uiStore.dark ? '#8E8E93' : '#8E8E93',
   categoryPalette: uiStore.dark
-    ? ['#45B67D', '#C7C7C2', '#9C9C97', '#727270', '#4D4D4B', '#2E2E2C']
-    : ['#1E5940', '#3D3D3D', '#666666', '#8C8C8C', '#B3B3B3', '#D9D9D9'],
+    ? ['#FF8A50', '#FFB38A', '#E5E5EA', '#AEAEB2', '#8E8E93', '#636366']
+    : ['#C2410C', '#E8885A', '#3C3C43', '#636366', '#AEAEB2', '#D1D1D6'],
 }))
 
 let leaveWidth = 0
@@ -896,14 +896,14 @@ function createEmailColumnChart() {
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--psg-border);
   flex-wrap: wrap;
 }
 
 .page-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
+  letter-spacing: -.02em;
   color: var(--psg-text);
 }
 
@@ -924,8 +924,8 @@ function createEmailColumnChart() {
   display: inline-flex;
   padding: 3px;
   gap: 2px;
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-sm);
 }
 
@@ -943,8 +943,9 @@ function createEmailColumnChart() {
 
   &:hover { color: var(--psg-text); }
   &.active {
-    background: var(--psg-primary);
-    color: var(--psg-on-primary);
+    background: var(--psg-surface);
+    color: var(--psg-text);
+    box-shadow: var(--psg-shadow-xs);
   }
 }
 
@@ -954,9 +955,9 @@ function createEmailColumnChart() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--psg-border);
+  border: 0;
   border-radius: var(--psg-radius-sm);
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   color: var(--psg-text-secondary);
   cursor: pointer;
   flex-shrink: 0;
@@ -989,9 +990,9 @@ function createEmailColumnChart() {
 }
 
 .stat-card {
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
+  border: 0;
   padding: 22px;
   transition: border-color 0.16s ease;
 
@@ -1007,19 +1008,17 @@ function createEmailColumnChart() {
   }
 
   .stat-label {
-    font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 500;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    letter-spacing: 0;
     color: var(--psg-text-muted);
   }
 
   .stat-icon {
     width: 40px;
     height: 40px;
-    border-radius: var(--psg-radius-sm);
-    background: var(--psg-primary-muted);
+    border-radius: var(--psg-radius-md);
+    background: var(--psg-surface);
     color: var(--psg-primary);
     display: flex;
     align-items: center;
@@ -1126,9 +1125,9 @@ function createEmailColumnChart() {
 }
 
 .chart-card {
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
+  border: 0;
   padding: 20px;
 
   .chart-head {
@@ -1222,7 +1221,7 @@ function createEmailColumnChart() {
 }
 
 .donut-caption {
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--psg-text-muted);
   max-width: 96px;
 }
@@ -1368,8 +1367,7 @@ function createEmailColumnChart() {
 .ring-meta-label {
   font-size: 11px;
   color: var(--psg-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .ring-meta-value {
@@ -1396,7 +1394,7 @@ function createEmailColumnChart() {
   padding: 14px;
   background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-sm);
-  border: 1px solid var(--psg-border);
+  border: 0;
 }
 
 .insight-label {

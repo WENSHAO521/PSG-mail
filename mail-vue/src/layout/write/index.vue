@@ -14,46 +14,7 @@
             <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
             <span v-else>{{ $t('compose') }}</span>
           </div>
-          <el-dropdown trigger="click" @command="selectSender" :disabled="senderAccounts.length <= 1"
-                       popper-class="write-sender-dropdown">
-            <div class="wh-sender" :class="{ selectable: senderAccounts.length > 1 }">
-              <div class="wh-avatar">
-                <img v-if="currentSenderAvatar" :src="currentSenderAvatar" class="wh-avatar-img"/>
-                <span v-else>{{ senderInitial }}</span>
-              </div>
-              <div class="wh-info">
-                <span class="wh-name">{{ form.name || form.sendEmail.split('@')[0] }}</span>
-                <span class="wh-email">{{ form.sendEmail }}</span>
-              </div>
-              <Icon v-if="senderAccounts.length > 1"
-                    icon="psg:chevron-down" width="12" height="12" class="sender-chevron"/>
-            </div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item
-                  v-for="acc in senderAccounts"
-                  :key="acc.accountId"
-                  :command="acc"
-                  :class="{ 'is-active-sender': acc.accountId === form.accountId }"
-                >
-                  <div class="sender-option">
-                    <div class="sender-opt-avatar"
-                         :style="storedAvatar(acc.email) ? { background: 'transparent', border: 'none', padding: 0, overflow: 'hidden' }
-                                                         : { background: avatarBg(acc.email) + '18', borderColor: avatarBg(acc.email) + '40' }">
-                      <img v-if="storedAvatar(acc.email)" :src="storedAvatar(acc.email)" class="opt-avatar-img"/>
-                      <span v-else>{{ (acc.name || acc.email || '?')[0].toUpperCase() }}</span>
-                    </div>
-                    <div class="sender-opt-info">
-                      <span class="sender-opt-name" v-if="acc.name">{{ acc.name }}</span>
-                      <span class="sender-opt-email">{{ acc.email }}</span>
-                    </div>
-                    <Icon v-if="acc.accountId === form.accountId"
-                          icon="psg:check-circle" width="14" height="14" class="sender-opt-check"/>
-                  </div>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <span class="wh-title">{{ form.subject || $t('noSubject') }}</span>
         </div>
         <div class="wh-actions">
           <button type="button" class="wh-action-btn"
@@ -77,6 +38,47 @@
 
       <!-- ── Fields ─────────────────────────────── -->
       <div class="container">
+
+        <!-- From -->
+        <div class="field-row from-row">
+          <span class="field-label">{{ $t('sender') }}</span>
+        <el-dropdown trigger="click" @command="selectSender" :disabled="senderAccounts.length <= 1"
+                     popper-class="write-sender-dropdown">
+          <button type="button" class="from-chip" :class="{ selectable: senderAccounts.length > 1 }">
+            <span class="from-dot" :style="{ background: mailboxColor(form.sendEmail) }"></span>
+            <span class="from-name">{{ form.name || form.sendEmail.split('@')[0] }}</span>
+            <span class="from-email">&lt;{{ form.sendEmail }}&gt;</span>
+            <Icon v-if="senderAccounts.length > 1"
+                  icon="psg:chevron-down" width="12" height="12" class="sender-chevron"/>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="acc in senderAccounts"
+                :key="acc.accountId"
+                :command="acc"
+                :class="{ 'is-active-sender': acc.accountId === form.accountId }"
+              >
+                <div class="sender-option">
+                  <div class="sender-opt-avatar"
+                       :style="storedAvatar(acc.email) ? { background: 'transparent', border: 'none', padding: 0, overflow: 'hidden' }
+                                                       : { background: avatarBg(acc.email) + '18', borderColor: avatarBg(acc.email) + '40' }">
+                    <img v-if="storedAvatar(acc.email)" :src="storedAvatar(acc.email)" class="opt-avatar-img"/>
+                    <span v-else>{{ (acc.name || acc.email || '?')[0].toUpperCase() }}</span>
+                  </div>
+                  <div class="sender-opt-info">
+                    <span class="sender-opt-name" v-if="acc.name">{{ acc.name }}</span>
+                    <span class="sender-opt-email">{{ acc.email }}</span>
+                  </div>
+                  <Icon v-if="acc.accountId === form.accountId"
+                        icon="psg:check-circle" width="14" height="14" class="sender-opt-check"/>
+                </div>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+          <span v-if="senderAutoPicked" class="from-hint">{{ $t('senderAutoPicked') }}</span>
+        </div>
 
         <!-- To -->
         <div class="field-row">
@@ -118,6 +120,7 @@
 
         <!-- Subject -->
         <div class="field-row subject-row">
+          <span class="field-label">{{ $t('subject') }}</span>
           <el-input class="subject-input" v-model="form.subject"
                     :placeholder="t('subject')" />
         </div>
@@ -135,12 +138,12 @@
                         trigger="click" popper-class="compose-ai-popper">
               <div class="compose-ai-actions">
                 <button v-for="action in aiActions" :key="action.value" type="button" @click="runComposeAi(action.value)">
-                  <Icon icon="lucide:sparkles" width="14" height="14" /> {{ t(action.labelKey) }}
+                  <Icon icon="psg:sparkles" width="14" height="14" /> {{ t(action.labelKey) }}
                 </button>
               </div>
               <template #reference>
                 <button type="button" class="tb-btn tb-btn--label compose-ai-trigger" :aria-label="$t('aiTransform')">
-                  <Icon icon="lucide:sparkles" width="16" height="16"/><span>{{ $t('aiTransform') }}</span>
+                  <Icon icon="psg:sparkles" width="16" height="16"/><span>{{ $t('aiTransform') }}</span>
                 </button>
               </template>
             </el-popover>
@@ -372,7 +375,7 @@ import undoSendRing from "@/components/undo-send-ring/index.vue"
 import {toOssDomain} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
-import {avatarBg, storedAvatar} from "@/utils/avatar.js";
+import {avatarBg, storedAvatar, mailboxColor} from "@/utils/avatar.js";
 import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
 import db from "@/db/db.js";
@@ -384,7 +387,7 @@ import {ElMessage} from "element-plus";
 import {getDirectory} from "@/request/my.js";
 import {templateList} from "@/request/template.js";
 import {contactGroupList} from "@/request/contact-group.js";
-import {accountList} from "@/request/account.js";
+import {accountList, accountListAll} from "@/request/account.js";
 import {aiComposeTransform} from "@/request/ai-mail.js";
 import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
 
@@ -1148,6 +1151,7 @@ function addRecipientRecord() {
 }
 
 function resetForm() {
+  senderAutoPicked.value = false
   form.receiveEmail = []
   form.cc = []
   form.bcc = []
@@ -1355,8 +1359,7 @@ async function loadTemplates() {
 async function loadSenderAccounts() {
   if (senderLoaded.value) return
   try {
-    const list = await accountList(0, 30, null)
-    senderAccounts.value = Array.isArray(list) ? list : []
+    senderAccounts.value = await accountListAll()
     senderLoaded.value = true
   } catch {}
 }
@@ -1374,7 +1377,7 @@ async function replyFromReceivingAccount(email) {
   if (!show.value || form.emailId !== email.emailId || form.accountId !== defaultAccountId) return
   const acc = senderAccounts.value.find(a => a.accountId === email.accountId)
   if (!acc || acc.accountId === form.accountId) return
-  selectSender(acc)
+  selectSender(acc, true)
   // Reply-all built its recipient list excluding the *default* address; drop
   // the new sender's own address too so we don't mail ourselves.
   const self = (acc.email || '').toLowerCase()
@@ -1387,10 +1390,15 @@ async function replyFromReceivingAccount(email) {
   }
 }
 
-function selectSender(acc) {
+// True only while the sender shown is the one Reply picked from the original
+// mail's receiving address; any manual pick or new draft clears it.
+const senderAutoPicked = ref(false)
+
+function selectSender(acc, auto = false) {
   form.sendEmail = acc.email
   form.accountId = acc.accountId
   form.name = acc.name || ''
+  senderAutoPicked.value = auto
 }
 
 // Shared setup called by open(), openReply(), openReplyAll(), openForward()
@@ -1675,11 +1683,11 @@ function close() {
 .write-box {
   background: var(--psg-surface);
   --compose-radius: var(--psg-radius-xs);
-  border-radius: var(--compose-radius);
+  border-radius: 14px;
   width: min(1300px, calc(100% - 16px));
   display: grid;
   grid-template-rows: auto 1fr;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.40), 0 4px 16px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 60px rgba(20, 24, 21, 0.22), 0 2px 6px rgba(20, 24, 21, 0.08);
   overflow: hidden;
   transition: width 0.16s ease, height 0.16s ease;
 
@@ -1717,11 +1725,65 @@ function close() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px 0 20px;
-  background: var(--psg-primary);
-  height: 52px;
+  gap: 12px;
+  padding: 0 10px 0 20px;
+  background: var(--psg-surface);
+  height: 48px;
   flex-shrink: 0;
-  border-bottom: 2px solid var(--psg-primary);
+  border-bottom: 1px solid var(--psg-border);
+}
+
+.wh-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--psg-text);
+}
+
+/* ── From row ── */
+.field-row.from-row { gap: 10px; flex-wrap: wrap; padding-block: 7px; }
+
+.from-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface);
+  color: var(--psg-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: default;
+
+  &.selectable {
+    cursor: pointer;
+    @media (hover: hover) {
+      &:hover { border-color: var(--psg-primary); background: var(--psg-primary-muted); }
+    }
+  }
+
+  .sender-chevron { color: var(--psg-text-secondary); }
+}
+
+.from-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.from-name { font-weight: 600; white-space: nowrap; }
+.from-email {
+  color: var(--psg-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.from-hint {
+  font-size: 12px;
+  color: var(--psg-text-secondary);
 }
 
 .wh-draggable {
@@ -1739,11 +1801,14 @@ function close() {
 
 .wh-badge {
   font-family: var(--psg-font-sans);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--psg-on-primary);
+  color: var(--psg-primary);
+  background: var(--psg-primary-muted);
+  padding: 2px 8px;
+  border-radius: var(--psg-radius-xs);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1826,7 +1891,8 @@ function close() {
 
 .sender-opt-email {
   font-size: 11.5px;
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   color: var(--psg-text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -1881,7 +1947,8 @@ function close() {
 
 .wh-email {
   font-size: 10.5px;
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--psg-on-primary) 45%, transparent);
   white-space: nowrap;
   overflow: hidden;
@@ -1905,14 +1972,14 @@ function close() {
   justify-content: center;
   cursor: pointer;
   background: transparent;
-  color: color-mix(in srgb, var(--psg-on-primary) 60%, transparent);
+  color: var(--psg-text-secondary);
   flex-shrink: 0;
   transition: background 0.12s, color 0.12s;
 
   @media (hover: hover) {
     &:hover {
-      background: color-mix(in srgb, var(--psg-on-primary) 12%, transparent);
-      color: var(--psg-on-primary);
+      background: var(--psg-surface-muted);
+      color: var(--psg-text);
     }
   }
 
@@ -2119,7 +2186,8 @@ function close() {
     }
 
     .att-size {
-      font-family: var(--psg-font-mono);
+      font-family: var(--psg-font-sans);
+      font-variant-numeric: tabular-nums;
       font-size: 10px;
       color: var(--psg-text-secondary);
     }
@@ -2274,7 +2342,8 @@ function close() {
 .schedule-panel-timezone,
 .schedule-panel-note {
   color: var(--psg-text-muted);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
 }
 
@@ -2648,4 +2717,125 @@ function close() {
     z-index: auto;
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   Mist compose — a centred 28px card over a soft dim; fields sit in one
+   grey well; flat grey actions with the accent Send. Minimised it still
+   docks bottom-right as a pill and stops blocking the app.
+   ══════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .send:not([data-state="minimized"]) {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--bg-overlay);
+    pointer-events: auto;
+  }
+
+  .write-box[data-state="normal"] {
+    width: min(820px, calc(100vw - 48px));
+    height: min(740px, calc(100vh - 48px));
+  }
+
+  .write-box[data-state="minimized"] {
+    width: 320px;
+    border-radius: var(--psg-radius-lg);
+  }
+}
+
+.write-box {
+  --compose-radius: var(--psg-radius-sm);
+  border-radius: 28px;
+  box-shadow: var(--psg-shadow-lg);
+}
+
+.wh {
+  height: 68px;
+  padding: 0 16px 0 28px;
+  border-bottom: 0;
+}
+
+.write-box[data-state="minimized"] .wh { height: 52px; padding-left: 18px; }
+
+.wh-title { font-size: 20px; letter-spacing: -.01em; }
+.wh-badge { border-radius: var(--psg-radius-xs); padding: 3px 10px; }
+
+.wh-action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--psg-surface-muted);
+  color: var(--psg-text-secondary);
+}
+
+.wh-actions { gap: 6px; }
+
+.field-row {
+  margin: 0 20px;
+  padding: 0 16px;
+  background: var(--psg-surface-muted);
+  border-bottom: 1px solid var(--psg-border);
+}
+
+.field-row.from-row { border-radius: 18px 18px 0 0; }
+
+.subject-row {
+  border-radius: 0 0 18px 18px;
+  border-bottom: 0;
+}
+
+.field-label { width: 60px; font-weight: 500; color: var(--psg-text-muted); }
+
+.from-chip {
+  border: 0;
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-sm);
+}
+
+.editor-wrap { padding: 8px 12px 0; }
+
+.toolbar-bar {
+  padding: 14px 20px 20px;
+  border-top: 0;
+  background: transparent;
+}
+
+.tb-btn {
+  height: 44px;
+  min-width: 44px;
+  border-radius: 14px;
+  background: var(--psg-surface-muted);
+  color: var(--psg-text);
+}
+
+.tb-btn--label { padding: 0 16px; font-size: 13.5px; letter-spacing: 0; }
+
+.compose-ai-trigger { color: var(--psg-text) !important; }
+
+.send-btn {
+  height: 44px !important;
+  padding: 0 24px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  border-radius: 14px !important;
+}
+
+.send-later-btn {
+  height: 44px !important;
+  min-width: 44px !important;
+  padding: 0 16px !important;
+  border-radius: 14px !important;
+}
+
+.schedule-panel {
+  border: 0;
+  border-radius: var(--psg-radius-lg);
+}
+
+/* Let editor menus (TinyMCE renders its popup sink inside .editor-wrap)
+   spill past the card instead of being clipped; the header carries the
+   top corners itself so nothing square pokes out. */
+.write-box:not([data-state="minimized"]) { overflow: visible; }
+.write-box:not([data-state="minimized"]) .editor-wrap { overflow: visible; }
+.write-box:not([data-state="minimized"]) .wh { border-radius: 28px 28px 0 0; }
 </style>
