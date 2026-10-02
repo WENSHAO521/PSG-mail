@@ -255,6 +255,16 @@ html.dark {
   box-shadow: 0 0 0 2px var(--psg-primary) !important;
 }
 
+/* Inside a grey well (settings groups, stat tiles) fields and plain
+   buttons step up to white so they still read as controls. */
+:where(.psg-well, .card-body, .settings-card .card-content) :is(.el-input__wrapper, .el-textarea__inner, .el-select__wrapper, .el-input-tag):not(.is-focus):not(.is-focused):not(:focus) {
+  background-color: var(--psg-surface) !important;
+}
+
+:where(.psg-well, .settings-card .card-content) .el-button:not(.el-button--primary):not(.el-button--danger):not(.is-text):not(.is-link) {
+  background-color: var(--psg-surface);
+}
+
 .el-button {
   font-weight: 600;
   border-color: transparent;

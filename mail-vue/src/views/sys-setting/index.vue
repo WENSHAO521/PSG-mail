@@ -247,7 +247,7 @@
 
               <div class="appearance-preview">
                 <div class="preview-header">
-                  <Icon icon="lucide:eye" width="15" height="15"/>
+                  <Icon icon="psg:eye" width="15" height="15"/>
                   <span>{{ $t('livePreview') }}</span>
                 </div>
                 <div class="preview-frame" :style="previewFrameStyle">
@@ -1343,14 +1343,14 @@ const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), val
 const tgMsgTextOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
 const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
 const systemSettingNav = computed(() => [
-  {key: 'website', label: t('websiteSetting'), icon: 'lucide:globe-2', desc: t('sysWebsiteDesc')},
-  {key: 'customization', label: t('customization'), icon: 'lucide:palette', desc: t('sysCustomizationDesc')},
-  {key: 'email', label: t('emailSetting'), icon: 'lucide:mail', desc: t('sysEmailDesc')},
-  {key: 'mail-provider', label: t('mailSendingService'), icon: 'lucide:activity', desc: t('sysMailProviderDesc')},
-  {key: 'storage', label: t('oss'), icon: 'lucide:database', desc: t('sysStorageDesc')},
-  {key: 'push', label: '通知与转发', icon: 'lucide:send', desc: t('sysPushDesc')},
-  {key: 'verify', label: t('turnstileSetting'), icon: 'lucide:shield-check', desc: t('sysVerifyDesc')},
-  {key: 'notice', label: t('noticeTitle'), icon: 'lucide:megaphone', desc: t('sysNoticeDesc')},
+  {key: 'website', label: t('websiteSetting'), icon: 'psg:globe', desc: t('sysWebsiteDesc')},
+  {key: 'customization', label: t('customization'), icon: 'psg:palette', desc: t('sysCustomizationDesc')},
+  {key: 'email', label: t('emailSetting'), icon: 'psg:mail', desc: t('sysEmailDesc')},
+  {key: 'mail-provider', label: t('mailSendingService'), icon: 'psg:activity', desc: t('sysMailProviderDesc')},
+  {key: 'storage', label: t('oss'), icon: 'psg:database', desc: t('sysStorageDesc')},
+  {key: 'push', label: '通知与转发', icon: 'psg:send', desc: t('sysPushDesc')},
+  {key: 'verify', label: t('turnstileSetting'), icon: 'psg:shield', desc: t('sysVerifyDesc')},
+  {key: 'notice', label: t('noticeTitle'), icon: 'psg:megaphone', desc: t('sysNoticeDesc')},
   {key: 'ai', label: 'AI 与智能识别', icon: 'psg:sparkles', desc: t('sysAiDesc')},
 ])
 const activeSettingMeta = computed(() => {
@@ -2146,7 +2146,6 @@ function editSetting(settingForm, refreshStatus = true) {
 <style scoped lang="scss">
 .settings-container {
   height: 100%;
-  background: var(--psg-canvas) !important;
   position: relative;
 
   .loading {
@@ -2182,74 +2181,72 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 
   .scroll-body {
-    max-width: 980px;
+    max-width: 1080px;
     margin: 0 auto;
-    padding: 16px 20px 36px;
+    padding: 28px 32px 48px;
 
     @media (max-width: 960px)  { padding: 14px 16px 32px; }
     @media (max-width: 640px)  { padding: 12px 12px 28px; }
   }
 }
 
+/* ── Shell: sidebar + panel ── */
 .settings-shell {
   display: grid;
-  grid-template-columns: 270px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 40px;
   align-items: start;
 
   @media (max-width: 820px) {
     grid-template-columns: 1fr;
     gap: 12px;
+
     &:not(.mobile-detail-active) .settings-panel { display: none; }
     &.mobile-detail-active .settings-sidebar { display: none; }
   }
 }
 
+/* ── Sidebar ── */
 .settings-sidebar,
 .settings-panel {
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-md);
-  overflow: hidden;
-}
-
-.settings-panel {
-  container: settings-panel / inline-size;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .settings-sidebar {
   position: sticky;
   top: 16px;
-  padding: 8px 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 
   @media (max-width: 820px) {
     position: static;
+    min-height: 0;
     flex-direction: column;
     overflow: visible;
     padding: 8px 0;
-    border-radius: var(--psg-radius-sm);
   }
 }
 
 .settings-nav-item {
-  width: calc(100% - 16px);
-  min-height: 44px;
-  margin: 0 8px;
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
   padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 12px;
   border: none;
-  border-left: 3px solid transparent;
-  border-radius: var(--psg-radius-xs);
+  border-radius: var(--psg-radius-md);
   background: transparent;
-  color: var(--psg-text-secondary);
+  color: var(--psg-text);
   font-family: var(--psg-font-sans);
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
@@ -2261,50 +2258,41 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 
   &.active {
-    background: var(--psg-menu-active-bg);
-    color: var(--psg-menu-active-text);
+    background: var(--psg-surface-muted);
+    color: var(--psg-text);
     font-weight: 700;
+
+    .settings-nav-icon { color: var(--psg-primary); }
   }
 
   @media (max-width: 820px) {
-    width: calc(100% - 16px);
-    margin: 0 8px;
-    min-height: 48px;
+    min-height: 52px;
     white-space: normal;
     flex: 0 0 auto;
-    border-left: 3px solid transparent;
-    border-bottom: 0;
-    padding: 0 12px;
-
-    &.active {
-      background: var(--psg-menu-active-bg);
-    }
   }
 }
 
 .settings-nav-icon {
   flex: 0 0 auto;
-  color: currentColor;
+  color: var(--psg-text-muted);
 }
 
 .settings-panel-header {
-  min-height: 84px;
-  padding: 18px 20px 16px;
+  padding: 0 0 20px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--psg-border);
 
   h1 {
-    margin: 0 0 4px;
+    margin: 0 0 6px;
     color: var(--psg-text);
-    font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-    font-size: 20px;
-    font-weight: 750;
+    font-family: var(--psg-font-sans);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -.02em;
     line-height: 1.2;
-
-    @media (max-width: 640px) { font-size: 16px; }
+    @media (max-width: 640px) { font-size: 22px; }
   }
 
   p {
@@ -2435,7 +2423,8 @@ function editSetting(settingForm, refreshStatus = true) {
   width: 220px;
   height: 124px;
   border-radius: var(--psg-radius-sm);
-  border: 1px solid var(--psg-border);
+  border: 0;
+  background: var(--psg-surface-muted);
   overflow: hidden;
 
   @media (max-width: 560px) {
@@ -2509,7 +2498,7 @@ function editSetting(settingForm, refreshStatus = true) {
   position: sticky;
   top: 16px;
   background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-border);
+  border: 0;
   border-radius: var(--psg-radius-md);
   padding: 14px;
 
@@ -2527,13 +2516,12 @@ function editSetting(settingForm, refreshStatus = true) {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
 
 .preview-frame {
   border-radius: var(--psg-radius-sm);
-  border: 1px solid var(--psg-border);
-  background: var(--psg-canvas);
+  border: 0;
+  background: var(--psg-surface-muted);
   padding: 22px 16px;
   display: flex;
   flex-direction: column;
@@ -2547,17 +2535,16 @@ function editSetting(settingForm, refreshStatus = true) {
   color: var(--psg-text-muted);
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .preview-card {
   width: 100%;
   max-width: 220px;
   background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  border: 0;
   border-radius: var(--psg-radius-sm);
   box-shadow: var(--psg-shadow-sm);
   padding: 16px 14px;
@@ -2580,7 +2567,7 @@ function editSetting(settingForm, refreshStatus = true) {
 .preview-input {
   height: 26px;
   border-radius: var(--psg-radius-xs);
-  border: 1px solid var(--psg-border);
+  border: 0;
   background: var(--psg-surface-muted);
   display: flex;
   align-items: center;
@@ -2660,9 +2647,11 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 .card-content {
-  padding: 0;
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-lg);
 }
 
 .setting-item {
@@ -2670,9 +2659,9 @@ function editSetting(settingForm, refreshStatus = true) {
   grid-template-columns: minmax(190px, 1fr) minmax(150px, auto);
   min-height: 80px;
   gap: 20px;
-  padding: 14px 20px;
+  padding: 14px 22px;
   align-items: center;
-  border-bottom: 1px solid var(--psg-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--psg-border) 80%, var(--psg-surface));
   font-weight: 600;
 
   > div:first-child {
@@ -2786,7 +2775,8 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .cropper {
   border-radius: var(--psg-radius-sm);
-  border: 1px solid var(--psg-border);
+  border: 0;
+  background: var(--psg-surface-muted);
   height: 397px;
   width: 705px;
   @media (max-width: 767px) {
@@ -3047,7 +3037,7 @@ function editSetting(settingForm, refreshStatus = true) {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
   font-size: 11px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   color: var(--psg-text-muted);
 }
 

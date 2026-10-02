@@ -5,8 +5,8 @@
 
         <!-- ── Hero ── -->
         <div class="dl-hero">
-          <div class="hero-publisher">PANORAMA SCHOLARLY GROUP</div>
-          <div class="hero-product">PSG MAIL</div>
+          <div class="hero-publisher">Panorama Scholarly Group</div>
+          <div class="hero-product">PSG Mail</div>
           <div class="hero-sub">{{ $t('dlHeroSub') }}</div>
         </div>
 
@@ -258,7 +258,6 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .download-view {
   height: 100%;
-  background: var(--psg-canvas);
 }
 
 .dl-body {
@@ -270,25 +269,20 @@ onMounted(async () => {
 /* ── Hero ── */
 .dl-hero {
   margin-bottom: 16px;
-  border-left: 4px solid var(--psg-primary);
-  padding-left: 18px;
 }
 
 .hero-publisher {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--psg-text-muted);
   margin-bottom: 4px;
 }
 
 .hero-product {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 28px;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: -.02em;
   color: var(--psg-text);
   line-height: 1.1;
 }
@@ -301,7 +295,6 @@ onMounted(async () => {
 
 /* ── Release line ── */
 .dl-release-line {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   font-weight: 700;
   color: var(--psg-text);
@@ -333,9 +326,9 @@ onMounted(async () => {
   flex-direction: column;
   gap: 14px;
   padding: 22px 20px 20px;
-  border-radius: var(--psg-radius-md);
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-surface-muted);
+  border: 0;
   transition: border-color 0.12s;
 
   &--web {
@@ -344,8 +337,7 @@ onMounted(async () => {
 
   /* The card matching the visitor's own device. */
   &--recommended {
-    border-color: var(--psg-primary);
-    border-width: 2px;
+    box-shadow: inset 0 0 0 2px var(--psg-primary);
   }
 }
 
@@ -354,13 +346,12 @@ onMounted(async () => {
   top: -10px;
   right: 16px;
   padding: 3px 9px;
-  border-radius: var(--psg-radius-xs);
+  border-radius: var(--psg-radius-full);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .dl-card-icon {
@@ -373,7 +364,6 @@ onMounted(async () => {
 }
 
 .dl-card-platform {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0;
@@ -389,10 +379,9 @@ onMounted(async () => {
 }
 
 .dl-card-meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--psg-text-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 /* ── Per-variant download buttons ── */
@@ -407,9 +396,9 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  height: 38px;
-  padding: 0 14px;
-  border-radius: var(--psg-radius-sm);
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--psg-radius-md);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
   font-family: var(--psg-font-sans);
@@ -427,14 +416,14 @@ onMounted(async () => {
   &:active { opacity: .88; }
 
   &--loading {
-    background: var(--psg-canvas);
+    background: var(--psg-surface-active);
     animation: dl-pulse 1.2s ease-in-out infinite;
   }
 
   &--current {
-    background: var(--psg-canvas);
+    background: var(--psg-surface);
     color: var(--psg-text-muted);
-    border: 1px solid var(--psg-border);
+    border: 0;
     cursor: default;
   }
 }
@@ -450,8 +439,7 @@ onMounted(async () => {
 }
 
 .dl-btn-row-size {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
   opacity: 0.65;
   flex-shrink: 0;
@@ -468,7 +456,6 @@ onMounted(async () => {
   align-items: center;
   gap: 16px;
   padding-top: 20px;
-  border-top: 1px solid var(--psg-border);
 }
 
 .dl-releases-link {
@@ -479,7 +466,6 @@ onMounted(async () => {
   font-weight: 500;
   color: var(--psg-text-muted);
   text-decoration: none;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
 
   @media (hover: hover) {
     &:hover { color: var(--psg-text); }
@@ -487,7 +473,6 @@ onMounted(async () => {
 }
 
 .dl-version {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--psg-text-muted);
   margin-left: auto;

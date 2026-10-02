@@ -1,6 +1,6 @@
 <template>
   <div class="tab-panel">
-    <div class="toolbar">
+    <div class="toolbar psg-well">
       <div class="search">
         <el-input
             v-model="params.email"
@@ -59,7 +59,7 @@
         <el-table-column :label="$t('user')" :min-width="220" show-overflow-tooltip :tooltip-formatter="tableRowFormatter">
           <template #default="props">
             <div class="user-cell">
-              <div class="user-avatar" :style="{ background: avatarBg(props.row.email) }">
+              <div class="user-avatar" :style="avatarTint(props.row.email)">
                 {{ avatarLetter(props.row.accountName || props.row.oauthName, props.row.email) }}
               </div>
               <div class="user-cell-text">
@@ -85,7 +85,7 @@
                           :label="toRoleName(props.row.type)"/>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('action')" width="60">
+        <el-table-column :label="$t('action')" width="84" align="center">
           <template #default="props">
             <MoreMenu v-if="!(props.row.type === 0 && userStore.user.type !== 0)">
               <el-dropdown-item @click="openDetails(props.row)">{{ $t('details') }}</el-dropdown-item>
@@ -120,7 +120,7 @@
                   icon="psg:search" :title="$t('searchEmptyTitle')" :cta-text="$t('clearFilters')" @cta="clearFilters"/>
       <div class="user-card" v-for="row in users" :key="row.userId">
         <div class="user-card-head">
-          <div class="user-avatar" :style="{ background: avatarBg(row.email) }">
+          <div class="user-avatar" :style="avatarTint(row.email)">
             {{ avatarLetter(row.accountName || row.oauthName, row.email) }}
           </div>
           <div class="user-cell-text">
@@ -436,7 +436,7 @@ import StatusBadge from "./components/StatusBadge.vue";
 import MoreMenu from "./components/MoreMenu.vue";
 import EmptyState from "./components/EmptyState.vue";
 import {tzDayjs} from "@/utils/day.js";
-import {avatarBg, avatarLetter} from "@/utils/avatar.js";
+import {avatarTint, avatarLetter} from "@/utils/avatar.js";
 import {useSettingStore} from "@/store/setting.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useRoleStore} from "@/store/role.js";
@@ -1075,15 +1075,16 @@ defineExpose({ openCreate: openAdd })
   gap: 4px;
   flex-wrap: nowrap;
   align-items: center;
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
+  border: 0;
   flex-shrink: 0;
 
   :deep(.el-input__wrapper) {
     height: 30px;
     box-shadow: none !important;
-    border: 1px solid var(--psg-border);
+    border: 0;
+    background: var(--psg-surface-muted);
     border-radius: var(--psg-radius-sm);
     transition: border-color 0.12s;
     &:hover { border-color: var(--psg-border-strong); }
@@ -1125,7 +1126,7 @@ defineExpose({ openCreate: openAdd })
   gap: 10px;
   padding: 8px 14px;
   background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-border);
+  border: 0;
   border-radius: var(--psg-radius-md);
   font-size: 13px;
   font-weight: 600;
@@ -1171,25 +1172,23 @@ defineExpose({ openCreate: openAdd })
 
 .user-avatar {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--psg-radius-xs);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--psg-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
 }
 
 .table-card {
   position: relative;
   width: 100%;
   min-height: 120px;
-  background: var(--psg-surface);
+  background: transparent;
   border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
+  border: 0;
   overflow: hidden;
 }
 
@@ -1202,8 +1201,8 @@ defineExpose({ openCreate: openAdd })
 }
 
 .user-card {
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-md);
   padding: 14px;
   display: flex;
@@ -1282,7 +1281,8 @@ defineExpose({ openCreate: openAdd })
   height: 30px;
   min-height: 30px;
   box-shadow: none !important;
-  border: 1px solid var(--psg-border);
+  border: 0;
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-sm);
   transition: border-color 0.12s;
   &:hover { border-color: var(--psg-border-strong); }

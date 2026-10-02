@@ -642,7 +642,6 @@ path[fill="#ffdda1"] {
       justify-content: center;
       align-items: center;
       padding: 14px 0;
-      font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
       font-size: 12px;
       letter-spacing: 0;
       color: var(--psg-border-strong);
@@ -695,7 +694,6 @@ path[fill="#ffdda1"] {
     border-radius: var(--psg-radius-xs);
     background: var(--psg-primary);
     color: var(--psg-on-primary);
-    font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
     font-weight: 700;
     font-size: 13px;
     display: flex;
@@ -725,7 +723,6 @@ path[fill="#ffdda1"] {
     }
 
     .item-email {
-      font-family: 'IBM Plex Mono', monospace;
       font-size: 10.5px;
       font-weight: 400;
       color: var(--psg-text-secondary);

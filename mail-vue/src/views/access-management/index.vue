@@ -130,14 +130,14 @@ function primaryAction() {
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--psg-border);
   flex-wrap: wrap;
 }
 
 .page-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
+  letter-spacing: -.02em;
   color: var(--psg-text);
 }
 

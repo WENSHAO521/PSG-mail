@@ -305,14 +305,14 @@ function sendToGroup(g) {
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--psg-border);
   flex-wrap: wrap;
 }
 
 .page-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
+  letter-spacing: -.02em;
   color: var(--psg-text);
 }
 
@@ -345,14 +345,15 @@ function sendToGroup(g) {
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
-  background: var(--psg-surface);
+  background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-md);
-  border: 1px solid var(--psg-border);
+  border: 0;
 
   :deep(.el-input__wrapper) {
     height: 30px;
     box-shadow: none !important;
-    border: 1px solid var(--psg-border);
+    border: 0;
+    background: var(--psg-surface-muted);
     border-radius: var(--psg-radius-sm);
     transition: border-color 0.12s;
     &:hover { border-color: var(--psg-border-strong); }
@@ -372,8 +373,8 @@ function sendToGroup(g) {
   display: flex; flex-direction: column;
   align-items: flex-start; gap: 6px;
   padding: 40px 24px;
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-md);
   max-width: 480px;
   margin: 8px auto 0;
@@ -396,8 +397,8 @@ function sendToGroup(g) {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-md);
   padding: 16px;
   transition: border-color 0.16s ease;
@@ -422,8 +423,8 @@ function sendToGroup(g) {
 .grp-avatar {
   width: 34px; height: 34px; border-radius: var(--psg-radius-sm);
   background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-border);
-  color: var(--psg-text); font-size: 13px; font-weight: 800;
+  border: 0;
+  color: var(--psg-text); font-size: 13px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -454,8 +455,8 @@ function sendToGroup(g) {
 .member-preview {
   display: flex; flex-direction: column; gap: 5px;
   padding: 10px 12px;
-  background: var(--psg-canvas);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-sm);
 }
 
@@ -484,8 +485,8 @@ function sendToGroup(g) {
 .member-preview-empty {
   font-size: 12.5px; color: var(--psg-text-muted);
   padding: 10px 12px;
-  background: var(--psg-canvas);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-sm);
 }
 
@@ -532,8 +533,7 @@ function sendToGroup(g) {
 .drawer-field { display: flex; flex-direction: column; gap: 8px; }
 
 .drawer-label {
-  font-size: 10px; font-weight: 900;
-  text-transform: uppercase; letter-spacing: 0.10em;
+  font-size: 12px; font-weight: 700; letter-spacing: 0;
   color: var(--psg-text-secondary);
 }
 
@@ -543,8 +543,8 @@ function sendToGroup(g) {
 
 .add-member-btn {
   display: flex; align-items: center; gap: 4px;
-  background: transparent;
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-sm); cursor: pointer;
   font-size: 12px; font-weight: 700;
   color: var(--psg-text-secondary); padding: 4px 10px;
@@ -562,9 +562,9 @@ function sendToGroup(g) {
 .editor-row {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px;
-  border: 1px solid var(--psg-border);
+  border: 0;
   border-radius: var(--psg-radius-sm);
-  background: var(--psg-canvas);
+  background: var(--psg-surface-muted);
   transition: border-color 0.12s;
   &:focus-within { border-color: var(--psg-border-strong); }
 }
@@ -572,8 +572,8 @@ function sendToGroup(g) {
 .row-avatar {
   width: 28px; height: 28px; border-radius: var(--psg-radius-sm);
   background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-border);
-  color: var(--psg-text); font-size: 11px; font-weight: 800;
+  border: 0;
+  color: var(--psg-text); font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
@@ -590,7 +590,6 @@ function sendToGroup(g) {
 
 .mono-input {
   :deep(.el-input__inner) {
-    font-family: 'IBM Plex Mono', monospace;
     font-size: 12px; color: var(--psg-text-secondary);
   }
 }
