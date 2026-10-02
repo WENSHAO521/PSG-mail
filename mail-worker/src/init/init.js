@@ -64,6 +64,9 @@ const dbInit = {
 		try {
 			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN undo_send_seconds INTEGER NOT NULL DEFAULT 10;`).run();
 		} catch (e) { console.warn(`跳过字段：${e.message}`); }
+		try {
+			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN reply_from_received INTEGER NOT NULL DEFAULT 1;`).run();
+		} catch (e) { console.warn(`跳过字段：${e.message}`); }
 	},
 
 	async v4_4DB(c) {

@@ -79,8 +79,8 @@ const userService = {
 			user.avatar    = '';
 		}
 
-		// Separate query so a deployment that hasn't added the column yet still
-		// gets signature/avatar above; falls back to the column default.
+		// Separate queries so a deployment that hasn't added these columns yet
+		// still gets signature/avatar above; each falls back to its default.
 		try {
 			const row = await c.env.db
 				.prepare('SELECT undo_send_seconds FROM user WHERE user_id = ?')
@@ -88,6 +88,14 @@ const userService = {
 			user.undoSendSeconds = row?.undo_send_seconds ?? DEFAULT_UNDO_SEND_SECONDS;
 		} catch {
 			user.undoSendSeconds = DEFAULT_UNDO_SEND_SECONDS;
+		}
+		try {
+			const row = await c.env.db
+				.prepare('SELECT reply_from_received FROM user WHERE user_id = ?')
+				.bind(userId).first();
+			user.replyFromReceived = (row?.reply_from_received ?? 1) === 1;
+		} catch {
+			user.replyFromReceived = true;
 		}
 
 		if (c.env.admin === userRow.email) {
@@ -169,6 +177,16 @@ const userService = {
 		await c.env.db
 			.prepare('UPDATE user SET undo_send_seconds = ? WHERE user_id = ?')
 			.bind(seconds, userId).run();
+	},
+
+	async updateReplyFromReceived(c, params, userId) {
+		if (typeof params?.enabled !== 'boolean') {
+			throw new BizError(t('invalidReplyFromReceived'));
+		}
+		// Column comes from init.js v4_5DB, same as undo_send_seconds above.
+		await c.env.db
+			.prepare('UPDATE user SET reply_from_received = ? WHERE user_id = ?')
+			.bind(params.enabled ? 1 : 0, userId).run();
 	},
 
 	async directory(c) {

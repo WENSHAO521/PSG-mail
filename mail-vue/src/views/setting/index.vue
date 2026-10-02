@@ -107,6 +107,13 @@
                     </el-select>
                   </div>
                 </div>
+                <div class="data-row">
+                  <span class="data-key">{{ $t('replyFromReceived') }}</span>
+                  <div class="data-val">
+                    <el-switch :model-value="userStore.user.replyFromReceived !== false"
+                               @change="setReplyFromReceived"/>
+                  </div>
+                </div>
                 <div class="data-row last">
                   <span class="data-key">{{ $t('memberSince') }}</span>
                   <span class="val-str">{{ memberSinceText }}</span>
@@ -1134,6 +1141,13 @@ function setName() {
     ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
     accountStore.changeUserAccountName = name
   }).catch(() => { userStore.user.name = prevName })
+}
+
+async function setReplyFromReceived(enabled) {
+  try {
+    await userStore.saveReplyFromReceived(enabled)
+    ElMessage({ message: t('replyFromReceivedSaved'), type: 'success', plain: true })
+  } catch {}
 }
 
 async function setUndoSendSeconds(seconds) {

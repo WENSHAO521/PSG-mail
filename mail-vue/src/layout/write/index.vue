@@ -1275,6 +1275,7 @@ function openReplyAll(email) {
       <article>${formatImage(email.content) || `<pre style="font-family:inherit;word-break:break-word;white-space:pre-wrap;margin:0">${email.text}</pre>`}</article>
     </blockquote>`
     _showWindow()
+    replyFromReceivingAccount(email)
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
@@ -1315,6 +1316,7 @@ function openReply(email) {
       </article>
     </blockquote>`
     _showWindow()
+    replyFromReceivingAccount(email)
 
     nextTick(() => {
       backReply.content = editor.value.getContent()
@@ -1354,6 +1356,32 @@ async function loadSenderAccounts() {
     senderAccounts.value = Array.isArray(list) ? list : []
     senderLoaded.value = true
   } catch {}
+}
+
+// Reply from the mailbox the original mail was delivered to (or sent from),
+// not whichever mailbox happens to be selected — otherwise a user with several
+// addresses answers from the default one. Per-user toggle in Settings →
+// Profile, on by default. Falls back to the default sender when that mailbox
+// isn't one this user can send from.
+async function replyFromReceivingAccount(email) {
+  if (userStore.user?.replyFromReceived === false) return
+  const defaultAccountId = form.accountId
+  await loadSenderAccounts()
+  // Window closed/reused, or the user already picked a sender, while loading.
+  if (!show.value || form.emailId !== email.emailId || form.accountId !== defaultAccountId) return
+  const acc = senderAccounts.value.find(a => a.accountId === email.accountId)
+  if (!acc || acc.accountId === form.accountId) return
+  selectSender(acc)
+  // Reply-all built its recipient list excluding the *default* address; drop
+  // the new sender's own address too so we don't mail ourselves.
+  const self = (acc.email || '').toLowerCase()
+  const original = (email.sendEmail || '').toLowerCase()
+  for (const list of [form.receiveEmail, form.cc]) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const addr = (list[i] || '').toLowerCase()
+      if (addr === self && addr !== original) list.splice(i, 1)
+    }
+  }
 }
 
 function selectSender(acc) {

@@ -34,6 +34,7 @@ const en = {
 	imageAttLimit: 'The maximum number of image attachments is 10',
 	invalidAvatar: 'Invalid avatar image or file is too large',
 	invalidUndoSendSeconds: 'Invalid undo send delay',
+	invalidReplyFromReceived: 'Invalid reply-from-address setting',
 	attLimit: 'The maximum number of attachments is 10.',
 	pwdLengthLimit: 'Password length exceeds the limit',
 	emailLengthLimit: 'Email length exceeds the limit',

@@ -23,6 +23,11 @@ app.put('/my/undoSendSeconds', async (c) => {
 	return c.json(result.ok());
 });
 
+app.put('/my/replyFromReceived', async (c) => {
+	await userService.updateReplyFromReceived(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
 app.get('/my/directory', async (c) => {
 	const data = await userService.directory(c);
 	return c.json(result.ok(data));

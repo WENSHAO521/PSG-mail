@@ -852,6 +852,8 @@ const en = {
     undoSendSetting: 'Undo Send',
     undoSendSettingDesc: 'Hold outgoing mail for a few seconds so you can undo before it actually sends',
     undoSendSaved: 'Undo Send delay saved',
+    replyFromReceived: 'Reply from receiving address',
+    replyFromReceivedSaved: 'Saved',
     undoSendOff: 'Off',
     undoSendSeconds: '{n}s',
     messageSending: 'Sending…',

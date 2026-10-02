@@ -20,6 +20,10 @@ export function updateUndoSendSeconds(seconds) {
     return http.put('/my/undoSendSeconds', { seconds })
 }
 
+export function updateReplyFromReceived(enabled) {
+    return http.put('/my/replyFromReceived', { enabled })
+}
+
 export function getDirectory() {
     return http.get('/my/directory')
 }
