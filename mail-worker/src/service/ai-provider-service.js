@@ -14,6 +14,8 @@ function estimateUnits(input) {
 	catch { return 1; }
 }
 
+const SYSTEM_TASKS = ['spam_detection'];
+
 const aiProviderService = {
 	async models(c, task = 'chat') {
 		const setting = await settingService.query(c);
@@ -24,12 +26,19 @@ const aiProviderService = {
 		return { model, fallbackModel, quota: Math.max(0, Number(setting.aiDailyQuota) || 0) };
 	},
 
-	async reserveQuota(c, userId, task, input, quota) {
+	// System tasks (spam screening) run on mail the user did not ask for, so
+	// they are counted against their own per-task ceiling and never eat into
+	// the user's interactive budget.
+	async reserveQuota(c, userId, task, input, quota, perTask = false) {
 		if (!userId || !quota) return;
 		const date = dayjs().format('YYYY-MM-DD');
-		const existing = await c.env.db.prepare(
-			`SELECT COALESCE(SUM(request_count), 0) AS total FROM ai_usage WHERE user_id = ? AND usage_date = ?`
-		).bind(userId, date).first();
+		const existing = perTask
+			? await c.env.db.prepare(
+				`SELECT COALESCE(SUM(request_count), 0) AS total FROM ai_usage WHERE user_id = ? AND usage_date = ? AND task = ?`
+			).bind(userId, date, task).first()
+			: await c.env.db.prepare(
+				`SELECT COALESCE(SUM(request_count), 0) AS total FROM ai_usage WHERE user_id = ? AND usage_date = ? AND task NOT IN (${SYSTEM_TASKS.map(() => '?').join(',')})`
+			).bind(userId, date, ...SYSTEM_TASKS).first();
 		if (Number(existing?.total || 0) >= quota) {
 			throw new BizError('AI 每日额度已用尽，请明天再试', 429);
 		}
@@ -47,7 +56,9 @@ const aiProviderService = {
 	async run(c, userId, task, input, options = {}) {
 		if (!c.env.ai) throw new BizError('AI binding not configured', 503);
 		const { model, fallbackModel, quota } = await this.models(c, task);
-		await this.reserveQuota(c, userId, task, input, quota);
+		// options.perTask counts only this task's usage against the quota;
+		// options.defaultQuota applies when the admin set none.
+		await this.reserveQuota(c, userId, task, input, quota || options.defaultQuota || 0, options.perTask);
 		const primary = options.model || model;
 		try {
 			return await c.env.ai.run(primary, input);

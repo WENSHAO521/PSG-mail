@@ -84,3 +84,29 @@ pre,
 ::-webkit-scrollbar-thumb:hover {
   background: var(--psg-text-muted);
 }
+
+/* "Done · Undo" toast (utils/undo-toast.js). */
+.undo-toast { display: inline-flex; align-items: center; gap: 14px; }
+.undo-toast-btn {
+  border: 0;
+  padding: 4px 10px;
+  border-radius: var(--psg-radius-full);
+  background: var(--psg-surface-muted);
+  color: var(--psg-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Mail lists: stop the browser's own pull-to-refresh (a full page reload)
+   so the in-app one runs instead. */
+[data-overscroll="contain"] { overscroll-behavior-y: contain; }
+
+/* Respect the system "reduce motion" setting for gesture follow-through and
+   other decorative motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

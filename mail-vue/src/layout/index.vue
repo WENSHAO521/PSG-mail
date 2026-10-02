@@ -27,6 +27,7 @@
        :data-mode="isMailRoute ? 'mail' : 'workspace'"
        :data-collapsed="String(sidebarCollapsed)"
        :data-mobile-detail="String(uiStore.mobileDetailOpen)"
+       :data-reader-peek="readerDrag.mode === 'back' ? 'true' : null"
        :data-platform="platform"
        :style="{ '--mail-list-w': listPaneWidth + 'px' }">
 
@@ -43,7 +44,7 @@
 
     <!-- ── Mail mode: list (col 2) + reading pane (col 3) ── -->
     <template v-if="isMailRoute">
-      <section class="mail-list-pane">
+      <section class="mail-list-pane" ref="listPaneRef">
         <router-view v-slot="{ Component, route: r }">
           <keep-alive :include="keepAliveList">
             <component :is="Component" :key="r.name"/>
@@ -54,7 +55,7 @@
            :class="{ 'is-dragging': resizerDragging }"
            @mousedown="startListResize"
            @dblclick="resetListWidth"></div>
-      <section class="mail-detail-pane">
+      <section class="mail-detail-pane" ref="detailPaneRef" :style="readerPaneStyle">
       <ContentPane @back="closeMobileReader"/>
       </section>
     </template>
@@ -118,7 +119,9 @@ import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 import { useEmailStore } from '@/store/email.js'
 import { useSettingStore } from '@/store/setting.js'
 import { useAccountStore } from '@/store/account.js'
-import { emailArchive } from '@/request/email.js'
+import { emailArchive, emailUnarchive } from '@/request/email.js'
+import { undoToast } from '@/utils/undo-toast.js'
+import { bindHorizontalDrag, committed, resist, haptic, reducedMotion, isTouchLayout } from '@/utils/gestures.js'
 import { checkAndDownloadAndroidUpdate } from '@/utils/android-update-service.js'
 import {
   resetSyncState, startFallbackPolling, stopFallbackPolling, installLifecycleSync,
@@ -224,11 +227,15 @@ const actionsShortcuts = [
   { key: 'A',      label: 'shortcutReplyAll' },
   { key: 'F',      label: 'shortcutForward'  },
   { key: 'E',      label: 'shortcutArchive'  },
+  { key: 'S',      label: 'shortcutStar'     },
+  { key: '#',      label: 'shortcutDelete'   },
   { key: '/',      label: 'shortcutSearch'   },
   { key: 'Ctrl K', label: 'shortcutCommandPalette' },
   { key: '?',      label: 'shortcutHelp'     },
 ]
 const navShortcuts = [
+  { key: 'J / K',  label: 'shortcutNextPrev' },
+  { key: 'U',      label: 'shortcutBackToList' },
   { key: 'G I',    label: 'shortcutGoInbox'  },
   { key: 'G A',    label: 'shortcutGoAll'    },
   { key: 'G S',    label: 'shortcutGoSent'   },
@@ -314,6 +321,98 @@ watch(() => route.name, (name, prev) => {
   resetWorkspaceScroll()
 })
 
+// ── Touch gestures (phones / tablets) ─────────────────────────────────────
+// Reader: swipe left/right for the next/previous message; swipe in from the
+// left edge to go back to the list (it follows the finger, with the list
+// visible underneath). List: swipe in from the left edge to open folders.
+const listPaneRef = ref(null)
+const detailPaneRef = ref(null)
+const readerDrag = reactive({ mode: null, dx: 0, settling: false })
+
+const readerPaneStyle = computed(() => {
+  if (!readerDrag.mode && !readerDrag.settling) return null
+  const transition = readerDrag.settling && !reducedMotion() ? 'transform .22s ease, opacity .22s ease' : 'none'
+  if (readerDrag.mode === 'back') {
+    return { transform: `translateX(${Math.max(0, readerDrag.dx)}px)`, transition, boxShadow: 'var(--psg-shadow-lg)' }
+  }
+  return { transform: `translateX(${readerDrag.dx}px)`, opacity: String(1 - Math.min(Math.abs(readerDrag.dx) / 600, 0.25)), transition }
+})
+
+function settleReader(dx, after) {
+  readerDrag.settling = true
+  readerDrag.dx = dx
+  setTimeout(() => {
+    readerDrag.mode = null
+    readerDrag.dx = 0
+    readerDrag.settling = false
+    after?.()
+  }, reducedMotion() ? 0 : 220)
+}
+
+const readerGestureEnabled = () => isTouchLayout() && isMailRoute.value && uiStore.mobileDetailOpen
+  && !!emailStore.contentData.email && !uiStore.writerRef?.isOpen?.()
+
+const unbindGestures = []
+function bindTouchGestures() {
+  if (detailPaneRef.value) {
+    // Edge swipe → back to the list.
+    unbindGestures.push(bindHorizontalDrag(detailPaneRef.value, {
+      edge: true,
+      enabled: readerGestureEnabled,
+      onStart: () => { readerDrag.mode = 'back' },
+      onMove: dx => { readerDrag.dx = dx },
+      onEnd: (dx, vx) => {
+        if (committed(dx, vx, 'right')) {
+          haptic(10)
+          settleReader(window.innerWidth, closeMobileReader)
+        } else settleReader(0)
+      },
+      onCancel: () => settleReader(0),
+    }))
+    // Swipe across the message → next / previous.
+    unbindGestures.push(bindHorizontalDrag(detailPaneRef.value, {
+      enabled: readerGestureEnabled,
+      onStart: () => { readerDrag.mode = 'nav' },
+      onMove: dx => { readerDrag.dx = resist(dx * 0.6, 80) },
+      onEnd: (dx, vx) => {
+        const dir = committed(dx, vx, 'left') ? 1 : committed(dx, vx, 'right') ? -1 : 0
+        if (dir && emailStore.activeList?.openRelative(dir)) {
+          haptic(10)
+          // The next message slides in from the side it was pulled from.
+          readerDrag.settling = false
+          readerDrag.dx = dir * 48
+          requestAnimationFrame(() => settleReader(0))
+        } else settleReader(0)
+      },
+      onCancel: () => settleReader(0),
+    }))
+  }
+  if (listPaneRef.value) {
+    // Edge swipe on a mail list → folder sheet.
+    unbindGestures.push(bindHorizontalDrag(listPaneRef.value, {
+      edge: true,
+      enabled: () => isTouchLayout() && isMailRoute.value && !uiStore.mobileDetailOpen && !uiStore.asideShow,
+      onEnd: (dx, vx) => {
+        if (committed(dx, vx, 'right')) { haptic(10); uiStore.asideShow = true }
+      },
+    }))
+  }
+}
+function unbindTouchGestures() {
+  unbindGestures.splice(0).forEach(off => off())
+}
+// The panes only exist on mail routes; rebind when they (re)appear.
+watch([listPaneRef, detailPaneRef], () => { unbindTouchGestures(); bindTouchGestures() })
+
+// ── Mouse back button (desktop) ───────────────────────────────────────────
+// Back closes the open message first, like it does on phones; with nothing
+// open it falls through to normal browser/app history.
+function handleMouseBack(e) {
+  if (e.button !== 3 || isTouchLayout() || !isMailRoute.value || !emailStore.contentData.email) return
+  e.preventDefault()
+  clearReaderSelection()
+}
+
 // Keyboard shortcuts
 function handleKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -354,10 +453,21 @@ function handleKeydown(e) {
     case '?': showShortcuts.value = true; break
     // Real mail search — distinct from Ctrl+K's Command Palette.
     case '/': e.preventDefault(); router.push({ name: 'search' }); break
+    case 'j': emailStore.activeList?.openRelative(1); break
+    case 'k': emailStore.activeList?.openRelative(-1); break
+    case 's': if (email) emailStore.readerCommand = { name: 'star', at: Date.now() }; break
+    case '#': if (email) emailStore.readerCommand = { name: 'delete', at: Date.now() }; break
+    case 'u':
+      if (email) { if (isTouchLayout()) closeMobileReader(); else clearReaderSelection() }
+      break
     case 'e':
       if (email?.emailId) {
         emailArchive([email.emailId]).then(() => {
           emailStore.emailScroll?.deleteEmail?.([email.emailId])
+          if (emailStore.contentData.email?.emailId === email.emailId) clearReaderSelection()
+          undoToast(t('archivedMsg'), t('undo'), () => {
+            emailUnarchive([email.emailId]).then(() => emailStore.activeList?.refreshList()).catch(() => {})
+          })
         }).catch(() => {})
       }
       break
@@ -434,6 +544,7 @@ onMounted(async () => {
   uiStore.writerRef = writerRef
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('mouseup', handleMouseBack)
   window.addEventListener('popstate', handlePopState)
   handleResize()
   resetWorkspaceScroll()
@@ -463,9 +574,18 @@ watch(() => uiStore.asideShow, (open) => {
   }
 })
 
-watch(() => uiStore.mobileDetailOpen, (open) => {
-  if (!isMobile.value) return
-  if (open) {
+// Landscape tablets show the reader beside the list (see the split-pane
+// CSS), so opening a message isn't a separate screen there.
+// Rotating while a message is open moves between the two, so the reader's
+// history layer follows the split state as well as mobileDetailOpen.
+const splitTabletQuery = window.matchMedia('(min-width: 900px) and (max-width: 1024px) and (orientation: landscape)')
+const splitTablet = ref(splitTabletQuery.matches)
+const onSplitChange = e => { splitTablet.value = e.matches }
+splitTabletQuery.addEventListener?.('change', onSplitChange)
+onBeforeUnmount(() => splitTabletQuery.removeEventListener?.('change', onSplitChange))
+
+watch([() => uiStore.mobileDetailOpen, splitTablet, isMobile], ([open, split, mobile]) => {
+  if (open && mobile && !split) {
     mobileNavigation.openLayer('reader', () => {
       uiStore.mobileDetailOpen = false
       return true
@@ -484,6 +604,8 @@ onBeforeUnmount(() => {
   stopFallbackPolling()
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('mouseup', handleMouseBack)
+  unbindTouchGestures()
   window.removeEventListener('popstate', handlePopState)
   window.removeEventListener('mousemove', onListResize)
   window.removeEventListener('mouseup', stopListResize)
@@ -701,7 +823,17 @@ onBeforeUnmount(() => {
 
 /* Mobile: list and reading view are separate screens */
 @media (max-width: 1024px) {
-  .app-shell[data-mobile-detail="true"]  .mail-list-pane { display: none; }
+  .app-shell[data-mobile-detail="true"]:not([data-reader-peek]) .mail-list-pane { display: none; }
+
+  /* Horizontal drags on the reader are ours (next/previous, edge-back);
+     vertical scrolling stays native. */
+  .mail-detail-pane { touch-action: pan-y; will-change: transform; }
+  .mail-list-pane { touch-action: pan-y; }
+  /* touch-action is resolved up to the nearest scroll container, so the
+     panes' own scrollers need it too (wide mail inside keeps its own). */
+  .mail-detail-pane :deep(.el-scrollbar__wrap),
+  .mail-list-pane :deep(.el-scrollbar__wrap),
+  .mail-list-pane :deep(.virtual) { touch-action: pan-y; }
   .app-shell[data-mobile-detail="false"] .mail-detail-pane { display: none; }
 }
 
@@ -764,9 +896,39 @@ onBeforeUnmount(() => {
   }
 
   /* On the reading screen the detail view owns the chrome → hide global bars */
-  .app-shell[data-mobile-detail="true"] .mobile-chrome--top,
-  .app-shell[data-mobile-detail="true"] .mobile-chrome--bottom {
+  .app-shell[data-mobile-detail="true"]:not([data-reader-peek]) .mobile-chrome--top,
+  .app-shell[data-mobile-detail="true"]:not([data-reader-peek]) .mobile-chrome--bottom {
     display: none;
+  }
+}
+
+/* ── Landscape tablets (900–1024px): two panes ─────────────────────────────
+   Phones get one screen at a time; a landscape tablet has room for the list
+   and the open message side by side. Touch chrome (header, tab bar) and
+   gestures stay; the reader is simply docked to the right instead of
+   covering the list. */
+@media (min-width: 900px) and (max-width: 1024px) and (orientation: landscape) {
+  .app-shell { --split-list-w: clamp(320px, 38vw, 400px); }
+
+  .app-shell .mail-list-pane {
+    display: block !important;
+    right: auto;
+    width: var(--split-list-w);
+    border-radius: 0;
+  }
+
+  .app-shell .mail-detail-pane {
+    display: block !important;
+    inset: var(--m-header-h) 0 var(--m-tabbar-h) var(--split-list-w);
+    z-index: 5;
+    border-left: 1px solid var(--psg-border);
+    box-shadow: none;
+  }
+
+  /* Outranks the "reading screen hides the chrome" rule above. */
+  .app-shell[data-mobile-detail="true"]:not([data-reader-peek]) .mobile-chrome--top,
+  .app-shell[data-mobile-detail="true"]:not([data-reader-peek]) .mobile-chrome--bottom {
+    display: block;
   }
 }
 </style>

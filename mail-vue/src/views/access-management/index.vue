@@ -164,6 +164,22 @@ function primaryAction() {
   border-radius: var(--psg-radius-md);
   width: fit-content;
   max-width: 100%;
+
+  /* Phones: equal columns so every tab is visible without side-scrolling. */
+  @media (max-width: 640px) {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    width: 100%;
+
+    .tab-btn {
+      padding: 8px 6px;
+      font-size: 13px;
+      line-height: 1.25;
+      white-space: normal;
+      text-align: center;
+    }
+  }
 }
 
 .tab-btn {

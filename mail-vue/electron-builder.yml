@@ -43,6 +43,11 @@ nsis:
   installerIcon: build/desktop-icon.ico
   uninstallerIcon: build/desktop-icon.ico
   include: build/installer.nsh
+  # Chinese and English only (not the OS language, e.g. Korean). The selector
+  # preselects the OS language when it is one of these, else the first entry.
+  installerLanguages: [zh_CN, en_US]
+  multiLanguageInstaller: true
+  displayLanguageSelector: true
 
 # ── macOS ─────────────────────────────────────────────────────
 mac:

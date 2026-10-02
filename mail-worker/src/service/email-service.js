@@ -1,3 +1,4 @@
+import spamService from './spam-service';
 import orm from '../entity/orm';
 import email from '../entity/email';
 import { attConst, emailConst, isDel, settingConst } from '../const/entity-const';
@@ -335,6 +336,27 @@ const emailService = {
 				`UPDATE email SET is_spam = 0 WHERE email_id IN (${placeholders}) AND ${unspamCond}`
 			).bind(...emailIdList, userId, ...unspamShared).run();
 		} catch {}
+		// "Not spam" also clears any AI verdict and trusts the senders for the
+		// mailbox owner (screening runs as the owner, also for shared
+		// mailboxes) — limited to mail this user can actually access.
+		try {
+			const { results } = await c.env.db.prepare(
+				`SELECT email_id FROM email WHERE email_id IN (${placeholders}) AND ${unspamCond}`
+			).bind(...emailIdList, userId, ...unspamShared).all();
+			await spamService.trustSenders(c, (results || []).map(r => r.email_id));
+		} catch {}
+	},
+
+	async spamVerdict(c, params, userId) {
+		const emailId = Number(params.emailId);
+		if (!emailId) return null;
+		const shared = await getSharedAccountIds(c, userId)
+		const cond = shared.length > 0
+			? `(user_id = ? OR account_id IN (${shared.map(() => '?').join(',')}))`
+			: `user_id = ?`;
+		const row = await c.env.db.prepare(`SELECT 1 FROM email WHERE email_id = ? AND ${cond}`)
+			.bind(emailId, userId, ...shared).first();
+		return row ? spamService.verdict(c, emailId) : null;
 	},
 
 	async spamList(c, params, userId) {
@@ -1376,6 +1398,10 @@ const emailService = {
 			? or(eq(email.userId, userId), inArray(email.accountId, sharedLatestIds))
 			: eq(email.userId, userId);
 
+		// Mail the AI screening (or the user) moved to Spam must not reach
+		// clients that sync by polling (Electron, background tabs).
+		const latestSpamFilter = await columnExists(c, 'email', 'is_spam') ? sql`COALESCE(email.is_spam, 0) = 0` : undefined
+
 		let list = await orm(c).select({...email}).from(email)
 			.leftJoin(
 				account,
@@ -1385,6 +1411,7 @@ const emailService = {
 				and(
 					gt(email.emailId, emailId),
 					latestAccessCond,
+					latestSpamFilter,
 					eq(email.isDel, isDel.NORMAL),
 					eq(account.isDel, isDel.NORMAL),
 					allReceive ? eq(1,1) : eq(email.accountId, accountId),

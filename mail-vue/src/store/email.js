@@ -22,6 +22,12 @@ export const useEmailStore = defineStore('email', {
             emailTotal: 0,
         },
         sendScroll: null,
+        // The email list currently on screen (any folder): lets the reader
+        // and keyboard shortcuts open the previous / next message.
+        activeList: null,
+        // One-shot commands for the open message (keyboard shortcuts):
+        // { name: 'star' | 'delete', at: Date.now() }.
+        readerCommand: null,
     }),
     persist: {
         pick: ['contentData'],

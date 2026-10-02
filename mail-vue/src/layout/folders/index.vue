@@ -4,7 +4,8 @@
        opened from the mobile header's title. -->
   <div class="folders-host">
   <div class="folders-backdrop" :data-open="String(uiStore.asideShow)" @click="uiStore.asideShow = false"></div>
-  <nav class="folders" :data-open="String(uiStore.asideShow)" :aria-label="$t('mailSection')">
+  <nav ref="sheetRef" class="folders" :data-open="String(uiStore.asideShow)" :aria-label="$t('mailSection')"
+       :style="sheetDx ? { transform: `translateX(${sheetDx}px)`, transition: 'none' } : null">
     <div class="folders-sheet-head">
       <span>{{ $t('mailSection') }}</span>
       <button type="button" class="folders-close" :aria-label="$t('close')" @click="uiStore.asideShow = false">
@@ -41,7 +42,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { bindHorizontalDrag, committed, haptic, isTouchLayout } from '@/utils/gestures.js'
 import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
@@ -70,7 +72,27 @@ const FOLDERS = [
 ]
 const visibleFolders = computed(() => FOLDERS.filter(f => !f.perm || hasPerm(f.perm)))
 
-onMounted(() => { if (hasPerm('email:send')) labelStore.load() })
+// Phones: the open sheet follows a leftward swipe and closes past the
+// threshold (a short flick works too).
+const sheetRef = ref(null)
+const sheetDx = ref(0)
+let unbindSheet = null
+
+onMounted(() => {
+  if (hasPerm('email:send')) labelStore.load()
+  if (sheetRef.value) {
+    unbindSheet = bindHorizontalDrag(sheetRef.value, {
+      enabled: () => isTouchLayout() && uiStore.asideShow,
+      onMove: dx => { sheetDx.value = Math.min(0, dx) },
+      onEnd: (dx, vx) => {
+        sheetDx.value = 0
+        if (committed(dx, vx, 'left')) { haptic(10); uiStore.asideShow = false }
+      },
+      onCancel: () => { sheetDx.value = 0 },
+    })
+  }
+})
+onBeforeUnmount(() => unbindSheet?.())
 
 function go(to) {
   uiStore.asideShow = false
@@ -218,6 +240,7 @@ async function promptCreateLabel() {
 
     /* Shadow only while open — parked off-screen it would bleed in. */
     &[data-open="true"] { transform: translateX(0); box-shadow: var(--psg-shadow-lg); }
+    touch-action: pan-y;
   }
 
   .folders-sheet-head {

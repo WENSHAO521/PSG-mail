@@ -198,9 +198,10 @@ function openResult(item) {
 .search-go-btn { border-radius: var(--psg-radius-md) !important; height: 44px; padding: 0 20px; }
 
 .search-operator-hint {
-  font-size: 11.5px;
-  color: var(--psg-text-secondary);
-  font-family: var(--psg-font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--psg-text-muted);
+  overflow-wrap: anywhere;
 }
 
 .recent-block { display: flex; flex-direction: column; gap: 8px; }

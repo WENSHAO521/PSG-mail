@@ -20,6 +20,8 @@ export const useUiStore = defineStore('ui', {
         accountShow: false,
         aiAssistantShow: false,
         mobileDetailOpen: false,
+        // Phone composer pulled down into its docked bar.
+        composeDocked: false,
         backgroundLoading: true,
         changeNotice: 0,
         writerRef: null,

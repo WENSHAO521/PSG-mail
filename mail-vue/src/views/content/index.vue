@@ -170,9 +170,25 @@
                   class="email-status-alert" type="warning" show-icon />
 
 
-        <div class="email-body">
-          <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
-          <pre v-else class="email-text">{{ email.text }}</pre>
+        <!-- Spam notice: why it's here (AI verdict, when there is one) and a
+             one-click way out that also trusts the sender from now on. -->
+        <div v-if="email.isSpam" class="spam-banner" role="status">
+          <Icon icon="psg:spam" width="18" height="18" class="spam-banner-icon" />
+          <div class="spam-banner-text">
+            <strong>{{ spamVerdict ? $t('aiSpamBannerTitle') : $t('spamBannerTitle') }}</strong>
+            <span v-if="spamVerdict?.reason">{{ spamVerdict.reason }}</span>
+            <span v-else-if="spamVerdict">{{ $t('aiSpamBannerFallback') }}</span>
+          </div>
+          <button type="button" class="spam-banner-btn" :disabled="notSpamBusy" @click="markNotSpam">{{ $t('notSpam') }}</button>
+        </div>
+
+        <div class="email-body" :class="{ 'is-zoomed': bodyZoom > 1 }"
+             @touchstart="zoomTouchStart" @touchmove="zoomTouchMove"
+             @touchend="zoomTouchEnd" @touchcancel="zoomTouchEnd">
+          <div class="email-zoom" :style="bodyZoom !== 1 ? { zoom: bodyZoom } : null">
+            <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
+            <pre v-else class="email-text">{{ email.text }}</pre>
+          </div>
         </div>
 
         <div v-if="showTranslation" class="translate-panel">
@@ -281,7 +297,7 @@
 import ShadowHtml from '@/components/shadow-html/index.vue'
 import { reactive, ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { emailDelete, emailRead, emailUnread } from '@/request/email.js'
+import { emailDelete, emailRead, emailUnread, emailSpamVerdict, emailUnmarkSpam } from '@/request/email.js'
 import { translateEmail } from '@/request/translate.js'
 import { aiEmailSummary, aiReplySuggestion } from '@/request/ai-mail.js'
 import { Icon } from '@iconify/vue'
@@ -425,6 +441,82 @@ const parsedCc  = computed(() => parseAddressList(email.value?.cc))
 const parsedBcc = computed(() => parseAddressList(email.value?.bcc))
 
 // Mark as read when email opens; reset translation state on switch
+// ── Pinch to zoom the message body (touch) ──
+// Two fingers scale the body 1–3×; double-tap toggles 1× / 2×. The zoomed
+// body scrolls sideways inside itself, which the reader's swipe-between-
+// messages gesture yields to. Resets for every message.
+const bodyZoom = ref(1)
+let pinch = null
+let tap = null
+let lastTapAt = 0
+const touchDistance = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+function zoomTouchStart(e) {
+  if (e.touches.length === 2) {
+    pinch = { d: touchDistance(e.touches), z: bodyZoom.value }
+    tap = null
+  } else if (e.touches.length === 1) {
+    tap = { x: e.touches[0].clientX, y: e.touches[0].clientY, moved: false }
+  }
+}
+function zoomTouchMove(e) {
+  if (pinch && e.touches.length === 2) {
+    e.preventDefault()
+    const z = pinch.z * touchDistance(e.touches) / pinch.d
+    bodyZoom.value = Math.round(Math.min(3, Math.max(1, z)) * 100) / 100
+  } else if (tap && e.touches.length === 1) {
+    if (Math.abs(e.touches[0].clientX - tap.x) > 10 || Math.abs(e.touches[0].clientY - tap.y) > 10) tap.moved = true
+  }
+}
+function zoomTouchEnd(e) {
+  if (e.touches.length < 2) pinch = null
+  if (bodyZoom.value < 1.05) bodyZoom.value = 1
+  if (tap && !tap.moved && e.touches.length === 0) {
+    const now = Date.now()
+    if (now - lastTapAt < 300) {
+      bodyZoom.value = bodyZoom.value > 1 ? 1 : 2
+      lastTapAt = 0
+    } else lastTapAt = now
+  }
+  if (e.touches.length === 0) tap = null
+}
+watch(() => email.value?.emailId, () => { bodyZoom.value = 1 })
+
+// Keyboard shortcuts for the open message (S star, # delete) — see layout.
+watch(() => emailStore.readerCommand, (cmd) => {
+  if (!cmd || !email.value) return
+  if (cmd.name === 'star') changeStar()
+  else if (cmd.name === 'delete') handleDelete()
+})
+
+// AI spam verdict for the open message (only fetched for mail in Spam).
+const spamVerdict = ref(null)
+const notSpamBusy = ref(false)
+watch(() => email.value?.isSpam ? email.value.emailId : 0, async (emailId) => {
+  spamVerdict.value = null
+  if (!emailId) return
+  try {
+    const verdict = await emailSpamVerdict(emailId)
+    if (email.value?.emailId === emailId) spamVerdict.value = verdict || null
+  } catch {}
+}, { immediate: true })
+
+async function markNotSpam() {
+  const target = email.value
+  if (!target || notSpamBusy.value) return
+  notSpamBusy.value = true
+  try {
+    await emailUnmarkSpam([target.emailId])
+    target.isSpam = 0
+    spamVerdict.value = null
+    emailStore.deleteIds = [target.emailId]
+    ElMessage({ message: t('notSpamDone'), type: 'success', plain: true })
+  } catch {
+    ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true })
+  } finally {
+    notSpamBusy.value = false
+  }
+}
+
 watch(email, (newEmail) => {
   if (newEmail && emailStore.contentData.showUnread && newEmail.unread === EmailUnreadEnum.UNREAD) {
     newEmail.unread = EmailUnreadEnum.READ
@@ -961,6 +1053,10 @@ function handleDelete() {
   line-height: 1.75;
   color: var(--psg-text);
   word-break: break-word;
+  /* Pinch is handled in script (zoomTouch*), not by the browser. */
+  touch-action: pan-x pan-y;
+
+  &.is-zoomed { overflow-x: auto; overscroll-behavior-x: contain; }
 }
 
 .email-text {
@@ -1326,6 +1422,46 @@ function handleDelete() {
     color: var(--psg-menu-active-text);
     background: var(--psg-menu-active-bg);
   }
+}
+
+/* ── Spam notice ── */
+.spam-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 12px 14px 12px 16px;
+  border-radius: var(--psg-radius-lg);
+  background: color-mix(in srgb, var(--psg-warning) 12%, var(--psg-surface));
+  color: var(--psg-text);
+}
+.spam-banner-icon { flex-shrink: 0; color: var(--psg-warning); }
+.spam-banner-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  strong { font-size: 14px; font-weight: 700; }
+  span { color: var(--psg-text-secondary); }
+}
+.spam-banner-btn {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--psg-radius-full);
+  background: var(--psg-surface);
+  color: var(--psg-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--psg-shadow-xs);
+  &:disabled { opacity: .6; cursor: default; }
+  @media (hover: hover) { &:hover:not(:disabled) { background: var(--psg-surface-active); } }
 }
 </style>
 
