@@ -851,6 +851,7 @@ const zh = {
     undo: '撤销',
     undoSendSetting: '发送撤回',
     undoSendSettingDesc: '发送邮件后短暂延迟几秒，期间可以撤销发送',
+    undoSendSaved: '已保存发送撤回时长',
     undoSendOff: '关闭',
     undoSendSeconds: '{n} 秒',
     messageSending: '发送中…',

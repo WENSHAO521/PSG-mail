@@ -97,6 +97,16 @@
                     <button class="link-btn" @click="pwdShow = true">{{ $t('changePwdBtn') }}</button>
                   </div>
                 </div>
+                <div class="data-row">
+                  <span class="data-key">{{ $t('undoSendSetting') }}</span>
+                  <div class="data-val">
+                    <el-select :model-value="userStore.user.undoSendSeconds ?? 10" size="small" style="width:100px"
+                               @change="setUndoSendSeconds">
+                      <el-option :value="0" :label="$t('undoSendOff')"/>
+                      <el-option v-for="n in [5,10,20,30]" :key="n" :value="n" :label="$t('undoSendSeconds', { n })"/>
+                    </el-select>
+                  </div>
+                </div>
                 <div class="data-row last">
                   <span class="data-key">{{ $t('memberSince') }}</span>
                   <span class="val-str">{{ memberSinceText }}</span>
@@ -257,18 +267,6 @@
               <div class="auto-delete-notice">
                 <Icon icon="psg:warning" width="15" height="15" style="flex-shrink:0"/>
                 {{ $t('autoDeleteDaysUserWarn', { n: settingStore.settings.autoDeleteDays > 0 ? settingStore.settings.autoDeleteDays : 30 }) }}
-              </div>
-              <div class="card-body">
-                <div class="autoreply-toggle">
-                  <div>
-                    <div class="toggle-label">{{ $t('undoSendSetting') }}</div>
-                    <div class="card-desc" style="margin:0">{{ $t('undoSendSettingDesc') }}</div>
-                  </div>
-                  <el-select v-model="uiStore.undoSendSeconds" style="width:100px">
-                    <el-option :value="0" :label="$t('undoSendOff')"/>
-                    <el-option v-for="n in [5,10,20,30]" :key="n" :value="n" :label="$t('undoSendSeconds', { n })"/>
-                  </el-select>
-                </div>
               </div>
               <div class="card-body mail-body">
                 <Account />
@@ -457,7 +455,6 @@ import { accountSetName } from "@/request/account.js"
 import { useAccountStore } from "@/store/account.js"
 import { useI18n } from "vue-i18n"
 import { useSettingStore } from "@/store/setting.js"
-import { useUiStore } from "@/store/ui.js"
 import { useMobileNavigationStore } from "@/store/mobile-navigation.js"
 import { useLabelStore } from "@/store/label.js"
 import { labelCreate, labelUpdate, labelDelete } from "@/request/label.js"
@@ -478,7 +475,6 @@ import { checkAndDownloadAndroidUpdate, isAndroidApp } from '@/utils/android-upd
 const { t } = useI18n()
 const accountStore = useAccountStore()
 const settingStore = useSettingStore()
-const uiStore = useUiStore()
 const mobileNavigation = useMobileNavigationStore()
 const userStore = useUserStore()
 // Manual update check — every user can reach their own personal settings
@@ -1138,6 +1134,13 @@ function setName() {
     ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
     accountStore.changeUserAccountName = name
   }).catch(() => { userStore.user.name = prevName })
+}
+
+async function setUndoSendSeconds(seconds) {
+  try {
+    await userStore.saveUndoSendSeconds(seconds)
+    ElMessage({ message: t('undoSendSaved'), type: 'success', plain: true })
+  } catch {}
 }
 
 function onSignatureChange(html) { signatureText.value = html }

@@ -25,6 +25,8 @@ import starService from './star-service';
 
 const AVATAR_DATA_URL_PATTERN = /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/i;
 const MAX_AVATAR_DATA_URL_LENGTH = 256 * 1024;
+const UNDO_SEND_SECONDS_OPTIONS = [0, 5, 10, 20, 30];
+const DEFAULT_UNDO_SEND_SECONDS = 10;
 
 async function ensureAvatarColumn(c) {
 	try {
@@ -75,6 +77,17 @@ const userService = {
 		} catch {
 			user.signature = '';
 			user.avatar    = '';
+		}
+
+		// Separate query so a deployment that hasn't added the column yet still
+		// gets signature/avatar above; falls back to the column default.
+		try {
+			const row = await c.env.db
+				.prepare('SELECT undo_send_seconds FROM user WHERE user_id = ?')
+				.bind(userId).first();
+			user.undoSendSeconds = row?.undo_send_seconds ?? DEFAULT_UNDO_SEND_SECONDS;
+		} catch {
+			user.undoSendSeconds = DEFAULT_UNDO_SEND_SECONDS;
 		}
 
 		if (c.env.admin === userRow.email) {
@@ -144,6 +157,18 @@ const userService = {
 		await c.env.db
 			.prepare('UPDATE user SET signature = ? WHERE user_id = ?')
 			.bind(signature ?? '', userId).run();
+	},
+
+	async updateUndoSendSeconds(c, params, userId) {
+		const seconds = Number(params?.seconds);
+		if (!UNDO_SEND_SECONDS_OPTIONS.includes(seconds)) {
+			throw new BizError(t('invalidUndoSendSeconds'));
+		}
+		// Column comes from init.js v4_5DB (run by /api/init on every deploy);
+		// deliberately no per-call ALTER here — see migrations/README.md.
+		await c.env.db
+			.prepare('UPDATE user SET undo_send_seconds = ? WHERE user_id = ?')
+			.bind(seconds, userId).run();
 	},
 
 	async directory(c) {

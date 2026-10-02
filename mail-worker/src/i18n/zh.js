@@ -33,6 +33,7 @@ const zh = {
 	notExistEmailReply: '邮件不存在无法回复',
 	imageAttLimit: '图片不能超过10个',
 	invalidAvatar: '头像图片格式无效或文件过大',
+	invalidUndoSendSeconds: '撤销发送时长无效',
 	attLimit: '附件不能超过10个',
 	pwdLengthLimit: '密码长度超出限制',
 	emailLengthLimit: '邮箱长度超出限制',

@@ -55,8 +55,15 @@ const dbInit = {
 		await this.v4_2DB(c);
 		await this.v4_3DB(c);
 		await this.v4_4DB(c);
+		await this.v4_5DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v4_5DB(c) {
+		try {
+			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN undo_send_seconds INTEGER NOT NULL DEFAULT 10;`).run();
+		} catch (e) { console.warn(`跳过字段：${e.message}`); }
 	},
 
 	async v4_4DB(c) {

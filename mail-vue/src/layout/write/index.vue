@@ -982,16 +982,22 @@ async function sendScheduled() {
 // Scheduled Send (see mail-worker/src/service/scheduled-email-service.js —
 // create() arms a precise short-delay dispatch under its
 // FAST_PATH_THRESHOLD_MS, with the once-a-minute cron as a backstop), just
-// with a short delay (uiStore.undoSendSeconds) instead of a user-picked
+// with a short delay (the user's own undoSendSeconds) instead of a user-picked
 // future date. This is NOT a frontend setTimeout — the delayed delivery
 // keeps happening server-side even if this tab/app closes; only the "Undo"
 // button itself is naturally client-only (there's nothing to undo once the
 // tab that could show it is gone, but the send still completing without an
 // Undo option available is correct, not a bug).
+// Per-sender preference (Settings → Profile), stored on the user row so it
+// follows the account across devices. 10s if the server hasn't reported one.
+function undoSendSeconds() {
+  return userStore.user?.undoSendSeconds ?? 10
+}
+
 async function sendWithUndo() {
   sending = true
   const snapshot = { ...toRaw(form) }
-  const undoSeconds = uiStore.undoSendSeconds
+  const undoSeconds = undoSendSeconds()
   const deadline = Date.now() + undoSeconds * 1000
   const scheduledAt = new Date(deadline)
     .toISOString().slice(0, 19).replace('T', ' ')
@@ -1064,7 +1070,7 @@ async function sendEmail() {
     return
   }
 
-  if (uiStore.undoSendSeconds > 0) {
+  if (undoSendSeconds() > 0) {
     await sendWithUndo()
     return
   }

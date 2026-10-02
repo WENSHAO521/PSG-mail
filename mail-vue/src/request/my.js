@@ -16,6 +16,10 @@ export function updateSignature(signature) {
     return http.put('/my/signature', { signature })
 }
 
+export function updateUndoSendSeconds(seconds) {
+    return http.put('/my/undoSendSeconds', { seconds })
+}
+
 export function getDirectory() {
     return http.get('/my/directory')
 }
