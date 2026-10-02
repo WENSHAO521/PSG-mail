@@ -149,6 +149,11 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default ("tools platform-tools") fails on current
+          # runner images: cmdline-tools 16.0 no longer ships a 'tools'
+          # package. Install what the build needs explicitly below instead.
+          packages: 'platform-tools'
       - name: Install Android SDK packages
         shell: bash
         run: |
