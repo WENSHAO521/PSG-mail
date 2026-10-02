@@ -1,4 +1,4 @@
-name: 🚀 Deploy cloud-mail to Cloudflare Workers
+name: 🧬 D1 migrations, init and smoke test (deploy is Cloudflare Workers Builds)
 
 on:
   push:
@@ -87,10 +87,6 @@ jobs:
       FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
       FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
       FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
-
-
-    outputs:
-      worker_url: ${{ steps.deploy.outputs.worker_url }}
 
 
     steps:
@@ -350,106 +346,22 @@ jobs:
           # with $NAME — the binding always resolves correctly regardless).
           pnpm wrangler d1 migrations apply db --remote -c wrangler-action.toml
 
-      # Code and Worker Secrets go up in ONE `wrangler deploy
-      # --secrets-file` call — not `wrangler secret put` (which, per
-      # current Wrangler behavior, creates and immediately deploys its own
-      # new Worker version per call — i.e. one `secret put` per secret plus
-      # a trailing `wrangler deploy` used to mean up to 4 separate
-      # deployments for a single CI run, each one briefly live on its own).
-      # A single `--secrets-file` deploy keeps "migrations → one atomic
-      # Worker deployment → smoke test" actually atomic. The secrets file
-      # lives only on this runner's temp filesystem: mode 600, never
-      # printed/catted, no `set -x`, never uploaded as an artifact, and
-      # removed via `trap ... EXIT` so it's gone even if the deploy fails.
-      - name: 🔐🚀 构建 Secrets 文件并部署 / Build secrets file and deploy
-        id: deploy
-        working-directory: ./mail-worker
-        run: |
-          SECRETS_FILE="$(mktemp)"
-          chmod 600 "$SECRETS_FILE"
-          trap 'rm -f "$SECRETS_FILE"' EXIT
-
-          # jwt_secret and maintenance_secret are both required (validated
-          # non-empty earlier in "🛠️ 设置环境"). jwt_secret signs every
-          # login JWT; maintenance_secret separately gates /api/init and
-          # /api/reset-admin (see mail-worker/src/init/init.js and
-          # mail-worker/src/api/reset-admin-api.js) — the two are no longer
-          # the same value. Read via jq's `env.NAME` (reads the process
-          # environment directly) rather than `--arg`, so the secret values
-          # never appear as command-line arguments.
-          #
-          # Reusing whatever jwt_secret a currently-live Worker (deployed
-          # some other way) already has is required — a different value
-          # here invalidates every existing user's session the moment this
-          # takes effect. See mail-worker/migrations/ROLLOUT.md.
-          FIREBASE_SET=0
-          [ -n "$FIREBASE_PROJECT_ID" ] && FIREBASE_SET=$((FIREBASE_SET + 1))
-          [ -n "$FIREBASE_CLIENT_EMAIL" ] && FIREBASE_SET=$((FIREBASE_SET + 1))
-          [ -n "$FIREBASE_PRIVATE_KEY" ] && FIREBASE_SET=$((FIREBASE_SET + 1))
-
-          # Same all-or-nothing pattern as Firebase above, for standards Web
-          # Push's VAPID trio (Android's Firebase secrets stay independent —
-          # a site can have either, both, or neither configured).
-          VAPID_SET=0
-          [ -n "$VAPID_PUBLIC_KEY" ] && VAPID_SET=$((VAPID_SET + 1))
-          [ -n "$VAPID_PRIVATE_KEY_JWK" ] && VAPID_SET=$((VAPID_SET + 1))
-          [ -n "$VAPID_SUBJECT" ] && VAPID_SET=$((VAPID_SET + 1))
-
-          SECRETS_JSON='{jwt_secret: env.JWT_SECRET, maintenance_secret: env.MAINTENANCE_SECRET}'
-
-          if [ "$FIREBASE_SET" -eq 3 ]; then
-            SECRETS_JSON="$SECRETS_JSON + {FIREBASE_PROJECT_ID: env.FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL: env.FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY: env.FIREBASE_PRIVATE_KEY}"
-            echo "✅ Firebase secrets included — Android FCM push enabled."
-          elif [ "$FIREBASE_SET" -eq 0 ]; then
-            echo "::notice:: FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY not set. Android FCM sending disabled."
-          else
-            echo "::warning:: Only $FIREBASE_SET of 3 Firebase secrets are set (need all three, or none). Android FCM sending disabled."
-          fi
-
-          if [ "$VAPID_SET" -eq 3 ]; then
-            SECRETS_JSON="$SECRETS_JSON + {VAPID_PUBLIC_KEY: env.VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY_JWK: env.VAPID_PRIVATE_KEY_JWK, VAPID_SUBJECT: env.VAPID_SUBJECT}"
-            echo "✅ VAPID secrets included — standards Web Push enabled."
-          elif [ "$VAPID_SET" -eq 0 ]; then
-            echo "::notice:: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY_JWK / VAPID_SUBJECT not set. Standards Web Push sending disabled."
-          else
-            echo "::warning:: Only $VAPID_SET of 3 VAPID secrets are set (need all three, or none). Standards Web Push sending disabled."
-          fi
-
-          jq -n "$SECRETS_JSON" > "$SECRETS_FILE"
-
-          echo "🚀 Starting deployment..."
-          pnpm wrangler deploy -c wrangler-action.toml --secrets-file "$SECRETS_FILE" 2>&1 \
-            | tee deploy.log \
-            | grep -v "https://.*\.workers\.dev" \
-            | sed -E 's/env\.domain .*/env.domain (***)/' \
-            || true
-
-          DEPLOY_EXIT_CODE=${PIPESTATUS[0]}
-          if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
-            exit 1
-          fi
-
-          WORKER_URL=$(grep -o "https://.*\.workers\.dev" deploy.log || echo "")
-
-          if [ -n "$WORKER_URL" ]; then
-            echo "::add-mask::$WORKER_URL"
-          fi
-
-          echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
-          echo "✅ Deploy completed."
-
+      # No `wrangler deploy` here: the Worker is built and deployed by
+      # Cloudflare's own Git integration (Workers Builds, set up in the
+      # Cloudflare dashboard). A second deploy from this workflow raced it
+      # and failed on every run attaching the custom domain ("Can't infer
+      # zone from route [code: 10082]"), skipping the steps below. This
+      # workflow now only does what Workers Builds doesn't: D1 migrations
+      # (above), /api/init, and a smoke test against the live domain.
       - name: ♻️ 初始化数据库 / Initialize database
+        if: env.CUSTOM_DOMAIN != ''
         run: |
           echo "🛠️ Starting database initialization..."
-          sleep 15
+          # Give Workers Builds (triggered by the same push) time to put the
+          # new version live; /api/init is idempotent either way.
+          sleep 90
 
-          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
-          WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
-
-          if [ -z "$WORKER_URL" ]; then
-            echo "❌ Preview URL not available. Please set CUSTOM_DOMAIN."
-            exit 1
-          fi
+          WORKER_URL="https://$CUSTOM_DOMAIN"
 
           # POST + Authorization header, not GET /api/init/<secret> — a
           # secret embedded in a URL can land in request/proxy/observability
@@ -476,6 +388,7 @@ jobs:
           echo "WORKER_URL=$WORKER_URL" >> "$GITHUB_ENV"
 
       - name: 🩺 冒烟测试 / Smoke test
+        if: env.CUSTOM_DOMAIN != ''
         run: |
           # Unauthenticated, side-effect-free, and its response actually
           # depends on D1/KV working (not a trivial static 200) — deliberately
