@@ -1230,37 +1230,33 @@ function handleDelete() {
   }
 
   .meta-card {
-    border-left: none;
-    border-radius: var(--psg-radius-sm);
-    padding: 14px;
+    flex-wrap: wrap;
+    row-gap: 0;
   }
 
   .meta-avatar {
-    width: 44px;
-    height: 44px;
+    width: 38px;
+    height: 38px;
   }
 
   .meta-sender-row {
     flex-direction: column;
     align-items: flex-start;
-    gap: 2px;
+    gap: 0;
   }
 
   .meta-sender-name {
     font-size: 15px;
   }
 
-  .meta-date,
-  .meta-sender-email,
-  .meta-field-label {
-    letter-spacing: 0;
+  /* Date tucks under the sender block instead of fighting it for width. */
+  .meta-date {
+    order: 3;
+    flex-basis: 100%;
+    padding: 4px 0 0 48px;
   }
 
-  .meta-field {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 8px;
-  }
+  .meta-field-value { word-break: break-all; }
 
   .body-divider {
     margin: 18px 4px;

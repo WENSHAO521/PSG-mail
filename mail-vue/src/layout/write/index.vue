@@ -14,46 +14,7 @@
             <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
             <span v-else>{{ $t('compose') }}</span>
           </div>
-          <el-dropdown trigger="click" @command="selectSender" :disabled="senderAccounts.length <= 1"
-                       popper-class="write-sender-dropdown">
-            <div class="wh-sender" :class="{ selectable: senderAccounts.length > 1 }">
-              <div class="wh-avatar">
-                <img v-if="currentSenderAvatar" :src="currentSenderAvatar" class="wh-avatar-img"/>
-                <span v-else>{{ senderInitial }}</span>
-              </div>
-              <div class="wh-info">
-                <span class="wh-name">{{ form.name || form.sendEmail.split('@')[0] }}</span>
-                <span class="wh-email">{{ form.sendEmail }}</span>
-              </div>
-              <Icon v-if="senderAccounts.length > 1"
-                    icon="psg:chevron-down" width="12" height="12" class="sender-chevron"/>
-            </div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item
-                  v-for="acc in senderAccounts"
-                  :key="acc.accountId"
-                  :command="acc"
-                  :class="{ 'is-active-sender': acc.accountId === form.accountId }"
-                >
-                  <div class="sender-option">
-                    <div class="sender-opt-avatar"
-                         :style="storedAvatar(acc.email) ? { background: 'transparent', border: 'none', padding: 0, overflow: 'hidden' }
-                                                         : { background: avatarBg(acc.email) + '18', borderColor: avatarBg(acc.email) + '40' }">
-                      <img v-if="storedAvatar(acc.email)" :src="storedAvatar(acc.email)" class="opt-avatar-img"/>
-                      <span v-else>{{ (acc.name || acc.email || '?')[0].toUpperCase() }}</span>
-                    </div>
-                    <div class="sender-opt-info">
-                      <span class="sender-opt-name" v-if="acc.name">{{ acc.name }}</span>
-                      <span class="sender-opt-email">{{ acc.email }}</span>
-                    </div>
-                    <Icon v-if="acc.accountId === form.accountId"
-                          icon="psg:check-circle" width="14" height="14" class="sender-opt-check"/>
-                  </div>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <span class="wh-title">{{ form.subject || $t('noSubject') }}</span>
         </div>
         <div class="wh-actions">
           <button type="button" class="wh-action-btn"
@@ -77,6 +38,47 @@
 
       <!-- ── Fields ─────────────────────────────── -->
       <div class="container">
+
+        <!-- From -->
+        <div class="field-row from-row">
+          <span class="field-label">{{ $t('sender') }}</span>
+        <el-dropdown trigger="click" @command="selectSender" :disabled="senderAccounts.length <= 1"
+                     popper-class="write-sender-dropdown">
+          <button type="button" class="from-chip" :class="{ selectable: senderAccounts.length > 1 }">
+            <span class="from-dot" :style="{ background: mailboxColor(form.sendEmail) }"></span>
+            <span class="from-name">{{ form.name || form.sendEmail.split('@')[0] }}</span>
+            <span class="from-email">&lt;{{ form.sendEmail }}&gt;</span>
+            <Icon v-if="senderAccounts.length > 1"
+                  icon="psg:chevron-down" width="12" height="12" class="sender-chevron"/>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="acc in senderAccounts"
+                :key="acc.accountId"
+                :command="acc"
+                :class="{ 'is-active-sender': acc.accountId === form.accountId }"
+              >
+                <div class="sender-option">
+                  <div class="sender-opt-avatar"
+                       :style="storedAvatar(acc.email) ? { background: 'transparent', border: 'none', padding: 0, overflow: 'hidden' }
+                                                       : { background: avatarBg(acc.email) + '18', borderColor: avatarBg(acc.email) + '40' }">
+                    <img v-if="storedAvatar(acc.email)" :src="storedAvatar(acc.email)" class="opt-avatar-img"/>
+                    <span v-else>{{ (acc.name || acc.email || '?')[0].toUpperCase() }}</span>
+                  </div>
+                  <div class="sender-opt-info">
+                    <span class="sender-opt-name" v-if="acc.name">{{ acc.name }}</span>
+                    <span class="sender-opt-email">{{ acc.email }}</span>
+                  </div>
+                  <Icon v-if="acc.accountId === form.accountId"
+                        icon="psg:check-circle" width="14" height="14" class="sender-opt-check"/>
+                </div>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+          <span v-if="senderAutoPicked" class="from-hint">{{ $t('senderAutoPicked') }}</span>
+        </div>
 
         <!-- To -->
         <div class="field-row">
@@ -118,6 +120,7 @@
 
         <!-- Subject -->
         <div class="field-row subject-row">
+          <span class="field-label">{{ $t('subject') }}</span>
           <el-input class="subject-input" v-model="form.subject"
                     :placeholder="t('subject')" />
         </div>
@@ -372,7 +375,7 @@ import undoSendRing from "@/components/undo-send-ring/index.vue"
 import {toOssDomain} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
-import {avatarBg, storedAvatar} from "@/utils/avatar.js";
+import {avatarBg, storedAvatar, mailboxColor} from "@/utils/avatar.js";
 import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
 import db from "@/db/db.js";
@@ -1148,6 +1151,7 @@ function addRecipientRecord() {
 }
 
 function resetForm() {
+  senderAutoPicked.value = false
   form.receiveEmail = []
   form.cc = []
   form.bcc = []
@@ -1374,7 +1378,7 @@ async function replyFromReceivingAccount(email) {
   if (!show.value || form.emailId !== email.emailId || form.accountId !== defaultAccountId) return
   const acc = senderAccounts.value.find(a => a.accountId === email.accountId)
   if (!acc || acc.accountId === form.accountId) return
-  selectSender(acc)
+  selectSender(acc, true)
   // Reply-all built its recipient list excluding the *default* address; drop
   // the new sender's own address too so we don't mail ourselves.
   const self = (acc.email || '').toLowerCase()
@@ -1387,10 +1391,15 @@ async function replyFromReceivingAccount(email) {
   }
 }
 
-function selectSender(acc) {
+// True only while the sender shown is the one Reply picked from the original
+// mail's receiving address; any manual pick or new draft clears it.
+const senderAutoPicked = ref(false)
+
+function selectSender(acc, auto = false) {
   form.sendEmail = acc.email
   form.accountId = acc.accountId
   form.name = acc.name || ''
+  senderAutoPicked.value = auto
 }
 
 // Shared setup called by open(), openReply(), openReplyAll(), openForward()
@@ -1675,11 +1684,11 @@ function close() {
 .write-box {
   background: var(--psg-surface);
   --compose-radius: var(--psg-radius-xs);
-  border-radius: var(--compose-radius);
+  border-radius: 14px;
   width: min(1300px, calc(100% - 16px));
   display: grid;
   grid-template-rows: auto 1fr;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.40), 0 4px 16px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 60px rgba(20, 24, 21, 0.22), 0 2px 6px rgba(20, 24, 21, 0.08);
   overflow: hidden;
   transition: width 0.16s ease, height 0.16s ease;
 
@@ -1717,11 +1726,65 @@ function close() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px 0 20px;
-  background: var(--psg-primary);
-  height: 52px;
+  gap: 12px;
+  padding: 0 10px 0 20px;
+  background: var(--psg-surface);
+  height: 48px;
   flex-shrink: 0;
-  border-bottom: 2px solid var(--psg-primary);
+  border-bottom: 1px solid var(--psg-border);
+}
+
+.wh-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--psg-text);
+}
+
+/* ── From row ── */
+.field-row.from-row { gap: 10px; flex-wrap: wrap; padding-block: 7px; }
+
+.from-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface);
+  color: var(--psg-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: default;
+
+  &.selectable {
+    cursor: pointer;
+    @media (hover: hover) {
+      &:hover { border-color: var(--psg-primary); background: var(--psg-primary-muted); }
+    }
+  }
+
+  .sender-chevron { color: var(--psg-text-secondary); }
+}
+
+.from-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.from-name { font-weight: 600; white-space: nowrap; }
+.from-email {
+  color: var(--psg-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.from-hint {
+  font-size: 12px;
+  color: var(--psg-text-secondary);
 }
 
 .wh-draggable {
@@ -1739,11 +1802,14 @@ function close() {
 
 .wh-badge {
   font-family: var(--psg-font-sans);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--psg-on-primary);
+  color: var(--psg-primary);
+  background: var(--psg-primary-muted);
+  padding: 2px 8px;
+  border-radius: var(--psg-radius-xs);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1907,14 +1973,14 @@ function close() {
   justify-content: center;
   cursor: pointer;
   background: transparent;
-  color: color-mix(in srgb, var(--psg-on-primary) 60%, transparent);
+  color: var(--psg-text-secondary);
   flex-shrink: 0;
   transition: background 0.12s, color 0.12s;
 
   @media (hover: hover) {
     &:hover {
-      background: color-mix(in srgb, var(--psg-on-primary) 12%, transparent);
-      color: var(--psg-on-primary);
+      background: var(--psg-surface-muted);
+      color: var(--psg-text);
     }
   }
 

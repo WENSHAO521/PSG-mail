@@ -399,6 +399,7 @@ const en = {
     from: 'From',
     subject: 'Subject',
     sender: 'From',
+    senderAutoPicked: 'Picked from the address the original was sent to',
     user: 'User',
     searchByContent: 'Enter text to search',
     searchAllMailPlaceholder: 'Search mail, sender, recipient, or subject…',
