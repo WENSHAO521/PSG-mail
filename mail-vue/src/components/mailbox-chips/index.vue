@@ -18,7 +18,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import router from '@/router/index.js'
-import { accountList } from '@/request/account.js'
+import { accountListAll } from '@/request/account.js'
 import { useAccountStore } from '@/store/account.js'
 import { mailboxColor } from '@/utils/avatar.js'
 
@@ -27,10 +27,7 @@ const accountStore = useAccountStore()
 const mailboxes = ref([])
 
 async function load() {
-  try {
-    const list = await accountList(0, 30, null)
-    mailboxes.value = Array.isArray(list) ? list : []
-  } catch {}
+  try { mailboxes.value = await accountListAll() } catch {}
 }
 onMounted(load)
 // Addresses added or renamed in Settings show up when you come back.

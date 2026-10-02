@@ -387,7 +387,7 @@ import {ElMessage} from "element-plus";
 import {getDirectory} from "@/request/my.js";
 import {templateList} from "@/request/template.js";
 import {contactGroupList} from "@/request/contact-group.js";
-import {accountList} from "@/request/account.js";
+import {accountList, accountListAll} from "@/request/account.js";
 import {aiComposeTransform} from "@/request/ai-mail.js";
 import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
 
@@ -1359,8 +1359,7 @@ async function loadTemplates() {
 async function loadSenderAccounts() {
   if (senderLoaded.value) return
   try {
-    const list = await accountList(0, 30, null)
-    senderAccounts.value = Array.isArray(list) ? list : []
+    senderAccounts.value = await accountListAll()
     senderLoaded.value = true
   } catch {}
 }
@@ -2832,4 +2831,11 @@ function close() {
   border: 0;
   border-radius: var(--psg-radius-lg);
 }
+
+/* Let editor menus (TinyMCE renders its popup sink inside .editor-wrap)
+   spill past the card instead of being clipped; the header carries the
+   top corners itself so nothing square pokes out. */
+.write-box:not([data-state="minimized"]) { overflow: visible; }
+.write-box:not([data-state="minimized"]) .editor-wrap { overflow: visible; }
+.write-box:not([data-state="minimized"]) .wh { border-radius: 28px 28px 0 0; }
 </style>

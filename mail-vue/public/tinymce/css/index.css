@@ -13,7 +13,7 @@ p {
 
 a {
     text-decoration: none;
-    color: #0E70DF;
+    color: #C2410C;
 }
 
 body {
@@ -27,8 +27,7 @@ body {
 }
 
 .mceNonEditable {
-    color: #303133;
-    background: #FFFFFF;
+    color: #3C3C43;
 }
 
 @media (pointer: fine) and (hover: hover) {

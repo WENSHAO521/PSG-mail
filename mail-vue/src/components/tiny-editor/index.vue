@@ -7,6 +7,7 @@
 </template>
 
 <script setup>
+import { registerMistIcons } from './mist-icons.js'
 import {ref, onMounted, onBeforeUnmount, watch, nextTick, shallowRef, defineEmits, computed} from 'vue';
 import loading from "@/components/loading/index.vue";
 import {useI18n} from 'vue-i18n'
@@ -144,20 +145,28 @@ function initEditor() {
     content_style: `
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto:wght@400;700&family=Open+Sans:wght@400;600&family=Lato:wght@400;700&family=Poppins:wght@400;600&family=Nunito:wght@400;600&family=Montserrat:wght@400;600&family=Source+Sans+3:wght@400;600&family=Raleway:wght@400;600&family=Ubuntu:wght@400;500&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;600&family=Lora:wght@400;600&family=EB+Garamond:wght@400;500&family=Noto+Serif:wght@400;700&family=Oswald:wght@400;600&family=Roboto+Mono:wght@400;500&family=Source+Code+Pro:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&family=ZCOOL+XiaoWei&family=Ma+Shan+Zheng&display=swap');
       :root {
-        --scrollbar-track-color: ${uiStore.dark ? '#171B18' : '#FFFFFF'};
-        --scrollbar-thumb-color: ${uiStore.dark ? '#2D332E' : '#A8ABB2'};
+        --scrollbar-track-color: ${uiStore.dark ? '#1C1C1F' : '#FFFFFF'};
+        --scrollbar-thumb-color: ${uiStore.dark ? '#3A3A3F' : '#D1D1D6'};
       }
-      body { padding: 12px 16px !important; }
+      body { padding: 12px 16px !important; font-size: 15px; line-height: 1.7; color: ${uiStore.dark ? '#F2F2F7' : '#1C1C1E'}; }
+      a { color: ${uiStore.dark ? '#FF8A50' : '#C2410C'}; }
+      blockquote, .mceNonEditable {
+        color: ${uiStore.dark ? '#D1D1D6' : '#3C3C43'} !important;
+        background: ${uiStore.dark ? '#2A2A2E' : '#F2F2F7'} !important;
+        border-left: 0 !important;
+        border-radius: 14px;
+        padding: 10px 14px !important;
+        margin: 12px 0 !important;
+      }
       @media (max-width: 767px) {
         body { padding: 10px 12px !important; }
       }
       ${uiStore.dark ? `
-        body { background: #171B18 !important; color: #ECEFE9 !important; }
-        a { color: #45B67D; }
-        hr, blockquote { border-color: #2D332E !important; }
-        code { background-color: #262C27; }
-        figure figcaption { color: #A6AEA3; }
-        .mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before { color: #6F766D !important; }
+        body { background: #1C1C1F !important; color: #F2F2F7 !important; }
+        hr { border-color: #2E2E33 !important; }
+        code { background-color: #2A2A2E; }
+        figure figcaption { color: #9A9AA0; }
+        .mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before { color: #9A9AA0 !important; }
       ` : ''}
     `,
     font_family_formats: [
@@ -216,6 +225,7 @@ function initEditor() {
     noneditable_class: 'mceNonEditable',
     setup: (ed) => {
       editor.value = ed;
+      registerMistIcons(ed);
 
       // 'alignformat' — left/center/right/justify, folded into one
       // dropdown instead of four separate toggle icons.
@@ -739,4 +749,118 @@ html.dark {
   }
 }
 
+
+
+/* ══════════════════════════════════════════════════════════
+   Mist toolbar — one soft grey bar with rounded 34px buttons, the
+   Mist stroke icons (mist-icons.js), quiet chevrons, and the accent
+   only for toggles that are on.
+   ══════════════════════════════════════════════════════════ */
+.tox .tox-editor-header {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 6px 12px !important;
+}
+
+.tox .tox-toolbar,
+.tox .tox-toolbar__primary,
+.tox .tox-toolbar-overlord {
+  background: var(--psg-surface-muted) !important;
+  border-radius: var(--psg-radius-md) !important;
+}
+
+.tox .tox-toolbar__primary { padding: 4px 6px !important; }
+
+.tox .tox-toolbar__group {
+  gap: 2px;
+  padding: 0 4px !important;
+  border: 0 !important;
+}
+
+.tox .tox-toolbar__group + .tox-toolbar__group {
+  border-left: 1px solid var(--psg-border) !important;
+}
+
+.tox .tox-tbtn {
+  height: 34px !important;
+  min-width: 34px;
+  border-radius: var(--psg-radius-sm) !important;
+  color: var(--psg-text) !important;
+  background: transparent !important;
+}
+
+.tox .tox-tbtn:hover {
+  background: var(--psg-surface) !important;
+}
+
+.tox .tox-tbtn--enabled,
+.tox .tox-tbtn--enabled:hover {
+  background: var(--psg-surface) !important;
+  color: var(--psg-primary) !important;
+  box-shadow: var(--psg-shadow-xs);
+}
+
+.tox .tox-tbtn svg { fill: currentColor !important; }
+
+/* Font + size selects read as small white pills. */
+.tox .tox-tbtn--select.tox-tbtn--bespoke {
+  background: var(--psg-surface) !important;
+  padding-inline: 10px 6px !important;
+  font-family: var(--psg-font-sans) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.tox .tox-tbtn__select-chevron svg,
+.tox .tox-split-button__chevron svg {
+  color: var(--psg-text-muted);
+}
+
+.tox .tox-split-button {
+  border-radius: var(--psg-radius-sm) !important;
+  border: 0 !important;
+}
+
+.tox .tox-split-button:hover {
+  background: var(--psg-surface) !important;
+  box-shadow: none !important;
+}
+
+.tox .tox-split-button__chevron { width: 18px !important; }
+
+/* Menus opened from the toolbar. */
+.tox .tox-menu {
+  border: 0 !important;
+  border-radius: var(--psg-radius-md) !important;
+  box-shadow: var(--psg-shadow-md) !important;
+  padding: 6px !important;
+  background: var(--psg-surface) !important;
+}
+
+.tox .tox-collection__item {
+  border-radius: var(--psg-radius-sm) !important;
+  color: var(--psg-text) !important;
+}
+
+.tox .tox-collection__item-icon svg { fill: currentColor !important; }
+
+/* Mist: the editor sits flat inside the compose card — no outer frame. */
+.tox.tox-tinymce {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.tox .tox-edit-area__iframe { background: var(--psg-surface) !important; }
+
+.tox .tox-menu.tox-collection--list { min-width: 200px !important; }
+
+.tox .tox-collection--list .tox-collection__item--active,
+.tox .tox-collection--list .tox-collection__item--active:not(.tox-collection__item--state-disabled) {
+  background: var(--psg-surface-muted) !important;
+  color: var(--psg-text) !important;
+}
+
+.tox .tox-collection__item-label { white-space: nowrap; }
 </style>

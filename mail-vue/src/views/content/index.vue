@@ -1017,7 +1017,8 @@ function handleDelete() {
   border-radius: var(--psg-radius-lg);
   background: var(--psg-surface-muted);
 
-  @media (max-width: 1024px) { display: none; }
+  /* Phones get the fixed action bar instead (.mobile-reader-actions). */
+  @media (max-width: 768px) { display: none; }
 }
 
 .quick-reply-prompt {
