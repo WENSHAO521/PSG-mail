@@ -2718,4 +2718,118 @@ function close() {
     z-index: auto;
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   Mist compose — a centred 28px card over a soft dim; fields sit in one
+   grey well; flat grey actions with the accent Send. Minimised it still
+   docks bottom-right as a pill and stops blocking the app.
+   ══════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .send:not([data-state="minimized"]) {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--bg-overlay);
+    pointer-events: auto;
+  }
+
+  .write-box[data-state="normal"] {
+    width: min(820px, calc(100vw - 48px));
+    height: min(740px, calc(100vh - 48px));
+  }
+
+  .write-box[data-state="minimized"] {
+    width: 320px;
+    border-radius: var(--psg-radius-lg);
+  }
+}
+
+.write-box {
+  --compose-radius: var(--psg-radius-sm);
+  border-radius: 28px;
+  box-shadow: var(--psg-shadow-lg);
+}
+
+.wh {
+  height: 68px;
+  padding: 0 16px 0 28px;
+  border-bottom: 0;
+}
+
+.write-box[data-state="minimized"] .wh { height: 52px; padding-left: 18px; }
+
+.wh-title { font-size: 20px; letter-spacing: -.01em; }
+.wh-badge { border-radius: var(--psg-radius-xs); padding: 3px 10px; }
+
+.wh-action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--psg-surface-muted);
+  color: var(--psg-text-secondary);
+}
+
+.wh-actions { gap: 6px; }
+
+.field-row {
+  margin: 0 20px;
+  padding: 0 16px;
+  background: var(--psg-surface-muted);
+  border-bottom: 1px solid var(--psg-border);
+}
+
+.field-row.from-row { border-radius: 18px 18px 0 0; }
+
+.subject-row {
+  border-radius: 0 0 18px 18px;
+  border-bottom: 0;
+}
+
+.field-label { width: 60px; font-weight: 500; color: var(--psg-text-muted); }
+
+.from-chip {
+  border: 0;
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-sm);
+}
+
+.editor-wrap { padding: 8px 12px 0; }
+
+.toolbar-bar {
+  padding: 14px 20px 20px;
+  border-top: 0;
+  background: transparent;
+}
+
+.tb-btn {
+  height: 44px;
+  min-width: 44px;
+  border-radius: 14px;
+  background: var(--psg-surface-muted);
+  color: var(--psg-text);
+}
+
+.tb-btn--label { padding: 0 16px; font-size: 13.5px; letter-spacing: 0; }
+
+.compose-ai-trigger { color: var(--psg-text) !important; }
+
+.send-btn {
+  height: 44px !important;
+  padding: 0 24px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  border-radius: 14px !important;
+}
+
+.send-later-btn {
+  height: 44px !important;
+  min-width: 44px !important;
+  padding: 0 16px !important;
+  border-radius: 14px !important;
+}
+
+.schedule-panel {
+  border: 0;
+  border-radius: var(--psg-radius-lg);
+}
 </style>

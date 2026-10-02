@@ -7,6 +7,8 @@
         <h2 class="explorer-title">{{ props.explorerTitle }}</h2>
       </div>
 
+      <MailboxChips v-if="props.showMailboxSwitch" />
+
       <div class="explorer-search-row">
         <!-- All Mail needs backend multi-field search (sender/subject/user/account)
              instead of the plain client-side filter below — it supplies its own
@@ -158,7 +160,7 @@
               <div class="mrow-lead">
                 <span class="mrow-dot" aria-hidden="true"></span>
               </div>
-              <div class="mrow-avatar" :style="{ background: senderBg(item) }">
+              <div class="mrow-avatar" :style="avatarTint(item.sendEmail || item.name)">
                 <span class="mrow-avatar-letter">{{ senderLetter(item) }}</span>
                 <img v-if="senderImg(item)" :src="senderImg(item)" class="mrow-avatar-img" alt=""
                      @error="e => { e.target.style.display = 'none'; markGravatarMiss(item.sendEmail) }" />
@@ -389,12 +391,13 @@
 <script setup>
 import {Icon} from "@iconify/vue";
 import skeletonBlock from "@/components/email-scroll/skeleton/index.vue"
+import MailboxChips from "@/components/mailbox-chips/index.vue"
 import {computed, onActivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import {useEmailStore} from "@/store/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {sleep} from "@/utils/time-utils.js"
-import { avatarBg, avatarLetter, mailboxColor, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
+import { avatarBg, avatarLetter, avatarTint, mailboxColor, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import {fromNow} from "@/utils/day.js";
 import {useI18n} from "vue-i18n";
@@ -407,6 +410,8 @@ const props = defineProps({
   // Tag each received row with the address it arrived on — for views that
   // mix several mailboxes (All inboxes, or a catch-all account).
   showMailbox: { type: Boolean, default: false },
+  // Address switcher chips above the list (inbox views).
+  showMailboxSwitch: { type: Boolean, default: false },
   getEmailList: Function,
   emailDelete: Function,
   emailRead: Function,
@@ -540,7 +545,7 @@ const itemHeight = computed(() => {
     if (viewportWidth.value <= 768) return 112;
     return isMobile.value ? 72 : 68;
   }
-  // .mrow: three text lines (name/time, subject, chip + preview).
+  // .mrow: three text lines (name/time, subject, chip + preview) + 4px gap.
   return 84;
 })
 
@@ -991,7 +996,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   height: 100%;
   min-width: 0;
   overflow: hidden;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
   font-size: 14px;
   color: var(--psg-text);
   /* The list pane is a narrow column (~380-420px) even on a wide desktop
@@ -1014,13 +1019,14 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
 .explorer-header {
   min-width: 0;
-  padding: 14px 16px 2px;
+  padding: 20px 20px 0;
 }
 
 .explorer-title {
   margin: 0;
   font-family: var(--psg-font-sans);
-  font-size: 15px;
+  font-size: 22px;
+  letter-spacing: -.01em;
   font-weight: 700;
   letter-spacing: 0;
   color: var(--psg-text);
@@ -1036,17 +1042,17 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 36px;
-  margin: 10px 16px 0;
-  padding: 0 10px;
-  background: var(--psg-canvas);
-  border: 1px solid var(--psg-border);
+  height: 40px;
+  margin: 12px 20px 0;
+  padding: 0 12px;
+  background: var(--psg-surface-muted);
+  border: 0;
   border-radius: var(--psg-radius-md);
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  transition: box-shadow 0.12s ease, background 0.12s ease;
 
   &:focus-within {
-    border-color: var(--psg-primary);
-    box-shadow: 0 0 0 3px var(--psg-primary-muted);
+    background: var(--psg-surface);
+    box-shadow: 0 0 0 2px var(--psg-primary);
   }
 }
 
@@ -1086,11 +1092,11 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
 /* ── Toolbar ──────────────────────────────────────────────── */
 .mail-toolbar {
-  height: 44px;
+  height: 48px;
   display: flex;
   align-items: center;
-  padding: 0 0 0 10px;
-  border-bottom: 1px solid var(--psg-border);
+  padding: 0 10px 0 16px;
+  border-bottom: 0;
   background: var(--psg-surface);
   flex-shrink: 0;
 
@@ -1454,7 +1460,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 .scroll {
   height: 100%;
   overflow: hidden;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
 
   .virtual { will-change: scroll-position; }
 
@@ -2122,12 +2128,12 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  height: 84px;
+  height: 80px;
   box-sizing: border-box;
-  padding: 12px 16px 12px 6px;
-  background: var(--psg-surface);
-  border-bottom: 1px solid var(--psg-surface-muted);
-  border-left: 3px solid transparent;
+  margin: 2px 10px;
+  padding: 12px 12px 12px 4px;
+  background: transparent;
+  border-radius: var(--psg-radius-lg);
   cursor: pointer;
   transition: background 120ms ease;
 
@@ -2137,8 +2143,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
   &.is-open,
   &[data-active] {
-    background: var(--psg-primary-muted);
-    border-left-color: var(--psg-primary);
+    background: var(--psg-surface-muted);
   }
 
   &.is-checked { background: var(--psg-primary-muted); }
@@ -2146,7 +2151,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .mrow-lead {
     width: 8px;
     flex-shrink: 0;
-    padding-top: 14px;
+    padding-top: 18px;
     display: flex;
     justify-content: center;
   }
@@ -2164,10 +2169,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
      checked, or while in (mobile long-press) selection mode. */
   .mrow-avatar {
     position: relative;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     flex-shrink: 0;
-    border-radius: 50%;
+    border-radius: var(--psg-radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2175,9 +2180,9 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 
   .mrow-avatar-letter {
-    color: #fff;
-    font-size: 14px;
-    font-weight: 600;
+    color: inherit;
+    font-size: 15px;
+    font-weight: 700;
     line-height: 1;
   }
 
@@ -2195,7 +2200,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     height: auto;
     justify-content: center;
     background: var(--psg-surface);
-    border-radius: 50%;
+    border-radius: var(--psg-radius-md);
     opacity: 0;
     transition: opacity 0.12s ease;
   }

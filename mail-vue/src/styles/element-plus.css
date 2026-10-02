@@ -11,7 +11,7 @@
 
 :root {
   --el-color-primary: var(--psg-primary);
-  --el-color-primary-rgb: 30, 89, 64;
+  --el-color-primary-rgb: 194, 65, 12;
   --el-color-primary-light-3: var(--psg-primary-light-3);
   --el-color-primary-light-5: var(--psg-primary-light-5);
   --el-color-primary-light-7: var(--psg-primary-light-7);
@@ -19,7 +19,7 @@
   --el-color-primary-light-9: var(--psg-primary-light-9);
   --el-color-primary-dark-2: var(--psg-primary-dark-2);
   --el-color-success: var(--psg-success);
-  --el-color-success-rgb: 47, 125, 82;
+  --el-color-success-rgb: 37, 97, 58;
   --el-color-success-light-3: var(--psg-success-light-3);
   --el-color-success-light-5: var(--psg-success-light-5);
   --el-color-success-light-7: var(--psg-success-light-7);
@@ -27,7 +27,7 @@
   --el-color-success-light-9: var(--psg-success-light-9);
   --el-color-success-dark-2: var(--psg-success-dark-2);
   --el-color-warning: var(--psg-warning);
-  --el-color-warning-rgb: 181, 121, 22;
+  --el-color-warning-rgb: 154, 98, 0;
   --el-color-warning-light-3: var(--psg-warning-light-3);
   --el-color-warning-light-5: var(--psg-warning-light-5);
   --el-color-warning-light-7: var(--psg-warning-light-7);
@@ -35,7 +35,7 @@
   --el-color-warning-light-9: var(--psg-warning-light-9);
   --el-color-warning-dark-2: var(--psg-warning-dark-2);
   --el-color-info: var(--psg-info);
-  --el-color-info-rgb: 100, 117, 106;
+  --el-color-info-rgb: 99, 99, 102;
   --el-color-info-light-3: var(--psg-info-light-3);
   --el-color-info-light-5: var(--psg-info-light-5);
   --el-color-info-light-7: var(--psg-info-light-7);
@@ -43,7 +43,7 @@
   --el-color-info-light-9: var(--psg-info-light-9);
   --el-color-info-dark-2: var(--psg-info-dark-2);
   --el-color-danger: var(--psg-danger);
-  --el-color-danger-rgb: 199, 54, 47;
+  --el-color-danger-rgb: 198, 40, 40;
   --el-color-danger-light-3: var(--psg-danger-light-3);
   --el-color-danger-light-5: var(--psg-danger-light-5);
   --el-color-danger-light-7: var(--psg-danger-light-7);
@@ -51,7 +51,7 @@
   --el-color-danger-light-9: var(--psg-danger-light-9);
   --el-color-danger-dark-2: var(--psg-danger-dark-2);
   --el-color-error: var(--psg-danger);
-  --el-color-error-rgb: 199, 54, 47;
+  --el-color-error-rgb: 198, 40, 40;
   --el-color-error-light-3: var(--psg-danger-light-3);
   --el-color-error-light-5: var(--psg-danger-light-5);
   --el-color-error-light-7: var(--psg-danger-light-7);
@@ -60,31 +60,31 @@
   --el-color-error-dark-2: var(--psg-danger-dark-2);
 
   --el-font-family: var(--psg-font-sans);
-  /* Element Plus has separate base/small/round defaults plus component
-     overrides (card, dialog, popper, tag, pagination, etc.). Keep every
-     ordinary surface on the same compact 6px corner; circle remains the
-     only intentional geometric exception. */
-  --el-border-radius-base: var(--psg-radius-xs);
+  /* Mist corners: controls 10, fields 14, overlays 20. */
+  --el-border-radius-base: var(--psg-radius-sm);
   --el-border-radius-small: var(--psg-radius-xs);
-  --el-border-radius-round: var(--psg-radius-xs);
+  --el-border-radius-round: var(--psg-radius-full);
   --el-border-radius-circle: 50%;
-  --el-alert-border-radius-base: var(--psg-radius-xs);
-  --el-avatar-border-radius: var(--psg-radius-xs);
-  --el-badge-radius: var(--psg-radius-xs);
-  --el-card-border-radius: var(--psg-radius-xs);
-  --el-checkbox-border-radius: var(--psg-radius-xs);
-  --el-dialog-border-radius: var(--psg-radius-xs);
-  --el-input-border-radius: var(--psg-radius-xs);
-  --el-messagebox-border-radius: var(--psg-radius-xs);
-  --el-pagination-border-radius: var(--psg-radius-xs);
-  --el-popover-border-radius: var(--psg-radius-xs);
-  --el-popper-border-radius: var(--psg-radius-xs);
-  --el-radio-input-border-radius: var(--psg-radius-xs);
-  --el-slider-border-radius: var(--psg-radius-xs);
+  --el-alert-border-radius-base: var(--psg-radius-md);
+  --el-avatar-border-radius: var(--psg-radius-md);
+  --el-badge-radius: var(--psg-radius-full);
+  --el-card-border-radius: var(--psg-radius-lg);
+  --el-checkbox-border-radius: 5px;
+  --el-dialog-border-radius: var(--psg-radius-xl);
+  --el-input-border-radius: var(--psg-radius-sm);
+  --el-messagebox-border-radius: var(--psg-radius-xl);
+  --el-pagination-border-radius: var(--psg-radius-sm);
+  --el-popover-border-radius: var(--psg-radius-md);
+  --el-popper-border-radius: var(--psg-radius-md);
+  --el-radio-input-border-radius: 50%;
+  --el-slider-border-radius: var(--psg-radius-full);
   --el-tag-border-radius: var(--psg-radius-xs);
-  --el-tag-border-radius-rounded: var(--psg-radius-xs);
-  --el-tour-border-radius: var(--psg-radius-xs);
-  --el-transfer-border-radius: var(--psg-radius-xs);
+  --el-tag-border-radius-rounded: var(--psg-radius-full);
+  --el-tour-border-radius: var(--psg-radius-lg);
+  --el-transfer-border-radius: var(--psg-radius-md);
+  --el-component-size: 36px;
+  --el-component-size-large: 44px;
+  --el-component-size-small: 30px;
 
   --el-border-color: var(--psg-border);
   --el-border-color-light: var(--psg-border);
@@ -109,7 +109,7 @@
   --el-box-shadow-lighter: var(--psg-shadow-xs);
   --el-box-shadow-dark: var(--psg-shadow-lg);
 
-  --el-mask-color: rgba(20, 24, 21, .45);
+  --el-mask-color: rgba(28, 28, 30, .32);
 }
 
 /* `html.dark` (0,1,1) outranks a bare `:root` (0,1,0) — element-plus's own
@@ -119,7 +119,7 @@
    selector so ours is the one left standing. */
 html.dark {
   --el-color-primary: var(--psg-primary);
-  --el-color-primary-rgb: 69, 182, 125;
+  --el-color-primary-rgb: 255, 138, 80;
   --el-color-primary-light-3: var(--psg-primary-light-3);
   --el-color-primary-light-5: var(--psg-primary-light-5);
   --el-color-primary-light-7: var(--psg-primary-light-7);
@@ -135,7 +135,7 @@ html.dark {
   --el-color-success-light-9: var(--psg-success-light-9);
   --el-color-success-dark-2: var(--psg-success-dark-2);
   --el-color-warning: var(--psg-warning);
-  --el-color-warning-rgb: 225, 177, 90;
+  --el-color-warning-rgb: 232, 182, 79;
   --el-color-warning-light-3: var(--psg-warning-light-3);
   --el-color-warning-light-5: var(--psg-warning-light-5);
   --el-color-warning-light-7: var(--psg-warning-light-7);
@@ -143,7 +143,7 @@ html.dark {
   --el-color-warning-light-9: var(--psg-warning-light-9);
   --el-color-warning-dark-2: var(--psg-warning-dark-2);
   --el-color-info: var(--psg-info);
-  --el-color-info-rgb: 166, 174, 163;
+  --el-color-info-rgb: 154, 154, 160;
   --el-color-info-light-3: var(--psg-info-light-3);
   --el-color-info-light-5: var(--psg-info-light-5);
   --el-color-info-light-7: var(--psg-info-light-7);
@@ -151,7 +151,7 @@ html.dark {
   --el-color-info-light-9: var(--psg-info-light-9);
   --el-color-info-dark-2: var(--psg-info-dark-2);
   --el-color-danger: var(--psg-danger);
-  --el-color-danger-rgb: 229, 100, 92;
+  --el-color-danger-rgb: 255, 107, 107;
   --el-color-danger-light-3: var(--psg-danger-light-3);
   --el-color-danger-light-5: var(--psg-danger-light-5);
   --el-color-danger-light-7: var(--psg-danger-light-7);
@@ -159,7 +159,7 @@ html.dark {
   --el-color-danger-light-9: var(--psg-danger-light-9);
   --el-color-danger-dark-2: var(--psg-danger-dark-2);
   --el-color-error: var(--psg-danger);
-  --el-color-error-rgb: 229, 100, 92;
+  --el-color-error-rgb: 255, 107, 107;
   --el-color-error-light-3: var(--psg-danger-light-3);
   --el-color-error-light-5: var(--psg-danger-light-5);
   --el-color-error-light-7: var(--psg-danger-light-7);
@@ -191,30 +191,24 @@ html.dark {
 /* Some Element Plus component maps stamp their own custom property on the
    component instead of inheriting the root value. These selectors close that
    last gap without touching explicit circle variants. */
-:where(
-  .el-card,
-  .el-dialog,
-  .el-message,
-  .el-message-box,
-  .el-popover,
-  .el-popper,
-  .el-dropdown-menu,
-  .el-select-dropdown,
-  .el-picker-panel,
-  .el-date-editor,
-  .el-alert,
-  .el-tag,
-  .el-pagination,
-  .el-input__wrapper,
-  .el-input-tag,
-  .el-badge__content,
-  .el-button:not(.is-circle)
-) {
-  border-radius: var(--psg-radius-xs) !important;
+:where(.el-card, .el-alert, .el-date-editor, .el-pagination, .el-input__wrapper, .el-input-tag, .el-textarea__inner, .el-select__wrapper) {
+  border-radius: var(--psg-radius-sm) !important;
+}
+
+:where(.el-message, .el-popover, .el-popper, .el-dropdown-menu, .el-select-dropdown, .el-picker-panel) {
+  border-radius: var(--psg-radius-md) !important;
+}
+
+:where(.el-dialog, .el-message-box, .el-drawer) {
+  border-radius: var(--psg-radius-xl) !important;
+}
+
+.el-button:not(.is-circle) {
+  border-radius: var(--psg-radius-sm) !important;
 }
 
 .el-checkbox__inner {
-  border-radius: var(--psg-radius-xs) !important;
+  border-radius: 5px !important;
 }
 
 /* Every other hoverable row in this app (sidebar nav links, etc.) is inset
@@ -237,4 +231,109 @@ html.dark {
   height: 36px;
   font-size: 36px;
   align-self: center;
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   Mist component skin — fields are soft grey wells without a border,
+   buttons are flat, overlays float on a soft shadow.
+   ══════════════════════════════════════════════════════════ */
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper,
+.el-input-tag {
+  background-color: var(--psg-surface-muted) !important;
+  box-shadow: none !important;
+  transition: box-shadow .14s ease, background-color .14s ease;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus,
+.el-select__wrapper.is-focused,
+.el-input-tag.is-focused {
+  background-color: var(--psg-surface) !important;
+  box-shadow: 0 0 0 2px var(--psg-primary) !important;
+}
+
+.el-button {
+  font-weight: 600;
+  border-color: transparent;
+  background-color: var(--psg-surface-muted);
+  color: var(--psg-text);
+}
+
+.el-button:hover,
+.el-button:focus-visible {
+  border-color: transparent;
+  background-color: var(--psg-surface-active);
+  color: var(--psg-text);
+}
+
+.el-button--primary {
+  background-color: var(--psg-primary);
+  color: var(--psg-on-primary);
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus-visible {
+  background-color: var(--psg-primary-hover);
+  color: var(--psg-on-primary);
+}
+
+.el-button--danger {
+  background-color: var(--psg-danger);
+  color: #fff;
+}
+
+.el-button.is-text,
+.el-button.is-link {
+  background-color: transparent;
+}
+
+.el-dialog,
+.el-message-box {
+  padding: 24px !important;
+  box-shadow: var(--psg-shadow-lg) !important;
+  border: 0 !important;
+}
+
+.el-dialog__title,
+.el-message-box__title {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: var(--psg-text) !important;
+}
+
+.el-popper.is-light,
+.el-dropdown__popper.el-popper,
+.el-select__popper.el-popper {
+  border: 0 !important;
+  box-shadow: var(--psg-shadow-md) !important;
+}
+
+.el-dropdown-menu__item {
+  border-radius: var(--psg-radius-sm) !important;
+  min-height: 36px;
+}
+
+.el-tag {
+  border: 0;
+  font-weight: 600;
+}
+
+.el-switch.is-checked .el-switch__core {
+  background-color: var(--psg-primary);
+  border-color: var(--psg-primary);
+}
+
+.el-message {
+  border: 0 !important;
+  box-shadow: var(--psg-shadow-md) !important;
+  background-color: var(--psg-surface) !important;
+}
+
+.el-notification {
+  border: 0 !important;
+  border-radius: var(--psg-radius-lg) !important;
+  box-shadow: var(--psg-shadow-md) !important;
 }

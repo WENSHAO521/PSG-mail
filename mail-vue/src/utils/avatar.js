@@ -26,6 +26,22 @@ export function mailboxColor(email) {
   return MAILBOX_PALETTE[Math.abs(h) % MAILBOX_PALETTE.length]
 }
 
+// Mist avatars: a soft tint with a deeper letter of the same hue, as on the
+// redesign's rounded-square avatars. Readable in light and dark (the tint is
+// translucent, the letter colour is mixed toward the theme's text).
+const TINT_HUES = ['#2F6FB0', '#7A2E6E', '#9A3C0C', '#25613A', '#463C9E', '#8F2D2D', '#1D6A73', '#6B5A12']
+
+export function avatarTint(seed) {
+  const key = (seed || '').toLowerCase()
+  let h = 0
+  for (let i = 0; i < key.length; i++) h = (Math.imul(31, h) + key.charCodeAt(i)) | 0
+  const hue = TINT_HUES[Math.abs(h) % TINT_HUES.length]
+  return {
+    background: `color-mix(in srgb, ${hue} 16%, var(--psg-surface))`,
+    color: `color-mix(in srgb, ${hue} 60%, var(--psg-text))`,
+  }
+}
+
 export function avatarLetter(name, email) {
   return ((name || email || '?')[0] || '?').toUpperCase()
 }

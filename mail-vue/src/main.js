@@ -16,12 +16,10 @@ import './styles/element-plus.css';
 import './styles/platform.css';
 
 // Fonts — bundled locally so Electron works offline
-import '@fontsource/ibm-plex-sans/400.css'
-import '@fontsource/ibm-plex-sans/500.css'
-import '@fontsource/ibm-plex-sans/600.css'
-import '@fontsource/ibm-plex-sans/700.css'
-import '@fontsource/ibm-plex-mono/400.css'
-import '@fontsource/ibm-plex-mono/500.css'
+import '@fontsource/dm-sans/400.css'
+import '@fontsource/dm-sans/500.css'
+import '@fontsource/dm-sans/600.css'
+import '@fontsource/dm-sans/700.css'
 import '@fontsource/jetbrains-mono/500.css'
 import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 import '@fontsource/noto-sans-sc/chinese-simplified-500.css'

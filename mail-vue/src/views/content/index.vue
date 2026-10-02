@@ -137,7 +137,7 @@
 
         <!-- Sender row: who, which of my addresses it was sent to, when. -->
         <div class="meta-card">
-          <div class="meta-avatar" :style="{ background: metaAvatarBg }">
+          <div class="meta-avatar" :style="avatarTint(email.sendEmail || email.name)">
             <span class="meta-initial">{{ (email.name || email.sendEmail || '?')[0].toUpperCase() }}</span>
             <img v-if="metaAvatarImg" :src="metaAvatarImg" class="meta-avatar-img" alt=""
                  @error="e => { e.target.style.display='none'; markGravatarMiss(email.sendEmail) }" />
@@ -297,7 +297,7 @@ import { getIconByName } from '@/utils/icon-utils.js'
 import { allEmailDelete } from '@/request/all-email.js'
 import { useI18n } from 'vue-i18n'
 import { EmailUnreadEnum } from '@/enums/email-enum.js'
-import { avatarBg, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
+import { avatarBg, avatarTint, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import { downloadEml } from '@/utils/download-eml.js'
 import { useLabelStore } from '@/store/label.js'
@@ -637,10 +637,11 @@ function handleDelete() {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: var(--psg-canvas);
-  /* Centered reads as an error state on a tall/wide reader pane with nothing
-     selected — nudge it above true center so it reads as "waiting", not "empty". */
-  transform: translateY(-12%);
+  height: 100%;
+  background: var(--psg-surface);
+  /* Sits a little above centre so it reads as "waiting", not "empty". */
+  padding-bottom: 12%;
+  box-sizing: border-box;
 
   .empty-icon { color: var(--psg-text-muted); opacity: 0.5; }
 
@@ -663,18 +664,17 @@ function handleDelete() {
 
 /* ── Header ──────────────────────────────────────────────── */
 .detail-header {
-  min-height: 56px;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 24px;
   background: var(--psg-surface);
-  border-bottom: 1px solid var(--psg-border);
   flex-shrink: 0;
 }
 
-.header-left  { display: flex; align-items: center; gap: 2px; }
-.header-right { display: flex; align-items: center; gap: 2px; }
+.header-left  { display: flex; align-items: center; gap: 6px; }
+.header-right { display: flex; align-items: center; gap: 6px; }
 .mobile-reader-menu { display: none; }
 .mobile-reader-actions { display: none; }
 
@@ -687,18 +687,18 @@ function handleDelete() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border: none;
-  border-radius: var(--psg-radius-md);
-  background: transparent;
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
   cursor: pointer;
-  color: var(--psg-text-secondary);
+  color: var(--psg-text);
   transition: background 0.12s ease, color 0.12s ease;
   flex-shrink: 0;
 
   @media (hover: hover) {
-    &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
+    &:hover { background: var(--psg-surface-active); color: var(--psg-text); }
     &.icon-danger:hover { background: var(--psg-danger-muted); color: var(--psg-danger); }
   }
 }
@@ -725,11 +725,10 @@ function handleDelete() {
 .page-counter {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--psg-text-muted);
   white-space: nowrap;
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
+  margin-left: 6px;
 }
 
 /* ── Scroll ──────────────────────────────────────────────── */
@@ -738,9 +737,9 @@ function handleDelete() {
 .detail-content {
   /* Editorial reading measure — the pane itself can stretch on wide
      monitors, but prose stays capped for readability. */
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 28px 40px 48px;
+  max-width: 820px;
+  margin: 0;
+  padding: 8px 48px 40px;
   @media (max-width: 1280px) { padding: 24px 24px 40px; }
   @media (max-width: 1024px) { padding: 20px 20px 36px; }
   @media (max-width: 767px)  { padding: 16px 16px 32px; }
@@ -749,9 +748,10 @@ function handleDelete() {
 
 /* ── Subject ─────────────────────────────────────────────── */
 .email-title {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
-  line-height: 1.35;
+  letter-spacing: -.02em;
+  line-height: 1.25;
   color: var(--psg-text);
   margin: 0 0 14px;
   text-wrap: balance;
@@ -842,17 +842,17 @@ function handleDelete() {
 }
 
 .meta-avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  border-radius: 50%;
+  border-radius: var(--psg-radius-md);
 
-  .meta-initial { color: #fff; font-size: 15px; font-weight: 700; line-height: 1; }
+  .meta-initial { color: inherit; font-size: 16px; font-weight: 700; line-height: 1; }
   .meta-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 }
 
@@ -938,7 +938,7 @@ function handleDelete() {
   font-size: 13px;
   line-height: 1.5;
 
-  &--to { color: var(--psg-primary); font-weight: 600; }
+  &--to { color: var(--psg-text); font-weight: 700; }
 }
 
 .email-status-alert {
@@ -1009,16 +1009,13 @@ function handleDelete() {
 .quick-reply {
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
-  width: min(100% - 48px, 800px);
-  margin: 0 auto 20px;
-  padding: 8px 10px 10px;
+  margin: 0 24px 24px;
+  padding: 8px 8px 8px 10px;
   box-sizing: border-box;
-  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-lg);
-  background: var(--psg-surface);
-  box-shadow: var(--psg-shadow-sm);
+  background: var(--psg-surface-muted);
 
   @media (max-width: 1024px) { display: none; }
 }
@@ -1027,10 +1024,12 @@ function handleDelete() {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 40px;
-  padding: 0 8px;
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 10px;
   border: 0;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   background: transparent;
   color: var(--psg-text-muted);
   font: inherit;
@@ -1041,7 +1040,7 @@ function handleDelete() {
   span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   @media (hover: hover) {
-    &:hover { background: var(--psg-surface-muted); color: var(--psg-text-secondary); }
+    &:hover { background: var(--psg-surface); color: var(--psg-text-secondary); }
   }
 }
 
@@ -1055,10 +1054,10 @@ function handleDelete() {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 12px;
+  height: 44px;
+  padding: 0 14px;
   border: 0;
-  border-radius: var(--psg-radius-sm);
+  border-radius: var(--psg-radius-md);
   background: transparent;
   color: var(--psg-text-secondary);
   font: inherit;
@@ -1067,11 +1066,12 @@ function handleDelete() {
   cursor: pointer;
 
   @media (hover: hover) {
-    &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
+    &:hover { background: var(--psg-surface); color: var(--psg-text); }
   }
 
   &--primary {
-    padding: 0 16px;
+    padding: 0 20px;
+    font-weight: 700;
     background: var(--psg-primary);
     color: var(--psg-on-primary);
     font-weight: 600;
@@ -1296,10 +1296,8 @@ function handleDelete() {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
     background: var(--psg-surface);
-    border-top: 1px solid var(--psg-border);
-    box-shadow: 0 -6px 18px rgba(20, 24, 21, .08);
   }
 
   .mobile-reader-actions button {
@@ -1308,13 +1306,19 @@ function handleDelete() {
     align-items: center;
     justify-content: center;
     gap: 6px;
+    min-height: 48px;
     padding: 0 6px;
-    border: 1px solid var(--psg-border);
-    border-radius: var(--psg-radius-sm);
-    background: var(--psg-surface);
+    border: 0;
+    border-radius: var(--psg-radius-md);
+    background: var(--psg-surface-muted);
     color: var(--psg-text);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
+  }
+
+  .mobile-reader-actions button:first-child {
+    background: var(--psg-primary);
+    color: var(--psg-on-primary);
   }
 
   .mobile-reader-actions button:active {

@@ -64,7 +64,8 @@
 </template>
 
 <script setup>
-import { ref, defineOptions, onMounted, nextTick } from 'vue'
+import { ref, defineOptions, onMounted, nextTick, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { emailSearch } from '@/request/email.js'
 import { useSearchStore } from '@/store/search.js'
@@ -87,7 +88,17 @@ const searched = ref(false)
 const loading = ref(false)
 const noMore = ref(false)
 
-onMounted(() => nextTick(() => inputRef.value?.focus()))
+// The top bar's global search lands here with ?q= — run it straight away.
+const route = useRoute()
+function runFromRoute() {
+  const q = String(route.query.q || '').trim()
+  if (q && q !== queryText.value.trim()) {
+    queryText.value = q
+    runSearch()
+  }
+}
+onMounted(() => nextTick(() => { inputRef.value?.focus(); runFromRoute() }))
+watch(() => route.query.q, runFromRoute)
 
 function stripHtml(html) {
   return String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()

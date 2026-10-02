@@ -193,7 +193,7 @@ function updateContent() {
          authored color. Toggled via .psg-dark from the app theme so an
          already-open email re-themes instantly, no re-render needed. */
       .shadow-content.psg-dark {
-        background: var(--psg-canvas, #101311);
+        background: var(--psg-surface, #1C1C1F);
         color: #E6EAE7;
       }
 
@@ -202,7 +202,7 @@ function updateContent() {
       }
 
       .shadow-content.psg-dark .psg-dm-bg {
-        background-color: var(--psg-canvas, #101311) !important;
+        background-color: var(--psg-surface, #1C1C1F) !important;
       }
 
       .shadow-content.psg-dark .psg-dm-text {

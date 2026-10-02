@@ -2,6 +2,7 @@ const en = {
     compose: 'Compose',
     search: 'Search',
     menu: 'Menu',
+    searchAllMailboxes: 'Search all mailboxes',
     selectEmailHint: 'Select an email to read',
     commandPlaceholder: 'Search actions and navigate…',
     navigate: 'Navigate',
