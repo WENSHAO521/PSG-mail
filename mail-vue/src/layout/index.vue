@@ -155,15 +155,29 @@ let resizeStartWidth = 0
 const resizerDragging = ref(false)
 
 function loadListShare() {
+  // One-off carry-over from the old fixed-pixel setting: convert it, save
+  // the share, and drop the old key so it isn't re-read on every load.
+  const legacyPx = Number(localStorage.getItem('psgMailListWidth'))
+  if (localStorage.getItem('psgMailListWidth') !== null) {
+    localStorage.removeItem('psgMailListWidth')
+    if (legacyPx > 0 && localStorage.getItem(LIST_SHARE_KEY) === null) {
+      localStorage.setItem(LIST_SHARE_KEY, (legacyPx / window.innerWidth).toFixed(4))
+    }
+  }
   const saved = Number(localStorage.getItem(LIST_SHARE_KEY))
-  if (saved > 0 && saved < 1) return saved
-  // One-off carry-over from the old fixed-pixel setting.
-  const px = Number(localStorage.getItem('psgMailListWidth'))
-  return px > 0 ? px / window.innerWidth : DEFAULT_LIST_SHARE
+  return saved > 0 && saved < 1 ? saved : DEFAULT_LIST_SHARE
+}
+
+// Widest the list may get: half the window, but 42% at <=1280px — the same
+// cap as the medium-screen grid rule, so a drag never stores a width the
+// layout won't draw.
+function maxListWidth() {
+  const vw = viewportW.value
+  return Math.max(LIST_MIN, Math.min(760, vw * (vw <= 1280 ? 0.42 : 0.5)))
 }
 
 function clampListWidth(w) {
-  return Math.round(Math.min(Math.max(LIST_MIN, viewportW.value * 0.5), 760, Math.max(LIST_MIN, w)))
+  return Math.round(Math.min(maxListWidth(), Math.max(LIST_MIN, w)))
 }
 
 function onViewportResize() { viewportW.value = window.innerWidth }
@@ -581,7 +595,7 @@ onBeforeUnmount(() => {
     padding: 0 16px 16px;
 
     &[data-mode="mail"] {
-      grid-template-columns: 184px min(var(--mail-list-w, 360px), 42vw) 12px minmax(0, 1fr);
+      grid-template-columns: 184px var(--mail-list-w, 360px) 12px minmax(0, 1fr);
     }
   }
 

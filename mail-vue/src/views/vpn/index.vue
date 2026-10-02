@@ -146,9 +146,44 @@ const platforms = computed(() => PLATFORMS
   .filter(p => p.assets.length)
   .sort((a, b) => (b.key === detected) - (a.key === detected)))
 
+// CPU architecture of this device: 'arm' | 'x86' | null (unknown).
+// Chromium exposes it via UA Client Hints; Windows on ARM also says so in
+// the UA string. Safari and Firefox on macOS report neither.
+const deviceArch = ref(/Windows NT[^)]*ARM64/i.test(navigator.userAgent) ? 'arm' : null)
+onMounted(async () => {
+  try {
+    const hints = await navigator.userAgentData?.getHighEntropyValues?.(['architecture'])
+    if (hints?.architecture === 'arm') deviceArch.value = 'arm'
+    else if (hints?.architecture === 'x86') deviceArch.value = 'x86'
+  } catch {}
+})
+
+const isArm = n => /arm64|aarch64|apple|silicon|arm/i.test(n)
+const isUniversal = n => /universal/i.test(n)
+
+// The build the hero button offers, or null when we can't tell which one
+// this device needs — the platform row below then lets the user choose.
+function pickForDevice(platform, list) {
+  const named = list.map(a => ({ a, n: a.name.toLowerCase() }))
+  if (platform === 'android') {
+    const apks = named.filter(x => x.n.endsWith('.apk'))   // .aab can't be installed directly
+    return (apks.find(x => isUniversal(x.n)) || apks.find(x => /arm64-v8a/.test(x.n)) || (apks.length === 1 ? apks[0] : null))?.a ?? null
+  }
+  if (platform === 'linux') return list.length === 1 ? list[0] : null   // .deb vs .AppImage vs .rpm depends on the distro
+  const uni = named.find(x => isUniversal(x.n))
+  if (uni) return uni.a
+  if (list.length === 1) return list[0]
+  // Windows defaults to x64 unless the device is known to be ARM; macOS
+  // needs the architecture to be known.
+  const arch = deviceArch.value ?? (platform === 'win' ? 'x86' : null)
+  if (!arch) return null
+  return named.find(x => (arch === 'arm') === isArm(x.n))?.a ?? null
+}
+
 const primary = computed(() => {
   const p = platforms.value.find(p => p.key === detected)
-  return p ? { name: p.name, asset: p.assets[0] } : null
+  const asset = p && pickForDevice(p.key, p.assets)
+  return asset ? { name: p.name, asset } : null
 })
 
 // Return all assets for a given platform, excluding metadata files

@@ -49,7 +49,6 @@ const accountStore = useAccountStore()
 const mailboxes = ref([])
 const rowRef = ref(null)
 const measureRef = ref(null)
-const fitCount = ref(Infinity)
 
 const allActive = computed(() => route.meta?.name === 'all-inbox')
 
@@ -71,14 +70,29 @@ function open(acc) {
   if (route.meta?.name !== 'email') router.push({ name: 'email' })
 }
 
-// Visible chips: the first `fitCount` addresses, with the open mailbox
-// swapped in for the last one if it would otherwise be folded away.
+// Chip widths from the off-screen copy, and the room the row has for them.
+const sizes = ref(null)
+
+// Visible chips: the open mailbox is reserved first (at its own measured
+// width), then the others fill the remaining room in their usual order.
 const shown = computed(() => {
-  const n = Math.min(fitCount.value, mailboxes.value.length)
-  const list = mailboxes.value.slice(0, n)
-  const activeIdx = mailboxes.value.findIndex(isActive)
-  if (n > 0 && activeIdx >= n) list[n - 1] = mailboxes.value[activeIdx]
-  return list
+  const list = mailboxes.value
+  const sz = sizes.value
+  if (!sz) return list
+  const { all, acc, more, avail } = sz
+  if (all + acc.reduce((s, w) => s + GAP + w, 0) <= avail) return list
+  const activeIdx = list.findIndex(isActive)
+  let used = all + GAP + more
+  if (activeIdx >= 0) used += GAP + acc[activeIdx]
+  const keep = new Set(activeIdx >= 0 ? [activeIdx] : [])
+  for (let i = 0; i < list.length; i++) {
+    if (keep.has(i)) continue
+    if (used + GAP + acc[i] > avail) break
+    used += GAP + acc[i]
+    keep.add(i)
+  }
+  if (!keep.size && list.length) keep.add(0)
+  return list.filter((_, i) => keep.has(i))
 })
 const folded = computed(() => {
   const ids = new Set(shown.value.map(a => a.accountId))
@@ -92,17 +106,13 @@ function measure() {
   const style = getComputedStyle(row)
   // A little slack: the active chip is bold and so slightly wider.
   const avail = row.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 8
-  const chips = [...m.children]
-  const widths = chips.map(c => c.offsetWidth)
-  const allW = widths[0]
-  const accW = widths.slice(1, 1 + mailboxes.value.length)
-  const moreW = widths[widths.length - 1]
-  const total = allW + accW.reduce((s, w) => s + GAP + w, 0)
-  if (total <= avail) { fitCount.value = accW.length; return }
-  let used = allW + GAP + moreW
-  let n = 0
-  while (n < accW.length && used + GAP + accW[n] <= avail) { used += GAP + accW[n]; n++ }
-  fitCount.value = Math.max(n, 1)
+  const widths = [...m.children].map(c => c.offsetWidth)
+  sizes.value = {
+    all: widths[0],
+    acc: widths.slice(1, 1 + mailboxes.value.length),
+    more: widths[widths.length - 1],
+    avail,
+  }
 }
 
 let ro = null
