@@ -25,6 +25,8 @@ import starService from './star-service';
 
 const AVATAR_DATA_URL_PATTERN = /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/i;
 const MAX_AVATAR_DATA_URL_LENGTH = 256 * 1024;
+const UNDO_SEND_SECONDS_OPTIONS = [0, 5, 10, 20, 30];
+const DEFAULT_UNDO_SEND_SECONDS = 10;
 
 async function ensureAvatarColumn(c) {
 	try {
@@ -76,6 +78,16 @@ const userService = {
 			user.signature = '';
 			user.avatar    = '';
 		}
+
+		// psg_user_pref (migrations/0009): no row yet means defaults.
+		let pref = null;
+		try {
+			pref = await c.env.db
+				.prepare('SELECT undo_send_seconds, reply_from_received FROM psg_user_pref WHERE user_id = ?')
+				.bind(userId).first();
+		} catch {}
+		user.undoSendSeconds = pref?.undo_send_seconds ?? DEFAULT_UNDO_SEND_SECONDS;
+		user.replyFromReceived = (pref?.reply_from_received ?? 1) === 1;
 
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE;
@@ -144,6 +156,27 @@ const userService = {
 		await c.env.db
 			.prepare('UPDATE user SET signature = ? WHERE user_id = ?')
 			.bind(signature ?? '', userId).run();
+	},
+
+	async updateUndoSendSeconds(c, params, userId) {
+		const seconds = params?.seconds;
+		if (!Number.isInteger(seconds) || !UNDO_SEND_SECONDS_OPTIONS.includes(seconds)) {
+			throw new BizError(t('invalidUndoSendSeconds'));
+		}
+		await c.env.db
+			.prepare(`INSERT INTO psg_user_pref (user_id, undo_send_seconds) VALUES (?, ?)
+				ON CONFLICT(user_id) DO UPDATE SET undo_send_seconds = excluded.undo_send_seconds`)
+			.bind(userId, seconds).run();
+	},
+
+	async updateReplyFromReceived(c, params, userId) {
+		if (typeof params?.enabled !== 'boolean') {
+			throw new BizError(t('invalidReplyFromReceived'));
+		}
+		await c.env.db
+			.prepare(`INSERT INTO psg_user_pref (user_id, reply_from_received) VALUES (?, ?)
+				ON CONFLICT(user_id) DO UPDATE SET reply_from_received = excluded.reply_from_received`)
+			.bind(userId, params.enabled ? 1 : 0).run();
 	},
 
 	async directory(c) {
@@ -217,6 +250,11 @@ const userService = {
 		await accountService.physicsDeleteByUserIds(c, userIds);
 		await oauthService.deleteByUserIds(c, userIds);
 		await orm(c).delete(user).where(inArray(user.userId, userIds)).run();
+		try {
+			await c.env.db
+				.prepare(`DELETE FROM psg_user_pref WHERE user_id IN (${userIds.map(() => '?').join(',')})`)
+				.bind(...userIds).run();
+		} catch {}
 	},
 
 	async list(c, params) {

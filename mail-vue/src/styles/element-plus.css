@@ -228,3 +228,13 @@ html.dark {
   margin: 0 6px !important;
   border-radius: var(--psg-radius-xs) !important;
 }
+
+/* Undo Send notification (layout/write/index.vue): the icon slot holds a
+   36px countdown ring instead of EP's 24px type icon, centred against the
+   title + subject rows. */
+.el-notification.undo-send-notification .el-notification__icon {
+  width: 36px;
+  height: 36px;
+  font-size: 36px;
+  align-self: center;
+}

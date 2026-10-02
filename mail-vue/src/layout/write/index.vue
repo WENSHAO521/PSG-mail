@@ -357,7 +357,7 @@
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
-import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, watch} from "vue";
+import {h, markRaw, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, watch} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend, emailSchedule, emailScheduleCancel} from "@/request/email.js";
@@ -368,6 +368,7 @@ import {useEmailStore} from "@/store/email.js";
 import {fileToBase64, formatBytes} from "@/utils/file-utils.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import sendPercent from "@/components/send-percent/index.vue"
+import undoSendRing from "@/components/undo-send-ring/index.vue"
 import {toOssDomain} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -981,16 +982,27 @@ async function sendScheduled() {
 // Scheduled Send (see mail-worker/src/service/scheduled-email-service.js —
 // create() arms a precise short-delay dispatch under its
 // FAST_PATH_THRESHOLD_MS, with the once-a-minute cron as a backstop), just
-// with a short delay (uiStore.undoSendSeconds) instead of a user-picked
+// with a short delay (the user's own undoSendSeconds) instead of a user-picked
 // future date. This is NOT a frontend setTimeout — the delayed delivery
 // keeps happening server-side even if this tab/app closes; only the "Undo"
 // button itself is naturally client-only (there's nothing to undo once the
 // tab that could show it is gone, but the send still completing without an
 // Undo option available is correct, not a bug).
+// Per-sender preference (Settings → Profile), stored on the user row so it
+// follows the account across devices. 10s if the server hasn't reported one.
+function undoSendSeconds() {
+  return userStore.user?.undoSendSeconds ?? 10
+}
+
 async function sendWithUndo() {
   sending = true
   const snapshot = { ...toRaw(form) }
-  const scheduledAt = new Date(Date.now() + uiStore.undoSendSeconds * 1000)
+  const undoSeconds = undoSendSeconds()
+  // Whole seconds: scheduledAt below is serialized without milliseconds, so
+  // an unrounded deadline would let the ring (and Undo) outlive the real
+  // send by up to 999ms.
+  const deadline = Math.floor((Date.now() + undoSeconds * 1000) / 1000) * 1000
+  const scheduledAt = new Date(deadline)
     .toISOString().slice(0, 19).replace('T', ' ')
 
   let scheduleId = null
@@ -1019,8 +1031,10 @@ async function sendWithUndo() {
   let undone = false
   const notif = ElNotification({
     title: t('messageSending'),
-    duration: uiStore.undoSendSeconds * 1000 + 500,
+    duration: undoSeconds * 1000 + 500,
     position: 'bottom-right',
+    customClass: 'undo-send-notification',
+    icon: markRaw({ render: () => h(undoSendRing, { deadline, totalSeconds: undoSeconds }) }),
     message: () => h('div', { style: 'display:flex;align-items:center;gap:14px;justify-content:space-between' }, [
       h('span', { style: 'color:teal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, snapshot.subject || t('noSubject')),
       h('button', {
@@ -1059,7 +1073,7 @@ async function sendEmail() {
     return
   }
 
-  if (uiStore.undoSendSeconds > 0) {
+  if (undoSendSeconds() > 0) {
     await sendWithUndo()
     return
   }
@@ -1264,6 +1278,7 @@ function openReplyAll(email) {
       <article>${formatImage(email.content) || `<pre style="font-family:inherit;word-break:break-word;white-space:pre-wrap;margin:0">${email.text}</pre>`}</article>
     </blockquote>`
     _showWindow()
+    replyFromReceivingAccount(email)
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
@@ -1304,6 +1319,7 @@ function openReply(email) {
       </article>
     </blockquote>`
     _showWindow()
+    replyFromReceivingAccount(email)
 
     nextTick(() => {
       backReply.content = editor.value.getContent()
@@ -1343,6 +1359,32 @@ async function loadSenderAccounts() {
     senderAccounts.value = Array.isArray(list) ? list : []
     senderLoaded.value = true
   } catch {}
+}
+
+// Reply from the mailbox the original mail was delivered to (or sent from),
+// not whichever mailbox happens to be selected — otherwise a user with several
+// addresses answers from the default one. Per-user toggle in Settings →
+// Profile, on by default. Falls back to the default sender when that mailbox
+// isn't one this user can send from.
+async function replyFromReceivingAccount(email) {
+  if (userStore.user?.replyFromReceived === false) return
+  const defaultAccountId = form.accountId
+  await loadSenderAccounts()
+  // Window closed/reused, or the user already picked a sender, while loading.
+  if (!show.value || form.emailId !== email.emailId || form.accountId !== defaultAccountId) return
+  const acc = senderAccounts.value.find(a => a.accountId === email.accountId)
+  if (!acc || acc.accountId === form.accountId) return
+  selectSender(acc)
+  // Reply-all built its recipient list excluding the *default* address; drop
+  // the new sender's own address too so we don't mail ourselves.
+  const self = (acc.email || '').toLowerCase()
+  const original = (email.sendEmail || '').toLowerCase()
+  for (const list of [form.receiveEmail, form.cc]) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const addr = (list[i] || '').toLowerCase()
+      if (addr === self && addr !== original) list.splice(i, 1)
+    }
+  }
 }
 
 function selectSender(acc) {

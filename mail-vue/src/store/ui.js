@@ -36,7 +36,6 @@ export const useUiStore = defineStore('ui', {
         // server-side via the same scheduled_email queue Scheduled Send
         // uses (see mail-worker/src/service/scheduled-email-service.js),
         // never a bare frontend setTimeout.
-        undoSendSeconds: 10,
         asideCount: {
             email: 0,
             send: 0,
@@ -76,6 +75,6 @@ export const useUiStore = defineStore('ui', {
         }
     },
     persist: {
-        pick: ['dark', 'themeMode', 'undoSendSeconds', 'asideCollapsed'],
+        pick: ['dark', 'themeMode', 'asideCollapsed'],
     },
 })
