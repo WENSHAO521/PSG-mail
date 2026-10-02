@@ -9,14 +9,14 @@ import emailService from '../src/service/email-service';
 let aiReply = '';
 let aiCalls = 0;
 
-function ctx(aiSpam = 0) {
+function ctx(aiSpam = 0, aiDailyQuota = 0) {
 	return {
 		env: {
 			...env,
 			domain: ['psg.example.com'],
 			ai: { run: async () => { aiCalls++; return { response: aiReply }; } },
 		},
-		get: key => (key === 'setting' ? { aiSpam, aiDailyQuota: 0 } : undefined),
+		get: key => (key === 'setting' ? { aiSpam, aiDailyQuota } : undefined),
 		set: () => {},
 	};
 }
@@ -53,6 +53,11 @@ beforeAll(async () => {
 		user_id INTEGER NOT NULL, sender TEXT NOT NULL,
 		created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, sender)
 	)`).run();
+	await env.db.prepare(`CREATE TABLE IF NOT EXISTS ai_usage (
+		id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, usage_date TEXT NOT NULL,
+		task TEXT NOT NULL, input_units INTEGER NOT NULL DEFAULT 0, request_count INTEGER NOT NULL DEFAULT 0,
+		updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, usage_date, task)
+	)`).run();
 });
 
 beforeEach(async () => {
@@ -60,6 +65,7 @@ beforeEach(async () => {
 	await env.db.prepare('DELETE FROM email').run();
 	await env.db.prepare('DELETE FROM psg_spam_verdict').run();
 	await env.db.prepare('DELETE FROM psg_spam_allow').run();
+	await env.db.prepare('DELETE FROM ai_usage').run();
 });
 
 describe('AI spam screening', () => {
@@ -122,5 +128,40 @@ describe('AI spam screening', () => {
 		await emailService.unmarkSpam(ctx(), { emailIds: '9' }, 1);
 		const row = await env.db.prepare('SELECT 1 FROM psg_spam_allow WHERE user_id = 1 AND sender = ?').bind('other@spam.example').first();
 		expect(row).toBeNull();
+	});
+
+	it('matches people the user wrote to by whole address only', async () => {
+		aiReply = '{"spam": true, "confidence": 0.99, "reason": "x"}';
+		await insertEmail(10, { type: 1, recipient: '[{"address":"notbob@example.com"}]' });
+		await insertEmail(11, { type: 1, recipient: '[{"address":"a_b@example.com"}]' });
+		await insertEmail(12, { sendEmail: 'bob@example.com' });
+		expect(await spamService.isTrusted(ctx(), 1, 'bob@example.com')).toBe(false);
+		expect(await spamService.isTrusted(ctx(), 1, 'axb@example.com')).toBe(false);
+		expect(await spamService.isTrusted(ctx(), 1, 'A_B@example.com')).toBe(true);
+	});
+
+	it('"not spam" on a shared mailbox trusts the sender for the mailbox owner', async () => {
+		// Mail owned by user 2; user 1 reaches it through a shared account.
+		await insertEmail(13, { userId: 2, sendEmail: 'vendor@shop.example' });
+		await spamService.trustSenders(ctx(), [13]);
+		const row = await env.db.prepare('SELECT user_id FROM psg_spam_allow WHERE sender = ?').bind('vendor@shop.example').first();
+		expect(row?.user_id).toBe(2);
+	});
+
+	it('caps screening per recipient per day without touching the interactive AI budget', async () => {
+		aiReply = '{"spam": true, "confidence": 0.95, "reason": "x"}';
+		await insertEmail(14);
+		await insertEmail(15);
+		const today = new Date().toISOString().slice(0, 10);
+		// Interactive usage does not count toward the screening ceiling…
+		await env.db.prepare(`INSERT INTO ai_usage (user_id, usage_date, task, request_count) VALUES (1, ?, 'summary', 50)`).bind(today).run();
+		expect(await spamService.screen(ctx(0, 2), { email: incoming(), emailRow: { emailId: 14, userId: 1 }, setting: { aiSpam: 0 } })).toBe(true);
+		expect(await spamService.screen(ctx(0, 2), { email: incoming(), emailRow: { emailId: 15, userId: 1 }, setting: { aiSpam: 0 } })).toBe(true);
+		// …and once it is reached the mail stays in the inbox, unscreened.
+		await insertEmail(16);
+		aiCalls = 0;
+		expect(await spamService.screen(ctx(0, 2), { email: incoming(), emailRow: { emailId: 16, userId: 1 }, setting: { aiSpam: 0 } })).toBe(false);
+		expect(aiCalls).toBe(0);
+		expect(await isSpam(16)).toBe(0);
 	});
 });

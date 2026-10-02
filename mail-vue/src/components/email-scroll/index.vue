@@ -311,7 +311,7 @@
 import {Icon} from "@iconify/vue";
 import skeletonBlock from "@/components/email-scroll/skeleton/index.vue"
 import MailboxChips from "@/components/mailbox-chips/index.vue"
-import {computed, onActivated, onDeactivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import {computed, onActivated, onDeactivated, reactive, ref, watch, nextTick, onMounted, onUnmounted, markRaw, toRaw } from "vue";
 import {useEmailStore} from "@/store/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -403,27 +403,39 @@ const unreadCount = computed(() =>
   props.showUnread ? emailList.filter(e => e.unread === EmailUnreadEnum.UNREAD).length : 0
 )
 
+// The rows the user can see: the search / unread filter applies to keyboard
+// and swipe navigation and to the reader's position counter too.
+const filterActive = () => !!searchQuery.value.trim() || unreadOnly.value
+const visibleRows = () => list.value.filter(e => e.emailId && !e.expand)
+let lastVisibleIndex = -1
+
 // Open the message `delta` rows away from the one in the reader (J/K,
 // reader swipes). Returns false at either end of the loaded list.
 function openRelative(delta) {
-  const rows = emailList.filter(e => e.emailId && !e.expand)
+  const rows = visibleRows()
   const openId = emailStore.contentData.email?.emailId
-  const idx = rows.findIndex(e => e.emailId === openId)
+  let idx = rows.findIndex(e => e.emailId === openId)
+  // The open message can drop out of the unread filter once it is read:
+  // continue from where it was.
+  if (idx < 0 && lastVisibleIndex >= 0) idx = delta > 0 ? lastVisibleIndex - 1 : lastVisibleIndex
   const next = rows[(idx < 0 ? (delta > 0 ? -1 : rows.length) : idx) + delta]
   if (!next) {
-    if (delta > 0 && !noLoading.value) loadData()
+    if (delta > 0 && !noLoading.value && !filterActive()) loadData()
     return false
   }
   jumpDetails(next)
   return true
 }
 
-const listApi = { openRelative, refreshList }
+// markRaw: Pinia would hand back a reactive proxy, and the identity checks
+// below would never match, leaving a stale list behind after deactivation.
+const listApi = markRaw({ openRelative, refreshList })
 function claimActiveList() { emailStore.activeList = listApi }
+function releaseActiveList() { if (toRaw(emailStore.activeList) === listApi) emailStore.activeList = null }
 onMounted(claimActiveList)
 onActivated(claimActiveList)
-onDeactivated(() => { if (emailStore.activeList === listApi) emailStore.activeList = null })
-onUnmounted(() => { if (emailStore.activeList === listApi) emailStore.activeList = null })
+onDeactivated(releaseActiveList)
+onUnmounted(releaseActiveList)
 
 defineExpose({ refreshList, deleteEmail, addItem, handleList, emailList, firstLoad, latestEmail, noLoading, total, unreadCount, openRelative })
 
@@ -705,9 +717,16 @@ function updateCheckStatus() {
 function jumpDetails(email) {
   if (dropdownShow.value) { dropdownRef.value.handleClose(); return; }
   if (!dropdownCloseLock.value) { const sel = window.getSelection(); if (sel.toString().trim()) return }
-  const idx = emailList.findIndex(e => e.emailId === email.emailId)
-  emailStore.contentData.emailIndex = idx + 1
-  emailStore.contentData.emailTotal = total.value
+  if (filterActive()) {
+    const rows = visibleRows()
+    lastVisibleIndex = rows.findIndex(e => e.emailId === email.emailId)
+    emailStore.contentData.emailIndex = lastVisibleIndex + 1
+    emailStore.contentData.emailTotal = rows.length
+  } else {
+    lastVisibleIndex = emailList.findIndex(e => e.emailId === email.emailId)
+    emailStore.contentData.emailIndex = lastVisibleIndex + 1
+    emailStore.contentData.emailTotal = total.value
+  }
   emit('jump', email)
 }
 

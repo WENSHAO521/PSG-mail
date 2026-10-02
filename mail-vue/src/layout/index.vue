@@ -576,11 +576,16 @@ watch(() => uiStore.asideShow, (open) => {
 
 // Landscape tablets show the reader beside the list (see the split-pane
 // CSS), so opening a message isn't a separate screen there.
+// Rotating while a message is open moves between the two, so the reader's
+// history layer follows the split state as well as mobileDetailOpen.
 const splitTabletQuery = window.matchMedia('(min-width: 900px) and (max-width: 1024px) and (orientation: landscape)')
+const splitTablet = ref(splitTabletQuery.matches)
+const onSplitChange = e => { splitTablet.value = e.matches }
+splitTabletQuery.addEventListener?.('change', onSplitChange)
+onBeforeUnmount(() => splitTabletQuery.removeEventListener?.('change', onSplitChange))
 
-watch(() => uiStore.mobileDetailOpen, (open) => {
-  if (!isMobile.value || splitTabletQuery.matches) return
-  if (open) {
+watch([() => uiStore.mobileDetailOpen, splitTablet, isMobile], ([open, split, mobile]) => {
+  if (open && mobile && !split) {
     mobileNavigation.openLayer('reader', () => {
       uiStore.mobileDetailOpen = false
       return true

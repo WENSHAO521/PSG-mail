@@ -336,13 +336,14 @@ const emailService = {
 				`UPDATE email SET is_spam = 0 WHERE email_id IN (${placeholders}) AND ${unspamCond}`
 			).bind(...emailIdList, userId, ...unspamShared).run();
 		} catch {}
-		// "Not spam" also clears any AI verdict and trusts the senders for this
-		// user — limited to mail this user can actually access.
+		// "Not spam" also clears any AI verdict and trusts the senders for the
+		// mailbox owner (screening runs as the owner, also for shared
+		// mailboxes) — limited to mail this user can actually access.
 		try {
 			const { results } = await c.env.db.prepare(
 				`SELECT email_id FROM email WHERE email_id IN (${placeholders}) AND ${unspamCond}`
 			).bind(...emailIdList, userId, ...unspamShared).all();
-			await spamService.trustSenders(c, userId, (results || []).map(r => r.email_id));
+			await spamService.trustSenders(c, (results || []).map(r => r.email_id));
 		} catch {}
 	},
 
@@ -1397,6 +1398,10 @@ const emailService = {
 			? or(eq(email.userId, userId), inArray(email.accountId, sharedLatestIds))
 			: eq(email.userId, userId);
 
+		// Mail the AI screening (or the user) moved to Spam must not reach
+		// clients that sync by polling (Electron, background tabs).
+		const latestSpamFilter = await columnExists(c, 'email', 'is_spam') ? sql`COALESCE(email.is_spam, 0) = 0` : undefined
+
 		let list = await orm(c).select({...email}).from(email)
 			.leftJoin(
 				account,
@@ -1406,6 +1411,7 @@ const emailService = {
 				and(
 					gt(email.emailId, emailId),
 					latestAccessCond,
+					latestSpamFilter,
 					eq(email.isDel, isDel.NORMAL),
 					eq(account.isDel, isDel.NORMAL),
 					allReceive ? eq(1,1) : eq(email.accountId, accountId),

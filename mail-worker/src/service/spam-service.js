@@ -13,6 +13,9 @@ import aiProviderService from './ai-provider-service';
 const SPAM_THRESHOLD = 0.85;
 const AI_TIMEOUT_MS = 10000;
 const MAX_BODY_CHARS = 4000;
+// Per-recipient daily ceiling on screening calls when the admin has not set
+// an AI daily quota, so a mail flood cannot run up unlimited inference.
+const DEFAULT_DAILY_SCREENS = 300;
 
 const SYSTEM_PROMPT = [
 	'You are an email spam filter for an academic publishing organisation.',
@@ -47,6 +50,19 @@ function parseVerdict(result) {
 	return { spam: json.spam, confidence, reason };
 }
 
+function escapeLike(value) {
+	return value.replace(/[\\%_]/g, ch => '\\' + ch);
+}
+
+function recipientAddresses(recipient) {
+	try {
+		const list = JSON.parse(recipient || '[]');
+		return (Array.isArray(list) ? list : []).map(r => normalizeAddress(r?.address));
+	} catch {
+		return [];
+	}
+}
+
 function ownDomains(env) {
 	const raw = env.domain;
 	const list = Array.isArray(raw) ? raw : String(raw || '').replace(/[\[\]"']/g, '').split(',');
@@ -73,16 +89,20 @@ const spamService = {
 			if (allowed) return true;
 		} catch {}
 		try {
-			// Someone this user has written to before.
-			const wrote = await c.env.db.prepare(
-				`SELECT 1 FROM email WHERE user_id = ? AND type = 1 AND LOWER(recipient) LIKE ? LIMIT 1`
-			).bind(userId, `%${address}%`).first();
-			if (wrote) return true;
+			// Someone this user has written to before. The LIKE matches the
+			// address as a whole JSON string value ("addr") and only narrows
+			// the rows; the parsed recipient list decides.
+			const { results } = await c.env.db.prepare(
+				`SELECT recipient FROM email WHERE user_id = ? AND type = 1 AND LOWER(recipient) LIKE ? ESCAPE '\\' LIMIT 20`
+			).bind(userId, `%"${escapeLike(address)}"%`).all();
+			for (const row of results || []) {
+				if (recipientAddresses(row.recipient).includes(address)) return true;
+			}
 		} catch {}
 		return false;
 	},
 
-	async classify(c, email) {
+	async classify(c, email, userId) {
 		const subject = email.subject || '';
 		const text = emailUtils.formatText(email.text || '');
 		const htmlText = emailUtils.htmlToText(email.html || '');
@@ -91,7 +111,7 @@ const spamService = {
 		const fromName = email.from?.name || '';
 		const auth = email.headers?.find?.(h => h.key === 'authentication-results')?.value || '';
 
-		const result = await withTimeout(aiProviderService.run(c, 0, 'spam_detection', {
+		const result = await withTimeout(aiProviderService.run(c, userId, 'spam_detection', {
 			messages: [
 				{ role: 'system', content: SYSTEM_PROMPT },
 				{
@@ -101,7 +121,7 @@ const spamService = {
 			],
 			temperature: 0,
 			max_tokens: 120,
-		}), AI_TIMEOUT_MS);
+		}, { perTask: true, defaultQuota: DEFAULT_DAILY_SCREENS }), AI_TIMEOUT_MS);
 		return parseVerdict(result);
 	},
 
@@ -111,7 +131,7 @@ const spamService = {
 		try {
 			if (!this.enabled(setting) || !emailRow?.emailId || !emailRow.userId) return false;
 			if (await this.isTrusted(c, emailRow.userId, email.from?.address)) return false;
-			const verdict = await this.classify(c, email);
+			const verdict = await this.classify(c, email, emailRow.userId);
 			if (!verdict?.spam || verdict.confidence < SPAM_THRESHOLD) return false;
 			await this.markBySystem(c, emailRow.emailId, verdict);
 			return true;
@@ -125,11 +145,15 @@ const spamService = {
 		try {
 			await c.env.db.prepare('ALTER TABLE email ADD COLUMN is_spam INTEGER NOT NULL DEFAULT 0;').run();
 		} catch {}
-		await c.env.db.prepare('UPDATE email SET is_spam = 1 WHERE email_id = ?').bind(emailId).run();
-		await c.env.db.prepare(
-			`INSERT INTO psg_spam_verdict (email_id, source, confidence, reason) VALUES (?, 'ai', ?, ?)
-			 ON CONFLICT(email_id) DO UPDATE SET confidence = excluded.confidence, reason = excluded.reason`
-		).bind(emailId, verdict.confidence, verdict.reason).run();
+		// One batch (a D1 transaction): never Spam without its verdict, so a
+		// failed write leaves the mail in the inbox and screen() reports false.
+		await c.env.db.batch([
+			c.env.db.prepare('UPDATE email SET is_spam = 1 WHERE email_id = ?').bind(emailId),
+			c.env.db.prepare(
+				`INSERT INTO psg_spam_verdict (email_id, source, confidence, reason) VALUES (?, 'ai', ?, ?)
+				 ON CONFLICT(email_id) DO UPDATE SET confidence = excluded.confidence, reason = excluded.reason`
+			).bind(emailId, verdict.confidence, verdict.reason),
+		]);
 	},
 
 	async verdict(c, emailId) {
@@ -142,8 +166,9 @@ const spamService = {
 		}
 	},
 
-	// "Not spam": forget the verdicts and trust the senders for this user.
-	async trustSenders(c, userId, emailIds) {
+	// "Not spam": forget the verdicts and trust the senders for each mail's
+	// owner — the user its future deliveries are screened as.
+	async trustSenders(c, emailIds) {
 		if (!emailIds.length) return;
 		const placeholders = emailIds.map(() => '?').join(',');
 		try {
@@ -152,7 +177,7 @@ const spamService = {
 		let rows = [];
 		try {
 			({ results: rows } = await c.env.db.prepare(
-				`SELECT DISTINCT send_email FROM email WHERE email_id IN (${placeholders}) AND type = 0`
+				`SELECT DISTINCT user_id, send_email FROM email WHERE email_id IN (${placeholders}) AND type = 0`
 			).bind(...emailIds).all());
 		} catch {}
 		for (const row of rows || []) {
@@ -160,7 +185,7 @@ const spamService = {
 			if (!sender) continue;
 			try {
 				await c.env.db.prepare('INSERT OR IGNORE INTO psg_spam_allow (user_id, sender) VALUES (?, ?)')
-					.bind(userId, sender).run();
+					.bind(row.user_id, sender).run();
 			} catch {}
 		}
 	},

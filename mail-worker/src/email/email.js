@@ -163,6 +163,15 @@ export async function email(message, env, ctx) {
 
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
 
+		// With AI spam screening on, the verdict comes first (capped at a
+		// few seconds) so spam neither pings the user nor reaches any
+		// downstream action: notifications, forwarding, Telegram, webhooks
+		// and auto-replies. The mail itself is already stored either way.
+		// screen() never rejects; it resolves false on any failure.
+		const spamCheck = account && spamService.enabled({ aiSpam })
+			? spamService.screen({ env }, { email, emailRow, setting: { aiSpam } })
+			: Promise.resolve(false);
+
 		if (account) {
 			const notifyAndForward = () => Promise.all([
 				notificationEventService.createNewMail({
@@ -179,13 +188,7 @@ export async function email(message, env, ctx) {
 				}),
 				forwardingService.dispatchIncoming({ env }, account, emailRow),
 			]);
-			// With AI spam screening on, the verdict comes first (capped at a
-			// few seconds) so spam neither pings the user nor gets forwarded.
-			// The mail itself is already stored and listed either way.
-			ctx.waitUntil(spamService.enabled({ aiSpam })
-				? spamService.screen({ env }, { email, emailRow, setting: { aiSpam } })
-					.then(isSpam => isSpam ? null : notifyAndForward())
-				: notifyAndForward());
+			ctx.waitUntil(spamCheck.then(isSpam => isSpam ? null : notifyAndForward()));
 		}
 
 		// AI code extraction is a Workers AI inference call — can take
@@ -214,6 +217,10 @@ export async function email(message, env, ctx) {
 				return;
 			}
 
+		}
+
+		if (await spamCheck) {
+			return;
 		}
 
 		//转发到TG
