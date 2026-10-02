@@ -357,7 +357,7 @@
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
-import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, watch} from "vue";
+import {h, markRaw, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, watch} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend, emailSchedule, emailScheduleCancel} from "@/request/email.js";
@@ -368,6 +368,7 @@ import {useEmailStore} from "@/store/email.js";
 import {fileToBase64, formatBytes} from "@/utils/file-utils.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import sendPercent from "@/components/send-percent/index.vue"
+import undoSendRing from "@/components/undo-send-ring/index.vue"
 import {toOssDomain} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -990,7 +991,9 @@ async function sendScheduled() {
 async function sendWithUndo() {
   sending = true
   const snapshot = { ...toRaw(form) }
-  const scheduledAt = new Date(Date.now() + uiStore.undoSendSeconds * 1000)
+  const undoSeconds = uiStore.undoSendSeconds
+  const deadline = Date.now() + undoSeconds * 1000
+  const scheduledAt = new Date(deadline)
     .toISOString().slice(0, 19).replace('T', ' ')
 
   let scheduleId = null
@@ -1019,8 +1022,10 @@ async function sendWithUndo() {
   let undone = false
   const notif = ElNotification({
     title: t('messageSending'),
-    duration: uiStore.undoSendSeconds * 1000 + 500,
+    duration: undoSeconds * 1000 + 500,
     position: 'bottom-right',
+    customClass: 'undo-send-notification',
+    icon: markRaw({ render: () => h(undoSendRing, { deadline, totalSeconds: undoSeconds }) }),
     message: () => h('div', { style: 'display:flex;align-items:center;gap:14px;justify-content:space-between' }, [
       h('span', { style: 'color:teal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, snapshot.subject || t('noSubject')),
       h('button', {
