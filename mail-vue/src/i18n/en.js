@@ -472,6 +472,7 @@ const en = {
     forgotPasswordMsg: 'Password resets for institutional accounts are handled by your editorial IT administrator. Please contact your administrator to restore access.',
     twoFactorMsg: 'Two-factor authentication is provisioned through your institutional identity provider. Contact your administrator to enrol a device.',
     brandPanelLine: 'Editorial workspace for submissions, peer review, and author correspondence.',
+    loginHeroTitle: 'Every mailbox, one calm inbox.',
     websiteSetting: 'Website',
     sysWebsiteDesc: 'Registration, sign-in domain, and mailbox creation policy.',
     sysWebsiteRegDesc: 'When disabled, new users cannot sign up by themselves.',

@@ -213,11 +213,11 @@ async function promptCreateLabel() {
     padding: calc(16px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px));
     background: var(--psg-canvas);
     border-radius: 0 var(--psg-radius-xl) var(--psg-radius-xl) 0;
-    box-shadow: var(--psg-shadow-lg);
     transform: translateX(-105%);
-    transition: transform .2s ease;
+    transition: transform .2s ease, box-shadow .2s ease;
 
-    &[data-open="true"] { transform: translateX(0); }
+    /* Shadow only while open — parked off-screen it would bleed in. */
+    &[data-open="true"] { transform: translateX(0); box-shadow: var(--psg-shadow-lg); }
   }
 
   .folders-sheet-head {

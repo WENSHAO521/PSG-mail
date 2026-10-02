@@ -472,6 +472,7 @@ const zh = {
     forgotPasswordMsg: '机构账号的密码重置由编辑部 IT 管理员处理，请联系管理员以恢复访问。',
     twoFactorMsg: '双重验证通过机构身份提供方进行配置，请联系管理员注册设备。',
     brandPanelLine: '用于稿件投递、同行评审与作者往来的编辑工作台。',
+    loginHeroTitle: '所有邮箱，一处收发。',
     websiteSetting: '网站设置',
     sysWebsiteDesc: '注册、登录域名和邮箱创建策略。',
     sysWebsiteRegDesc: '关闭后新用户不能自行注册。',

@@ -1,7 +1,7 @@
 <template>
   <!-- Mist phone navigation: a floating ink bar, with Compose as its own
        accent button just above it. -->
-  <button v-if="canSend" type="button" class="m-fab" @click="openCompose">
+  <button v-if="canSend && onMailScreen" type="button" class="m-fab" @click="openCompose">
     <Icon icon="psg:compose" width="19" height="19" />
     <span>{{ $t('compose') }}</span>
   </button>
@@ -27,6 +27,8 @@ const uiStore = useUiStore()
 const canSend = computed(() => hasPerm('email:send'))
 
 const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'archive', 'spam', 'trash', 'label', 'scheduled'])
+// Compose floats over mail lists only; elsewhere it would cover page content.
+const onMailScreen = computed(() => MAIL_ROUTES.has(route.meta?.name) || route.meta?.name === 'star')
 const tabs = computed(() => {
   const name = route.meta?.name
   return [

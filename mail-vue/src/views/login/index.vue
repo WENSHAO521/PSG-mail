@@ -3,19 +3,31 @@
     <!-- Optional admin-configured background image -->
     <div v-if="background" class="custom-bg" :style="background"></div>
 
-    <!-- ── Left brand panel — soft gradient, modern ── -->
+    <!-- ── Left: Mist brand card with a small, decorative inbox preview ── -->
     <div class="brand-panel">
-      <div class="brand-glow brand-glow--a" aria-hidden="true"></div>
-      <div class="brand-glow brand-glow--b" aria-hidden="true"></div>
+      <div class="brand-card">
+        <div class="brand-top">
+          <span class="brand-mark">P</span>
+          <span class="brand-name">PSG Mail</span>
+        </div>
 
-      <div class="brand-editorial">
-        <div class="brand-eyebrow">{{ $t('institutionalMail') }}</div>
-        <h1 class="brand-wordmark">PANORAMA<br/>SCHOLARLY GROUP</h1>
-        <div class="brand-divider"></div>
-        <p class="brand-caption">{{ $t('brandPanelLine') }}</p>
+        <div class="brand-editorial">
+          <h1 class="brand-wordmark">{{ $t('loginHeroTitle') }}</h1>
+          <p class="brand-caption">{{ $t('brandPanelLine') }}</p>
+        </div>
+
+        <div class="brand-preview" aria-hidden="true">
+          <div v-for="row in previewRows" :key="row.name" class="bp-row" :class="{ 'bp-row--unread': row.unread }">
+            <span class="bp-avatar" :style="avatarTint(row.name)">{{ row.name[0] }}</span>
+            <span class="bp-text">
+              <span class="bp-line"><b>{{ row.name }}</b><em>{{ row.time }}</em></span>
+              <span class="bp-subject">{{ row.subject }}</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="brand-footnote">Panorama Scholarly Group</div>
       </div>
-
-      <div class="brand-footnote">EST · EDITORIAL · PEER REVIEW · ACADEMIC PRESS</div>
     </div>
 
     <!-- ── Right auth column ── -->
@@ -24,13 +36,13 @@
 
         <!-- Compact brand header (shown when brand panel is hidden) -->
         <div class="card-brand">
+          <span class="brand-mark">P</span>
           <div class="card-brand-meta">
-            <span class="card-brand-name">PANORAMA SCHOLARLY GROUP</span>
-            <span class="card-brand-sub">{{ $t('institutionalMail') }}</span>
+            <span class="card-brand-name">PSG Mail</span>
+            <span class="card-brand-sub">Panorama Scholarly Group</span>
           </div>
         </div>
 
-        <span class="form-eyebrow">{{ $t('institutionalMail') }}</span>
         <span class="form-title">{{ show === 'login' ? $t('loginHeading') : $t('regBtn') }}</span>
         <span class="form-desc">{{ show === 'login' ? $t('loginSubtitle') : $t('regTitle') }}</span>
 
@@ -293,6 +305,13 @@
 </template>
 
 <script setup>
+import { avatarTint } from '@/utils/avatar.js'
+// Decorative sample rows for the sign-in brand card (not real mail).
+const previewRows = [
+  { name: 'Editorial Office', time: '09:41', subject: 'Manuscript PSG-2026-118 accepted', unread: true },
+  { name: 'Peer Review', time: '08:15', subject: 'Reviewer report received', unread: true },
+  { name: 'Author Services', time: 'Mon', subject: 'Proofs ready for your approval', unread: false },
+]
 import router from "@/router";
 import {computed, nextTick, reactive, ref} from "vue";
 import {changePassword, login, register} from "@/request/login.js";
@@ -924,92 +943,124 @@ function submitRegister() {
   z-index: 0;
 }
 
-/* ── Left brand panel ───────────────────────────────────────── */
+/* ── Left: Mist brand card ──────────────────────────────────── */
 .brand-panel {
   position: relative;
+  z-index: 1;
   flex: 1 1 0;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 60px 64px;
-  background: var(--psg-canvas);
-  overflow: hidden;
+  padding: 24px 0 24px 24px;
 
   @media (max-width: 980px) { display: none; }
 }
 
-.brand-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 0;
-}
-.brand-glow--a {
-  top: -12%;
-  right: -10%;
-  width: 46%;
-  aspect-ratio: 1;
-  background: radial-gradient(circle, var(--psg-primary-muted-strong), transparent 70%);
-}
-.brand-glow--b {
-  bottom: -16%;
-  left: -8%;
-  width: 38%;
-  aspect-ratio: 1;
-  background: radial-gradient(circle, var(--psg-primary-muted), transparent 70%);
+.brand-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 40px 48px;
+  border-radius: 28px;
+  background: var(--psg-surface);
+  overflow: hidden;
 }
 
-.brand-editorial {
-  position: relative;
-  z-index: 1;
-  margin: auto 0;
-  max-width: 480px;
+.brand-top { display: flex; align-items: center; gap: 12px; }
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--psg-text);
+  color: var(--psg-surface);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 17px;
 }
 
-.brand-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--psg-primary);
-}
+.brand-name { font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--psg-text); }
+
+.brand-editorial { margin-top: auto; max-width: 520px; }
 
 .brand-wordmark {
-  margin: 18px 0 0;
-  font-size: clamp(30px, 3.2vw, 44px);
+  margin: 0;
+  font-size: clamp(34px, 3.6vw, 52px);
   font-weight: 700;
-  line-height: 1.14;
-  letter-spacing: -0.02em;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
   color: var(--psg-text);
-}
-
-.brand-divider {
-  width: 40px;
-  height: 4px;
-  border-radius: var(--psg-radius-xs);
-  background: var(--psg-primary);
-  margin: 26px 0 20px;
+  text-wrap: balance;
 }
 
 .brand-caption {
-  margin: 0;
-  max-width: 380px;
-  font-size: 15px;
-  line-height: 1.62;
+  margin: 18px 0 0;
+  max-width: 420px;
+  font-size: 16px;
+  line-height: 1.6;
   color: var(--psg-text-secondary);
 }
 
+.brand-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 460px;
+  padding: 8px;
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-surface-muted);
+}
+
+.bp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--psg-radius-md);
+
+  &:first-child { background: var(--psg-surface); box-shadow: var(--psg-shadow-xs); }
+}
+
+.bp-avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--psg-radius-md);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.bp-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.bp-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+
+  b { font-weight: 500; color: var(--psg-text); }
+  em { font-style: normal; font-size: 12px; color: var(--psg-text-muted); }
+}
+
+.bp-subject {
+  font-size: 13.5px;
+  color: var(--psg-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-row--unread {
+  .bp-line b { font-weight: 700; }
+  .bp-line em { color: var(--psg-primary); font-weight: 700; }
+  .bp-subject { color: var(--psg-text); font-weight: 600; }
+}
+
 .brand-footnote {
-  position: relative;
-  z-index: 1;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 13px;
   color: var(--psg-text-muted);
 }
 
@@ -1017,7 +1068,7 @@ function submitRegister() {
 .form-wrapper {
   position: relative;
   z-index: 1;
-  flex: 0 0 500px;
+  flex: 0 0 520px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1032,12 +1083,12 @@ function submitRegister() {
 
 .container {
   width: 100%;
-  max-width: 408px;
+  max-width: 420px;
   background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-lg);
-  box-shadow: var(--psg-shadow-lg);
-  padding: 40px 36px 26px;
+  border: 0;
+  border-radius: 28px;
+  box-shadow: none;
+  padding: 40px 36px 28px;
   display: flex;
   flex-direction: column;
 
@@ -1054,9 +1105,7 @@ function submitRegister() {
   display: none;
   align-items: center;
   gap: 12px;
-  padding-bottom: 22px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--psg-border);
+  margin-bottom: 26px;
 
   @media (max-width: 980px) { display: flex; }
 }
@@ -1065,24 +1114,21 @@ function submitRegister() {
 .card-brand-name {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
   color: var(--psg-text);
 
   @media (max-width: 420px) {
-    font-size: 11px;
+    font-size: 16px;
     letter-spacing: 0.02em;
   }
 }
 .card-brand-sub {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--psg-text-secondary);
+  font-size: 12px;
+  color: var(--psg-text-muted);
 }
 
 .form-eyebrow {
@@ -1096,7 +1142,7 @@ function submitRegister() {
 
 .form-title {
   font-weight: 700;
-  font-size: 26px;
+  font-size: 30px;
   letter-spacing: -0.02em;
   line-height: 1.2;
   color: var(--psg-text);
@@ -1129,16 +1175,15 @@ function submitRegister() {
   border-radius: var(--psg-radius-md) !important;
   height: 46px;
   background: var(--psg-surface-muted) !important;
-  box-shadow: 0 0 0 1px var(--psg-border) !important;
+  box-shadow: none !important;
   transition: box-shadow 0.15s ease, background 0.15s ease !important;
 }
 :deep(.el-input__wrapper:hover) {
-  background: var(--psg-surface) !important;
-  box-shadow: 0 0 0 1px var(--psg-text-secondary) !important;
+  background: var(--psg-surface-active) !important;
 }
 :deep(.el-input__wrapper.is-focus) {
   background: var(--psg-surface) !important;
-  box-shadow: 0 0 0 1.5px var(--psg-focus), 0 0 0 4px var(--psg-primary-muted) !important;
+  box-shadow: 0 0 0 2px var(--psg-focus) !important;
 }
 :deep(.el-input__inner) {
   font-size: 14px !important;
@@ -1148,10 +1193,7 @@ function submitRegister() {
 /* ── Email + domain group ───────────────────────────────────── */
 .email-input :deep(.el-input__wrapper) {
   box-shadow: none !important;
-  border-top:    1px solid var(--psg-border) !important;
-  border-bottom: 1px solid var(--psg-border) !important;
-  border-left:   1px solid var(--psg-border) !important;
-  border-right:  none !important;
+  border: 0 !important;
   /* Rounded on the outer (left) edge only — the right edge butts against
      the domain append box below, which carries the matching outer-right
      rounding. Rounding all four corners on both halves (the previous
@@ -1171,10 +1213,8 @@ function submitRegister() {
 }
 .email-input :deep(.el-input-group__append) {
   box-shadow: none !important;
-  border-top:    1px solid var(--psg-border) !important;
-  border-right:  1px solid var(--psg-border) !important;
-  border-bottom: 1px solid var(--psg-border) !important;
-  border-left:   1px solid var(--psg-border) !important;
+  border: 0 !important;
+  border-left: 1px solid var(--psg-border) !important;
   border-top-right-radius: var(--psg-radius-md) !important;
   border-bottom-right-radius: var(--psg-radius-md) !important;
   border-top-left-radius: 0 !important;
