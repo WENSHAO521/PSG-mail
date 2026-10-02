@@ -23,6 +23,7 @@ const zh = {
     starred: '星标邮件',
     settings: '个人设置',
     mailSection: '邮件',
+    mailboxes: '邮箱地址',
     more: '更多',
     workspace: '工作区',
     subjectKeywords: '主题词',

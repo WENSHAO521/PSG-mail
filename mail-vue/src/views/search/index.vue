@@ -180,7 +180,8 @@ function openResult(item) {
   background: transparent;
   font-size: 14px;
   color: var(--psg-text);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 .search-go-btn { border-radius: var(--psg-radius-md) !important; height: 44px; padding: 0 20px; }

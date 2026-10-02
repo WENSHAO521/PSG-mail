@@ -41,29 +41,58 @@
       </div>
     </div>
 
+    <!-- ── Compose ──────────────────────────────────────── -->
+    <div v-if="canSend" class="sidebar-compose-slot">
+      <el-tooltip v-if="collapsed" :content="$t('compose')" placement="right">
+        <button type="button" class="compose-icon-btn" :aria-label="$t('compose')" @click="openCompose">
+          <Icon icon="psg:compose" width="20" height="20" />
+        </button>
+      </el-tooltip>
+      <button v-else type="button" class="sidebar-compose-button" @click="openCompose">
+        <Icon icon="psg:compose" width="20" height="20" />
+        <span>{{ $t('compose') }}</span>
+      </button>
+    </div>
+
     <!-- ── Scrollable nav area ──────────────────────────── -->
     <div class="sidebar-nav-scroll">
 
+      <!-- Mailboxes: switch address in one click instead of via Settings. -->
+      <template v-if="showMailboxes">
+        <div class="sidebar-section-title nav-group-title">{{ $t('mailboxes') }}</div>
+        <nav class="sidebar-nav">
+          <el-tooltip :content="$t('allInbox')" placement="right" :disabled="!collapsed">
+            <div class="sidebar-nav-link" :class="{ active: route.meta.name === 'all-inbox' }"
+                 @click="router.push({ name: 'all-inbox' })">
+              <span class="sidebar-nav-content">
+                <Icon icon="psg:layers" width="20" height="20" class="nav-icon" />
+                <span class="sidebar-label">{{ $t('allInbox') }}</span>
+              </span>
+            </div>
+          </el-tooltip>
+          <el-tooltip v-for="acc in mailboxes" :key="acc.accountId"
+                      :content="acc.email" placement="right" :disabled="!collapsed">
+            <div class="sidebar-nav-link"
+                 :class="{ active: route.meta.name === 'email' && accountStore.currentAccountId === acc.accountId }"
+                 @click="openMailbox(acc)">
+              <span class="sidebar-nav-content">
+                <span class="mailbox-dot" :style="{ background: mailboxColor(acc.email) }"></span>
+                <span class="sidebar-label mailbox-label">{{ acc.email }}</span>
+              </span>
+            </div>
+          </el-tooltip>
+        </nav>
+        <div class="sidebar-section-separator"></div>
+      </template>
+
       <!-- Primary nav, grouped by frequency rather than one long flat list. -->
       <template v-for="section in navSections" :key="section.key">
-        <div v-if="section.titleKey && section.key !== 'more'" class="sidebar-section-title nav-group-title">
+        <div v-if="section.key !== 'mail'" class="sidebar-section-separator"></div>
+        <div v-if="section.titleKey" class="sidebar-section-title nav-group-title">
           {{ $t(section.titleKey) }}
         </div>
-        <button v-else-if="section.key === 'more'"
-                type="button"
-                class="sidebar-section-title nav-group-title nav-group-toggle"
-                :aria-expanded="moreSectionExpanded"
-                :aria-controls="`sidebar-section-${section.key}`"
-                @click="toggleMoreSection">
-          <span>{{ $t(section.titleKey) }}</span>
-          <Icon icon="psg:chevron-down" width="14" height="14"
-                class="nav-group-chevron"
-                :class="{ 'is-open': moreSectionExpanded }" />
-        </button>
-        <nav v-if="section.key !== 'more' || moreSectionExpanded"
-             :id="section.key === 'more' ? `sidebar-section-${section.key}` : undefined"
-             class="sidebar-nav">
-          <el-tooltip v-for="item in section.items" :key="item.name"
+        <nav class="sidebar-nav">
+          <el-tooltip v-for="item in section.items.filter(i => !(i.name === 'all-inbox' && showMailboxes))" :key="item.name"
                       :content="$t(item.labelKey)" placement="right" :disabled="!collapsed">
             <div v-if="!item.perm || hasPerm(item.perm)"
                  class="sidebar-nav-link"
@@ -80,7 +109,6 @@
             </div>
           </el-tooltip>
         </nav>
-        <div v-if="section.key !== 'mail'" class="sidebar-section-separator"></div>
       </template>
 
       <!-- Labels -->
@@ -108,42 +136,11 @@
         </nav>
       </template>
 
-      <!-- Admin section -->
-      <template v-if="visibleAdminItems.length">
-        <div class="sidebar-section-separator"></div>
-        <div class="sidebar-section-title">{{ $t('manage') }}</div>
-        <nav class="sidebar-nav">
-          <el-tooltip v-for="item in visibleAdminItems" :key="item.name"
-                      :content="$t(item.labelKey)" placement="right" :disabled="!collapsed">
-            <div class="sidebar-nav-link"
-                 :class="{ active: route.meta.name === item.name }"
-                 @click="router.push({ name: item.name })">
-              <span class="sidebar-nav-content">
-                <Icon :icon="item.icon" width="20" height="20" class="nav-icon" />
-                <span class="sidebar-label">{{ $t(item.labelKey) }}</span>
-              </span>
-            </div>
-          </el-tooltip>
-        </nav>
-      </template>
-
     </div>
 
     <!-- ── Footer ───────────────────────────────────────── -->
     <div class="sidebar-footer">
       <div class="sidebar-bottom-actions">
-
-        <!-- Compose — collapsed: icon only -->
-        <el-tooltip v-if="canSend && collapsed" :content="$t('compose')" placement="right">
-          <button type="button" class="compose-icon-btn" :aria-label="$t('compose')" @click="openCompose">
-            <Icon icon="psg:compose" width="20" height="20" />
-          </button>
-        </el-tooltip>
-        <!-- Compose — expanded: full button -->
-        <button v-else-if="canSend" type="button" class="sidebar-compose-button" @click="openCompose">
-          <Icon icon="psg:compose" width="20" height="20" />
-          <span>{{ $t('compose') }}</span>
-        </button>
 
         <!-- Utility cluster: search / notifications / more, grouped as one unit -->
         <div class="sidebar-util-cluster">
@@ -157,6 +154,26 @@
           <div class="notif-trigger-wrap">
             <NotificationPanel />
           </div>
+
+          <!-- Admin tools live here, out of the everyday mail nav. -->
+          <el-dropdown v-if="visibleAdminItems.length" placement="top-end" trigger="click">
+            <button type="button" class="util-btn" :class="{ 'util-btn--active': adminRouteActive }"
+                    :aria-label="$t('manage')" :title="$t('manage')">
+              <Icon icon="psg:system" width="18" height="18" />
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-for="item in visibleAdminItems" :key="item.name"
+                                  :class="{ 'theme-option-active': route.meta.name === item.name }"
+                                  @click="router.push({ name: item.name })">
+                  <div class="drop-item">
+                    <Icon :icon="item.icon" width="17" height="17" />
+                    <span>{{ $t(item.labelKey) }}</span>
+                  </div>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
 
           <!-- ··· dropdown -->
           <el-dropdown placement="top-end" trigger="click">
@@ -267,9 +284,11 @@ import { useLabelStore } from "@/store/label.js";
 import { hasPerm } from "@/perm/perm.js";
 import { logout } from "@/request/login.js";
 import { labelCreate } from "@/request/label.js";
+import { accountList } from "@/request/account.js";
+import { useAccountStore } from "@/store/account.js";
 import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
-import { avatarBg, avatarLetter } from "@/utils/avatar.js";
+import { avatarBg, avatarLetter, mailboxColor } from "@/utils/avatar.js";
 import NotificationPanel from '@/components/notification-panel/index.vue'
 import { useNotificationStore } from '@/store/notification.js'
 
@@ -281,6 +300,7 @@ const emailStore = useEmailStore();
 const settingStore = useSettingStore();
 const labelStore = useLabelStore();
 const notificationStore = useNotificationStore();
+const accountStore = useAccountStore();
 
 onMounted(() => { if (hasPerm('email:send')) labelStore.load(); })
 
@@ -337,15 +357,24 @@ const currentLanguageLabel = computed(() =>
   languageOptions.find(item => item.value === activeLanguage.value)?.label || 'English'
 );
 
-const moreSectionExpanded = ref(false);
-const moreSectionRoutes = new Set(['star', 'archive', 'spam', 'trash']);
+/* ── Mailboxes ── */
+const mailboxes = ref([]);
+// Only worth a section when there is something to switch between.
+const showMailboxes = computed(() => mailboxes.value.length > 1);
 
-watch(() => route.meta.name, (name) => {
-  if (moreSectionRoutes.has(name)) moreSectionExpanded.value = true;
-}, { immediate: true });
+async function loadMailboxes() {
+  try {
+    const list = await accountList(0, 30, null);
+    mailboxes.value = Array.isArray(list) ? list : [];
+  } catch {}
+}
+onMounted(loadMailboxes);
+// Accounts added/renamed in Settings → Mail management.
+watch(() => route.meta.name, (name, prev) => { if (prev === 'setting') loadMailboxes(); });
 
-function toggleMoreSection() {
-  moreSectionExpanded.value = !moreSectionExpanded.value;
+function openMailbox(acc) {
+  accountStore.setCurrentAccount(acc);
+  router.push({ name: 'email' });
 }
 
 function changeLanguage(lang) {
@@ -366,21 +395,15 @@ const navSections = [
     key: 'mail',
     titleKey: 'mailSection',
     items: [
-      { name: 'all-inbox', labelKey: 'allInbox',  icon: 'psg:layers' },
-      { name: 'email',     labelKey: 'inbox',     icon: 'psg:inbox' },
-      { name: 'send',      labelKey: 'sent',      icon: 'psg:send',  perm: 'email:send' },
-      { name: 'draft',     labelKey: 'drafts',    icon: 'psg:draft', perm: 'email:send' },
-      { name: 'scheduled', labelKey: 'scheduled', icon: 'psg:clock', perm: 'email:send' },
-    ],
-  },
-  {
-    key: 'more',
-    titleKey: 'more',
-    items: [
-      { name: 'star',    labelKey: 'starred',       icon: 'psg:bookmark' },
-      { name: 'archive', labelKey: 'archiveFolder', icon: 'psg:archive' },
-      { name: 'spam',    labelKey: 'spam',          icon: 'psg:spam' },
-      { name: 'trash',   labelKey: 'deletedMail',   icon: 'psg:trash' },
+      { name: 'all-inbox', labelKey: 'allInbox',      icon: 'psg:layers' },
+      { name: 'email',     labelKey: 'inbox',         icon: 'psg:inbox' },
+      { name: 'star',      labelKey: 'starred',       icon: 'psg:bookmark' },
+      { name: 'send',      labelKey: 'sent',          icon: 'psg:send',  perm: 'email:send' },
+      { name: 'draft',     labelKey: 'drafts',        icon: 'psg:draft', perm: 'email:send' },
+      { name: 'scheduled', labelKey: 'scheduled',     icon: 'psg:clock', perm: 'email:send' },
+      { name: 'archive',   labelKey: 'archiveFolder', icon: 'psg:archive' },
+      { name: 'spam',      labelKey: 'spam',          icon: 'psg:spam' },
+      { name: 'trash',     labelKey: 'deletedMail',   icon: 'psg:trash' },
     ],
   },
   {
@@ -404,6 +427,7 @@ const adminItems = [
 const visibleAdminItems = computed(() =>
   adminItems.filter(item => !item.perm || hasPerm(item.perm))
 );
+const adminRouteActive = computed(() => adminItems.some(item => item.name === route.meta.name));
 
 /* ── Actions ── */
 function openCompose() {
@@ -570,7 +594,8 @@ function clickLogout() {
 }
 
 .acct-email {
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   color: var(--psg-text-muted);
   white-space: nowrap;
@@ -706,7 +731,8 @@ function clickLogout() {
   flex-shrink: 0;
   :deep(.el-badge__content) {
     font-size: 10px;
-    font-family: var(--psg-font-mono);
+    font-family: var(--psg-font-sans);
+    font-variant-numeric: tabular-nums;
     font-weight: 700;
     background: var(--psg-danger);
     border: none;
@@ -805,6 +831,31 @@ function clickLogout() {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Compose (top of the sidebar, the primary action) ─────── */
+.sidebar-compose-slot {
+  display: flex;
+  justify-content: center;
+  padding: 14px 16px 6px;
+  flex-shrink: 0;
+
+  .sidebar-compose-button { height: 40px; }
+}
+
+/* ── Mailboxes ───────────────────────────────────────────── */
+.mailbox-dot {
+  width: 8px;
+  height: 8px;
+  margin-inline: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mailbox-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Footer ──────────────────────────────────────────────── */
 .sidebar-footer {
   padding: 14px 16px;
@@ -850,6 +901,8 @@ function clickLogout() {
    primary compose CTA rather than four buttons of equal weight. */
 .sidebar-util-cluster {
   display: flex;
+  flex: 1;
+  justify-content: space-between;
   align-items: center;
   gap: 2px;
   height: 36px;
@@ -881,6 +934,8 @@ function clickLogout() {
     }
   }
   &:active { transform: scale(0.92); }
+
+  &.util-btn--active { color: var(--psg-primary); background: var(--psg-surface); }
 }
 
 .more-dots {
@@ -968,7 +1023,8 @@ function clickLogout() {
   width: 24px;
   flex: 0 0 24px;
   color: var(--psg-text-muted);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   font-weight: 700;
   text-align: center;
@@ -1028,6 +1084,10 @@ function clickLogout() {
   .nav-group-title { margin-top: 8px; }
 
   .sidebar-footer { padding-inline: 10px; }
+
+  .sidebar-compose-slot { padding-inline: 10px; }
+
+  .mailbox-dot { margin-inline: 0; }
 
   .sidebar-bottom-actions {
     flex-direction: column;

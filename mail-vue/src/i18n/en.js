@@ -23,6 +23,7 @@ const en = {
     starred: 'Starred',
     settings: 'Settings',
     mailSection: 'Mail',
+    mailboxes: 'Mailboxes',
     more: 'More',
     workspace: 'Workspace',
     subjectKeywords: 'Subject keywords',

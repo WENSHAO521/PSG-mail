@@ -1826,7 +1826,8 @@ function close() {
 
 .sender-opt-email {
   font-size: 11.5px;
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   color: var(--psg-text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -1881,7 +1882,8 @@ function close() {
 
 .wh-email {
   font-size: 10.5px;
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--psg-on-primary) 45%, transparent);
   white-space: nowrap;
   overflow: hidden;
@@ -2119,7 +2121,8 @@ function close() {
     }
 
     .att-size {
-      font-family: var(--psg-font-mono);
+      font-family: var(--psg-font-sans);
+      font-variant-numeric: tabular-nums;
       font-size: 10px;
       color: var(--psg-text-secondary);
     }
@@ -2274,7 +2277,8 @@ function close() {
 .schedule-panel-timezone,
 .schedule-panel-note {
   color: var(--psg-text-muted);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
 }
 

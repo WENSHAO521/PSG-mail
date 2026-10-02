@@ -11,6 +11,19 @@ export function avatarBg(seed) {
   return PALETTE[Math.abs(h) % PALETTE.length]
 }
 
+// Mailbox identity colours (sidebar dot + "arrived on" chip in mail lists).
+// Unlike the grayscale avatars these must tell addresses apart, so they
+// differ in hue *and* lightness. Mid-tone on purpose: chips mix them toward
+// the theme's text colour, which keeps them readable in light and dark.
+const MAILBOX_PALETTE = ['#1E7A50', '#B57916', '#2F6FB0', '#A23E5A', '#6B4FA0', '#1D7A70']
+
+export function mailboxColor(email) {
+  const seed = (email || '').toLowerCase()
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0
+  return MAILBOX_PALETTE[Math.abs(h) % MAILBOX_PALETTE.length]
+}
+
 export function avatarLetter(name, email) {
   return ((name || email || '?')[0] || '?').toUpperCase()
 }

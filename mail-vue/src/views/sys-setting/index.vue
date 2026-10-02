@@ -2499,7 +2499,8 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .slider-value {
   color: var(--psg-text-secondary);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 12.5px;
   font-weight: 600;
 }
@@ -2544,7 +2545,8 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .preview-eyebrow {
   color: var(--psg-text-muted);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -3042,7 +3044,8 @@ function editSetting(settingForm, refreshStatus = true) {
   margin-top: 14px;
   padding: 4px 4px 0;
   text-align: center;
-  font-family: var(--psg-font-mono, 'JetBrains Mono', monospace);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   letter-spacing: 0.04em;
   color: var(--psg-text-muted);

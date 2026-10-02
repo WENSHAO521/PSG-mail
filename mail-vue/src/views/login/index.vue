@@ -1063,7 +1063,8 @@ function submitRegister() {
 
 .card-brand-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .card-brand-name {
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1076,7 +1077,8 @@ function submitRegister() {
   }
 }
 .card-brand-sub {
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1487,7 +1489,8 @@ function submitRegister() {
   }
 
   .psg-link-text {
-    font-family: var(--psg-font-mono);
+    font-family: var(--psg-font-sans);
+    font-variant-numeric: tabular-nums;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -1537,7 +1540,8 @@ function submitRegister() {
 }
 
 .lang-mark {
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;

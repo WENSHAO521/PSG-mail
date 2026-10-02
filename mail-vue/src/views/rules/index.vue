@@ -365,7 +365,8 @@ function actionLabel(action) {
   align-items: center;
   gap: 8px;
   color: var(--psg-primary);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .12em;
@@ -460,7 +461,8 @@ function actionLabel(action) {
   display: block;
   margin-bottom: 8px;
   color: var(--psg-text-muted);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .08em;
@@ -470,7 +472,8 @@ function actionLabel(action) {
 .stat-value {
   display: block;
   color: var(--psg-text);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 26px;
   font-weight: 500;
   line-height: 1;
@@ -531,7 +534,8 @@ function actionLabel(action) {
   color: var(--psg-primary);
   background: var(--psg-primary-muted);
   border-radius: var(--psg-radius-sm);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 700;
 }
@@ -645,7 +649,8 @@ function actionLabel(action) {
   color: var(--psg-success-dark-2);
   background: var(--psg-success-light-9);
   border-radius: var(--psg-radius-xs);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .04em;
@@ -690,7 +695,8 @@ function actionLabel(action) {
   color: var(--psg-primary);
   background: var(--psg-primary-muted);
   border-radius: var(--psg-radius-xs);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -698,7 +704,8 @@ function actionLabel(action) {
 
 .detail-arrow {
   color: var(--psg-text-muted);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 .rule-actions {
@@ -787,7 +794,8 @@ function actionLabel(action) {
 
 .field-label {
   color: var(--psg-text-secondary);
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .08em;

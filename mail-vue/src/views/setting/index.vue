@@ -1598,7 +1598,8 @@ function submitPwd() {
 
 .meta-email {
   font-size: 12px;
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   color: var(--psg-text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -1704,7 +1705,8 @@ function submitPwd() {
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 
   &.mono {
-    font-family: var(--psg-font-mono);
+    font-family: var(--psg-font-sans);
+    font-variant-numeric: tabular-nums;
     font-size: 12px; color: var(--psg-text-secondary);
   }
 }

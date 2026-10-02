@@ -724,7 +724,8 @@ function handleDelete() {
 }
 
 .page-counter {
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--psg-text-muted);
   white-space: nowrap;
@@ -894,7 +895,8 @@ function handleDelete() {
 }
 
 .meta-date {
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   color: var(--psg-text-muted);
   white-space: nowrap;
@@ -903,7 +905,8 @@ function handleDelete() {
 }
 
 .meta-sender-email {
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   color: var(--psg-text-muted);
   overflow: hidden;
@@ -1005,7 +1008,8 @@ function handleDelete() {
 
   .att-icon-file { flex-shrink: 0; color: var(--psg-text-muted); }
   .att-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--psg-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .att-size { font-family: var(--psg-font-mono); font-size: 11px; color: var(--psg-text-muted); flex-shrink: 0; white-space: nowrap; }
+  font-family: var(--psg-font-sans);
+  font-variant-numeric: tabular-nums;
   .att-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 }
 

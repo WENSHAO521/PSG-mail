@@ -5,7 +5,6 @@
     <div v-if="props.explorerTitle" class="explorer-head">
       <div class="explorer-header">
         <h2 class="explorer-title">{{ props.explorerTitle }}</h2>
-        <p v-if="props.explorerSubtitle" class="explorer-subtitle">{{ props.explorerSubtitle }}</p>
       </div>
 
       <div class="explorer-search-row">
@@ -139,7 +138,79 @@
             <div v-else class="swipe-bg swipe-bg--archive" :style="{ opacity: swipeArchiveOpacity(item) }">
               <Icon icon="psg:archive" width="18" /><span>{{ $t('archive') }}</span>
             </div>
+            <!-- Redesigned row (every folder except the admin All Mail table,
+                 which keeps its stacked card below): unread dot · avatar ·
+                 name/time, subject, arrived-on chip + preview. -->
             <div
+              v-if="props.type !== 'all-email'"
+              class="mrow"
+              :style="rowSwipeStyle(item)"
+              :class="{
+                'is-unread': item.unread === EmailUnreadEnum.UNREAD && showUnread,
+                'is-open': !!item.emailId && emailStore.contentData.email?.emailId === item.emailId,
+                'is-checked': item.checked,
+                'is-selecting': selectionMode,
+              }"
+              :data-active="item.rightChecked || undefined"
+              @click="onRowClick($event, item)"
+              @contextmenu="handleContextmenu($event, item)"
+            >
+              <div class="mrow-lead">
+                <span class="mrow-dot" aria-hidden="true"></span>
+              </div>
+              <div class="mrow-avatar" :style="{ background: senderBg(item) }">
+                <span class="mrow-avatar-letter">{{ senderLetter(item) }}</span>
+                <img v-if="senderImg(item)" :src="senderImg(item)" class="mrow-avatar-img" alt=""
+                     @error="e => { e.target.style.display = 'none'; markGravatarMiss(item.sendEmail) }" />
+                <el-checkbox class="mrow-cb" v-model="item.checked" @click.stop
+                             :aria-label="$t('select')" />
+              </div>
+              <div class="mrow-body">
+                <div class="mrow-line">
+                  <span v-if="showStatus" class="mrow-status">
+                    <el-tooltip effect="dark" :content="item.statusIcon?.content">
+                      <Icon :icon="item.statusIcon?.icon" :style="`color: ${item.statusIcon?.color}`" width="14" height="14" />
+                    </el-tooltip>
+                  </span>
+                  <span class="mrow-name"><slot name="name" :email="item">{{ item.name }}</slot></span>
+                  <Icon v-if="item.isStar && showStar" icon="fluent-color:star-16" width="13" height="13" class="mrow-star" />
+                  <span class="mrow-time">{{ item.formatCreateTime }}</span>
+                  <div class="mrow-actions">
+                    <button v-if="archiveEmail" type="button" class="icon-btn" :title="$t('archive')" :aria-label="$t('archive')"
+                            @click.stop="archiveEmail(item.emailId)">
+                      <Icon icon="psg:archive" width="15" height="15" />
+                    </button>
+                    <button v-if="restoreEmail" type="button" class="icon-btn" :title="$t('restore')" :aria-label="$t('restore')"
+                            @click.stop="restoreEmail(item.emailId)">
+                      <Icon icon="solar:inbox-out-linear" width="15" height="15" />
+                    </button>
+                    <button v-if="showStar" type="button" class="icon-btn" :title="$t('star')" :aria-label="$t('star')"
+                            @click.stop="starChange(item)">
+                      <Icon :icon="item.isStar ? 'fluent-color:star-16' : 'psg:star'" width="15" height="15" />
+                    </button>
+                    <button v-perm="'email:delete'" type="button" class="icon-btn icon-danger" :title="$t('delete')" :aria-label="$t('delete')"
+                            @click.stop="rightDeleteItem(item)">
+                      <Icon icon="psg:trash" width="15" height="15" />
+                    </button>
+                  </div>
+                </div>
+                <div class="mrow-subject">
+                  <span v-if="item.code" class="code-tag" @click.stop="copyCode(item.code)">[{{ t('codeLabel') }}{{ item.code }}]</span>
+                  <span class="mrow-subject-text"><slot name="subject" :email="item">{{ item.subject || $t('noSubject') }}</slot></span>
+                  <span class="mrow-labels" v-if="item.labels && item.labels.length">
+                    <span v-for="l in item.labels" :key="l.labelId" class="mrow-label" :style="{ background: l.color }" :title="l.name"></span>
+                  </span>
+                </div>
+                <div class="mrow-line mrow-line--meta">
+                  <span v-if="mailboxChip(item)" class="mailbox-chip" :style="{ '--chip': mailboxColor(mailboxChip(item)) }"
+                        :title="mailboxChip(item)">{{ mailboxChip(item).split('@')[0] }}@</span>
+                  <span v-if="showUserInfo" class="mrow-preview">{{ item.userEmail }} → {{ item.type === 0 ? item.toEmail : item.sendEmail }}</span>
+                  <span v-else class="mrow-preview">{{ item.formatText }}</span>
+                </div>
+              </div>
+            </div>
+            <div
+              v-else
               class="mail-row"
               :style="rowSwipeStyle(item)"
               :class="[props.type, {
@@ -323,7 +394,7 @@ import {useEmailStore} from "@/store/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {sleep} from "@/utils/time-utils.js"
-import { avatarBg, avatarLetter, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
+import { avatarBg, avatarLetter, mailboxColor, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import {fromNow} from "@/utils/day.js";
 import {useI18n} from "vue-i18n";
@@ -333,6 +404,9 @@ import { useScroll } from '@vueuse/core'
 import { downloadEml } from '@/utils/download-eml.js'
 
 const props = defineProps({
+  // Tag each received row with the address it arrived on — for views that
+  // mix several mailboxes (All inboxes, or a catch-all account).
+  showMailbox: { type: Boolean, default: false },
   getEmailList: Function,
   emailDelete: Function,
   emailRead: Function,
@@ -457,10 +531,17 @@ const list = computed(() => {
   return [...emailList, ...expandList]
 })
 
+function mailboxChip(item) {
+  return props.showMailbox && item.type === 0 && item.toEmail ? item.toEmail : ''
+}
+
 const itemHeight = computed(() => {
-  if (viewportWidth.value <= 768) return props.type === 'all-email' ? 112 : 80;
-  if (props.type === 'all-email') return isMobile.value ? 72 : 68;
-  return isMobile.value ? 64 : 60;
+  if (props.type === 'all-email') {
+    if (viewportWidth.value <= 768) return 112;
+    return isMobile.value ? 72 : 68;
+  }
+  // .mrow: three text lines (name/time, subject, chip + preview).
+  return 84;
 })
 
 watch(itemHeight, () => { keyCount.value++ })
@@ -1703,7 +1784,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     width: 24px;
     height: 24px;
     flex-shrink: 0;
-    border-radius: var(--psg-radius-xs);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1738,6 +1819,8 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 
   .sender-star { flex-shrink: 0; }
+
+
 
   .email-status-inline {
     display: flex;
@@ -1803,7 +1886,8 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .user-info-inline {
     display: flex;
     gap: 8px;
-    font-family: var(--psg-font-mono);
+    font-family: var(--psg-font-sans);
+    font-variant-numeric: tabular-nums;
     font-size: 10px;
     color: var(--psg-text-muted);
     flex-shrink: 0;
@@ -1821,12 +1905,12 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   flex-shrink: 0;
 
   .mail-time {
-    font-family: var(--psg-font-mono);
+    font-family: var(--psg-font-sans);
+    font-variant-numeric: tabular-nums;
     font-size: 11px;
     color: var(--psg-text-muted);
     white-space: nowrap;
     letter-spacing: 0.02em;
-    font-variant-numeric: tabular-nums;
   }
 
   .mail-actions {
@@ -1850,18 +1934,18 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     color: var(--psg-text) !important;
   }
   .row-subject-cell .subject-text {
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     color: var(--psg-text) !important;
   }
   .row-meta .mail-time {
-    font-weight: 700 !important;
-    color: var(--psg-text) !important;
+    font-weight: 600 !important;
+    color: var(--psg-primary) !important;
   }
 }
 
 :deep(.mail-row:not(.is-unread)) {
-  .row-sender .mail-name { opacity: 0.65; }
-  .row-subject-cell .subject-text { opacity: 0.65; }
+  .row-sender .mail-name { font-weight: 500; color: var(--psg-text); }
+  .row-subject-cell .subject-text { color: var(--psg-text-secondary); }
 }
 
 /* ── Admin "all mail" row: stacked card ──────────────────────
@@ -2023,5 +2107,223 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     cursor: pointer;
     pointer-events: auto;
   }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Mail row (.mrow) — 2026 redesign. Three lines in a fixed 84px row
+   (the virtual list needs a constant height): name + time, subject,
+   arrived-on chip + preview. Unread = accent dot + weight, never fading
+   read mail. The admin All Mail table keeps the legacy .mail-row above.
+   ══════════════════════════════════════════════════════════ */
+:deep(.mrow) {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  height: 84px;
+  box-sizing: border-box;
+  padding: 12px 16px 12px 6px;
+  background: var(--psg-surface);
+  border-bottom: 1px solid var(--psg-surface-muted);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background 120ms ease;
+
+  @media (hover: hover) {
+    &:hover { background: var(--psg-surface-muted); }
+  }
+
+  &.is-open,
+  &[data-active] {
+    background: var(--psg-primary-muted);
+    border-left-color: var(--psg-primary);
+  }
+
+  &.is-checked { background: var(--psg-primary-muted); }
+
+  .mrow-lead {
+    width: 8px;
+    flex-shrink: 0;
+    padding-top: 14px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .mrow-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  &.is-unread .mrow-dot { background: var(--psg-primary); }
+
+  /* Avatar doubles as the select target: checkbox shows on hover, once
+     checked, or while in (mobile long-press) selection mode. */
+  .mrow-avatar {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .mrow-avatar-letter {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .mrow-avatar-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .mrow-cb {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    justify-content: center;
+    background: var(--psg-surface);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  @media (hover: hover) {
+    &:hover .mrow-cb { opacity: 1; }
+  }
+  &.is-checked .mrow-cb,
+  &.is-selecting .mrow-cb { opacity: 1; }
+
+  .mrow-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mrow-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    height: 20px;
+  }
+
+  .mrow-status { display: flex; flex-shrink: 0; }
+
+  .mrow-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--psg-text);
+  }
+
+  .mrow-star { flex-shrink: 0; }
+
+  .mrow-time {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--psg-text-secondary);
+    white-space: nowrap;
+  }
+
+  .mrow-actions {
+    display: none;
+    align-items: center;
+    flex-shrink: 0;
+    margin: -6px -8px -6px 0;
+
+    .icon-btn { width: 28px; height: 28px; }
+  }
+
+  @media (hover: hover) {
+    &:hover .mrow-time,
+    &[data-active] .mrow-time { display: none; }
+    &:hover .mrow-actions,
+    &[data-active] .mrow-actions { display: flex; }
+  }
+
+  .mrow-subject {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    height: 20px;
+    font-size: 14px;
+    color: var(--psg-text-secondary);
+
+    .code-tag {
+      flex-shrink: 0;
+      font-size: 11px;
+      color: var(--psg-text);
+      border: 1px solid var(--psg-border);
+      padding: 0 4px;
+      border-radius: 4px;
+    }
+  }
+
+  .mrow-subject-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mrow-labels { display: inline-flex; gap: 3px; flex-shrink: 0; }
+  .mrow-label { width: 7px; height: 7px; border-radius: 2px; }
+
+  .mrow-line--meta { height: 18px; }
+
+  .mrow-preview {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--psg-text-muted);
+  }
+
+  .mailbox-chip {
+    flex-shrink: 0;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    padding: 0 5px;
+    border-radius: 4px;
+    color: color-mix(in srgb, var(--chip) 60%, var(--psg-text));
+    background: color-mix(in srgb, var(--chip) 14%, transparent);
+  }
+
+  &.is-unread {
+    .mrow-name { font-weight: 700; }
+    .mrow-subject { color: var(--psg-text); font-weight: 600; }
+    .mrow-time { color: var(--psg-primary); font-weight: 600; }
+  }
+}
+
+/* The mobile header already names the folder. */
+@media (max-width: 768px) {
+  .explorer-header { display: none; }
 }
 </style>
