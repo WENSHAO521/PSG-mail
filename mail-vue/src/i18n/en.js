@@ -432,6 +432,8 @@ const en = {
     date: 'Date',
     roleDesc: 'Role',
     recipient: 'To',
+    sentTo: 'To',
+    quickReplyTo: 'Reply to {name}…',
     cc: 'Cc',
     bcc: 'Bcc',
     delivered: 'Delivered',

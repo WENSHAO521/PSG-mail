@@ -5,25 +5,10 @@
 
     <!-- ── Brand ────────────────────────────────────────── -->
     <div class="sidebar-brand" :class="{ 'sidebar-brand--mac': isMac }">
+      <img class="brand-logo" src="/image/psg-icon-logo.svg" alt="" />
       <div class="brand-text-block">
-        <div class="brand-name">PANORAMA SCHOLARLY GROUP</div>
-        <div class="brand-sub">INSTITUTIONAL MAIL</div>
-      </div>
-      <img class="brand-abbr" src="/image/psg-logo.png" alt="PSG" />
-    </div>
-
-    <!-- ── Header ───────────────────────────────────────── -->
-    <div class="sidebar-header">
-      <div class="acct-section">
-        <div class="sidebar-account-avatar" :style="{ background: acctAvatarBg }">
-          <span class="acct-fallback">{{ acctInitial }}</span>
-          <img v-if="userStore.avatar" :src="userStore.avatar" class="acct-img"
-               @error="e => e.target.style.display = 'none'" />
-        </div>
-        <div class="sidebar-user-meta" @click="router.push({ name: 'setting' })">
-          <div class="acct-name">{{ userStore.user.name || userStore.user.email }}</div>
-          <div class="acct-email">{{ userStore.user.email }}</div>
-        </div>
+        <div class="brand-name">PSG Mail</div>
+        <div class="brand-sub">Panorama Scholarly Group</div>
       </div>
       <div class="header-btns">
         <button class="icon-button sidebar-collapse-button"
@@ -42,16 +27,27 @@
     </div>
 
     <!-- ── Compose ──────────────────────────────────────── -->
-    <div v-if="canSend" class="sidebar-compose-slot">
-      <el-tooltip v-if="collapsed" :content="$t('compose')" placement="right">
-        <button type="button" class="compose-icon-btn" :aria-label="$t('compose')" @click="openCompose">
+    <div class="sidebar-compose-slot">
+      <template v-if="canSend">
+        <el-tooltip v-if="collapsed" :content="$t('compose')" placement="right">
+          <button type="button" class="compose-icon-btn" :aria-label="$t('compose')" @click="openCompose">
+            <Icon icon="psg:compose" width="20" height="20" />
+          </button>
+        </el-tooltip>
+        <button v-else type="button" class="sidebar-compose-button" @click="openCompose">
           <Icon icon="psg:compose" width="20" height="20" />
+          <span>{{ $t('compose') }}</span>
+        </button>
+      </template>
+      <!-- Real backend mail search — distinct from Command Palette (Ctrl+K) -->
+      <el-tooltip :content="$t('search') + ' (/)'" placement="right">
+        <button type="button" class="util-btn util-btn--boxed" :aria-label="$t('search')" @click="router.push({ name: 'search' })">
+          <Icon icon="psg:search" width="18" height="18" />
         </button>
       </el-tooltip>
-      <button v-else type="button" class="sidebar-compose-button" @click="openCompose">
-        <Icon icon="psg:compose" width="20" height="20" />
-        <span>{{ $t('compose') }}</span>
-      </button>
+      <div class="notif-trigger-wrap util-btn--boxed">
+        <NotificationPanel />
+      </div>
     </div>
 
     <!-- ── Scrollable nav area ──────────────────────────── -->
@@ -142,18 +138,22 @@
     <div class="sidebar-footer">
       <div class="sidebar-bottom-actions">
 
-        <!-- Utility cluster: search / notifications / more, grouped as one unit -->
-        <div class="sidebar-util-cluster">
-          <!-- Real backend mail search — distinct from Command Palette (Ctrl+K) -->
-          <el-tooltip :content="$t('search') + ' (/)'" placement="right">
-            <button type="button" class="util-btn" :aria-label="$t('search')" @click="router.push({ name: 'search' })">
-              <Icon icon="psg:search" width="18" height="18" />
-            </button>
-          </el-tooltip>
+        <el-tooltip :content="userStore.user.email" placement="right" :disabled="!collapsed">
+          <button type="button" class="acct-section" @click="router.push({ name: 'setting' })"
+                  :aria-label="$t('settings')">
+            <span class="sidebar-account-avatar" :style="{ background: acctAvatarBg }">
+              <span class="acct-fallback">{{ acctInitial }}</span>
+              <img v-if="userStore.avatar" :src="userStore.avatar" class="acct-img" alt=""
+                   @error="e => e.target.style.display = 'none'" />
+            </span>
+            <span class="sidebar-user-meta">
+              <span class="acct-name">{{ userStore.user.name || userStore.user.email }}</span>
+              <span class="acct-email">{{ userStore.user.email }}</span>
+            </span>
+          </button>
+        </el-tooltip>
 
-          <div class="notif-trigger-wrap">
-            <NotificationPanel />
-          </div>
+        <div class="sidebar-util-cluster">
 
           <!-- Admin tools live here, out of the everyday mail nav. -->
           <el-dropdown v-if="visibleAdminItems.length" placement="top-end" trigger="click">
@@ -179,7 +179,6 @@
           <el-dropdown placement="top-end" trigger="click">
             <button type="button" class="util-btn util-more-btn" :aria-label="$t('more')">
               <span class="more-dots"><span/><span/><span/></span>
-              <span v-if="!collapsed" class="utility-more-label">{{ $t('more') }}</span>
             </button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -476,10 +475,10 @@ function clickLogout() {
 /* ── Brand ───────────────────────────────────────────────── */
 .sidebar-brand {
   display: flex;
-  align-items: flex-start;
-  padding: 18px 20px 14px;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px 12px 18px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--psg-border);
   -webkit-app-region: drag;
 
   /* macOS hiddenInset: trafficLightPosition y=18, button h≈14px → bottom≈32px.
@@ -491,19 +490,27 @@ function clickLogout() {
   -webkit-app-region: no-drag;
 }
 
+.brand-logo {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: contain;
+  filter: var(--psg-logo-invert, none);
+}
+
 .brand-text-block {
   min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
 }
 
 .brand-name {
   font-family: var(--psg-font-sans);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
   color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
@@ -512,11 +519,9 @@ function clickLogout() {
 
 .brand-sub {
   font-family: var(--psg-font-sans);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--psg-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--psg-text-secondary);
   white-space: nowrap;
 }
 
@@ -528,35 +533,38 @@ function clickLogout() {
   filter: var(--psg-logo-invert, none);
 }
 
-/* ── Header ──────────────────────────────────────────────── */
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 12px 14px 20px;
-  flex-shrink: 0;
-  gap: 8px;
-  border-bottom: 1px solid var(--psg-border);
-}
-
+/* ── Account (footer) ────────────────────────────────────── */
 .acct-section {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
   flex: 1;
+  padding: 4px;
+  margin: -4px;
+  border: 0;
+  border-radius: var(--psg-radius-md);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+
+  @media (hover: hover) {
+    &:hover { background: var(--psg-surface-muted); }
+  }
 }
 
 .sidebar-account-avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  border-radius: var(--psg-radius-xs);
+  border-radius: 50%;
 
   .acct-fallback {
     color: #fff;
@@ -834,11 +842,22 @@ function clickLogout() {
 /* ── Compose (top of the sidebar, the primary action) ─────── */
 .sidebar-compose-slot {
   display: flex;
-  justify-content: center;
-  padding: 14px 16px 6px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px 8px;
   flex-shrink: 0;
 
   .sidebar-compose-button { height: 40px; }
+}
+
+.util-btn--boxed,
+.notif-trigger-wrap.util-btn--boxed :deep(.icon-btn) {
+  width: 40px !important;
+  height: 40px !important;
+  border: 1px solid var(--psg-border) !important;
+  border-radius: var(--psg-radius-md) !important;
+  background: var(--psg-surface) !important;
+  color: var(--psg-text-secondary) !important;
 }
 
 /* ── Mailboxes ───────────────────────────────────────────── */
@@ -901,16 +920,9 @@ function clickLogout() {
    primary compose CTA rather than four buttons of equal weight. */
 .sidebar-util-cluster {
   display: flex;
-  flex: 1;
-  justify-content: space-between;
   align-items: center;
   gap: 2px;
-  height: 36px;
-  padding: 0 3px;
   flex-shrink: 0;
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-md);
-  background: var(--psg-surface-muted);
 }
 
 .util-btn {
@@ -1042,19 +1054,18 @@ function clickLogout() {
   }
 
   .brand-text-block { display: none; }
-  .brand-abbr { display: block; }
 
-  .sidebar-header {
+  .sidebar-brand { flex-direction: column; gap: 8px; }
+
+  .sidebar-compose-slot {
     flex-direction: column;
-    gap: 8px;
-    align-items: center;
-    justify-content: center;
     padding-inline: 10px;
   }
 
   .acct-section {
     justify-content: center;
     flex: none;
+    margin: 0;
   }
 
   .sidebar-user-meta,

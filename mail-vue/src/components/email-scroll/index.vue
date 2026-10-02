@@ -1186,32 +1186,34 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 .filter-chips {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
+  gap: 6px;
   margin-left: 4px;
   flex-shrink: 0;
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-xs);
 }
 
+/* Pill filters, as in the redesign: active = filled ink, rest outlined. */
 .filter-chip {
-  border: none;
-  background: transparent;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--psg-border);
+  border-radius: 14px;
+  background: var(--psg-surface);
   cursor: pointer;
-  height: 24px;
-  padding: 0 11px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   font-family: var(--psg-font-sans);
-  color: var(--psg-text-secondary);
-  border-radius: var(--psg-radius-xs);
-  transition: background 0.14s ease, color 0.14s ease;
+  color: var(--psg-text);
+  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
   white-space: nowrap;
 
+  @media (hover: hover) {
+    &:hover:not(.active) { background: var(--psg-surface-muted); }
+  }
+
   &.active {
-    background: var(--psg-surface);
-    color: var(--psg-text);
-    border: 1px solid var(--psg-border);
+    background: var(--psg-text);
+    border-color: var(--psg-text);
+    color: var(--psg-surface);
     font-weight: 600;
   }
 }

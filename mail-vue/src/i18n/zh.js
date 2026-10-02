@@ -432,6 +432,8 @@ const zh = {
     date: '时间',
     roleDesc: '权限身份',
     recipient: '收件人',
+    sentTo: '发给',
+    quickReplyTo: '回复 {name}…',
     cc: '抄送',
     bcc: '密送',
     delivered: '发送成功',

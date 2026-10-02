@@ -135,12 +135,12 @@
                         trigger="click" popper-class="compose-ai-popper">
               <div class="compose-ai-actions">
                 <button v-for="action in aiActions" :key="action.value" type="button" @click="runComposeAi(action.value)">
-                  <Icon icon="lucide:sparkles" width="14" height="14" /> {{ t(action.labelKey) }}
+                  <Icon icon="psg:sparkles" width="14" height="14" /> {{ t(action.labelKey) }}
                 </button>
               </div>
               <template #reference>
                 <button type="button" class="tb-btn tb-btn--label compose-ai-trigger" :aria-label="$t('aiTransform')">
-                  <Icon icon="lucide:sparkles" width="16" height="16"/><span>{{ $t('aiTransform') }}</span>
+                  <Icon icon="psg:sparkles" width="16" height="16"/><span>{{ $t('aiTransform') }}</span>
                 </button>
               </template>
             </el-popover>

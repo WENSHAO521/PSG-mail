@@ -713,6 +713,12 @@ addCollection({
     "width": 24,
     "height": 24,
     "icons": {
+        "more": {
+            "body": "<g fill=\"currentColor\"><circle cx=\"5.5\" cy=\"12\" r=\"1.6\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\"/><circle cx=\"18.5\" cy=\"12\" r=\"1.6\"/></g>"
+        },
+        "sparkles": {
+            "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5 11.6 8a2 2 0 0 0 1.2 1.2L17.5 11l-4.7 1.7a2 2 0 0 0-1.2 1.2L10 18.5l-1.6-4.6a2 2 0 0 0-1.2-1.2L2.5 11l4.7-1.8A2 2 0 0 0 8.4 8Z\"/><path d=\"M18.5 3v4\"/><path d=\"M16.5 5h4\"/><path d=\"M19 16.5v3\"/><path d=\"M17.5 18h3\"/></g>"
+        },
         "inbox": {
             "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9h4l2 3h6l2-3h4\"/><path d=\"M3 9V5.5A1.5 1.5 0 0 1 4.5 4h15A1.5 1.5 0 0 1 21 5.5V9\"/><path d=\"M3 9v9.5A1.5 1.5 0 0 0 4.5 20h15a1.5 1.5 0 0 0 1.5-1.5V9\"/></g>"
         },

@@ -1351,7 +1351,7 @@ const systemSettingNav = computed(() => [
   {key: 'push', label: '通知与转发', icon: 'lucide:send', desc: t('sysPushDesc')},
   {key: 'verify', label: t('turnstileSetting'), icon: 'lucide:shield-check', desc: t('sysVerifyDesc')},
   {key: 'notice', label: t('noticeTitle'), icon: 'lucide:megaphone', desc: t('sysNoticeDesc')},
-  {key: 'ai', label: 'AI 与智能识别', icon: 'lucide:sparkles', desc: t('sysAiDesc')},
+  {key: 'ai', label: 'AI 与智能识别', icon: 'psg:sparkles', desc: t('sysAiDesc')},
 ])
 const activeSettingMeta = computed(() => {
   return systemSettingNav.value.find(item => item.key === activeSettingSection.value) || systemSettingNav.value[0]

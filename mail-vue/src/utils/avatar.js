@@ -1,7 +1,9 @@
-// Deterministic grayscale palette — stays on-brand without being uniform
+// Deterministic muted palette — tells senders apart at a glance while
+// staying quiet next to the green brand accent. Every tone carries white
+// initials at >= 4.5:1 and still reads against the dark theme's surfaces.
 const PALETTE = [
-  '#121212', '#2b2b2b', '#1a1a1a', '#333333',
-  '#555555', '#707070', '#444444', '#000000'
+  '#2F6FB0', '#7A4E9C', '#B05512', '#4C5E52',
+  '#1D7A70', '#9C3D54', '#3A4553', '#5E6B2E'
 ]
 
 export function avatarBg(seed) {
