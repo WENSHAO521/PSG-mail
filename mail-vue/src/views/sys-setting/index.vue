@@ -1176,7 +1176,7 @@ defineOptions({
   name: 'sys-setting'
 })
 
-const currentVersion = 'v3.0.0'
+const currentVersion = 'v' + __APP_VERSION__
 const {t, locale} = useI18n();
 const firstLoading = ref(true)
 const settingReady = ref(false)

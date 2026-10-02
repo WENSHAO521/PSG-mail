@@ -158,26 +158,37 @@ onMounted(async () => {
   } catch {}
 })
 
-const isArm = n => /arm64|aarch64|apple|silicon|arm/i.test(n)
 const isUniversal = n => /universal/i.test(n)
+// CPU a build is for, from its file name: 'arm', 'x86', or null when the
+// name doesn't say (a generic build).
+function archOf(n) {
+  if (/arm64|aarch64|armeabi|apple|silicon|\barm/i.test(n)) return 'arm'
+  if (/x86_64|x64|amd64|x86|intel/i.test(n)) return 'x86'
+  return null
+}
 
 // The build the hero button offers, or null when we can't tell which one
 // this device needs — the platform row below then lets the user choose.
 function pickForDevice(platform, list) {
   const named = list.map(a => ({ a, n: a.name.toLowerCase() }))
+  const arch = deviceArch.value
   if (platform === 'android') {
     const apks = named.filter(x => x.n.endsWith('.apk'))   // .aab can't be installed directly
-    return (apks.find(x => isUniversal(x.n)) || apks.find(x => /arm64-v8a/.test(x.n)) || (apks.length === 1 ? apks[0] : null))?.a ?? null
+    const pick = apks.find(x => isUniversal(x.n))
+      || (arch === 'x86' && apks.find(x => /x86_64/.test(x.n)))
+      // ARM (or unknown — nearly every Android phone is arm64).
+      || (arch !== 'x86' && apks.find(x => /arm64-v8a/.test(x.n)))
+      || (apks.length === 1 && (!archOf(apks[0].n) || archOf(apks[0].n) === (arch ?? 'arm')) ? apks[0] : null)
+    return pick?.a ?? null
   }
   if (platform === 'linux') return list.length === 1 ? list[0] : null   // .deb vs .AppImage vs .rpm depends on the distro
   const uni = named.find(x => isUniversal(x.n))
   if (uni) return uni.a
-  if (list.length === 1) return list[0]
   // Windows defaults to x64 unless the device is known to be ARM; macOS
-  // needs the architecture to be known.
-  const arch = deviceArch.value ?? (platform === 'win' ? 'x86' : null)
-  if (!arch) return null
-  return named.find(x => (arch === 'arm') === isArm(x.n))?.a ?? null
+  // needs the architecture to be known — unless the only build is generic.
+  const want = arch ?? (platform === 'win' ? 'x86' : null)
+  if (!want) return list.length === 1 && !archOf(named[0].n) ? list[0] : null
+  return (named.find(x => archOf(x.n) === want) || (list.length === 1 && !archOf(named[0].n) ? named[0] : null))?.a ?? null
 }
 
 const primary = computed(() => {

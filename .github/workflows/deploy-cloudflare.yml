@@ -26,6 +26,10 @@ jobs:
     env:
       NAME: ${{ secrets.NAME || vars.NAME || 'cloud-mail' }}
       CUSTOM_DOMAIN: ${{ secrets.CUSTOM_DOMAIN || vars.CUSTOM_DOMAIN }}
+      # Optional: full base URL of the Worker (e.g. its workers.dev address)
+      # for deployments without a custom domain — used by the manual init /
+      # smoke-test steps when CUSTOM_DOMAIN is empty.
+      WORKER_URL: ${{ secrets.WORKER_URL || vars.WORKER_URL }}
       # DOMAIN/ADMIN are not secrets (a mail domain list and an admin
       # email/username aren't sensitive on their own) — Variable is the
       # right store; kept as a secrets-or-vars fallback so either works.
@@ -351,6 +355,29 @@ jobs:
           # with $NAME — the binding always resolves correctly regardless).
           pnpm wrangler d1 migrations apply db --remote -c wrangler-action.toml
 
+      # A database /api/init has never bootstrapped has no `setting` table
+      # (numbered migrations don't create the core tables — see intDB in
+      # mail-worker/src/init/init.js). Init is opt-in, so make that state a
+      # visible failure instead of a green run backed by an unusable DB.
+      - name: 🔎 检查数据库是否已初始化 / Check the database is initialized
+        working-directory: ./mail-worker
+        run: |
+          OUT=$(pnpm wrangler d1 execute db --remote -c wrangler-action.toml --json \
+            --command "SELECT name FROM sqlite_master WHERE type='table' AND name='setting'")
+          if printf '%s' "$OUT" | jq -e '.[0].results | length > 0' >/dev/null; then
+            echo "✅ Database is initialized."
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.run_init }}" = "true" ]; then
+            echo "::warning:: Database not initialized yet — the init step below will bootstrap it."
+          else
+            echo "::error:: The D1 database has never been initialized (no 'setting' table). Run this workflow from Actions → Run workflow with run_init ticked, or POST /api/init with the maintenance secret."
+            exit 1
+          fi
+
+      # Runtime secrets (jwt_secret, maintenance_secret, VAPID / Firebase
+      # keys) live on the Worker itself, managed in the Cloudflare dashboard
+      # — this workflow no longer uploads them. Rotate them there; the
+      # matching GitHub secrets only need to agree for /api/init to pass.
+      #
       # No `wrangler deploy` here: the Worker is built and deployed by
       # Cloudflare's own Git integration (Workers Builds, set up in the
       # Cloudflare dashboard). A second deploy from this workflow raced it
@@ -362,14 +389,13 @@ jobs:
         # Manual only: the domain sits behind a Cloudflare challenge that
         # GitHub's runners can't pass, so on push this would always fail.
         # Run it from Actions → Run workflow with run_init ticked.
-        if: github.event_name == 'workflow_dispatch' && inputs.run_init && env.CUSTOM_DOMAIN != ''
+        if: github.event_name == 'workflow_dispatch' && inputs.run_init && (env.CUSTOM_DOMAIN != '' || env.WORKER_URL != '')
         run: |
           echo "🛠️ Starting database initialization..."
-          # Give Workers Builds (triggered by the same push) time to put the
-          # new version live; /api/init is idempotent either way.
-          sleep 90
 
-          WORKER_URL="https://$CUSTOM_DOMAIN"
+          FALLBACK_URL="${WORKER_URL%/}"
+          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
+          WORKER_URL="${WORKER_URL:-$FALLBACK_URL}"
 
           # POST + Authorization header, not GET /api/init/<secret> — a
           # secret embedded in a URL can land in request/proxy/observability
@@ -399,7 +425,7 @@ jobs:
         # Manual only: the domain sits behind a Cloudflare challenge that
         # GitHub's runners can't pass, so on push this would always fail.
         # Run it from Actions → Run workflow with run_init ticked.
-        if: github.event_name == 'workflow_dispatch' && inputs.run_init && env.CUSTOM_DOMAIN != ''
+        if: github.event_name == 'workflow_dispatch' && inputs.run_init && (env.CUSTOM_DOMAIN != '' || env.WORKER_URL != '')
         run: |
           # Unauthenticated, side-effect-free, and its response actually
           # depends on D1/KV working (not a trivial static 200) — deliberately

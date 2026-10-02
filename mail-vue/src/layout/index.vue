@@ -161,7 +161,10 @@ function loadListShare() {
   if (localStorage.getItem('psgMailListWidth') !== null) {
     localStorage.removeItem('psgMailListWidth')
     if (legacyPx > 0 && localStorage.getItem(LIST_SHARE_KEY) === null) {
-      localStorage.setItem(LIST_SHARE_KEY, (legacyPx / window.innerWidth).toFixed(4))
+      // Capped at the widest share the layout allows, so opening this
+      // version in a narrow window doesn't turn a saved width into a ratio
+      // >= 1 that the check below would throw away.
+      localStorage.setItem(LIST_SHARE_KEY, Math.min(legacyPx / window.innerWidth, 0.5).toFixed(4))
     }
   }
   const saved = Number(localStorage.getItem(LIST_SHARE_KEY))
