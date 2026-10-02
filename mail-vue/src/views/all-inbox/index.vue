@@ -30,7 +30,8 @@ import { useAccountStore } from "@/store/account.js";
 import { useEmailStore } from "@/store/email.js";
 import { useUiStore } from "@/store/ui.js";
 import emailScroll from "@/components/email-scroll/index.vue";
-import { emailList, emailDelete, emailRead, emailMarkSpam, emailArchive } from "@/request/email.js";
+import { emailList, emailDelete, emailRead, emailMarkSpam, emailArchive, emailUnarchive } from "@/request/email.js";
+import { undoToast } from "@/utils/undo-toast.js";
 import { starAdd, starCancel } from "@/request/star.js";
 import { defineOptions, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -62,7 +63,13 @@ function jumpContent(email) {
 
 function archiveEmailAction(emailId) {
   emailArchive([emailId])
-    .then(() => scroll.value.deleteEmail([emailId]))
+    .then(() => {
+      scroll.value.deleteEmail([emailId])
+      undoToast(t('archivedMsg'), t('undo'), () => {
+        emailUnarchive([emailId]).then(() => scroll.value.refreshList())
+          .catch(() => ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true }))
+      })
+    })
     .catch(() => ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true }));
 }
 

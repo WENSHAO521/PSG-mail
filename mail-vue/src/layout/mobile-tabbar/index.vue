@@ -1,7 +1,7 @@
 <template>
   <!-- Mist phone navigation: a floating ink bar, with Compose as its own
        accent button just above it. -->
-  <button v-if="canSend && onMailScreen" type="button" class="m-fab" @click="openCompose">
+  <button v-if="canSend && onMailScreen && !uiStore.composeDocked" type="button" class="m-fab" @click="openCompose">
     <Icon icon="psg:compose" width="19" height="19" />
     <span>{{ $t('compose') }}</span>
   </button>

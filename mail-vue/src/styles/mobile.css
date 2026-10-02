@@ -519,3 +519,13 @@ body,
     margin-top: 0;
   }
 }
+
+/* Landscape-tablet two-pane mode (layout/index.vue): keep the floating
+   Compose button over the list column, clear of the reader's reply bar. */
+@media (min-width: 900px) and (max-width: 1024px) and (orientation: landscape) {
+  .m-fab {
+    right: auto !important;
+    left: calc(var(--split-list-w, 380px) - 18px);
+    transform: translateX(-100%);
+  }
+}

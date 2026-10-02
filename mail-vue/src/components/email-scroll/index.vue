@@ -120,6 +120,7 @@
         :options="{ itemHeight: itemHeight, overscan: 15 }"
         class="virtual"
         :class="{ 'virtual--received': props.type === 'email' }"
+        data-overscroll="contain"
         style="height: 100%"
         v-if="!loading && emailList.length > 0"
         :key="keyCount"
@@ -131,6 +132,7 @@
             @touchstart.passive="swipeTouchStart($event, item)"
             @touchmove="swipeTouchMove($event, item)"
             @touchend.passive="swipeTouchEnd($event, item)"
+            @wheel="rowWheel($event, item)"
           >
             <button v-if="swipeOpenId === item.emailId" type="button"
                     class="swipe-bg swipe-bg--more"
@@ -309,7 +311,7 @@
 import {Icon} from "@iconify/vue";
 import skeletonBlock from "@/components/email-scroll/skeleton/index.vue"
 import MailboxChips from "@/components/mailbox-chips/index.vue"
-import {computed, onActivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import {computed, onActivated, onDeactivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import {useEmailStore} from "@/store/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -401,7 +403,29 @@ const unreadCount = computed(() =>
   props.showUnread ? emailList.filter(e => e.unread === EmailUnreadEnum.UNREAD).length : 0
 )
 
-defineExpose({ refreshList, deleteEmail, addItem, handleList, emailList, firstLoad, latestEmail, noLoading, total, unreadCount })
+// Open the message `delta` rows away from the one in the reader (J/K,
+// reader swipes). Returns false at either end of the loaded list.
+function openRelative(delta) {
+  const rows = emailList.filter(e => e.emailId && !e.expand)
+  const openId = emailStore.contentData.email?.emailId
+  const idx = rows.findIndex(e => e.emailId === openId)
+  const next = rows[(idx < 0 ? (delta > 0 ? -1 : rows.length) : idx) + delta]
+  if (!next) {
+    if (delta > 0 && !noLoading.value) loadData()
+    return false
+  }
+  jumpDetails(next)
+  return true
+}
+
+const listApi = { openRelative, refreshList }
+function claimActiveList() { emailStore.activeList = listApi }
+onMounted(claimActiveList)
+onActivated(claimActiveList)
+onDeactivated(() => { if (emailStore.activeList === listApi) emailStore.activeList = null })
+onUnmounted(() => { if (emailStore.activeList === listApi) emailStore.activeList = null })
+
+defineExpose({ refreshList, deleteEmail, addItem, handleList, emailList, firstLoad, latestEmail, noLoading, total, unreadCount, openRelative })
 
 onActivated(() => {
   requestAnimationFrame(() => {
@@ -754,15 +778,26 @@ const ptrBarStyle = computed(() => ({ height: `${Math.min(ptrOffset.value, 52)}p
 const ptrOpacity  = computed(() => Math.min(ptrOffset.value / 52, 1))
 const ptrAngle    = computed(() => ptrOffset.value * 4)
 
-function ptrTouchStart(e) { _ptrStartY = e.touches[0].clientY }
+let _ptrArmed = false
+
+function ptrTouchStart(e) {
+  _ptrStartY = e.touches[0].clientY
+  // Only a pull that starts with the list already at the top refreshes; a
+  // fling that reaches the top mid-gesture must not jump straight to 64px.
+  _ptrArmed = scrollTop <= 4 && !selectionMode.value
+}
 
 function ptrTouchMove(e) {
+  if (!_ptrArmed) return
+  // A horizontal row swipe owns this gesture.
+  if (swipeTouch.value?.dir === 'h') { _ptrArmed = false; ptrOffset.value = 0; return }
   if (scrollTop > 4) { ptrOffset.value = 0; return }
   const dy = e.touches[0].clientY - _ptrStartY
   ptrOffset.value = dy > 0 ? Math.min(dy * 0.55, 64) : 0
 }
 
 function ptrTouchEnd() {
+  _ptrArmed = false
   if (ptrOffset.value >= 52) {
     ptrSpinning.value = true
     vibrate(30)
@@ -817,7 +852,6 @@ function swipeTouchMove(e, item) {
 function swipeTouchEnd(e, item) {
   const st = swipeTouch.value
   if (!st || st.id !== item.emailId) return
-  const offset = swipeOffsets.get(item.emailId) || 0
   clearTimeout(longPressTimer)
   swipeTouch.value = null
   if (longPressedId.value === item.emailId) {
@@ -825,6 +859,13 @@ function swipeTouchEnd(e, item) {
     swipeOffsets.set(item.emailId, 0)
     return
   }
+  settleSwipe(item)
+}
+
+// Shared by touch and trackpad: right past the threshold archives, left
+// past it parks the row open on its "More" action.
+function settleSwipe(item) {
+  const offset = swipeOffsets.get(item.emailId) || 0
   if (offset > 70 && props.archiveEmail) {
     vibrate(20)
     swipeOffsets.set(item.emailId, 0)
@@ -839,9 +880,33 @@ function swipeTouchEnd(e, item) {
   }
 }
 
+// ── Trackpad: two-finger horizontal swipe on a row ─────────────────────────
+// Same thresholds as touch. Horizontal wheel deltas are claimed (so the
+// browser doesn't treat them as history back/forward) only when the swipe is
+// clearly sideways; vertical scrolling is untouched.
+const wheelSettle = new Map()
+function rowWheel(e, item) {
+  if (selectionMode.value || Math.abs(e.deltaX) <= Math.abs(e.deltaY) * 1.5 || Math.abs(e.deltaX) < 1) return
+  e.preventDefault()
+  if (swipeOpenId.value && swipeOpenId.value !== item.emailId) {
+    swipeOffsets.set(swipeOpenId.value, 0)
+    swipeOpenId.value = null
+  }
+  const current = swipeOffsets.get(item.emailId) || 0
+  swipeOffsets.set(item.emailId, Math.max(-120, Math.min(90, current - e.deltaX)))
+  wheelDragging.value = item.emailId
+  clearTimeout(wheelSettle.get(item.emailId))
+  wheelSettle.set(item.emailId, setTimeout(() => {
+    wheelDragging.value = null
+    settleSwipe(item)
+  }, 160))
+}
+const wheelDragging = ref(null)
+
 function rowSwipeStyle(item) {
   const offset = swipeOffsets.get(item.emailId) || 0
-  const dragging = swipeTouch.value?.id === item.emailId && swipeTouch.value?.dir === 'h'
+  const dragging = (swipeTouch.value?.id === item.emailId && swipeTouch.value?.dir === 'h')
+    || wheelDragging.value === item.emailId
   if (offset === 0 && !dragging) return {}
   return { transform: `translateX(${offset}px)`, transition: dragging ? 'none' : 'transform 0.25s ease' }
 }

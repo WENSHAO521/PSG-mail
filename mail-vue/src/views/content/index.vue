@@ -182,9 +182,13 @@
           <button type="button" class="spam-banner-btn" :disabled="notSpamBusy" @click="markNotSpam">{{ $t('notSpam') }}</button>
         </div>
 
-        <div class="email-body">
-          <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
-          <pre v-else class="email-text">{{ email.text }}</pre>
+        <div class="email-body" :class="{ 'is-zoomed': bodyZoom > 1 }"
+             @touchstart="zoomTouchStart" @touchmove="zoomTouchMove"
+             @touchend="zoomTouchEnd" @touchcancel="zoomTouchEnd">
+          <div class="email-zoom" :style="bodyZoom !== 1 ? { zoom: bodyZoom } : null">
+            <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
+            <pre v-else class="email-text">{{ email.text }}</pre>
+          </div>
         </div>
 
         <div v-if="showTranslation" class="translate-panel">
@@ -437,6 +441,53 @@ const parsedCc  = computed(() => parseAddressList(email.value?.cc))
 const parsedBcc = computed(() => parseAddressList(email.value?.bcc))
 
 // Mark as read when email opens; reset translation state on switch
+// ── Pinch to zoom the message body (touch) ──
+// Two fingers scale the body 1–3×; double-tap toggles 1× / 2×. The zoomed
+// body scrolls sideways inside itself, which the reader's swipe-between-
+// messages gesture yields to. Resets for every message.
+const bodyZoom = ref(1)
+let pinch = null
+let tap = null
+let lastTapAt = 0
+const touchDistance = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+function zoomTouchStart(e) {
+  if (e.touches.length === 2) {
+    pinch = { d: touchDistance(e.touches), z: bodyZoom.value }
+    tap = null
+  } else if (e.touches.length === 1) {
+    tap = { x: e.touches[0].clientX, y: e.touches[0].clientY, moved: false }
+  }
+}
+function zoomTouchMove(e) {
+  if (pinch && e.touches.length === 2) {
+    e.preventDefault()
+    const z = pinch.z * touchDistance(e.touches) / pinch.d
+    bodyZoom.value = Math.round(Math.min(3, Math.max(1, z)) * 100) / 100
+  } else if (tap && e.touches.length === 1) {
+    if (Math.abs(e.touches[0].clientX - tap.x) > 10 || Math.abs(e.touches[0].clientY - tap.y) > 10) tap.moved = true
+  }
+}
+function zoomTouchEnd(e) {
+  if (e.touches.length < 2) pinch = null
+  if (bodyZoom.value < 1.05) bodyZoom.value = 1
+  if (tap && !tap.moved && e.touches.length === 0) {
+    const now = Date.now()
+    if (now - lastTapAt < 300) {
+      bodyZoom.value = bodyZoom.value > 1 ? 1 : 2
+      lastTapAt = 0
+    } else lastTapAt = now
+  }
+  if (e.touches.length === 0) tap = null
+}
+watch(() => email.value?.emailId, () => { bodyZoom.value = 1 })
+
+// Keyboard shortcuts for the open message (S star, # delete) — see layout.
+watch(() => emailStore.readerCommand, (cmd) => {
+  if (!cmd || !email.value) return
+  if (cmd.name === 'star') changeStar()
+  else if (cmd.name === 'delete') handleDelete()
+})
+
 // AI spam verdict for the open message (only fetched for mail in Spam).
 const spamVerdict = ref(null)
 const notSpamBusy = ref(false)
@@ -1002,6 +1053,10 @@ function handleDelete() {
   line-height: 1.75;
   color: var(--psg-text);
   word-break: break-word;
+  /* Pinch is handled in script (zoomTouch*), not by the browser. */
+  touch-action: pan-x pan-y;
+
+  &.is-zoomed { overflow-x: auto; overscroll-behavior-x: contain; }
 }
 
 .email-text {

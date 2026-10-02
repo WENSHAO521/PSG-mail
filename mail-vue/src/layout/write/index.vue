@@ -1,13 +1,17 @@
 <template>
   <div class="send" v-show="show" :data-state="windowState">
     <div class="write-box" :data-state="windowState" ref="writeBoxRef"
-         :style="windowState !== 'minimized' && (dragOffset.x || dragOffset.y)
-           ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` } : null">
+         :style="sheetDrag.dy || sheetDrag.settling
+           ? { transform: `translateY(${sheetDrag.dy}px)`, transition: sheetDrag.settling ? 'transform .2s ease' : 'none' }
+           : windowState !== 'minimized' && (dragOffset.x || dragOffset.y)
+             ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` } : null">
 
       <!-- ── Header — mousedown here drags the window; a plain click (no
            movement) still falls through to the minimize-restore toggle. ── -->
       <div class="wh" :class="{ 'wh-draggable': windowState !== 'minimized' }"
-           @mousedown="startDrag" @click="windowState === 'minimized' && toggleMinimize()">
+           @mousedown="startDrag" @click="windowState === 'minimized' && toggleMinimize()"
+           @touchstart.passive="sheetTouchStart" @touchmove="sheetTouchMove" @touchend.passive="sheetTouchEnd"
+           @touchcancel.passive="sheetTouchEnd">
         <div class="wh-left">
           <div class="wh-badge">
             <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
@@ -414,6 +418,7 @@ defineExpose({
   openDraft,
   openScheduled,
   requestMobileBack: () => close(),
+  isOpen: () => show.value && windowState.value !== 'minimized',
 })
 
 const {t} = useI18n()
@@ -433,6 +438,41 @@ function toggleMinimize() {
 }
 function toggleMaximize() {
   windowState.value = windowState.value === 'maximized' ? 'normal' : 'maximized'
+}
+
+// ── Phones: pull the full-screen composer down by its header to dock it ──
+// as a bar above the tab bar (the draft stays as typed); tap the bar to
+// bring it back. Follows the finger, with a little resistance.
+const sheetDrag = reactive({ y0: 0, dy: 0, t0: 0, active: false, settling: false })
+function sheetTouchStart(e) {
+  if (window.innerWidth > 767 || windowState.value === 'minimized') return
+  if (e.target.closest?.('button')) return
+  sheetDrag.active = true
+  sheetDrag.y0 = e.touches[0].clientY
+  sheetDrag.t0 = performance.now()
+}
+function sheetTouchMove(e) {
+  if (!sheetDrag.active) return
+  const dy = e.touches[0].clientY - sheetDrag.y0
+  if (dy <= 0) { sheetDrag.dy = 0; return }
+  e.preventDefault()
+  sheetDrag.dy = dy < 160 ? dy : 160 + (dy - 160) * 0.35
+}
+function sheetTouchEnd() {
+  if (!sheetDrag.active) return
+  sheetDrag.active = false
+  const v = sheetDrag.dy / Math.max(performance.now() - sheetDrag.t0, 1)
+  const dock = sheetDrag.dy > 140 || (sheetDrag.dy > 40 && v > 0.5)
+  sheetDrag.settling = true
+  sheetDrag.dy = dock ? window.innerHeight : 0
+  setTimeout(() => {
+    if (dock) {
+      try { navigator.vibrate?.(10) } catch {}
+      windowState.value = 'minimized'
+    }
+    sheetDrag.dy = 0
+    sheetDrag.settling = false
+  }, 200)
 }
 
 // ── Draggable compose window (desktop only — .send docks it bottom-right
@@ -526,10 +566,13 @@ const aiActions = [
   { value: 'grammar', labelKey: 'aiGrammar' },
 ]
 
-watch(show, (open) => {
-  if (open && window.innerWidth <= 1024) {
+// A docked (minimized) composer isn't a full-screen surface, so system back
+// shouldn't close it; restoring it takes the back layer again.
+watch([show, windowState], ([open, state]) => {
+  uiStore.composeDocked = open && state === 'minimized'
+  if (open && state !== 'minimized' && window.innerWidth <= 1024) {
     mobileNavigation.openLayer('compose', () => close() === true)
-  } else if (!open) {
+  } else {
     mobileNavigation.closeLayer('compose')
   }
 })
@@ -2899,7 +2942,41 @@ function close() {
 
 /* Phones: the composer is full-screen, so square corners all round. */
 @media (max-width: 767px) {
-  .write-box,
+  .write-box:not([data-state="minimized"]),
   .write-box:not([data-state="minimized"]) .wh { border-radius: 0; }
+
+  /* Docked: a bar floating just above the tab bar; tap it to reopen. */
+  .send[data-state="minimized"] {
+    inset: auto 12px calc(86px + env(safe-area-inset-bottom, 0px)) 12px;
+    background: transparent;
+    pointer-events: none;
+  }
+  .write-box[data-state="minimized"] {
+    height: 56px;
+    border-radius: 18px;
+    background: var(--psg-surface);
+    box-shadow: var(--psg-shadow-md);
+    pointer-events: auto;
+  }
+  .write-box[data-state="minimized"] .wh {
+    height: 56px;
+    padding: 0 8px 0 16px;
+    border-bottom: 0;
+    border-radius: 18px;
+  }
+
+  /* The header is the drag handle: a small grabber hints at it. */
+  .write-box:not([data-state="minimized"]) .wh { position: relative; touch-action: none; }
+  .write-box:not([data-state="minimized"]) .wh::before {
+    content: '';
+    position: absolute;
+    top: calc(4px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    border-radius: 2px;
+    background: var(--psg-border);
+  }
 }
 </style>
