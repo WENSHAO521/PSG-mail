@@ -242,8 +242,44 @@ function autoScale() {
   hostElement.style.zoom = scale
 }
 
+// ── Links inside the mail body ──
+// Mail HTML is rendered into the app's own document, so a plain <a href>
+// would navigate the whole app: away to the sender's site (in the desktop
+// app there is no way back), a relative link onto an app route, and a
+// "#section" link onto the router's hash (the desktop app's hash history
+// then shows the inbox / 404). Web links open outside the app instead and
+// in-mail anchors just scroll.
+async function openExternal(url) {
+  try {
+    const { Capacitor } = await import('@capacitor/core')
+    if (Capacitor.isNativePlatform()) {
+      const { Browser } = await import('@capacitor/browser')
+      await Browser.open({ url })
+      return
+    }
+  } catch {}
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+function onLinkClick(e) {
+  if (e.defaultPrevented || e.button > 0) return
+  const a = e.composedPath().find(el => el.tagName === 'A' && el.hasAttribute?.('href'))
+  if (!a) return
+  const href = a.getAttribute('href').trim()
+  if (/^(mailto|tel|sms):/i.test(href)) return
+  e.preventDefault()
+  if (href.startsWith('#')) {
+    const id = decodeURIComponent(href.slice(1))
+    const target = id && (shadowRoot.getElementById(id) || shadowRoot.querySelector(`[name="${CSS.escape(id)}"]`))
+    target?.scrollIntoView({ block: 'start' })
+    return
+  }
+  if (/^(https?:)?\/\//i.test(href)) openExternal(a.href)
+}
+
 onMounted(() => {
   shadowRoot = container.value.attachShadow({ mode: 'open' })
+  shadowRoot.addEventListener('click', onLinkClick)
   updateContent()
   autoScale()
 })
