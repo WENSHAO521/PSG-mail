@@ -3,6 +3,7 @@ import NProgress from 'nprogress';
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {cvtR2Url} from "@/utils/convert.js";
+import {onRouterBeforeEach, onRouterAfterEach} from "@/store/mobile-navigation.js";
 
 const routes = [
     {
@@ -198,6 +199,11 @@ router.beforeEach((to, from, next) => {
     next()
 
 })
+
+// Keep the mobile back-surface markers in step with route changes.
+router.beforeEach(onRouterBeforeEach)
+router.afterEach(onRouterAfterEach)
+router.onError(onRouterAfterEach)
 
 function loadBackground(next) {
 
