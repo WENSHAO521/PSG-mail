@@ -199,6 +199,44 @@ class ApiClient {
   Future<void> send(OutgoingMail m) => _send('POST', '/email/send',
       body: m.toJson(), timeout: const Duration(minutes: 3));
 
+  /// Schedules a send; also used for Undo Send with a few seconds' delay.
+  /// [at] is converted to the server's UTC "yyyy-MM-dd HH:mm:ss".
+  Future<int> schedule(OutgoingMail m, DateTime at, String timezone) async {
+    final u = at.toUtc();
+    String two(int v) => v.toString().padLeft(2, '0');
+    final stamp = '${u.year}-${two(u.month)}-${two(u.day)} ${two(u.hour)}:${two(u.minute)}:${two(u.second)}';
+    final data = await _send('POST', '/email/schedule',
+        body: {...m.toJson(), 'scheduledAt': stamp, 'timezone': timezone}, timeout: const Duration(minutes: 3));
+    return data is Map ? (data['id'] as num?)?.toInt() ?? 0 : 0;
+  }
+
+  // ── Compose helpers ─────────────────────────────────────────
+
+  Future<List<MailTemplate>> templates() async {
+    final data = await get('/template/list');
+    final rows = data is Map ? data['list'] : data;
+    return (rows as List? ?? const []).map((e) => MailTemplate.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<List<ContactGroup>> contactGroups() async {
+    final data = await get('/contactGroup/list');
+    final rows = data is Map ? data['list'] : data;
+    return (rows as List? ?? const []).map((e) => ContactGroup.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  /// Everyone on this deployment (Compose → Contacts → Directory).
+  Future<List<Contact>> directory() async {
+    final data = await get('/my/directory');
+    return (data as List? ?? const []).map((e) => Contact.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  /// AI rewrite of selected text: translate_zh, translate_en, rewrite,
+  /// formal, concise, grammar.
+  Future<String> aiTransform(String operation, String text, {String? html}) async {
+    final data = await post('/ai/compose/transform', {'operation': operation, 'text': text, 'html': ?html});
+    return '${(data as Map?)?['resultText'] ?? ''}';
+  }
+
   // ── Labels ──────────────────────────────────────────────────
 
   Future<void> applyLabel(int labelId, List<int> ids) => post('/label/apply', {'labelId': labelId, 'emailIds': ids});

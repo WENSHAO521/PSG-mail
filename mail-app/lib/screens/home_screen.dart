@@ -83,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = S.of(context);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       duration: const Duration(seconds: 20),
+      persist: false,
       content: Text(s.updateAvailable(update.version)),
       action: SnackBarAction(label: s.download, onPressed: () => openExternal(update.url)),
     ));
@@ -170,14 +171,50 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _compose({ReplyMode? mode, Email? original, Draft? draft, Map<String, dynamic>? prefill}) async {
-    final sent = await Navigator.of(context).push<bool>(MaterialPageRoute(
+  Future<void> _compose(
+      {ReplyMode? mode, Email? original, Draft? draft, Map<String, dynamic>? prefill, bool restored = false}) async {
+    final result = await Navigator.of(context).push<ComposeResult>(MaterialPageRoute(
       fullscreenDialog: true,
-      builder: (_) => ComposeScreen(mode: mode, original: original, draft: draft, prefill: prefill),
+      builder: (_) =>
+          ComposeScreen(mode: mode, original: original, draft: draft, prefill: prefill, restored: restored),
     ));
-    if (sent == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(S.of(context).sentOk)));
-      if (_dest.isMail && _folder.kind == FolderKind.sent) _list?.refresh();
+    if (!mounted || result == null) return;
+    final s = S.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    switch (result) {
+      case ComposeSent():
+        messenger.showSnackBar(SnackBar(content: Text(s.t('sendSuccessMsg'))));
+        if (_dest.isMail && _folder.kind == FolderKind.sent) _list?.refresh();
+      case ComposeScheduled():
+        messenger.showSnackBar(SnackBar(content: Text(s.t('scheduleSuccessMsg'))));
+      case ComposeUndoable(:final scheduleId, :final seconds, :final draft, :final subject):
+        // Web undo-send notification: the send is a short server-side
+        // schedule; Undo cancels it and reopens the message.
+        var undone = false;
+        messenger.showSnackBar(SnackBar(
+          duration: Duration(seconds: seconds),
+          persist: false,
+          content: _UndoCountdown(seconds: seconds, label: s.t('messageSending'), subject: subject),
+          action: SnackBarAction(
+            label: s.t('undo'),
+            onPressed: () async {
+              if (undone) return;
+              undone = true;
+              try {
+                await context.read<Session>().api.scheduleCancel(scheduleId);
+                if (!mounted) return;
+                messenger.showSnackBar(SnackBar(content: Text(s.t('undoRestoredMsg'))));
+                _compose(draft: draft, restored: true);
+              } catch (_) {
+                // Already sent (the fast path won the race against the click).
+                messenger.showSnackBar(SnackBar(content: Text(s.t('scheduledCancelFail'))));
+              }
+            },
+          ),
+        ));
+        Future.delayed(Duration(seconds: seconds + 2), () {
+          if (mounted && _dest.isMail && _folder.kind == FolderKind.sent) _list?.refresh();
+        });
     }
   }
 
@@ -369,5 +406,51 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Focus(focusNode: _shellFocus, autofocus: true, child: content),
       );
     });
+  }
+}
+
+/// "Sending…" with the seconds left to undo.
+class _UndoCountdown extends StatefulWidget {
+  final int seconds;
+  final String label;
+  final String subject;
+  const _UndoCountdown({required this.seconds, required this.label, required this.subject});
+
+  @override
+  State<_UndoCountdown> createState() => _UndoCountdownState();
+}
+
+class _UndoCountdownState extends State<_UndoCountdown> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: Duration(seconds: widget.seconds))..forward();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final left = (widget.seconds * (1 - _c.value)).ceil();
+        return Row(children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: Stack(alignment: Alignment.center, children: [
+              CircularProgressIndicator(value: 1 - _c.value, strokeWidth: 2.5),
+              Text('$left', style: const TextStyle(fontSize: 10)),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          Text(widget.label),
+          const SizedBox(width: 8),
+          Expanded(child: Text(widget.subject, maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ]);
+      },
+    );
   }
 }

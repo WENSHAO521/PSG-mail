@@ -48,6 +48,10 @@ dependencies:
   path_provider: ^2.1.6
   printing: ^5.15.1
   pdf: ^3.13.1
+  flutter_quill: ^11.6.0
+  flutter_quill_delta_from_html: ^1.5.3
+  vsc_quill_delta_to_html: ^1.0.5
+  flutter_timezone: ^5.1.1
 
 dev_dependencies:
   flutter_test:

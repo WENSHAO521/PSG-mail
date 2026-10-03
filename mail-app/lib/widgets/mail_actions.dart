@@ -26,7 +26,7 @@ class MailActions {
   void toast(String msg, {SnackBarAction? action}) {
     ScaffoldMessenger.maybeOf(context)
       ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg), action: action));
+      ..showSnackBar(SnackBar(content: Text(msg), action: action, persist: false));
   }
 
   Future<bool> confirm(String message, {bool danger = true}) async {

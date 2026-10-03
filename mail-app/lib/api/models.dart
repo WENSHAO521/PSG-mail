@@ -181,6 +181,13 @@ class UserInfo {
   final String signature;
   final List<String> permKeys;
   final Account? account;
+  /// Seconds the "Undo" window stays open after Send (0 = send at once).
+  final int undoSendSeconds;
+  /// Reply from the address the mail arrived at (Settings → Profile).
+  final bool replyFromReceived;
+  final String avatar;
+  final int type; // role id
+  final Map<String, dynamic> raw;
 
   UserInfo.fromJson(Map<String, dynamic> j)
       : userId = _int(j['userId']),
@@ -188,7 +195,12 @@ class UserInfo {
         name = _str(j['name']),
         signature = _str(j['signature']),
         permKeys = ((j['permKeys'] as List?) ?? const []).map((e) => '$e').toList(),
-        account = j['account'] is Map ? Account.fromJson(Map<String, dynamic>.from(j['account'])) : null;
+        account = j['account'] is Map ? Account.fromJson(Map<String, dynamic>.from(j['account'])) : null,
+        undoSendSeconds = j['undoSendSeconds'] == null ? 10 : _int(j['undoSendSeconds']),
+        replyFromReceived = j['replyFromReceived'] != false && j['replyFromReceived'] != 0,
+        avatar = _str(j['avatar']),
+        type = _int(j['type']),
+        raw = j;
 
   bool can(String perm) => permKeys.contains('*') || permKeys.contains(perm);
 }
@@ -233,4 +245,43 @@ DateTime? parseServerTime(String raw) {
   final iso = raw.contains('T') ? raw : raw.replaceFirst(' ', 'T');
   final hasZone = iso.endsWith('Z') || RegExp(r'[+-]\d\d:?\d\d$').hasMatch(iso);
   return DateTime.tryParse(hasZone ? iso : '${iso}Z')?.toLocal();
+}
+
+class Contact {
+  final String email;
+  final String name;
+  const Contact(this.email, [this.name = '']);
+
+  Contact.fromJson(Map<String, dynamic> j)
+      : email = _str(j['email']),
+        name = _str(j['name']);
+
+  Map<String, dynamic> toJson() => {'email': email, 'name': name};
+}
+
+class ContactGroup {
+  final int groupId;
+  final String name;
+  final List<Contact> contacts;
+
+  ContactGroup.fromJson(Map<String, dynamic> j)
+      : groupId = _int(j['groupId']),
+        name = _str(j['name']),
+        contacts = ((j['contacts'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((c) => Contact.fromJson(Map<String, dynamic>.from(c)))
+            .toList();
+}
+
+class MailTemplate {
+  final int templateId;
+  final String name;
+  final String subject;
+  final String content; // HTML
+
+  MailTemplate.fromJson(Map<String, dynamic> j)
+      : templateId = _int(j['templateId']),
+        name = _str(j['name']),
+        subject = _str(j['subject']),
+        content = _str(j['content']);
 }

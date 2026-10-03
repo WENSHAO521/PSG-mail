@@ -369,7 +369,11 @@ class _ReaderViewState extends State<ReaderView> {
               ]),
             ] else if (canSend) ...[
               const SizedBox(height: 24),
-              OutlinedButton.icon(onPressed: () => widget.onReply(ReplyMode.forward, e), icon: const Icon(Icons.forward), label: Text(s.t('forward'))),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                    onPressed: () => widget.onReply(ReplyMode.forward, e), icon: const Icon(Icons.forward), label: Text(s.t('forward'))),
+              ),
             ],
           ],
         ),

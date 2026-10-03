@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,7 +25,7 @@ class PsgMailApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      localizationsDelegates: const [...GlobalMaterialLocalizations.delegates, FlutterQuillLocalizations.delegate],
       supportedLocales: const [Locale('zh'), Locale('en')],
       home: const _Root(),
     );

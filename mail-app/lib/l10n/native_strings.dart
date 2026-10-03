@@ -6,6 +6,9 @@ const Map<String, String> nativeStringsZh = {
   'selectAll': '全选',
   'previous': '上一封',
   'next': '下一封',
+  'noData': '暂无数据',
+  'quotedText': '引用原文',
+  'bodyPlaceholder': '写点什么…',
 };
 
 const Map<String, String> nativeStringsEn = {
@@ -13,4 +16,7 @@ const Map<String, String> nativeStringsEn = {
   'selectAll': 'Select all',
   'previous': 'Previous',
   'next': 'Next',
+  'noData': 'No data',
+  'quotedText': 'Quoted text',
+  'bodyPlaceholder': 'Write your message…',
 };

@@ -118,6 +118,22 @@ class Session extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // Recent recipients on this device (web: writer store sendRecipientRecord).
+  String get _recentKey => 'recent|$server|${user?.userId}';
+
+  List<String> get recentRecipients => _prefs.getStringList(_recentKey) ?? const [];
+
+  Future<void> rememberRecipients(Iterable<String> emails) async {
+    final list = [...emails.map((e) => e.trim()).where((e) => e.isNotEmpty)];
+    final merged = <String>[...list, ...recentRecipients.where((e) => !list.contains(e))];
+    await _prefs.setStringList(_recentKey, merged.take(200).toList());
+  }
+
+  Future<void> forgetRecipients(Iterable<String> emails) async {
+    final drop = emails.toSet();
+    await _prefs.setStringList(_recentKey, recentRecipients.where((e) => !drop.contains(e)).toList());
+  }
+
   Future<void> refreshLabels() async {
     labels = await api.labels();
     notifyListeners();
