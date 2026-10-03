@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart' hide DefaultStyles;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -15,6 +15,8 @@ import '../l10n/strings.dart';
 import '../services/rich_text.dart';
 import '../state/drafts.dart';
 import '../state/session.dart';
+import '../ui/dialogs.dart';
+import '../ui/psg.dart';
 import '../widgets/contacts_dialog.dart';
 import '../widgets/reader_view.dart';
 import '../widgets/recipient_field.dart';
@@ -81,14 +83,24 @@ class ComposeScreen extends StatefulWidget {
   /// Reopen as an ordinary message rather than a saved draft (Undo Send).
   final bool restored;
 
+  /// The window closed: sent, scheduled, or (null) closed without sending.
+  final void Function(ComposeResult? result) onDone;
+
   const ComposeScreen(
-      {super.key, this.mode, this.original, this.draft, this.prefill, this.to = const [], this.restored = false});
+      {super.key,
+      required this.onDone,
+      this.mode,
+      this.original,
+      this.draft,
+      this.prefill,
+      this.to = const [],
+      this.restored = false});
 
   @override
-  State<ComposeScreen> createState() => _ComposeScreenState();
+  State<ComposeScreen> createState() => ComposeScreenState();
 }
 
-class _ComposeScreenState extends State<ComposeScreen> {
+class ComposeScreenState extends State<ComposeScreen> {
   final _subject = TextEditingController();
   final _editorFocus = FocusNode();
   final _editorScroll = ScrollController();
@@ -314,11 +326,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
         final id = await session.api.schedule(mail, at, await _timezone());
         final snapshot = _asDraft();
         await _afterLeaving();
-        if (mounted) Navigator.of(context).pop(ComposeUndoable(id, seconds, snapshot, mail.subject));
+        if (mounted) widget.onDone(ComposeUndoable(id, seconds, snapshot, mail.subject));
       } else {
         await session.api.send(mail);
         await _afterLeaving();
-        if (mounted) Navigator.of(context).pop(const ComposeSent());
+        if (mounted) widget.onDone(const ComposeSent());
       }
     } catch (e) {
       if (mounted) _toast('${s.t('sendFailMsg')}: ${s.error(e)}');
@@ -337,7 +349,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
     try {
       await session.api.schedule(_mail(), at, await _timezone());
       await _afterLeaving();
-      if (mounted) Navigator.of(context).pop(ComposeScheduled(at));
+      if (mounted) widget.onDone(ComposeScheduled(at));
     } catch (e) {
       if (mounted) _toast('${s.t('scheduleFailMsg')}: ${s.error(e)}');
     } finally {
@@ -384,7 +396,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
     setState(() => _to = {..._to, ...picked}.toList());
   }
 
-  Future<void> _insertTemplate() async {
+  /// Web: the "Insert template" dropdown above the button.
+  Future<void> _insertTemplate(BuildContext anchor) async {
     final s = S.of(context);
     final api = context.read<Session>().api;
     List<MailTemplate> list;
@@ -394,26 +407,13 @@ class _ComposeScreenState extends State<ComposeScreen> {
       _toast(s.error(e));
       return;
     }
-    if (!mounted) return;
-    final tpl = await showDialog<MailTemplate>(
-      context: context,
-      builder: (c) => SimpleDialog(
-        title: Text(s.t('insertTemplate')),
-        children: list.isEmpty
-            ? [Padding(padding: const EdgeInsets.all(24), child: Text(s.t('noTemplates')))]
-            : [
-                for (final t in list)
-                  SimpleDialogOption(
-                    onPressed: () => Navigator.pop(c, t),
-                    child: ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(t.name),
-                      subtitle: t.subject.isEmpty ? null : Text(t.subject),
-                    ),
-                  ),
-              ],
-      ),
-    );
+    if (!mounted || !anchor.mounted) return;
+    final tpl = await _menuAbove<MailTemplate>(anchor, [
+      if (list.isEmpty)
+        PopupMenuItem<MailTemplate>(enabled: false, child: Text(s.t('noTemplates')))
+      else
+        for (final t in list) psgMenuItem(context, t, t.name),
+    ]);
     if (tpl == null) return;
     // Web insertTemplate(): template first, existing text after it.
     setState(() {
@@ -422,19 +422,32 @@ class _ComposeScreenState extends State<ComposeScreen> {
     });
   }
 
+  /// A dropdown that opens upwards from a bottom-bar button (web popovers
+  /// with placement="top-start").
+  Future<T?> _menuAbove<T>(BuildContext anchor, List<PopupMenuEntry<T>> items) {
+    final box = anchor.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(anchor).context.findRenderObject() as RenderBox;
+    final topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
+    return showMenu<T>(
+      context: context,
+      position: RelativeRect.fromLTRB(topLeft.dx, topLeft.dy - 8, overlay.size.width - topLeft.dx, overlay.size.height - topLeft.dy + 8),
+      popUpAnimationStyle: AnimationStyle.noAnimation,
+      items: items,
+    );
+  }
+
+  Future<void> _aiMenu(BuildContext anchor) async {
+    final s = S.of(context);
+    final op = await _menuAbove<String>(anchor, [
+      for (final op in _aiOperations.entries) psgMenuItem(context, op.key, s.t(op.value), icon: 'psg:sparkles'),
+    ]);
+    if (op != null) _ai(op);
+  }
+
   Future<void> _clear() async {
     final s = S.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        content: Text(s.t('clearContentConfirm')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(s.t('cancel'))),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(s.t('confirm'))),
-        ],
-      ),
-    );
-    if (ok != true) return;
+    final ok = await psgConfirm(context, s.t('clearContentConfirm'), danger: false);
+    if (!ok) return;
     setState(() {
       _to = [];
       _cc = [];
@@ -465,16 +478,24 @@ class _ComposeScreenState extends State<ComposeScreen> {
       return;
     }
     if (!mounted || result.isEmpty) return;
-    final replace = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text(s.t('aiTransformPreview')),
-        content: SizedBox(width: 480, child: SingleChildScrollView(child: SelectableText(result))),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(s.t('cancel'))),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(s.t('aiReplaceSelection'))),
-        ],
+    final replace = await psgBox<bool>(
+      context,
+      title: s.t('aiTransformPreview'),
+      maxWidth: 520,
+      body: Container(
+        constraints: const BoxConstraints(maxHeight: 320),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: context.psg.surfaceMuted,
+          border: Border.all(color: context.psg.border),
+          borderRadius: BorderRadius.circular(PsgRadius.xs),
+        ),
+        child: SingleChildScrollView(child: SelectableText(result, style: TextStyle(fontSize: 13, height: 1.65, color: context.psg.text))),
       ),
+      actions: [
+        (s.t('cancel'), false, PsgButtonKind.outline),
+        (s.t('aiReplaceSelection'), true, PsgButtonKind.primary),
+      ],
     );
     if (replace == true) {
       _editor.replaceText(sel.start, sel.end - sel.start, result, TextSelection.collapsed(offset: sel.start + result.length));
@@ -511,218 +532,381 @@ class _ComposeScreenState extends State<ComposeScreen> {
     final unchanged = _signature == _initialSignature;
     if (d.isEmpty || !_touched || unchanged) return true;
     final s = S.of(context);
-    final choice = await showDialog<String>(
-      context: context,
-      builder: (c) => AlertDialog(
-        content: Text(s.t('saveDraftConfirm')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, 'keep'), child: Text(s.keepEditing)),
-          TextButton(onPressed: () => Navigator.pop(c, 'discard'), child: Text(s.discard)),
-          FilledButton(onPressed: () => Navigator.pop(c, 'save'), child: Text(s.t('confirm'))),
-        ],
-      ),
+    final choice = await psgBox<String>(
+      context,
+      title: s.t('warning'),
+      body: Text(s.t('saveDraftConfirm')),
+      actions: [
+        (s.keepEditing, 'keep', PsgButtonKind.outline),
+        (s.discard, 'discard', PsgButtonKind.outline),
+        (s.t('confirm'), 'save', PsgButtonKind.primary),
+      ],
     );
     if (choice == 'save') await drafts?.save(d);
     return choice == 'save' || choice == 'discard';
   }
 
+  _WindowState _window = _WindowState.normal;
+
+  Future<void> _close() async {
+    if (await _confirmClose() && mounted) widget.onDone(null);
+  }
+
+  /// Reopens a minimized window (the shell's compose button when one is
+  /// already open).
+  void restore() {
+    if (_window == _WindowState.minimized) setState(() => _window = _WindowState.normal);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
+    final t = context.psg;
     final session = context.watch<Session>();
-    final theme = Theme.of(context);
-    final title = switch (_sendType) { 'reply' => s.t('reply'), 'forward' => s.t('forward'), _ => s.t('compose') };
-    final sendLabel = switch (_sendType) { 'reply' => s.t('reply'), 'forward' => s.t('forward'), _ => s.t('send') };
-    final recent = session.recentRecipients;
-    final wide = MediaQuery.sizeOf(context).width > 720;
+    final size = MediaQuery.sizeOf(context);
+    final pad = MediaQuery.paddingOf(context);
+    final phone = size.width < 768;
+    final badge = switch (_sendType) { 'reply' => s.t('reply'), 'forward' => s.t('forward'), _ => s.t('compose') };
+    final minimized = _window == _WindowState.minimized;
 
-    Widget divider() => const Divider(height: 1);
-
-    final fromRow = Row(children: [
-      SizedBox(width: 64, child: Text(s.t('sender'), style: TextStyle(color: theme.colorScheme.outline))),
-      Expanded(
-        child: session.accounts.length > 1
-            ? DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  isExpanded: true,
-                  value: _from.accountId,
-                  items: [
-                    for (final a in session.accounts)
-                      DropdownMenuItem(
-                        value: a.accountId,
-                        child: Text(a.name.isNotEmpty ? '${a.name} <${a.email}>' : a.email, overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: (id) => setState(() {
-                    _from = session.accounts.firstWhere((a) => a.accountId == id);
-                    _autoPicked = false;
-                  }),
-                ),
-              )
-            : Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(_from.email)),
-      ),
-      if (_autoPicked)
-        Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: Text(s.t('senderAutoPicked'), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary)),
-        ),
-    ]);
-
-    final toolbar = QuillSimpleToolbar(
-      controller: _editor,
-      config: const QuillSimpleToolbarConfig(
-        multiRowsDisplay: false,
-        showFontFamily: false,
-        showFontSize: false,
-        showSmallButton: false,
-        showInlineCode: false,
-        showCodeBlock: false,
-        showSubscript: false,
-        showSuperscript: false,
-        showSearchButton: false,
-        showListCheck: false,
-        showDirection: false,
-        showAlignmentButtons: true,
-        showIndent: true,
+    // ── Header: badge · subject · minimize / maximize / close ──
+    Widget action(String icon, String tip, VoidCallback onTap, {bool close = false}) => _WindowButton(
+          icon: icon,
+          tooltip: tip,
+          onTap: onTap,
+          close: close,
+          size: minimized ? 32 : 36,
+        );
+    final header = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: minimized ? () => setState(() => _window = _WindowState.normal) : null,
+      child: Container(
+        height: minimized ? (phone ? 56 : 52) : 68,
+        padding: EdgeInsets.fromLTRB(minimized ? (phone ? 16 : 18) : (phone ? 18 : 28), 0, minimized && phone ? 8 : 16, 0),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(color: t.primaryMuted, borderRadius: BorderRadius.circular(PsgRadius.xs)),
+            child: Text(badge, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.primary)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: ListenableBuilder(
+              listenable: _subject,
+              builder: (_, _) => Text(
+                _subject.text.trim().isEmpty ? s.t('noSubject') : _subject.text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: minimized ? 14 : 20, fontWeight: FontWeight.w700, letterSpacing: -.2, color: t.text),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          action('psg:minimize', minimized ? s.t('expand') : s.t('minimize'),
+              () => setState(() => _window = minimized ? _WindowState.normal : _WindowState.minimized)),
+          if (!phone) ...[
+            const SizedBox(width: 6),
+            action(_window == _WindowState.maximized ? 'psg:restore' : 'psg:maximize',
+                _window == _WindowState.maximized ? s.t('restore') : s.t('maximize'),
+                () => setState(() => _window = _window == _WindowState.maximized ? _WindowState.normal : _WindowState.maximized)),
+          ],
+          const SizedBox(width: 6),
+          action('psg:close', s.t('close'), _close, close: true),
+        ]),
       ),
     );
 
-    final page = Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: s.t('close'),
-          icon: const Icon(Icons.close),
-          onPressed: () async {
-            if (await _confirmClose() && context.mounted) Navigator.of(context).pop();
-          },
+    if (minimized) {
+      // Docked pill: bottom-right on desktop, above the tab bar on phones.
+      final pill = Material(
+        color: t.surface,
+        elevation: 0,
+        borderRadius: BorderRadius.circular(phone ? 18 : PsgRadius.lg),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(phone ? 18 : PsgRadius.lg),
+            boxShadow: phone ? PsgShadow.md(context) : PsgShadow.lg(context),
+          ),
+          child: header,
         ),
-        title: Text(title),
-        actions: [
-          IconButton(tooltip: s.t('attachments'), icon: const Icon(Icons.attach_file), onPressed: _busy ? null : _pickFiles),
-          IconButton(tooltip: s.t('insertTemplate'), icon: const Icon(Icons.description_outlined), onPressed: _insertTemplate),
-          PopupMenuButton<String>(
-            tooltip: s.t('aiTransform'),
-            icon: const Icon(Icons.auto_awesome_outlined),
-            onSelected: _ai,
-            itemBuilder: (_) => [
-              for (final op in _aiOperations.entries) PopupMenuItem(value: op.key, child: Text(s.t(op.value))),
-            ],
-          ),
-          IconButton(tooltip: s.t('clear'), icon: const Icon(Icons.cleaning_services_outlined), onPressed: _clear),
-          const SizedBox(width: 4),
-          if (wide)
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _sendLater,
-              icon: const Icon(Icons.schedule_send_outlined, size: 18),
-              label: Text(s.t('sendLater')),
-            )
-          else
-            IconButton(tooltip: s.t('sendLater'), icon: const Icon(Icons.schedule_send_outlined), onPressed: _busy ? null : _sendLater),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilledButton.icon(
-              onPressed: _busy ? null : _send,
-              icon: _busy
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.send, size: 18),
-              label: Text(sendLabel),
-            ),
-          ),
-        ],
-      ),
-      body: Column(children: [
-        Padding(
+      );
+      return Stack(children: [
+        Positioned(
+          right: phone ? 12 : 28,
+          left: phone ? 12 : null,
+          bottom: phone ? 86 + pad.bottom : 28,
+          width: phone ? null : 320,
+          child: pill,
+        ),
+      ]);
+    }
+
+    // ── Fields: one grey well (sender, to, cc, bcc, subject) ──
+    final recent = session.recentRecipients;
+    Widget row(Widget child, {bool first = false, bool last = false, double minHeight = 46}) => Container(
+          constraints: BoxConstraints(minHeight: minHeight),
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(children: [
-            fromRow,
-            divider(),
-            RecipientField(
-              key: _toKey,
-              label: s.t('recipient'),
-              values: _to,
-              suggestions: recent,
-              autofocus: _to.isEmpty && widget.draft == null,
-              onChanged: (v) => setState(() {
-                _to = v;
-                _touched = true;
-              }),
-              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (!_showCc) TextButton(onPressed: () => setState(() => _showCc = true), child: Text(s.t('cc'))),
-                if (!_showBcc) TextButton(onPressed: () => setState(() => _showBcc = true), child: Text(s.t('bcc'))),
-                IconButton(tooltip: s.t('recentContacts'), icon: const Icon(Icons.contacts_outlined), onPressed: _contacts),
-              ]),
+          decoration: BoxDecoration(
+            color: t.surfaceMuted,
+            border: last ? null : Border(bottom: BorderSide(color: t.border)),
+            borderRadius: BorderRadius.vertical(
+              top: first ? const Radius.circular(18) : Radius.zero,
+              bottom: last ? const Radius.circular(18) : Radius.zero,
             ),
-            if (_showCc) ...[
-              divider(),
-              RecipientField(
-                key: _ccKey,
-                label: s.t('cc'),
-                values: _cc,
-                suggestions: recent,
-                onChanged: (v) => setState(() => _cc = v),
-              ),
-            ],
-            if (_showBcc) ...[
-              divider(),
-              RecipientField(
-                key: _bccKey,
-                label: s.t('bcc'),
-                values: _bcc,
-                suggestions: recent,
-                onChanged: (v) => setState(() => _bcc = v),
-              ),
-            ],
-            divider(),
-            Row(children: [
-              SizedBox(width: 64, child: Text(s.t('subject'), style: TextStyle(color: theme.colorScheme.outline))),
-              Expanded(
-                child: TextField(
-                  controller: _subject,
-                  decoration: const InputDecoration(border: InputBorder.none),
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => _editorFocus.requestFocus(),
-                ),
-              ),
+          ),
+          child: child,
+        );
+    Widget label(String text) => SizedBox(
+          width: 60,
+          child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: t.textMuted)),
+        );
+    Widget toggle(String text, VoidCallback onTap) => InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(PsgRadius.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            child: Text(text, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, letterSpacing: .35, color: t.textSecondary)),
+          ),
+        );
+
+    final fromChip = _FromChip(
+      account: _from,
+      selectable: session.accounts.length > 1,
+      onSelect: (a) => setState(() {
+        _from = a;
+        _autoPicked = false;
+      }),
+    );
+
+    final fields = Padding(
+      padding: EdgeInsets.symmetric(horizontal: phone ? 12 : 20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        row(
+          first: true,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 10, runSpacing: 4, children: [
+              label(s.t('sender')),
+              fromChip,
+              if (_autoPicked) Text(s.t('senderAutoPicked'), style: TextStyle(fontSize: 12, color: t.textSecondary)),
             ]),
-            divider(),
+          ),
+        ),
+        row(RecipientField(
+          key: _toKey,
+          label: s.t('recipient'),
+          values: _to,
+          suggestions: recent,
+          autofocus: _to.isEmpty && widget.draft == null,
+          onChanged: (v) => setState(() {
+            _to = v;
+            _touched = true;
+          }),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (!_showCc) toggle(s.t('cc'), () => setState(() => _showCc = true)),
+            if (!_showBcc) ...[const SizedBox(width: 4), toggle(s.t('bcc'), () => setState(() => _showBcc = true))],
+            const SizedBox(width: 4),
+            PsgIconButton('psg:user-plus', size: 26, iconSize: 14, tooltip: s.t('recentContacts'), onPressed: _contacts),
+          ]),
+        )),
+        if (_showCc)
+          row(RecipientField(key: _ccKey, label: s.t('cc'), values: _cc, suggestions: recent, onChanged: (v) => setState(() => _cc = v))),
+        if (_showBcc)
+          row(RecipientField(key: _bccKey, label: s.t('bcc'), values: _bcc, suggestions: recent, onChanged: (v) => setState(() => _bcc = v))),
+        row(
+          last: true,
+          minHeight: 50,
+          Row(children: [
+            label(s.t('subject')),
+            Expanded(
+              child: TextField(
+                controller: _subject,
+                style: TextStyle(fontSize: 14, color: t.text),
+                decoration: InputDecoration(
+                  hintText: s.t('subject'),
+                  hintStyle: TextStyle(color: t.textMuted, fontSize: 14),
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                ),
+                textInputAction: TextInputAction.next,
+                onChanged: (_) => _touched = true,
+                onSubmitted: (_) => _editorFocus.requestFocus(),
+              ),
+            ),
           ]),
         ),
-        Container(
-          color: theme.colorScheme.surfaceContainerLow,
-          width: double.infinity,
-          child: toolbar,
-        ),
-        if (_files.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final f in _files)
-                  InputChip(
-                    avatar: Icon(isImageName(f.filename) ? Icons.image_outlined : Icons.insert_drive_file_outlined, size: 18),
-                    label: Text('${f.filename} · ${formatSize(f.size)}'),
-                    onDeleted: () => setState(() => _files.remove(f)),
+      ]),
+    );
+
+    // ── Editor: formatting bar in a grey strip, then the text ──
+    final toolbar = Container(
+      margin: EdgeInsets.fromLTRB(phone ? 14 : 24, 14, phone ? 14 : 24, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(color: t.surfaceMuted, borderRadius: BorderRadius.circular(PsgRadius.md)),
+      child: QuillSimpleToolbar(
+        controller: _editor,
+        config: QuillSimpleToolbarConfig(
+          multiRowsDisplay: false,
+          color: Colors.transparent,
+          showFontFamily: false,
+          showFontSize: true,
+          showSmallButton: false,
+          showInlineCode: false,
+          showCodeBlock: false,
+          showSubscript: false,
+          showSuperscript: false,
+          showSearchButton: false,
+          showListCheck: false,
+          showDirection: false,
+          showAlignmentButtons: true,
+          showIndent: true,
+          showQuote: false,
+          showHeaderStyle: false,
+          showDividers: true,
+          buttonOptions: QuillSimpleToolbarButtonOptions(
+            base: QuillToolbarBaseButtonOptions(
+              iconSize: 15,
+              iconTheme: QuillIconTheme(
+                iconButtonSelectedData: IconButtonData(
+                  style: IconButton.styleFrom(
+                    backgroundColor: t.surfaceActive,
+                    foregroundColor: t.text,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PsgRadius.xs)),
                   ),
-              ]),
-            ),
-          ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: QuillEditor(
-              controller: _editor,
-              focusNode: _editorFocus,
-              scrollController: _editorScroll,
-              config: QuillEditorConfig(
-                placeholder: s.t('bodyPlaceholder'),
-                padding: const EdgeInsets.only(bottom: 24),
-                expands: false,
+                ),
+                iconButtonUnselectedData: IconButtonData(
+                  style: IconButton.styleFrom(
+                    foregroundColor: t.text,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PsgRadius.xs)),
+                  ),
+                ),
               ),
             ),
           ),
         ),
+      ),
+    );
+
+    final editor = Padding(
+      padding: EdgeInsets.fromLTRB(phone ? 18 : 30, 10, phone ? 18 : 30, 0),
+      child: QuillEditor(
+        controller: _editor,
+        focusNode: _editorFocus,
+        scrollController: _editorScroll,
+        config: QuillEditorConfig(
+          placeholder: s.t('bodyPlaceholder'),
+          padding: const EdgeInsets.only(bottom: 24),
+          expands: false,
+          customStyles: DefaultStyles(
+            paragraph: DefaultTextBlockStyle(
+              TextStyle(fontSize: 15, height: 1.6, color: t.text, fontFamily: 'DM Sans'),
+              HorizontalSpacing.zero,
+              VerticalSpacing.zero,
+              VerticalSpacing.zero,
+              null,
+            ),
+            placeHolder: DefaultTextBlockStyle(
+              TextStyle(fontSize: 15, height: 1.6, color: t.textMuted, fontFamily: 'DM Sans'),
+              HorizontalSpacing.zero,
+              VerticalSpacing.zero,
+              VerticalSpacing.zero,
+              null,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // ── Bottom bar: AI · attach · clear · template | schedule · send ──
+    Widget tb(String icon, {String? text, required VoidCallback? onTap, Color? color}) =>
+        _ToolButton(icon: icon, label: text, onTap: onTap, color: color);
+    final attachments = _files.isEmpty
+        ? null
+        : SizedBox(
+            height: 26,
+            child: ListView(scrollDirection: Axis.horizontal, children: [
+              for (final f in _files)
+                Container(
+                  margin: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  constraints: const BoxConstraints(maxWidth: 200),
+                  decoration: BoxDecoration(
+                    color: t.surface,
+                    border: Border.all(color: t.border),
+                    borderRadius: BorderRadius.circular(PsgRadius.sm),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    PsgIcon(isImageName(f.filename) ? 'psg:gallery' : 'psg:paperclip', size: 14, color: t.textSecondary),
+                    const SizedBox(width: 5),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 100),
+                      child: Text(f.filename,
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: t.text)),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(formatSize(f.size), style: TextStyle(fontSize: 10, color: t.textSecondary)),
+                    const SizedBox(width: 5),
+                    GestureDetector(
+                      onTap: () => setState(() => _files.remove(f)),
+                      child: PsgIcon('psg:close-circle', size: 16, color: t.textSecondary),
+                    ),
+                  ]),
+                ),
+            ]),
+          );
+    final sendButton = PsgButton(s.t('send'), icon: 'psg:send', height: 44, busy: _busy, onPressed: _busy ? null : _send);
+    final laterButton = phone
+        ? _ToolButton(icon: 'psg:clock', onTap: _busy ? null : _sendLater, outlined: true)
+        : PsgButton(s.t('sendLater'), icon: 'psg:clock', kind: PsgButtonKind.outline, height: 44, onPressed: _busy ? null : _sendLater);
+    final bottomBar = Padding(
+      padding: EdgeInsets.fromLTRB(phone ? 12 : 20, 14, phone ? 12 : 20, (phone ? 12 + pad.bottom : 20)),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (attachments != null) ...[attachments, const SizedBox(height: 10)],
+        Row(children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                Builder(builder: (b) => tb('psg:sparkles', text: phone ? null : s.t('aiTransform'), onTap: () => _aiMenu(b))),
+                const SizedBox(width: 4),
+                tb('psg:paperclip', text: phone ? null : s.t('attachments'), onTap: _busy ? null : _pickFiles),
+                const SizedBox(width: 4),
+                tb('psg:eraser', onTap: _clear),
+                const SizedBox(width: 4),
+                Builder(builder: (b) => tb('psg:template', text: phone ? null : s.t('insertTemplate'), onTap: () => _insertTemplate(b))),
+              ]),
+            ),
+          ),
+          const SizedBox(width: 12),
+          laterButton,
+          const SizedBox(width: 12),
+          sendButton,
+        ]),
+      ]),
+    );
+
+    final card = Material(
+      color: t.surface,
+      borderRadius: phone ? BorderRadius.zero : BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (phone) SizedBox(height: pad.top),
+        if (phone)
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 4),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(color: t.border, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+        header,
+        fields,
+        toolbar,
+        Expanded(child: editor),
         if (_quote.isNotEmpty)
           _QuotePreview(
             html: _quote,
@@ -733,21 +917,217 @@ class _ComposeScreenState extends State<ComposeScreen> {
               _touched = true;
             }),
           ),
+        bottomBar,
       ]),
     );
 
+    final Widget window;
+    if (phone) {
+      window = card;
+    } else {
+      final maxed = _window == _WindowState.maximized;
+      final w = maxed ? (size.width - 56).clamp(0, 1300).toDouble() : (size.width - 48).clamp(0, 820).toDouble();
+      final h = maxed ? (size.height - 56).clamp(0, 860).toDouble() : (size.height - 48).clamp(0, 740).toDouble();
+      window = Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: w,
+          height: h,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(28), boxShadow: PsgShadow.lg(context)),
+          child: card,
+        ),
+      );
+    }
+
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        if (await _confirmClose() && context.mounted) Navigator.of(context).pop();
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _close();
       },
       child: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.enter, control: true): _send,
           const SingleActivator(LogicalKeyboardKey.enter, meta: true): _send,
+          const SingleActivator(LogicalKeyboardKey.escape): _close,
         },
-        child: page,
+        child: Stack(children: [
+          // Web .send: a soft dim behind the centred card (none on phones,
+          // where the composer is full-screen).
+          if (!phone)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () {},
+                child: ColoredBox(color: context.isDark ? const Color(0x99000000) : const Color(0x521C1C1E)),
+              ),
+            ),
+          Positioned.fill(child: window),
+        ]),
+      ),
+    );
+  }
+}
+
+enum _WindowState { normal, maximized, minimized }
+
+/// Header buttons (web .wh-action-btn): 36px grey squares; Close turns red
+/// on hover.
+class _WindowButton extends StatefulWidget {
+  final String icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool close;
+  final double size;
+  const _WindowButton({required this.icon, required this.tooltip, required this.onTap, this.close = false, this.size = 36});
+
+  @override
+  State<_WindowButton> createState() => _WindowButtonState();
+}
+
+class _WindowButtonState extends State<_WindowButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.psg;
+    final bg = _hover ? (widget.close ? t.danger : t.surfaceActive) : t.surfaceMuted;
+    final fg = _hover ? (widget.close ? Colors.white : t.text) : t.textSecondary;
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+            alignment: Alignment.center,
+            child: PsgIcon(widget.icon, size: 15, color: fg),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom-bar button (web .tb-btn): 44px grey, optional label.
+class _ToolButton extends StatelessWidget {
+  final String icon;
+  final String? label;
+  final VoidCallback? onTap;
+  final Color? color;
+  final bool outlined;
+  const _ToolButton({required this.icon, this.label, this.onTap, this.color, this.outlined = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.psg;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: outlined ? BorderSide(color: t.border) : BorderSide.none,
+    );
+    return Opacity(
+      opacity: onTap == null ? .5 : 1,
+      child: Material(
+        color: outlined ? t.surface : t.surfaceMuted,
+        shape: shape,
+        child: InkWell(
+          customBorder: shape,
+          hoverColor: t.surfaceActive,
+          onTap: onTap,
+          child: Container(
+            height: 44,
+            constraints: const BoxConstraints(minWidth: 44),
+            padding: EdgeInsets.symmetric(horizontal: label == null ? 0 : 16),
+            alignment: Alignment.center,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              PsgIcon(icon, size: 16, color: color ?? t.text),
+              if (label != null) ...[
+                const SizedBox(width: 5),
+                Text(label!, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: color ?? t.text)),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Web .from-chip: white chip with the mailbox colour dot, name and
+/// address; opens the sender menu when there is more than one address.
+class _FromChip extends StatelessWidget {
+  final Account account;
+  final bool selectable;
+  final ValueChanged<Account> onSelect;
+  const _FromChip({required this.account, required this.selectable, required this.onSelect});
+
+  Future<void> _open(BuildContext context) async {
+    final s = S.of(context);
+    final t = context.psg;
+    final session = context.read<Session>();
+    final box = context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final pos = box.localToGlobal(Offset(0, box.size.height + 6), ancestor: overlay);
+    final a = await showMenu<Account>(
+      context: context,
+      position: RelativeRect.fromLTRB(pos.dx, pos.dy, overlay.size.width - pos.dx, 0),
+      constraints: const BoxConstraints(minWidth: 280),
+      items: [
+        psgMenuHeading(context, s.t('chooseSender')),
+        for (final acc in session.accounts)
+          PopupMenuItem<Account>(
+            value: acc,
+            height: 52,
+            child: Row(children: [
+              PsgAvatar(name: acc.name.isNotEmpty ? acc.name : acc.email, email: acc.email, size: 34, radius: PsgRadius.sm),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(acc.name.isNotEmpty ? acc.name : acc.email.split('@').first,
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: t.text)),
+                  Text(acc.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: t.textSecondary)),
+                ]),
+              ),
+              if (acc.accountId == account.accountId) PsgIcon('psg:check', size: 18, color: t.primary),
+            ]),
+          ),
+      ],
+    );
+    if (a != null) onSelect(a);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.psg;
+    final name = account.name.isNotEmpty ? account.name : account.email.split('@').first;
+    return Material(
+      color: t.surface,
+      borderRadius: BorderRadius.circular(PsgRadius.sm),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(PsgRadius.sm),
+        onTap: selectable ? () => _open(context) : null,
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: mailboxColor(account.email), shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(name,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.text)),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text('<${account.email}>',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: t.textSecondary)),
+            ),
+            if (selectable) ...[const SizedBox(width: 6), PsgIcon('psg:chevron-down', size: 12, color: t.textSecondary)],
+          ]),
+        ),
       ),
     );
   }
@@ -772,25 +1152,32 @@ class _QuotePreviewState extends State<_QuotePreview> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final theme = Theme.of(context);
+    final t = context.psg;
     return Container(
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.dividerColor))),
-      child: Column(children: [
-        ListTile(
-          dense: true,
-          leading: Checkbox(value: widget.included, onChanged: (v) => widget.onToggle(v ?? true)),
-          title: Text(widget.forward ? s.t('forward') : s.t('quotedText')),
-          trailing: IconButton(
-            icon: Icon(_open ? Icons.expand_more : Icons.expand_less),
-            onPressed: () => setState(() => _open = !_open),
-          ),
+      margin: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      decoration: BoxDecoration(color: t.surfaceMuted, borderRadius: BorderRadius.circular(PsgRadius.md)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(PsgRadius.md),
           onTap: () => setState(() => _open = !_open),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(6, 2, 10, 2),
+            child: Row(children: [
+              PsgCheckbox(value: widget.included, onChanged: widget.onToggle),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(widget.forward ? s.t('forward') : s.t('quotedText'),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.textSecondary)),
+              ),
+              PsgIcon(_open ? 'psg:chevron-down' : 'psg:chevron-right', size: 14, color: t.textSecondary),
+            ]),
+          ),
         ),
         if (_open)
           ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 240),
+            constraints: const BoxConstraints(maxHeight: 200),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Opacity(opacity: widget.included ? 1 : .4, child: HtmlQuote(html: widget.html)),
             ),
           ),
@@ -804,6 +1191,6 @@ class HtmlQuote extends StatelessWidget {
   const HtmlQuote({super.key, required this.html});
 
   @override
-  Widget build(BuildContext context) =>
-      HtmlWidget(html, textStyle: Theme.of(context).textTheme.bodySmall, onTapUrl: openExternal);
+  Widget build(BuildContext context) => HtmlWidget(html,
+      textStyle: TextStyle(fontSize: 13, height: 1.6, color: context.psg.textSecondary), onTapUrl: openExternal);
 }

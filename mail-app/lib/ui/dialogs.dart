@@ -99,3 +99,40 @@ Future<String?> psgPrompt(BuildContext context,
     }),
   );
 }
+
+/// A message box with any body and buttons; returns the chosen value.
+Future<T?> psgBox<T>(BuildContext context,
+    {String? title, required Widget body, required List<(String, T, PsgButtonKind)> actions, double maxWidth = 420}) {
+  return showDialog<T>(
+    context: context,
+    builder: (c) {
+      final t = c.psg;
+      return Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (title != null) ...[
+                Row(children: [
+                  Expanded(child: Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: t.text))),
+                  PsgIconButton('psg:close', iconSize: 16, onPressed: () => Navigator.pop(c)),
+                ]),
+                const SizedBox(height: 10),
+              ],
+              Flexible(
+                child: DefaultTextStyle.merge(style: TextStyle(fontSize: 14, color: t.textSecondary, height: 1.5), child: body),
+              ),
+              const SizedBox(height: 20),
+              Wrap(alignment: WrapAlignment.end, spacing: 10, runSpacing: 8, children: [
+                for (final (label, value, kind) in actions)
+                  PsgButton(label, kind: kind, height: 36, radius: PsgRadius.sm, onPressed: () => Navigator.pop(c, value)),
+              ]),
+            ]),
+          ),
+        ),
+      );
+    },
+  );
+}

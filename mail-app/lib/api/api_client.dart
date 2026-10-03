@@ -104,8 +104,19 @@ class ApiClient {
   Future<UserInfo> userInfo() async =>
       UserInfo.fromJson(Map<String, dynamic>.from(await get('/my/loginUserInfo') as Map));
 
-  Future<Map<String, dynamic>> websiteConfig() async =>
-      Map<String, dynamic>.from((await get('/setting/websiteConfig')) as Map? ?? const {});
+  /// [forRegister]: the real domain list even when the sign-in page hides
+  /// it (setting-service websiteConfig()).
+  Future<Map<String, dynamic>> websiteConfig({bool forRegister = false}) async => Map<String, dynamic>.from(
+      (await get('/setting/websiteConfig', forRegister ? {'forRegister': 1} : null)) as Map? ?? const {});
+
+  /// Returns the server's `regVerifyOpen` flag.
+  Future<bool> register({required String email, required String name, required String password, String? code, String token = ''}) async {
+    final data = await post('/register', {'email': email, 'name': name, 'password': password, 'token': token, 'code': code});
+    return data is Map && data['regVerifyOpen'] == true;
+  }
+
+  Future<void> changePasswordAtLogin(String email, String currentPassword, String newPassword) =>
+      post('/login/changePassword', {'email': email, 'currentPassword': currentPassword, 'newPassword': newPassword});
 
   Future<List<Account>> accounts() async {
     const page = 30;

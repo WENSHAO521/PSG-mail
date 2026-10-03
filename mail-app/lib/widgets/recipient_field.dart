@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../ui/psg.dart';
+
 final emailPattern = RegExp(r'^[^\s@<>,;，]+@[^\s@<>,;，]+\.[^\s@<>,;，]+$');
 
 /// Addresses as chips with an input that commits on Enter / comma / space /
@@ -72,21 +74,35 @@ class RecipientFieldState extends State<RecipientField> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final t = context.psg;
     return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       SizedBox(
-        width: 64,
-        child: Text(widget.label, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
+        width: 60,
+        child: Text(widget.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: t.textMuted)),
       ),
       Expanded(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            // Web el-tag type="primary": light accent fill, accent text.
             for (final e in widget.values)
-              InputChip(
-                label: Text(e),
-                visualDensity: VisualDensity.compact,
-                onDeleted: () => _remove(e),
+              Container(
+                height: 24,
+                padding: const EdgeInsets.only(left: 9, right: 4),
+                decoration: BoxDecoration(
+                  color: t.primaryMuted,
+                  border: Border.all(color: t.primaryLight8),
+                  borderRadius: BorderRadius.circular(PsgRadius.xs - 2),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(e, style: TextStyle(fontSize: 12, color: t.primary)),
+                  const SizedBox(width: 3),
+                  InkWell(
+                    onTap: () => _remove(e),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Icon(Icons.close_rounded, size: 13, color: t.primary),
+                  ),
+                ]),
               ),
             ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 160, maxWidth: 420),
@@ -120,7 +136,15 @@ class RecipientFieldState extends State<RecipientField> {
                     focusNode: focus,
                     autofocus: widget.autofocus,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(border: InputBorder.none, isDense: true),
+                    style: TextStyle(fontSize: 14, color: t.text),
+                    decoration: const InputDecoration(
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 6),
+                    ),
                     onChanged: (v) {
                       if (RegExp(r'[,，;；\s]$').hasMatch(v)) commit();
                     },
@@ -133,8 +157,10 @@ class RecipientFieldState extends State<RecipientField> {
                 optionsViewBuilder: (context, onSelected, options) => Align(
                   alignment: Alignment.topLeft,
                   child: Material(
-                    elevation: 4,
-                    borderRadius: BorderRadius.circular(8),
+                    color: t.surface,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PsgRadius.sm), side: BorderSide(color: t.border)),
+                    clipBehavior: Clip.antiAlias,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 240, maxWidth: 360),
                       child: ListView(
@@ -142,7 +168,13 @@ class RecipientFieldState extends State<RecipientField> {
                         shrinkWrap: true,
                         children: [
                           for (final o in options)
-                            ListTile(dense: true, leading: const Icon(Icons.history, size: 18), title: Text(o), onTap: () => onSelected(o)),
+                            InkWell(
+                              onTap: () => onSelected(o),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                child: Text(o, style: TextStyle(fontSize: 13.5, color: t.textSecondary)),
+                              ),
+                            ),
                         ],
                       ),
                     ),

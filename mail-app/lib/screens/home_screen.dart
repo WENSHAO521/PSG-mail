@@ -188,13 +188,30 @@ class _HomeScreenState extends State<HomeScreen> {
     _runSearch('');
   }
 
+  /// The compose window (web layout/write): one at a time, drawn over the
+  /// shell; it can be minimized to a pill while the rest stays usable.
+  Widget? _composer;
+  final _composerKey = GlobalKey<ComposeScreenState>();
+
   Future<void> _compose(
       {ReplyMode? mode, Email? original, Draft? draft, Map<String, dynamic>? prefill, bool restored = false}) async {
-    final result = await Navigator.of(context).push<ComposeResult>(MaterialPageRoute(
-      fullscreenDialog: true,
-      builder: (_) =>
-          ComposeScreen(mode: mode, original: original, draft: draft, prefill: prefill, restored: restored),
-    ));
+    if (_composer != null) {
+      _composerKey.currentState?.restore();
+      return;
+    }
+    setState(() => _composer = ComposeScreen(
+          key: _composerKey,
+          mode: mode,
+          original: original,
+          draft: draft,
+          prefill: prefill,
+          restored: restored,
+          onDone: _composeDone,
+        ));
+  }
+
+  void _composeDone(ComposeResult? result) {
+    setState(() => _composer = null);
     if (!mounted || result == null) return;
     final s = S.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -515,10 +532,20 @@ class _HomeScreenState extends State<HomeScreen> {
             if (canSend) const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () => _compose(),
             const SingleActivator(LogicalKeyboardKey.keyF, control: true): _focusSearch,
             const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _focusSearch,
-            const SingleActivator(LogicalKeyboardKey.slash): _focusSearch,
+            // Only when no text field has focus (web: the "/" key).
+            const SingleActivator(LogicalKeyboardKey.slash): () {
+              if (_shellFocus.hasPrimaryFocus) _focusSearch();
+            },
             const SingleActivator(LogicalKeyboardKey.f5): () => list.refresh(),
           },
-          child: Focus(focusNode: _shellFocus, autofocus: true, child: content),
+          child: Focus(
+            focusNode: _shellFocus,
+            autofocus: true,
+            child: Stack(children: [
+              Positioned.fill(child: content),
+              if (_composer != null) Positioned.fill(child: _composer!),
+            ]),
+          ),
         );
       }),
     );

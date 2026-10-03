@@ -61,6 +61,26 @@ class Session extends ChangeNotifier {
     return s.endsWith('/api') ? s : '$s/api';
   }
 
+  /// Web "remember me": the address (never the password) and its domain.
+  ({String email, String suffix})? get rememberedLogin {
+    final e = _prefs.getString('rememberLoginEmail');
+    return e == null ? null : (email: e, suffix: _prefs.getString('rememberLoginSuffix') ?? '');
+  }
+
+  Future<void> rememberLogin(String? email, String suffix) async {
+    if (email == null || email.isEmpty) {
+      await _prefs.remove('rememberLoginEmail');
+      await _prefs.remove('rememberLoginSuffix');
+    } else {
+      await _prefs.setString('rememberLoginEmail', email);
+      await _prefs.setString('rememberLoginSuffix', suffix);
+    }
+  }
+
+  /// The server address typed on the sign-in page, kept before signing in
+  /// so its settings (domains, registration) can load.
+  Future<void> setServer(String server) => _prefs.setString(_kServer, server.trim());
+
   Future<void> signIn(String server, String email, String password) async {
     api.baseUrl = apiBase(server);
     final token = await api.login(email.trim(), password);
