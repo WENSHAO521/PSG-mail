@@ -159,8 +159,12 @@ const hashHistory = window.location.protocol === 'file:'
 // Links written for hash history (/#/settings?...; older workers sent the
 // backup OAuth callback that way) would otherwise resolve to "/" and land on
 // the inbox under history mode. Move the route out of the hash first.
-if (!hashHistory && window.location.hash.startsWith('#/')) {
-    window.history.replaceState(window.history.state, '', window.location.hash.slice(1))
+// "#//host/..." would be a cross-origin URL (replaceState throws), so only
+// single-slash paths qualify.
+if (!hashHistory && /^#\/(?!\/)/.test(window.location.hash)) {
+    try {
+        window.history.replaceState(window.history.state, '', window.location.hash.slice(1))
+    } catch {}
 }
 
 const router = createRouter({
