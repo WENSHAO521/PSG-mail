@@ -7,11 +7,13 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:psg_mail/api/api_client.dart';
 import 'package:psg_mail/api/models.dart';
+import 'package:psg_mail/l10n/web_strings.g.dart';
 import 'package:psg_mail/main.dart';
 import 'package:psg_mail/screens/compose_screen.dart';
 import 'package:psg_mail/services/updater.dart';
 import 'package:psg_mail/state/mail_watcher.dart';
 import 'package:psg_mail/state/session.dart';
+import 'package:psg_mail/ui/psg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 http.Response ok(Object? data) =>
@@ -146,8 +148,10 @@ void main() {
     final session = Session(await SharedPreferences.getInstance());
     await tester.pumpWidget(ChangeNotifierProvider.value(value: session, child: const PsgMailApp()));
     await tester.pumpAndSettle();
-    expect(find.byType(TextFormField), findsNWidgets(3));
-    expect(find.byType(FilledButton), findsOneWidget);
-    expect(find.byType(Image), findsOneWidget);
+    // Web views/login: email + password, the sign-in button, the brand.
+    expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.widgetWithText(PsgButton, webStringsEn['loginBtn']!), findsOneWidget);
+    expect(find.text(webStringsEn['twoFactorEntry']!), findsOneWidget);
+    expect(find.byType(BrandLogo), findsOneWidget);
   });
 }

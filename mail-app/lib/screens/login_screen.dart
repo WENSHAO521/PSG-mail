@@ -418,18 +418,28 @@ class _LoginScreenState extends State<LoginScreen> {
         Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 20),
           child: Row(children: [
-            GestureDetector(
-              onTap: () => setState(() => _remember = !_remember),
-              child: Row(children: [
-                PsgCheckbox(value: _remember, onChanged: (v) => setState(() => _remember = v)),
-                const SizedBox(width: 1),
-                Text(s.t('rememberMe'), style: TextStyle(fontSize: 13, color: t.textSecondary)),
-              ]),
+            Flexible(
+              child: GestureDetector(
+                onTap: () => setState(() => _remember = !_remember),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  PsgCheckbox(value: _remember, onChanged: (v) => setState(() => _remember = v)),
+                  const SizedBox(width: 1),
+                  Flexible(
+                    child: Text(s.t('rememberMe'),
+                        overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: t.textSecondary)),
+                  ),
+                ]),
+              ),
             ),
-            const Spacer(),
-            InkWell(
-              onTap: _changePassword,
-              child: Text(s.t('changePassword'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: t.text)),
+            const SizedBox(width: 12),
+            Flexible(
+              child: InkWell(
+                onTap: _changePassword,
+                child: Text(s.t('changePassword'),
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: t.text)),
+              ),
             ),
           ]),
         ),
