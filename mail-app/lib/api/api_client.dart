@@ -137,15 +137,21 @@ class ApiClient {
     return (rows as List? ?? const []).map((e) => Email.fromJson(Map<String, dynamic>.from(e))).toList();
   }
 
-  /// One page of a folder, newest first; [before] is the last emailId seen.
-  Future<Page<Email>> folder(Folder f, {required Account account, int? before, int size = 30}) async {
+  /// One page of a folder; [before] is the last emailId seen (the cursor).
+  /// [oldestFirst] is honoured by the folders the web app can sort (inbox,
+  /// all inboxes, sent).
+  Future<Page<Email>> folder(Folder f,
+      {required Account account, int? before, int size = 30, bool oldestFirst = false}) async {
     final scope = {'accountId': account.accountId, 'allReceive': account.allReceive, 'size': size, 'emailId': before ?? 0};
+    final sort = oldestFirst ? 1 : 0;
     final dynamic data;
     switch (f.kind) {
       case FolderKind.inbox:
-        data = await get('/email/list', {...scope, 'type': 0, 'timeSort': 0});
+        data = await get('/email/list', {...scope, 'type': 0, 'timeSort': sort});
+      case FolderKind.allInbox:
+        data = await get('/email/list', {...scope, 'allReceive': 1, 'type': 0, 'timeSort': sort});
       case FolderKind.sent:
-        data = await get('/email/list', {...scope, 'type': 1, 'timeSort': 0});
+        data = await get('/email/list', {...scope, 'type': 1, 'timeSort': sort});
       case FolderKind.starred:
         data = await get('/star/list', {'emailId': before ?? 0, 'size': size});
       case FolderKind.archive:
@@ -192,9 +198,44 @@ class ApiClient {
 
   Future<void> send(OutgoingMail m) => _send('POST', '/email/send',
       body: m.toJson(), timeout: const Duration(minutes: 3));
+
+  // ── Labels ──────────────────────────────────────────────────
+
+  Future<void> applyLabel(int labelId, List<int> ids) => post('/label/apply', {'labelId': labelId, 'emailIds': ids});
+  Future<void> removeLabel(int labelId, List<int> ids) => post('/label/remove', {'labelId': labelId, 'emailIds': ids});
+
+  // ── Scheduled ───────────────────────────────────────────────
+
+  Future<List<ScheduledMail>> scheduledList() async {
+    final data = await get('/email/schedule/list');
+    final rows = data is Map ? data['list'] : data;
+    return (rows as List? ?? const []).map((e) => ScheduledMail.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<void> scheduleCancel(int id) => put('/email/schedule/$id/cancel');
+  Future<void> scheduleSendNow(int id) => post('/email/schedule/$id/send-now');
+
+  /// Cancels the pending row and returns its full send payload for editing.
+  Future<Map<String, dynamic>> scheduleEdit(int id) async =>
+      Map<String, dynamic>.from(await post('/email/schedule/$id/edit') as Map);
+
+  // ── Raw downloads ───────────────────────────────────────────
+
+  /// The message as an .eml file: (filename, bytes). This endpoint returns
+  /// the raw file, not the JSON envelope.
+  Future<(String, List<int>)> exportEml(int emailId) async {
+    final res = await _http
+        .get(_uri('/email/export-eml/$emailId'), headers: _headers)
+        .timeout(const Duration(seconds: 60));
+    if (res.statusCode != 200) throw ApiException(res.statusCode, 'HTTP ${res.statusCode}');
+    final disposition = res.headers['content-disposition'] ?? '';
+    final m = RegExp(r'filename="?([^";]+)"?').firstMatch(disposition);
+    final name = m != null ? Uri.decodeComponent(m[1]!) : 'email-$emailId.eml';
+    return (name, res.bodyBytes);
+  }
 }
 
-enum FolderKind { inbox, starred, sent, archive, spam, trash, label }
+enum FolderKind { inbox, allInbox, starred, sent, archive, spam, trash, label }
 
 class Folder {
   final FolderKind kind;

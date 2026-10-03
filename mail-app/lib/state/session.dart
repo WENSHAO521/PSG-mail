@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../services/notifier.dart';
+import 'drafts.dart';
 
 /// Signed-in state: server, token, user, addresses and labels.
 class Session extends ChangeNotifier {
@@ -40,6 +41,9 @@ class Session extends ChangeNotifier {
 
   /// Set when the server rejected the token; the login screen explains why.
   bool expired = false;
+
+  /// Drafts on this device for the signed-in user.
+  DraftStore? drafts;
 
   /// True once this device's FCM token is registered with the worker.
   bool pushEnabled = false;
@@ -80,6 +84,7 @@ class Session extends ChangeNotifier {
     accounts = results[1] as List<Account>;
     final config = results[2] as Map<String, dynamic>;
     labels = results[3] as List<MailLabel>;
+    drafts = DraftStore('$server|${user!.userId}')..load();
     r2Domain = '${config['r2Domain'] ?? ''}';
     siteTitle = '${config['title'] ?? ''}'.isEmpty ? 'PSG Mail' : '${config['title']}';
     final savedId = _prefs.getInt(_kAccount);
@@ -137,6 +142,7 @@ class Session extends ChangeNotifier {
     accounts = const [];
     labels = const [];
     current = null;
+    drafts = null;
     _prefs.remove(_kToken);
     notifyListeners();
   }

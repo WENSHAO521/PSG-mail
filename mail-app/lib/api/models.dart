@@ -61,11 +61,18 @@ class Email {
   final String recipientJson;
   final String ccJson;
   final int type; // 0 received, 1 sent
+  /// Delivery status (emailConst.status): 0 received, 1 sent, 2 delivered,
+  /// 3/8 bounced, 4 complained, 5 delayed, 6 saving, 7 no recipient.
+  final int status;
+  /// Verification code the worker extracted from the mail, if any.
+  final String code;
+  /// Owner's address (admin "all mail" rows only).
+  final String userEmail;
   int unread; // 0 unread, 1 read
   bool isStar;
   final String createTime;
   final List<Attachment> attachments;
-  final List<MailLabel> labels;
+  List<MailLabel> labels;
 
   Email.fromJson(Map<String, dynamic> j)
       : emailId = _int(j['emailId']),
@@ -80,6 +87,9 @@ class Email {
         recipientJson = _str(j['recipient']),
         ccJson = _str(j['cc']),
         type = _int(j['type']),
+        status = _int(j['status']),
+        code = _str(j['code']),
+        userEmail = _str(j['userEmail']),
         unread = _int(j['unread']),
         isStar = _int(j['isStar']) == 1 || j['starId'] != null,
         createTime = _str(j['createTime']),
@@ -107,12 +117,7 @@ class Email {
   List<Address> get cc => parseAddresses(ccJson);
 
   /// Server times are UTC "yyyy-MM-dd HH:mm:ss".
-  DateTime? get created {
-    if (createTime.isEmpty) return null;
-    final iso = createTime.contains('T') ? createTime : createTime.replaceFirst(' ', 'T');
-    final t = DateTime.tryParse(iso.endsWith('Z') ? iso : '${iso}Z');
-    return t?.toLocal();
-  }
+  DateTime? get created => parseServerTime(createTime);
 
   String get preview {
     final source = text.isNotEmpty ? text : content.replaceAll(RegExp(r'<[^>]*>'), ' ');
@@ -173,4 +178,40 @@ class Page<T> {
   final List<T> items;
   final bool hasMore;
   const Page(this.items, this.hasMore);
+}
+
+/// A row of the Scheduled page (scheduled-email-service toClient()).
+class ScheduledMail {
+  final int id;
+  final int accountId;
+  final String scheduledAt; // UTC "yyyy-MM-dd HH:mm:ss"
+  final String status; // pending | processing | sent | failed | cancelled
+  final int attemptCount;
+  final String lastError;
+  final String sentTime;
+  final List<String> receiveEmail;
+  final String subject;
+  final int attachmentCount;
+
+  ScheduledMail.fromJson(Map<String, dynamic> j)
+      : id = _int(j['id']),
+        accountId = _int(j['accountId']),
+        scheduledAt = _str(j['scheduledAt']),
+        status = _str(j['status']).isEmpty ? 'pending' : _str(j['status']),
+        attemptCount = _int(j['attemptCount']),
+        lastError = _str(j['lastError']),
+        sentTime = _str(j['sentTime']),
+        receiveEmail = ((j['receiveEmail'] as List?) ?? const []).map((e) => '$e').toList(),
+        subject = _str(j['subject']),
+        attachmentCount = _int(j['attachmentCount']);
+
+  DateTime? get when => parseServerTime(status == 'sent' && sentTime.isNotEmpty ? sentTime : scheduledAt);
+}
+
+/// Server times are UTC, either "yyyy-MM-dd HH:mm:ss" or ISO.
+DateTime? parseServerTime(String raw) {
+  if (raw.isEmpty) return null;
+  final iso = raw.contains('T') ? raw : raw.replaceFirst(' ', 'T');
+  final hasZone = iso.endsWith('Z') || RegExp(r'[+-]\d\d:?\d\d$').hasMatch(iso);
+  return DateTime.tryParse(hasZone ? iso : '${iso}Z')?.toLocal();
 }

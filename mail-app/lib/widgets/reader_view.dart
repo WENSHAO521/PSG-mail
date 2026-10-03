@@ -81,7 +81,7 @@ class _ReaderViewState extends State<ReaderView> {
       await call();
       if (removes) widget.onRemoved(e);
     } catch (err) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$err')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(S.of(context).error(err))));
     }
   }
 
@@ -95,7 +95,7 @@ class _ReaderViewState extends State<ReaderView> {
     } catch (err) {
       setState(() => e.isStar = was);
       widget.onChanged();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$err')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(S.of(context).error(err))));
     }
   }
 

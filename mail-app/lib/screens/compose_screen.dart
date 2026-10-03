@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../l10n/strings.dart';
+import '../state/drafts.dart';
 import '../state/session.dart';
 import '../widgets/reader_view.dart';
 
@@ -31,7 +32,15 @@ String _prefixed(String subject, String prefix, List<String> known) {
 class ComposeScreen extends StatefulWidget {
   final ReplyMode? mode;
   final Email? original;
-  const ComposeScreen({super.key, this.mode, this.original});
+
+  /// A saved draft to keep writing (Drafts page).
+  final Draft? draft;
+
+  /// A send payload to reopen, e.g. a scheduled mail being edited
+  /// (scheduled-email-service beginEdit()).
+  final Map<String, dynamic>? prefill;
+
+  const ComposeScreen({super.key, this.mode, this.original, this.draft, this.prefill});
 
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
@@ -48,12 +57,68 @@ class _ComposeScreenState extends State<ComposeScreen> {
   bool _showCc = false;
   bool _sending = false;
   bool _dirty = false;
+  String? _draftId;
+  String _sendType = '';
+  int _replyToId = 0;
+  // Reply/forward as first opened; closing unchanged needs no draft prompt.
+  String _initialSignature = '';
+
+  String get _signature => '${_to.text}\u0000${_subject.text}\u0000${_body.text}';
+
+  void _applyFields({
+    int? accountId,
+    List<String> to = const [],
+    List<String> cc = const [],
+    List<String> bcc = const [],
+    String subject = '',
+    String text = '',
+    List<OutgoingAttachment> attachments = const [],
+  }) {
+    final session = context.read<Session>();
+    _from = session.accounts.where((a) => a.accountId == accountId).firstOrNull ?? _from;
+    _to.text = to.join(', ');
+    _cc.text = cc.join(', ');
+    _bcc.text = bcc.join(', ');
+    _showCc = cc.isNotEmpty || bcc.isNotEmpty;
+    _subject.text = subject;
+    _body.text = text;
+    _files.addAll(attachments);
+  }
 
   @override
   void initState() {
     super.initState();
     final session = context.read<Session>();
     _from = session.current!;
+    _sendType = switch (widget.mode) { ReplyMode.forward => 'forward', null => '', _ => 'reply' };
+    _replyToId = widget.mode == ReplyMode.forward ? 0 : (widget.original?.emailId ?? 0);
+    final d = widget.draft;
+    if (d != null) {
+      _draftId = d.id;
+      _sendType = d.sendType;
+      _replyToId = d.emailId;
+      _applyFields(accountId: d.accountId, to: d.to, cc: d.cc, bcc: d.bcc, subject: d.subject, text: d.text,
+          attachments: d.attachments);
+    }
+    final p = widget.prefill;
+    if (p != null) {
+      List<String> list(String k) => ((p[k] as List?) ?? const []).map((e) => '$e').toList();
+      _sendType = '${p['sendType'] ?? ''}';
+      _replyToId = p['emailId'] is int ? p['emailId'] as int : 0;
+      _applyFields(
+        accountId: p['accountId'] is int ? p['accountId'] as int : null,
+        to: list('receiveEmail'),
+        cc: list('cc'),
+        bcc: list('bcc'),
+        subject: '${p['subject'] ?? ''}',
+        text: '${p['text'] ?? ''}',
+        attachments: ((p['attachments'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((a) => OutgoingAttachment('${a['filename']}', '${a['contentType']}',
+                a['size'] is int ? a['size'] as int : 0, '${a['content']}'))
+            .toList(),
+      );
+    }
     final o = widget.original;
     if (o != null) {
       // Reply from the address the mail was received on, when we own it.
@@ -78,6 +143,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
     for (final c in [_to, _cc, _bcc, _subject, _body]) {
       c.addListener(() => _dirty = true);
     }
+    _initialSignature = _signature;
+    _dirty = widget.prefill != null;
   }
 
   @override
@@ -159,15 +226,16 @@ class _ComposeScreenState extends State<ComposeScreen> {
         subject: _subject.text.trim(),
         text: _body.text,
         html: html,
-        sendType: switch (widget.mode) { ReplyMode.forward => 'forward', null => '', _ => 'reply' },
-        emailId: widget.mode == ReplyMode.forward ? 0 : (widget.original?.emailId ?? 0),
+        sendType: _sendType,
+        emailId: _replyToId,
         attachments: List.of(_files),
       ));
+      if (_draftId != null) await session.drafts?.remove([_draftId!]);
       if (!mounted) return;
       _dirty = false;
       Navigator.of(context).pop(true);
     } catch (e) {
-      _toast('$e');
+      _toast(S.of(context).error(e));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -175,20 +243,45 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   void _toast(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-  Future<bool> _confirmDiscard() async {
-    if (!_dirty || _sending) return !_sending;
+  Draft _asDraft() => Draft(
+        id: _draftId ?? DraftStore.newId(),
+        accountId: _from.accountId,
+        to: splitAddresses(_to.text),
+        cc: splitAddresses(_cc.text),
+        bcc: splitAddresses(_bcc.text),
+        subject: _subject.text,
+        text: _body.text,
+        html: _plainToHtml(_body.text),
+        sendType: _sendType,
+        emailId: _replyToId,
+        attachments: List.of(_files),
+      );
+
+  /// Web write/index.vue close(): an opened draft saves itself; an empty or
+  /// untouched reply just closes; anything else asks to save a draft.
+  Future<bool> _confirmClose() async {
+    if (_sending) return false;
+    final drafts = context.read<Session>().drafts;
+    if (_draftId != null) {
+      await drafts?.save(_asDraft());
+      return true;
+    }
+    final d = _asDraft();
+    if (d.isEmpty || !_dirty || _signature == _initialSignature && widget.mode != null) return true;
     final s = S.of(context);
-    final discard = await showDialog<bool>(
+    final choice = await showDialog<String>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text(s.discardTitle),
+        content: Text(s.t('saveDraftConfirm')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(s.keepEditing)),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: Text(s.discard)),
+          TextButton(onPressed: () => Navigator.pop(c, 'keep'), child: Text(s.keepEditing)),
+          TextButton(onPressed: () => Navigator.pop(c, 'discard'), child: Text(s.discard)),
+          FilledButton(onPressed: () => Navigator.pop(c, 'save'), child: Text(s.t('confirm'))),
         ],
       ),
     );
-    return discard == true;
+    if (choice == 'save') await drafts?.save(d);
+    return choice == 'save' || choice == 'discard';
   }
 
   @override
@@ -207,7 +300,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (await _confirmDiscard() && context.mounted) Navigator.of(context).pop(false);
+        if (await _confirmClose() && context.mounted) Navigator.of(context).pop(false);
       },
       child: CallbackShortcuts(
         bindings: {

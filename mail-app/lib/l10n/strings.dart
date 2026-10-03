@@ -1,5 +1,9 @@
 import 'package:flutter/widgets.dart';
 
+import '../api/api_client.dart';
+import 'native_strings.dart';
+import 'web_strings.g.dart';
+
 /// Chinese / English UI strings. Chinese is used for any zh locale,
 /// English otherwise.
 class S {
@@ -12,6 +16,31 @@ class S {
   }
 
   String _t(String zhText, String enText) => zh ? zhText : enText;
+
+  /// A string shared with the web app (mail-vue/src/i18n), by its key.
+  /// `{name}` placeholders are filled from [args]. Unknown keys fall back
+  /// to English, then to the key itself.
+  String t(String key, [Map<String, Object?> args = const {}]) {
+    var text = (zh ? webStringsZh[key] ?? nativeStringsZh[key] : null) ??
+        webStringsEn[key] ??
+        nativeStringsEn[key] ??
+        key;
+    if (args.isNotEmpty) {
+      text = text.replaceAllMapped(RegExp(r'\{(\w+)\}'), (m) => args.containsKey(m[1]) ? '${args[m[1]]}' : m[0]!);
+    }
+    return text;
+  }
+
+  /// User-facing text for an error, matching the web app's axios messages.
+  String error(Object e) {
+    if (e is ApiException) {
+      if (e.message == 'timeout') return t('timeoutErrorMsg');
+      if (e.code == -1) return t('networkErrorMsg');
+      if (e.code >= 500 && e.message.startsWith('HTTP ')) return t('serverBusyErrorMsg');
+      return e.message;
+    }
+    return '$e';
+  }
 
   String get appName => 'PSG Mail';
   String get server => _t('服务器地址', 'Server');

@@ -4,21 +4,13 @@ import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../l10n/strings.dart';
+import '../navigation.dart';
 import '../state/session.dart';
 import 'reader_view.dart';
 
-String folderTitle(S s, Folder f) => switch (f.kind) {
-      FolderKind.inbox => s.inbox,
-      FolderKind.starred => s.starred,
-      FolderKind.sent => s.sent,
-      FolderKind.archive => s.archive,
-      FolderKind.spam => s.spam,
-      FolderKind.trash => s.trash,
-      FolderKind.label => f.labelName ?? s.labels,
-    };
-
 IconData folderIcon(FolderKind k) => switch (k) {
       FolderKind.inbox => Icons.inbox_outlined,
+      FolderKind.allInbox => Icons.all_inbox_outlined,
       FolderKind.starred => Icons.star_outline,
       FolderKind.sent => Icons.send_outlined,
       FolderKind.archive => Icons.archive_outlined,
@@ -33,11 +25,15 @@ Color? labelColor(String hex) {
   return v == null ? null : Color(v);
 }
 
-/// Account switcher + folders + labels. Used as the phone drawer and as the
-/// desktop side column.
+/// Pages that have a native screen. Others stay out of the menu until ported.
+Set<PageKind> nativePages = {PageKind.drafts, PageKind.scheduled};
+
+/// Account switcher, mail folders, labels, workspace and admin pages — the
+/// web app's folder column + top bar + avatar menu in one list. Used as the
+/// phone drawer and as the desktop side column.
 class FolderNav extends StatelessWidget {
-  final Folder selected;
-  final ValueChanged<Folder> onSelect;
+  final Destination selected;
+  final ValueChanged<Destination> onSelect;
   final bool inDrawer;
 
   const FolderNav({super.key, required this.selected, required this.onSelect, this.inDrawer = false});
@@ -46,19 +42,14 @@ class FolderNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final session = context.watch<Session>();
-    final canSend = session.user?.can('email:send') ?? true;
-    final folders = [
-      FolderKind.inbox,
-      FolderKind.starred,
-      if (canSend) FolderKind.sent,
-      FolderKind.archive,
-      FolderKind.spam,
-      FolderKind.trash,
-    ];
+    final user = session.user;
+    final canSend = user?.can('email:send') ?? true;
     final scheme = Theme.of(context).colorScheme;
 
-    Widget item(Folder f, Widget leading, String title) {
-      final active = f == selected;
+    bool show(PageKind p) => nativePages.contains(p) && pageInfo[p]!.allowed(user);
+
+    Widget item(Destination d, Widget leading, String title, {Widget? trailing}) {
+      final active = d == selected;
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
         child: ListTile(
@@ -69,13 +60,32 @@ class FolderNav extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           leading: leading,
           title: Text(title, overflow: TextOverflow.ellipsis),
+          trailing: trailing,
           onTap: () {
-            onSelect(f);
+            onSelect(d);
             if (inDrawer) Navigator.of(context).pop();
           },
         ),
       );
     }
+
+    Widget folder(FolderKind k) {
+      final d = Destination.folder(Folder(k));
+      return item(d, Icon(folderIcon(k)), destinationTitle(s, d));
+    }
+
+    Widget page(PageKind p) => item(Destination.page(p), Icon(pageInfo[p]!.icon), s.t(pageInfo[p]!.labelKey));
+
+    Widget header(String text) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 6),
+          child: Text(text, style: Theme.of(context).textTheme.labelMedium),
+        );
+
+    final workspace = [PageKind.contactGroups, PageKind.templates, PageKind.rules].where(show).toList();
+    final admin = [PageKind.analytics, PageKind.accessManagement, PageKind.allMail, PageKind.systemSettings]
+        .where(show)
+        .toList();
+    final more = [PageKind.settings, PageKind.download, PageKind.vpn, PageKind.about].where(show).toList();
 
     return SafeArea(
       child: ListView(
@@ -83,20 +93,29 @@ class FolderNav extends StatelessWidget {
         children: [
           _AccountPicker(inDrawer: inDrawer),
           const Divider(),
-          for (final k in folders) item(Folder(k), Icon(folderIcon(k)), folderTitle(s, Folder(k))),
+          folder(FolderKind.inbox),
+          if (session.accounts.length > 1) folder(FolderKind.allInbox),
+          folder(FolderKind.starred),
+          if (canSend) folder(FolderKind.sent),
+          if (show(PageKind.drafts)) page(PageKind.drafts),
+          if (show(PageKind.scheduled)) page(PageKind.scheduled),
+          folder(FolderKind.archive),
+          folder(FolderKind.spam),
+          folder(FolderKind.trash),
           if (session.labels.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 6),
-              child: Text(s.labels, style: Theme.of(context).textTheme.labelMedium),
-            ),
+            header(s.t('labels')),
             for (final l in session.labels)
               item(
-                Folder(FolderKind.label, labelId: l.labelId, labelName: l.name),
+                Destination.folder(Folder(FolderKind.label, labelId: l.labelId, labelName: l.name)),
                 Icon(Icons.label, color: labelColor(l.color)),
                 l.name,
+                trailing: l.emailCount > 0 ? Text('${l.emailCount}') : null,
               ),
           ],
+          if (workspace.isNotEmpty) ...[header(s.t('workspace')), for (final p in workspace) page(p)],
+          if (admin.isNotEmpty) ...[header(s.t('manage')), for (final p in admin) page(p)],
           const Divider(),
+          for (final p in more) page(p),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: ListTile(
@@ -111,7 +130,7 @@ class FolderNav extends StatelessWidget {
             child: ListTile(
               dense: true,
               leading: const Icon(Icons.logout),
-              title: Text(s.signOut),
+              title: Text(s.t('logOut')),
               onTap: () => session.signOut(),
             ),
           ),
@@ -132,7 +151,7 @@ class _AccountPicker extends StatelessWidget {
     final user = session.user;
     final label = current?.name.isNotEmpty == true ? current!.name : (user?.name ?? '');
     return PopupMenuButton<Account>(
-      tooltip: S.of(context).accounts,
+      tooltip: S.of(context).t('mailboxes'),
       enabled: session.accounts.length > 1,
       onSelected: (a) {
         session.selectAccount(a);

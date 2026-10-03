@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await context.read<Session>().signIn(_server.text, _email.text, _password.text);
     } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) setState(() => _error = S.of(context).error(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
