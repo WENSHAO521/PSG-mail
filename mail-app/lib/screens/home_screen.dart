@@ -377,7 +377,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  bool get _workspace => !_dest.isMail && sectionOf(_dest) != Section.mail;
+  /// Web layout MAIL_ROUTES: folders and Drafts show the list + reader
+  /// panes; every other page (Scheduled included) is one full-width card.
+  bool get _workspace => !_dest.isMail && _dest.page != PageKind.drafts;
 
   Widget _desktop(BoxConstraints box, MailList list) {
     final s = S.of(context);
@@ -391,27 +393,23 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_workspace) {
       body = PsgCard(child: ScaffoldMessenger(child: Scaffold(backgroundColor: t.surface, body: _page(_dest.page!))));
     } else {
-      final Widget main;
-      if (!_dest.isMail) {
-        main = PsgCard(child: ScaffoldMessenger(child: Scaffold(backgroundColor: t.surface, body: _page(_dest.page!))));
-      } else {
-        final reader = selected == null
-            ? PsgCard(
-                child: Center(
-                  child: PsgEmpty(icon: 'psg:mail', title: s.t('selectEmailHint')),
-                ),
-              )
-            : PsgCard(child: _reader(selected, onClose: () => setState(() => _open = null), open: (m) => setState(() => _open = m)));
-        // Each pane keeps its own messenger so a notice shows once.
-        main = Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          SizedBox(
-            width: narrow ? 360 : 420,
-            child: PsgCard(child: ScaffoldMessenger(child: Scaffold(backgroundColor: t.surface, body: _listPane(list, phone: false, wide: true, selected: selected)))),
-          ),
-          SizedBox(width: narrow ? 12 : 16),
-          Expanded(child: ScaffoldMessenger(child: Scaffold(backgroundColor: Colors.transparent, body: reader))),
-        ]);
-      }
+      final reader = selected == null || !_dest.isMail
+          ? PsgCard(
+              child: Center(
+                child: PsgEmpty(icon: 'psg:mail', title: s.t('selectEmailHint')),
+              ),
+            )
+          : PsgCard(child: _reader(selected, onClose: () => setState(() => _open = null), open: (m) => setState(() => _open = m)));
+      final listBody = _dest.isMail ? _listPane(list, phone: false, wide: true, selected: selected) : _page(_dest.page!);
+      // Each pane keeps its own messenger so a notice shows once.
+      final main = Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SizedBox(
+          width: narrow ? 360 : 420,
+          child: PsgCard(child: ScaffoldMessenger(child: Scaffold(backgroundColor: t.surface, body: listBody))),
+        ),
+        SizedBox(width: narrow ? 12 : 16),
+        Expanded(child: ScaffoldMessenger(child: Scaffold(backgroundColor: Colors.transparent, body: reader))),
+      ]);
       body = Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         SizedBox(
           width: narrow ? 184 : 200,

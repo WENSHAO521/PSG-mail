@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import '../api/models.dart';
 import '../l10n/strings.dart';
 import '../state/session.dart';
+import '../ui/dialogs.dart';
+import '../ui/psg.dart';
+import '../ui/workspace.dart';
 
 /// Scheduled sends (web: views/scheduled): edit, send now, cancel.
 class ScheduledPage extends StatefulWidget {
@@ -42,20 +45,7 @@ class _ScheduledPageState extends State<ScheduledPage> {
 
   void _toast(String m) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(m)));
 
-  Future<bool> _confirm(String text) async {
-    final s = S.of(context);
-    return await showDialog<bool>(
-          context: context,
-          builder: (c) => AlertDialog(
-            content: Text(text),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(c, false), child: Text(s.t('cancel'))),
-              FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(s.t('confirm'))),
-            ],
-          ),
-        ) ==
-        true;
-  }
+  Future<bool> _confirm(String text) => psgConfirm(context, text, danger: false);
 
   Future<void> _cancel(ScheduledMail r) async {
     final s = S.of(context);
@@ -98,118 +88,108 @@ class _ScheduledPageState extends State<ScheduledPage> {
       {'pending': 'Pending', 'processing': 'Processing', 'sent': 'Sent', 'failed': 'Failed', 'cancelled': 'Cancelled'}[status] ??
       'Pending';
 
-  static IconData _statusIcon(String status) => switch (status) {
-        'processing' => Icons.autorenew,
-        'sent' => Icons.check_circle_outline,
-        'failed' => Icons.error_outline,
-        'cancelled' => Icons.cancel_outlined,
-        _ => Icons.schedule,
+  static String _statusIcon(String status) => switch (status) {
+        'processing' => 'psg:refresh',
+        'sent' => 'psg:check-circle',
+        'failed' => 'psg:warning',
+        'cancelled' => 'psg:close-circle',
+        _ => 'psg:clock',
       };
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final theme = Theme.of(context);
-    final rows = _rows;
-    if (rows == null) {
-      return _error == null
-          ? const Center(child: CircularProgressIndicator())
-          : Center(child: TextButton(onPressed: _load, child: Text('${s.loadFailed} · ${s.retry}')));
-    }
+    final t = context.psg;
+    final rows = _rows ?? const <ScheduledMail>[];
     final pending = rows.where((r) => r.status == 'pending').length;
     final issues = rows.where((r) => r.status == 'failed' || r.status == 'processing').length;
     final fmt = DateFormat('yyyy-MM-dd HH:mm');
-    return RefreshIndicator(
+
+    (Color, Color) tone(String status) => switch (status) {
+          'sent' => (t.surfaceActive, t.text),
+          'failed' => (t.dangerMuted, t.danger),
+          'processing' => (t.surfaceMuted, t.primary),
+          _ => (t.surfaceMuted, t.textSecondary),
+        };
+
+    return WorkspacePage(
       onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(s.t('scheduledDesc'), style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text(s.t('scheduledScopeNote'), style: theme.textTheme.bodySmall),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            _Stat(label: s.t('scheduledTotalCount'), value: '${rows.length}'),
-            _Stat(label: s.t('scheduledPendingCount'), value: '$pending', accent: true),
-            _Stat(label: s.t('scheduledIssueCount'), value: '$issues'),
-          ]),
-          const SizedBox(height: 16),
-          if (rows.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Column(children: [
-                Icon(Icons.schedule, size: 48, color: theme.colorScheme.outline),
-                const SizedBox(height: 12),
-                Text(s.t('scheduledEmpty'), style: theme.textTheme.titleMedium),
-                Text(s.t('scheduledEmptyDesc'), textAlign: TextAlign.center),
-              ]),
-            )
-          else
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(children: [
-                for (final r in rows) ...[
-                  ListTile(
-                    leading: Icon(_statusIcon(r.status),
-                        color: r.status == 'failed' ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant),
-                    title: Text(r.subject.isEmpty ? s.t('noSubject') : r.subject),
-                    subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(r.receiveEmail.join(', '), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Text([
-                        s.t('scheduledStatus${_statusKey(r.status)}'),
-                        if (r.when != null) '${s.t('scheduledSendAt')}: ${fmt.format(r.when!)}',
-                        if (r.attachmentCount > 0) '📎 ${r.attachmentCount}',
-                      ].join(' · ')),
-                      if (r.status == 'failed' && r.lastError.isNotEmpty)
-                        Text('${s.t('scheduledLastError')}: ${r.lastError} (${r.attemptCount} ${s.t('scheduledAttemptCount')})',
-                            style: TextStyle(color: theme.colorScheme.error)),
-                    ]),
-                    isThreeLine: true,
-                    trailing: r.status == 'pending'
-                        ? Row(mainAxisSize: MainAxisSize.min, children: [
-                            IconButton(tooltip: s.t('scheduledEdit'), icon: const Icon(Icons.edit_outlined), onPressed: () => _edit(r)),
-                            IconButton(tooltip: s.t('scheduledSendNow'), icon: const Icon(Icons.send_outlined), onPressed: () => _sendNow(r)),
-                            IconButton(
-                              tooltip: s.t('cancelSchedule'),
-                              icon: Icon(Icons.cancel_outlined, color: theme.colorScheme.error),
-                              onPressed: () => _cancel(r),
-                            ),
-                          ])
-                        : null,
+      children: [
+        WorkspaceHero(title: s.t('scheduled'), description: s.t('scheduledDesc')),
+        WorkspaceNote(s.t('scheduledScopeNote')),
+        WorkspaceStats([
+          WorkspaceStat(s.t('scheduledTotalCount'), '${rows.length}'),
+          WorkspaceStat(s.t('scheduledPendingCount'), '$pending', accent: true),
+          WorkspaceStat(s.t('scheduledIssueCount'), '$issues', wide: true),
+        ]),
+        WorkspaceSection(
+          title: s.t('scheduled'),
+          description: s.t('scheduledListDesc'),
+          actions: [WorkspaceIconButton('psg:refresh', tooltip: s.t('refresh'), onPressed: _load)],
+        ),
+        if (_rows == null && _error == null)
+          Padding(
+            padding: const EdgeInsets.all(40),
+            child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: t.textMuted))),
+          )
+        else if (_rows == null)
+          WorkspaceEmpty(
+            icon: 'psg:warning',
+            title: s.loadFailed,
+            description: s.error(_error!),
+            action: PsgButton(s.retry, kind: PsgButtonKind.secondary, onPressed: _load),
+          )
+        else if (rows.isEmpty)
+          WorkspaceEmpty(icon: 'psg:clock', title: s.t('scheduledEmpty'), description: s.t('scheduledEmptyDesc'))
+        else
+          for (final r in rows)
+            WorkspaceRow(
+              divider: r != rows.last,
+              leading: Container(
+                width: 32,
+                height: 32,
+                margin: const EdgeInsets.only(top: 2),
+                decoration: BoxDecoration(color: tone(r.status).$1, borderRadius: BorderRadius.circular(PsgRadius.sm)),
+                alignment: Alignment.center,
+                child: PsgIcon(_statusIcon(r.status), size: 16, color: r.status == 'sent' ? t.text : tone(r.status).$2),
+              ),
+              body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(r.subject.isEmpty ? s.t('noSubject') : r.subject,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: t.text)),
+                const SizedBox(height: 3),
+                Text(r.receiveEmail.join(', '), style: TextStyle(fontSize: 12, color: t.textSecondary)),
+                const SizedBox(height: 3),
+                Wrap(spacing: 8, runSpacing: 3, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                    color: tone(r.status).$1,
+                    child: Text(s.t('scheduledStatus${_statusKey(r.status)}'),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: tone(r.status).$2)),
                   ),
-                  if (r != rows.last) const Divider(height: 1),
+                  if (r.when != null)
+                    Text('${s.t('scheduledSendAt')}: ${fmt.format(r.when!)}', style: TextStyle(fontSize: 12, color: t.textSecondary)),
+                  if (r.attachmentCount > 0)
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      PsgIcon('psg:paperclip', size: 12, color: t.textSecondary),
+                      const SizedBox(width: 3),
+                      Text('${r.attachmentCount}', style: TextStyle(fontSize: 12, color: t.textSecondary)),
+                    ]),
+                ]),
+                if (r.status == 'failed' && r.lastError.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text('${s.t('scheduledLastError')}: ${r.lastError} (${r.attemptCount} ${s.t('scheduledAttemptCount')})',
+                      style: TextStyle(fontSize: 12, color: t.danger)),
                 ],
               ]),
+              actions: r.status == 'pending'
+                  ? [
+                      ActButton('psg:edit', tooltip: s.t('scheduledEdit'), onPressed: () => _edit(r)),
+                      ActButton('psg:send', tooltip: s.t('scheduledSendNow'), onPressed: () => _sendNow(r)),
+                      ActButton('psg:close-circle', tooltip: s.t('cancelSchedule'), danger: true, onPressed: () => _cancel(r)),
+                    ]
+                  : const [],
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool accent;
-  const _Stat({required this.label, required this.value, this.accent = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: theme.textTheme.labelMedium),
-          Text(value,
-              style: theme.textTheme.headlineSmall?.copyWith(color: accent ? theme.colorScheme.primary : null)),
-        ]),
-      ),
+      ],
     );
   }
 }
