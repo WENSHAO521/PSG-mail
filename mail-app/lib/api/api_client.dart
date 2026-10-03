@@ -219,7 +219,40 @@ class ApiClient {
   Future<Map<String, dynamic>> scheduleEdit(int id) async =>
       Map<String, dynamic>.from(await post('/email/schedule/$id/edit') as Map);
 
+  // ── Reading aids ────────────────────────────────────────────
+
+  /// Machine translation of a mail (translate-api.js).
+  Future<({String translated, String original})> translate({String? html, String? text, required String targetLang}) async {
+    final data = await post('/translate', {
+      'html': ?html,
+      'text': ?text,
+      'target_lang': targetLang,
+    }) as Map;
+    return (translated: '${data['translated_text'] ?? ''}', original: '${data['original_text'] ?? ''}');
+  }
+
+  Future<String> aiSummary(int emailId) async =>
+      '${((await post('/ai/email/summary', {'emailId': emailId})) as Map?)?['summary'] ?? ''}';
+
+  Future<String> aiReplySuggestion(int emailId) async =>
+      '${((await post('/ai/email/reply-suggestion', {'emailId': emailId})) as Map?)?['suggestion'] ?? ''}';
+
+  /// The AI spam screening's reason for a mail in Spam, or null.
+  Future<String?> spamVerdictReason(int emailId) async {
+    final data = await get('/email/spam/verdict', {'emailId': emailId});
+    if (data is! Map) return null;
+    return '${data['reason'] ?? ''}';
+  }
+
   // ── Raw downloads ───────────────────────────────────────────
+
+  /// Bytes of an attachment or other stored object.
+  Future<List<int>> download(String url) async {
+    final res = await _http.get(Uri.parse(url), headers: _headers).timeout(const Duration(minutes: 2));
+    if (res.statusCode != 200) throw ApiException(res.statusCode, 'HTTP ${res.statusCode}');
+    return res.bodyBytes;
+  }
+
 
   /// The message as an .eml file: (filename, bytes). This endpoint returns
   /// the raw file, not the JSON envelope.

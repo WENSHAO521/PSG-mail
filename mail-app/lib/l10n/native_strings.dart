@@ -4,9 +4,13 @@
 const Map<String, String> nativeStringsZh = {
   'permanentDelete': '彻底删除',
   'selectAll': '全选',
+  'previous': '上一封',
+  'next': '下一封',
 };
 
 const Map<String, String> nativeStringsEn = {
   'permanentDelete': 'Delete forever',
   'selectAll': 'Select all',
+  'previous': 'Previous',
+  'next': 'Next',
 };

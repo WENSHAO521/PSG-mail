@@ -60,6 +60,7 @@ class Email {
   final String toName;
   final String recipientJson;
   final String ccJson;
+  final String bccJson;
   final int type; // 0 received, 1 sent
   /// Delivery status (emailConst.status): 0 received, 1 sent, 2 delivered,
   /// 3/8 bounced, 4 complained, 5 delayed, 6 saving, 7 no recipient.
@@ -68,6 +69,10 @@ class Email {
   final String code;
   /// Owner's address (admin "all mail" rows only).
   final String userEmail;
+  /// In Spam (AI screening or the user).
+  bool isSpam;
+  /// Provider message for bounces etc. (JSON with a `message` field).
+  final String message;
   int unread; // 0 unread, 1 read
   bool isStar;
   final String createTime;
@@ -86,10 +91,13 @@ class Email {
         toName = _str(j['toName']),
         recipientJson = _str(j['recipient']),
         ccJson = _str(j['cc']),
+        bccJson = _str(j['bcc']),
         type = _int(j['type']),
         status = _int(j['status']),
         code = _str(j['code']),
         userEmail = _str(j['userEmail']),
+        isSpam = _int(j['isSpam']) == 1,
+        message = _str(j['message']),
         unread = _int(j['unread']),
         isStar = _int(j['isStar']) == 1 || j['starId'] != null,
         createTime = _str(j['createTime']),
@@ -102,6 +110,17 @@ class Email {
             .toList();
 
   bool get isUnread => type == 0 && unread == 0;
+
+  /// The bounce / delivery message (web toMessage()).
+  String get deliveryMessage {
+    if (message.isEmpty) return '';
+    try {
+      final m = jsonDecode(message);
+      return m is Map ? '${m['message'] ?? ''}' : '';
+    } catch (_) {
+      return message;
+    }
+  }
   bool get isSent => type == 1;
 
   /// Who to show in a list row: the sender for received mail, the first

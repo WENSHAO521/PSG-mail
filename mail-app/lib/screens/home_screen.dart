@@ -181,15 +181,38 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  ReaderView _reader(Email e, {VoidCallback? onClose}) => ReaderView(
+  /// Previous / next within the current list (web: J/K and the reader's
+  /// position counter).
+  ReaderPosition? _position(Email e, void Function(Email) open) {
+    final list = _list;
+    if (list == null) return null;
+    final items = list.items;
+    final i = items.indexWhere((x) => x.emailId == e.emailId);
+    if (i < 0) return null;
+    return ReaderPosition(
+      i + 1,
+      items.length,
+      onPrevious: i > 0 ? () => open(items[i - 1]) : null,
+      onNext: i < items.length - 1 ? () => open(items[i + 1]) : null,
+    );
+  }
+
+  ReaderView _reader(Email e, {VoidCallback? onClose, required void Function(Email) open}) => ReaderView(
         key: ValueKey(e.emailId),
         email: e,
         folder: _folder,
+        position: _position(e, open),
         onReply: (mode, mail) => _compose(mode: mode, original: mail),
         onChanged: () => _list?.touch(),
         onRemoved: (mail) {
+          // Like the web reader, move on to the next message when there is one.
+          final next = _position(mail, (_) {})?.onNext != null
+              ? _list!.items[_list!.items.indexWhere((x) => x.emailId == mail.emailId) + 1]
+              : null;
           _list?.remove([mail.emailId]);
-          if (onClose != null) {
+          if (next != null) {
+            open(next);
+          } else if (onClose != null) {
             onClose();
           } else {
             setState(() => _open = null);
@@ -203,9 +226,18 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _open = e);
       return;
     }
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (ctx) => _reader(e, onClose: () => Navigator.of(ctx).maybePop()),
-    ));
+    Navigator.of(context).push(_readerRoute(e));
+  }
+
+  Route<void> _readerRoute(Email e, {bool animate = true}) {
+    Widget build(BuildContext ctx) => _reader(
+          e,
+          onClose: () => Navigator.of(ctx).maybePop(),
+          open: (next) => Navigator.of(ctx).pushReplacement(_readerRoute(next, animate: false)),
+        );
+    return animate
+        ? MaterialPageRoute(builder: build)
+        : PageRouteBuilder(pageBuilder: (ctx, _, _) => build(ctx), transitionDuration: Duration.zero);
   }
 
   PreferredSizeWidget _appBar(S s, bool showMenu) {
@@ -309,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ]),
                   ),
                 )
-              : _reader(selected, onClose: () => setState(() => _open = null));
+              : _reader(selected, onClose: () => setState(() => _open = null), open: (m) => setState(() => _open = m));
           // Each pane keeps its own messenger so a notice shows once, across
           // the window, from the outer Scaffold rather than in every pane.
           content = Scaffold(
