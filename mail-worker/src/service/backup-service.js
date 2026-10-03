@@ -77,14 +77,14 @@ const backupService = {
 		const origin = url.origin;
 
 		if (error || !code || !state) {
-			return Response.redirect(`${origin}/#/setting?backup_error=cancelled`, 302);
+			return Response.redirect(`${origin}/settings?backup_error=cancelled`, 302);
 		}
 
 		const [userId, stateVal] = state.split(':');
 		const savedState = await c.env.kv.get(this._stateKey(userId, provider));
 
 		if (!savedState || savedState !== stateVal) {
-			return Response.redirect(`${origin}/#/setting?backup_error=invalid_state`, 302);
+			return Response.redirect(`${origin}/settings?backup_error=invalid_state`, 302);
 		}
 
 		await c.env.kv.delete(this._stateKey(userId, provider));
@@ -92,7 +92,7 @@ const backupService = {
 		const tokens = await this._exchangeCode(c, provider, code);
 		await this._saveTokens(c, parseInt(userId), provider, tokens);
 
-		return Response.redirect(`${origin}/#/setting?backup_connected=${provider}`, 302);
+		return Response.redirect(`${origin}/settings?backup_connected=${provider}`, 302);
 	},
 
 	async _exchangeCode(c, provider, code) {

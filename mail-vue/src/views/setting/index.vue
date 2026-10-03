@@ -1042,17 +1042,26 @@ onMounted(() => {
   labelStore.load()
   if (notifPermission.value === 'granted') loadNotifDevices()
 
-  // Handle OAuth popup redirect back with ?backup_connected=provider
-  const hash = window.location.hash
-  if (hash.includes('backup_connected=')) {
-    const provider = hash.split('backup_connected=')[1]?.split('&')[0]
-    if (provider) {
-      activeSection.value = 'backup'
-      ElMessage({ message: t('backupConnected'), type: 'success', plain: true })
-      history.replaceState(null, '', window.location.pathname)
-    }
-  }
+  handleBackupOAuthReturn()
 })
+
+// The backup OAuth callback redirects the popup to
+// /settings?backup_connected=<provider> (or ?backup_error=<reason>).
+function handleBackupOAuthReturn() {
+  const { backup_connected: connected, backup_error: failed } = router.currentRoute.value.query
+  if (!connected && !failed) return
+  activeSection.value = 'backup'
+  ElMessage(connected
+    ? { message: t('backupConnected'), type: 'success', plain: true }
+    : { message: t('backupConnectFailed'), type: 'error', plain: true })
+  // Opened by connectProvider(): hand control back to the settings page
+  // that opened it (it refreshes the status once the popup closes).
+  if (window.opener && window.name === 'backup_oauth') {
+    window.close()
+    return
+  }
+  router.replace({ name: 'setting' })
+}
 
 const userInitial = computed(() => {
   const name = userStore.user?.name?.trim()

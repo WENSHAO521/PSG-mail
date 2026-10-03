@@ -321,9 +321,24 @@ function createWindow() {
     }
   })
 
+  const isExternal = url => /^(https?|mailto):/i.test(url)
+
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http')) shell.openExternal(url)
+    if (isExternal(url)) shell.openExternal(url)
     return { action: 'deny' }
+  })
+
+  // The window has no address bar or back button: anything that would
+  // navigate it away from the app (a link in a mail, a stray redirect)
+  // opens in the system browser instead of stranding the user there.
+  win.webContents.on('will-navigate', (event, url) => {
+    const appUrl = win.webContents.getURL()
+    const sameApp = isDev
+      ? url.startsWith('http://localhost:3001')
+      : url.startsWith('file:') && url.split('#')[0] === appUrl.split('#')[0]
+    if (sameApp) return
+    event.preventDefault()
+    if (isExternal(url)) shell.openExternal(url)
   })
 
   win.on('closed', () => { win = null })

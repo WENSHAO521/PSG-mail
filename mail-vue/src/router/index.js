@@ -3,6 +3,7 @@ import NProgress from 'nprogress';
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {cvtR2Url} from "@/utils/convert.js";
+import {onRouterBeforeEach, onRouterAfterEach} from "@/store/mobile-navigation.js";
 
 const routes = [
     {
@@ -33,6 +34,7 @@ const routes = [
             },
             {
                 path: '/settings',
+                alias: '/setting',
                 name: 'setting',
                 component: () => import('@/views/setting/index.vue'),
                 meta: {
@@ -152,8 +154,17 @@ const routes = [
 
 
 // Electron production loads from file:// — use hash history to avoid 404s
+const hashHistory = window.location.protocol === 'file:'
+
+// Links written for hash history (/#/settings?...; older workers sent the
+// backup OAuth callback that way) would otherwise resolve to "/" and land on
+// the inbox under history mode. Move the route out of the hash first.
+if (!hashHistory && window.location.hash.startsWith('#/')) {
+    window.history.replaceState(window.history.state, '', window.location.hash.slice(1))
+}
+
 const router = createRouter({
-    history: window.location.protocol === 'file:'
+    history: hashHistory
         ? createWebHashHistory()
         : createWebHistory(import.meta.env.BASE_URL),
     routes
@@ -198,6 +209,11 @@ router.beforeEach((to, from, next) => {
     next()
 
 })
+
+// Keep the mobile back-surface markers in step with route changes.
+router.beforeEach(onRouterBeforeEach)
+router.afterEach(onRouterAfterEach)
+router.onError(onRouterAfterEach)
 
 function loadBackground(next) {
 
