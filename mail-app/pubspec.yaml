@@ -52,6 +52,8 @@ dependencies:
   flutter_quill_delta_from_html: ^1.5.3
   vsc_quill_delta_to_html: ^1.0.5
   flutter_timezone: ^5.1.1
+  flutter_svg: ^2.3.0
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +80,20 @@ flutter:
 
   assets:
     - assets/icon.png
+
+  # The web app's typeface (mail-vue: @fontsource/dm-sans); CJK falls back
+  # to the system font, as on the web.
+  fonts:
+    - family: DM Sans
+      fonts:
+        - asset: assets/fonts/DMSans-400.ttf
+          weight: 400
+        - asset: assets/fonts/DMSans-500.ttf
+          weight: 500
+        - asset: assets/fonts/DMSans-600.ttf
+          weight: 600
+        - asset: assets/fonts/DMSans-700.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

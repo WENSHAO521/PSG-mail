@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import 'api/api_client.dart';
 import 'api/models.dart';
 import 'l10n/strings.dart';
@@ -42,7 +40,8 @@ class Destination {
 
 class PageInfo {
   final String labelKey;
-  final IconData icon;
+  /// Web icon name (web_icons.g.dart).
+  final String icon;
   /// Any of these permission keys unlocks the page (web perm.js); null = everyone.
   final List<String>? perms;
   const PageInfo(this.labelKey, this.icon, [this.perms]);
@@ -51,20 +50,20 @@ class PageInfo {
 }
 
 const pageInfo = <PageKind, PageInfo>{
-  PageKind.drafts: PageInfo('drafts', Icons.drafts_outlined, ['email:send']),
-  PageKind.scheduled: PageInfo('scheduled', Icons.schedule_send_outlined, ['email:send']),
-  PageKind.contactGroups: PageInfo('contactGroups', Icons.group_outlined),
-  PageKind.templates: PageInfo('templates', Icons.description_outlined),
-  PageKind.rules: PageInfo('subjectKeywords', Icons.rule_outlined),
-  PageKind.settings: PageInfo('settings', Icons.person_outline),
+  PageKind.drafts: PageInfo('drafts', 'psg:draft', ['email:send']),
+  PageKind.scheduled: PageInfo('scheduled', 'psg:clock', ['email:send']),
+  PageKind.contactGroups: PageInfo('contactGroups', 'psg:group'),
+  PageKind.templates: PageInfo('templates', 'psg:template'),
+  PageKind.rules: PageInfo('subjectKeywords', 'psg:filter'),
+  PageKind.settings: PageInfo('settings', 'psg:settings'),
   PageKind.accessManagement:
-      PageInfo('accessManagement', Icons.admin_panel_settings_outlined, ['user:query', 'role:query', 'reg-key:query']),
-  PageKind.systemSettings: PageInfo('SystemSettings', Icons.tune, ['setting:query']),
-  PageKind.allMail: PageInfo('allMail', Icons.all_inbox_outlined, ['all-email:query']),
-  PageKind.analytics: PageInfo('analytics', Icons.insights_outlined, ['analysis:query']),
-  PageKind.download: PageInfo('download', Icons.download_outlined),
-  PageKind.vpn: PageInfo('vpn', Icons.vpn_lock_outlined),
-  PageKind.about: PageInfo('aboutApp', Icons.info_outline),
+      PageInfo('accessManagement', 'psg:group', ['user:query', 'role:query', 'reg-key:query']),
+  PageKind.systemSettings: PageInfo('SystemSettings', 'psg:system', ['setting:query']),
+  PageKind.allMail: PageInfo('allMail', 'psg:all-mail', ['all-email:query']),
+  PageKind.analytics: PageInfo('analytics', 'psg:analytics', ['analysis:query']),
+  PageKind.download: PageInfo('download', 'psg:download'),
+  PageKind.vpn: PageInfo('vpn', 'psg:shield'),
+  PageKind.about: PageInfo('aboutApp', 'solar:info-circle-linear'),
 };
 
 String destinationTitle(S s, Destination d) {

@@ -2,7 +2,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -11,8 +10,10 @@ import '../api/models.dart';
 import '../l10n/strings.dart';
 import '../services/print_service.dart';
 import '../state/session.dart';
-import 'folder_nav.dart';
+import '../ui/psg.dart';
+import '../util/day.dart';
 import 'mail_actions.dart';
+import 'mail_list_view.dart';
 
 enum ReplyMode { reply, replyAll, forward }
 
@@ -239,146 +240,254 @@ class _ReaderViewState extends State<ReaderView> {
     }
   }
 
+  /// Web label popover: every label with its dot; a tick on applied ones.
+  Future<void> _labelMenu(BuildContext anchor) async {
+    final s = S.of(context);
+    final t = context.psg;
+    final session = context.read<Session>();
+    final box = anchor.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(anchor).context.findRenderObject() as RenderBox;
+    final pos = box.localToGlobal(Offset(box.size.width, box.size.height + 6), ancestor: overlay);
+    final l = await showMenu<MailLabel>(
+      context: context,
+      position: RelativeRect.fromLTRB(pos.dx - 220, pos.dy, overlay.size.width - pos.dx, 0),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 220),
+      items: session.labels.isEmpty
+          ? [PopupMenuItem<MailLabel>(enabled: false, child: Text(s.t('labelEmpty'), style: TextStyle(fontSize: 12.5, color: t.textSecondary)))]
+          : [
+              for (final l in session.labels)
+                PopupMenuItem<MailLabel>(
+                  value: l,
+                  height: 34,
+                  child: Row(children: [
+                    Container(
+                        width: 8, height: 8, decoration: BoxDecoration(color: labelColor(l.color) ?? t.textMuted, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(l.name, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: t.text))),
+                    if (e.labels.any((x) => x.labelId == l.labelId)) PsgIcon('psg:check-circle', size: 16, color: t.primary),
+                  ]),
+                ),
+            ],
+    );
+    if (l == null || !mounted) return;
+    final apply = !e.labels.any((x) => x.labelId == l.labelId);
+    try {
+      await (apply ? session.api.applyLabel(l.labelId, [e.emailId]) : session.api.removeLabel(l.labelId, [e.emailId]));
+      setState(() => e.labels = [...e.labels.where((x) => x.labelId != l.labelId), if (apply) l]);
+      widget.onChanged();
+      if (!apply && widget.folder.kind == FolderKind.label && widget.folder.labelId == l.labelId) widget.onRemoved(e);
+    } catch (err) {
+      if (mounted) _actions.toast(s.error(err));
+    }
+  }
+
+  Future<void> _aiMenu(BuildContext anchor, bool showReply) async {
+    final s = S.of(context);
+    final box = anchor.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(anchor).context.findRenderObject() as RenderBox;
+    final pos = box.localToGlobal(Offset(box.size.width, box.size.height + 6), ancestor: overlay);
+    final p = await showMenu<_Panel>(
+      context: context,
+      position: RelativeRect.fromLTRB(pos.dx - 190, pos.dy, overlay.size.width - pos.dx, 0),
+      constraints: const BoxConstraints(minWidth: 190, maxWidth: 220),
+      items: [
+        psgMenuItem(context, _Panel.summary, s.t('aiMailSummary'), icon: 'psg:mail'),
+        if (showReply) psgMenuItem(context, _Panel.reply, s.t('aiReplySuggestion'), icon: 'psg:reply'),
+      ],
+    );
+    if (p != null) _ai(p);
+  }
+
+  Future<void> _moreMenu(BuildContext anchor, {required bool phone, required bool showReply, required bool canDelete}) async {
+    final s = S.of(context);
+    final kind = widget.folder.kind;
+    final box = anchor.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(anchor).context.findRenderObject() as RenderBox;
+    final pos = box.localToGlobal(Offset(box.size.width, box.size.height + 6), ancestor: overlay);
+    final translateLabel = _panel == _Panel.translate ? s.t('showOriginal') : s.t('translateEmail');
+    final v = await showMenu<Object>(
+      context: context,
+      position: RelativeRect.fromLTRB(pos.dx - 220, pos.dy, overlay.size.width - pos.dx, 0),
+      items: [
+        // Phones fold the whole toolbar in here (web .mobile-reader-menu).
+        if (phone) ...[
+          if (kind != FolderKind.trash && kind != FolderKind.spam)
+            psgMenuItem<Object>(context, 'star', e.isStar ? s.t('unstar') : s.t('star'),
+                icon: e.isStar ? 'fluent-color:star-16' : 'psg:star'),
+          if (!e.isSent) psgMenuItem<Object>(context, MailAction.unread, s.t('markAsUnread'), icon: 'psg:mail'),
+          psgMenuItem<Object>(context, 'labels', s.t('labelApply'), icon: 'psg:tag'),
+          psgMenuItem<Object>(context, 'translate', translateLabel, icon: 'psg:globe'),
+          psgMenuItem<Object>(context, _Panel.summary, s.t('aiMailSummary'), icon: 'psg:sparkles'),
+          if (showReply) psgMenuItem<Object>(context, _Panel.reply, s.t('aiReplySuggestion'), icon: 'psg:reply'),
+          const PopupMenuDivider(height: 9),
+        ],
+        psgMenuItem<Object>(context, 'print', s.t('printEmail'), icon: 'psg:printer'),
+        psgMenuItem<Object>(context, MailAction.exportEml, s.t('downloadEml'), icon: 'psg:download'),
+        if (kind == FolderKind.archive)
+          psgMenuItem<Object>(context, MailAction.unarchive, s.t('unarchive'), icon: 'solar:inbox-out-linear')
+        else if (!const {FolderKind.trash, FolderKind.spam, FolderKind.sent}.contains(kind) && !e.isSent)
+          psgMenuItem<Object>(context, MailAction.archive, s.t('archive'), icon: 'psg:archive'),
+        if (kind == FolderKind.spam || e.isSpam)
+          psgMenuItem<Object>(context, MailAction.notSpam, s.t('notSpam'), icon: 'psg:check-circle')
+        else if (!e.isSent && kind != FolderKind.trash)
+          psgMenuItem<Object>(context, MailAction.spam, s.t('markAsSpam'), icon: 'psg:warning'),
+        if (kind == FolderKind.trash) psgMenuItem<Object>(context, MailAction.restore, s.t('restore'), icon: 'solar:inbox-out-linear'),
+        if (phone && canDelete) ...[
+          const PopupMenuDivider(height: 9),
+          psgMenuItem<Object>(context, MailAction.delete, s.t('delete'), icon: 'psg:trash', danger: true),
+        ],
+      ],
+    );
+    if (v == null || !mounted) return;
+    switch (v) {
+      case 'print':
+        _print();
+      case 'star':
+        _toggleStar();
+      case 'labels':
+        if (anchor.mounted) _labelMenu(anchor);
+      case 'translate':
+        _translate();
+      case _Panel p:
+        _ai(p);
+      case MailAction a:
+        _run(a);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final theme = Theme.of(context);
+    final t = context.psg;
     final session = context.watch<Session>();
     final kind = widget.folder.kind;
     final canSend = session.user?.can('email:send') ?? true;
     final canDelete = session.user?.can('email:delete') ?? true;
     final showReply = canSend && !e.isSent;
+    final showStar = kind != FolderKind.trash && kind != FolderKind.spam;
     final pos = widget.position;
+    final width = MediaQuery.sizeOf(context).width;
+    final phone = width <= 768;
+    final contentPad = phone
+        ? const EdgeInsets.fromLTRB(14, 18, 14, 32)
+        : width <= 1280
+            ? const EdgeInsets.fromLTRB(24, 24, 24, 40)
+            : const EdgeInsets.fromLTRB(48, 8, 48, 40);
 
-    final overflow = <PopupMenuEntry<Object>>[
-      if (kind == FolderKind.archive)
-        PopupMenuItem(value: MailAction.unarchive, child: Text(s.t('unarchive')))
-      else if (!const {FolderKind.trash, FolderKind.spam, FolderKind.sent}.contains(kind) && !e.isSent)
-        PopupMenuItem(value: MailAction.archive, child: Text(s.t('archive'))),
-      if (kind == FolderKind.spam || e.isSpam)
-        PopupMenuItem(value: MailAction.notSpam, child: Text(s.t('notSpam')))
-      else if (!e.isSent && kind != FolderKind.trash)
-        PopupMenuItem(value: MailAction.spam, child: Text(s.t('markAsSpam'))),
-      if (kind == FolderKind.trash) PopupMenuItem(value: MailAction.restore, child: Text(s.t('restore'))),
-      const PopupMenuDivider(),
-      PopupMenuItem(value: 'print', child: Text(s.t('printEmail'))),
-      PopupMenuItem(value: MailAction.exportEml, child: Text(s.t('downloadEml'))),
-    ];
+    Widget square(String icon, String tip, VoidCallback? onTap, {bool active = false, Color? color, double iconSize = 19}) =>
+        PsgIconButton(icon,
+            style: PsgIconButtonStyle.muted,
+            size: phone ? 42 : 38,
+            iconSize: iconSize,
+            tooltip: tip,
+            active: active,
+            color: color ?? (active ? t.primary : null),
+            onPressed: onTap);
 
-    final page = Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: widget.onClose == null,
-        leading: widget.onClose != null
-            ? IconButton(tooltip: s.t('back'), icon: const Icon(Icons.arrow_back), onPressed: widget.onClose)
-            : null,
-        titleSpacing: 0,
-        title: pos != null && pos.total > 0
-            ? Row(mainAxisSize: MainAxisSize.min, children: [
-                IconButton(
-                  tooltip: s.t('previous'),
-                  icon: const Icon(Icons.keyboard_arrow_up),
-                  onPressed: pos.onPrevious,
-                ),
-                Tooltip(
-                  message: s.t('emailPositionHint'),
-                  child: Text('${pos.index} / ${pos.total}', style: theme.textTheme.labelMedium),
-                ),
-                IconButton(tooltip: s.t('next'), icon: const Icon(Icons.keyboard_arrow_down), onPressed: pos.onNext),
-              ])
-            : null,
-        actions: [
-          IconButton(
-            tooltip: e.isStar ? s.t('unstar') : s.t('star'),
-            icon: Icon(e.isStar ? Icons.star : Icons.star_outline, color: e.isStar ? Colors.amber : null),
-            onPressed: _toggleStar,
-          ),
-          if (canDelete)
-            IconButton(tooltip: s.t('delete'), icon: const Icon(Icons.delete_outline), onPressed: () => _run(MailAction.delete)),
-          if (!e.isSent)
-            IconButton(
-              tooltip: s.t('markAsUnread'),
-              icon: const Icon(Icons.mark_email_unread_outlined),
-              onPressed: () => _run(MailAction.unread),
+    final header = Container(
+      constraints: BoxConstraints(minHeight: phone ? 64 : 72),
+      padding: phone ? const EdgeInsets.fromLTRB(10, 8, 10, 8) : const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(children: [
+        if (widget.onClose != null) square('psg:chevron-left', s.t('back'), widget.onClose, iconSize: 20),
+        if (!phone) ...[
+          if (showStar) ...[
+            const SizedBox(width: 6),
+            square(e.isStar ? 'fluent-color:star-16' : 'psg:star', s.t('star'), _toggleStar, iconSize: e.isStar ? 20 : 18),
+          ],
+          if (canDelete) ...[const SizedBox(width: 6), square('psg:trash', s.t('delete'), () => _run(MailAction.delete))],
+          if (!e.isSent) ...[
+            const SizedBox(width: 6),
+            square('psg:mail', s.t('markAsUnread'), () => _run(MailAction.unread)),
+          ],
+        ],
+        const Spacer(),
+        if (!phone) ...[
+          Builder(builder: (b) => square('psg:tag', s.t('labelApply'), () => _labelMenu(b))),
+          const SizedBox(width: 6),
+          _panelLoading && _panel == _Panel.translate
+              ? SizedBox(
+                  width: 38,
+                  height: 38,
+                  child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: t.textMuted))))
+              : square('psg:globe', _panel == _Panel.translate ? s.t('showOriginal') : s.t('translateEmail'), () => _translate(),
+                  active: _panel == _Panel.translate),
+          const SizedBox(width: 6),
+          Builder(
+              builder: (b) => square('psg:sparkles', s.t('aiTransform'), () => _aiMenu(b, showReply),
+                  active: const {_Panel.summary, _Panel.reply}.contains(_panel), iconSize: 18)),
+          const SizedBox(width: 6),
+        ],
+        Builder(
+            builder: (b) => square('psg:more', s.t('more'),
+                () => _moreMenu(b, phone: phone, showReply: showReply, canDelete: canDelete), iconSize: phone ? 20 : 19)),
+        if (!phone && pos != null && pos.total > 0)
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Tooltip(
+              message: s.t('emailPositionHint'),
+              child: Text('${pos.index} / ${pos.total}',
+                  style: TextStyle(fontSize: 13, color: t.textMuted, fontFeatures: const [FontFeature.tabularFigures()])),
             ),
-          IconButton(
-            tooltip: s.t('labelApply'),
-            icon: const Icon(Icons.label_outline),
-            onPressed: () => _run(MailAction.labels),
           ),
-          IconButton(
-            tooltip: _panel == _Panel.translate ? s.t('showOriginal') : s.t('translateEmail'),
-            icon: Icon(Icons.translate, color: _panel == _Panel.translate ? theme.colorScheme.primary : null),
-            onPressed: _panelLoading ? null : () => _translate(),
-          ),
-          PopupMenuButton<_Panel>(
-            tooltip: s.t('aiTransform'),
-            icon: Icon(Icons.auto_awesome_outlined,
-                color: const {_Panel.summary, _Panel.reply}.contains(_panel) ? theme.colorScheme.primary : null),
-            onSelected: _ai,
-            itemBuilder: (_) => [
-              PopupMenuItem(value: _Panel.summary, child: Text(s.t('aiMailSummary'))),
-              if (showReply) PopupMenuItem(value: _Panel.reply, child: Text(s.t('aiReplySuggestion'))),
-            ],
-          ),
-          PopupMenuButton<Object>(
-            tooltip: s.t('more'),
-            onSelected: (v) => v == 'print' ? _print() : _run(v as MailAction),
-            itemBuilder: (_) => overflow,
+      ]),
+    );
+
+    final body = SelectionArea(
+      child: ListView(
+        padding: contentPad,
+        children: [
+          Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 820),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text(e.subject.isEmpty ? s.t('noSubject') : e.subject,
+                    style: TextStyle(
+                        fontSize: phone ? 22 : 28,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                        letterSpacing: phone ? 0 : -.28,
+                        color: t.text)),
+                const SizedBox(height: 14),
+                if (e.labels.isNotEmpty) ...[
+                  Wrap(spacing: 6, runSpacing: 6, children: [
+                    for (final l in e.labels)
+                      Builder(builder: (context) {
+                        final c = labelColor(l.color) ?? t.textMuted;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: c.withValues(alpha: .12),
+                            borderRadius: BorderRadius.circular(PsgRadius.xs),
+                            border: Border.all(color: c.withValues(alpha: .30)),
+                          ),
+                          child: Text(l.name, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: c)),
+                        );
+                      }),
+                  ]),
+                  const SizedBox(height: 12),
+                ],
+                _Header(email: e, phone: phone),
+                SizedBox(height: phone ? 16 : 24),
+                if (e.isSent) ..._deliveryAlerts(s, t),
+                if (e.isSpam || kind == FolderKind.spam) _SpamBanner(reason: _spamReason, busy: _spamBusy, onNotSpam: _notSpam),
+                _Body(email: e),
+                if (_panel != _Panel.none) _panelCard(s, t),
+                if (e.attachments.any((a) => !a.isInline)) _Attachments(email: e, phone: phone),
+              ]),
+            ),
           ),
         ],
       ),
-      body: SelectionArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            Text(e.subject.isEmpty ? s.t('noSubject') : e.subject, style: theme.textTheme.titleLarge),
-            if (e.labels.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final l in e.labels)
-                  Chip(
-                    visualDensity: VisualDensity.compact,
-                    avatar: Icon(Icons.label, size: 16, color: labelColor(l.color)),
-                    label: Text(l.name),
-                  ),
-              ]),
-            ],
-            const SizedBox(height: 16),
-            _Header(email: e),
-            if (e.isSent) ..._deliveryAlerts(s, theme),
-            if (e.isSpam || kind == FolderKind.spam) ...[
-              const SizedBox(height: 12),
-              _SpamBanner(reason: _spamReason, busy: _spamBusy, onNotSpam: _notSpam),
-            ],
-            const Divider(height: 32),
-            _Body(email: e),
-            if (_panel != _Panel.none) ...[
-              const SizedBox(height: 16),
-              _panelCard(s, theme),
-            ],
-            if (e.attachments.any((a) => !a.isInline)) ...[
-              const Divider(height: 32),
-              _Attachments(email: e),
-            ],
-            if (showReply) ...[
-              const SizedBox(height: 24),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                FilledButton.icon(onPressed: () => widget.onReply(ReplyMode.reply, e), icon: const Icon(Icons.reply), label: Text(s.t('reply'))),
-                OutlinedButton.icon(onPressed: () => widget.onReply(ReplyMode.replyAll, e), icon: const Icon(Icons.reply_all), label: Text(s.t('replyAll'))),
-                OutlinedButton.icon(onPressed: () => widget.onReply(ReplyMode.forward, e), icon: const Icon(Icons.forward), label: Text(s.t('forward'))),
-              ]),
-            ] else if (canSend) ...[
-              const SizedBox(height: 24),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                    onPressed: () => widget.onReply(ReplyMode.forward, e), icon: const Icon(Icons.forward), label: Text(s.t('forward'))),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
+
+    final page = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (phone) SafeArea(bottom: false, child: header) else header,
+      Expanded(child: body),
+      if (showReply && !phone) _QuickReply(email: e, onReply: (m) => widget.onReply(m, e)),
+      if (showReply && phone) _PhoneActions(onReply: (m) => widget.onReply(m, e)),
+      if (!showReply && canSend && phone) _PhoneActions(onReply: (m) => widget.onReply(m, e), forwardOnly: true),
+    ]);
 
     return CallbackShortcuts(
       bindings: {
@@ -393,108 +502,136 @@ class _ReaderViewState extends State<ReaderView> {
         if (pos?.onNext != null) const SingleActivator(LogicalKeyboardKey.keyJ): pos!.onNext!,
         if (pos?.onPrevious != null) const SingleActivator(LogicalKeyboardKey.keyK): pos!.onPrevious!,
       },
-      child: Focus(autofocus: true, child: page),
+      child: Focus(
+        autofocus: true,
+        // A pushed reader (phones) is its own screen on the white surface.
+        child: widget.onClose != null && ModalRoute.of(context)?.isFirst == false && phone
+            ? Scaffold(backgroundColor: t.surface, body: page)
+            : Material(color: t.surface, child: page),
+      ),
     );
   }
 
-  List<Widget> _deliveryAlerts(S s, ThemeData theme) {
-    final (text, color) = switch (e.status) {
-      3 || 8 => (e.deliveryMessage.isNotEmpty ? e.deliveryMessage : s.t('bounced'), theme.colorScheme.error),
-      4 => (s.t('complained'), Colors.orange.shade800),
-      5 => (s.t('delayed'), Colors.orange.shade800),
-      _ => ('', null),
+  /// web el-alert for bounced / complained / delayed sent mail.
+  List<Widget> _deliveryAlerts(S s, PsgTokens t) {
+    final (text, color, bg) = switch (e.status) {
+      3 || 8 => (e.deliveryMessage.isNotEmpty ? e.deliveryMessage : s.t('bounced'), t.danger, t.dangerLight9),
+      4 => (s.t('complained'), t.warning, t.warningLight9),
+      5 => (s.t('delayed'), t.warning, t.warningLight9),
+      _ => ('', t.text, t.surface),
     };
     if (text.isEmpty) return const [];
     return [
-      const SizedBox(height: 12),
       Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color!.withValues(alpha: .1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: .4)),
-        ),
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(PsgRadius.sm)),
         child: Row(children: [
-          Icon(Icons.warning_amber_rounded, color: color),
+          PsgIcon('psg:warning', size: 16, color: color),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: TextStyle(color: color))),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: color))),
         ]),
       ),
     ];
   }
 
-  Widget _panelCard(S s, ThemeData theme) {
+  /// web .translate-panel / .ai-mail-panel.
+  Widget _panelCard(S s, PsgTokens t) {
+    final translate = _panel == _Panel.translate;
     final title = switch (_panel) {
       _Panel.translate => s.t('translatedResult'),
       _Panel.summary => s.t('aiSummaryTitle'),
       _ => s.t('aiReplySuggestionTitle'),
     };
-    final mono = theme.textTheme.bodyMedium;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(_panel == _Panel.translate ? Icons.translate : Icons.auto_awesome_outlined, size: 18),
-            const SizedBox(width: 8),
-            Text(title, style: theme.textTheme.titleSmall),
-            if (_panel == _Panel.translate) ...[
-              const SizedBox(width: 8),
-              Chip(
-                visualDensity: VisualDensity.compact,
-                label: Text(_targetLang == 'zh' ? s.t('translateToZh') : s.t('translateToEn')),
+    final bodyStyle = TextStyle(fontSize: 14, height: 1.7, color: t.text);
+    Widget column(String label, String text) => Container(
+          color: t.surfaceMuted,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.textMuted)),
+            const SizedBox(height: 6),
+            Text(text, style: bodyStyle),
+          ]),
+        );
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 16, 0, 8),
+      decoration: BoxDecoration(
+        color: t.surfaceMuted,
+        border: Border.all(color: t.border),
+        borderRadius: BorderRadius.circular(PsgRadius.md),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.border))),
+          child: Row(children: [
+            PsgIcon(translate ? 'psg:globe' : 'psg:sparkles', size: 15, color: t.textMuted),
+            const SizedBox(width: 6),
+            Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.textMuted)),
+            if (translate) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: t.primary, borderRadius: BorderRadius.circular(PsgRadius.xs)),
+                child: Text(_targetLang == 'zh' ? s.t('translateToZh') : s.t('translateToEn'),
+                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: t.onPrimary)),
               ),
             ],
             const Spacer(),
-            if (_panel == _Panel.translate)
-              TextButton(
+            if (translate)
+              OutlinedButton(
                 onPressed: _panelLoading ? null : () => _translate(switchLang: true),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 26),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  side: BorderSide(color: t.border),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PsgRadius.xs)),
+                  foregroundColor: t.text,
+                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
                 child: Text(_targetLang == 'zh' ? s.t('translateToEn') : s.t('translateToZh')),
               ),
             if (_panel == _Panel.reply && _panelText.isNotEmpty)
-              IconButton(
-                tooltip: s.t('copy'),
-                icon: const Icon(Icons.copy, size: 18),
-                onPressed: () => Clipboard.setData(ClipboardData(text: _panelText)),
-              ),
-            IconButton(
-              tooltip: s.t('close'),
-              icon: const Icon(Icons.close, size: 18),
-              onPressed: () => setState(() => _panel = _Panel.none),
-            ),
+              PsgIconButton('psg:copy', size: 30, iconSize: 15, tooltip: s.t('copy'),
+                  onPressed: () => Clipboard.setData(ClipboardData(text: _panelText))),
+            const SizedBox(width: 6),
+            PsgIconButton('psg:close', size: 30, iconSize: 15, tooltip: s.t('close'), onPressed: () => setState(() => _panel = _Panel.none)),
           ]),
-          const SizedBox(height: 8),
-          if (_panelLoading)
-            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
-          else if (_panel == _Panel.translate)
-            LayoutBuilder(builder: (context, box) {
-              final original = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(s.t('showOriginal'), style: theme.textTheme.labelMedium),
-                const SizedBox(height: 4),
-                Text(_original, style: mono),
-              ]);
-              final translated = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(s.t('translatedResult'), style: theme.textTheme.labelMedium),
-                const SizedBox(height: 4),
-                Text(_panelText, style: mono),
-              ]);
-              return box.maxWidth > 560
-                  ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Expanded(child: original),
-                      const SizedBox(width: 16),
-                      Expanded(child: translated),
-                    ])
-                  : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [translated, const Divider(height: 24), original]);
-            })
-          else
-            Text(_panelText, style: mono),
-        ]),
-      ),
+        ),
+        if (_panelLoading)
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: t.textMuted))),
+          )
+        else if (translate)
+          LayoutBuilder(builder: (context, box) {
+            final original = column(s.t('showOriginal'), _original);
+            final translated = column(s.t('translatedResult'), _panelText);
+            return box.maxWidth > 640
+                ? Container(
+                    color: t.border,
+                    child: IntrinsicHeight(
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Expanded(child: original),
+                        const SizedBox(width: 1),
+                        Expanded(child: translated),
+                      ]),
+                    ),
+                  )
+                : Container(
+                    color: t.border,
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [original, const SizedBox(height: 1), translated]),
+                  );
+          })
+        else
+          Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 12), child: Text(_panelText, style: bodyStyle)),
+      ]),
     );
   }
 }
 
+/// web .spam-banner.
 class _SpamBanner extends StatelessWidget {
   final String? reason;
   final bool busy;
@@ -504,61 +641,103 @@ class _SpamBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final theme = Theme.of(context);
-    final color = Colors.orange.shade800;
+    final t = context.psg;
     return Container(
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: .4)),
+        color: Color.lerp(t.surface, t.warning, .12),
+        borderRadius: BorderRadius.circular(PsgRadius.lg),
       ),
       child: Row(children: [
-        Icon(Icons.report_gmailerrorred_outlined, color: color),
-        const SizedBox(width: 10),
+        PsgIcon('psg:spam', size: 18, color: t.warning),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(reason != null ? s.t('aiSpamBannerTitle') : s.t('spamBannerTitle'),
-                style: theme.textTheme.titleSmall),
-            if (reason != null)
-              Text(reason!.isNotEmpty ? reason! : s.t('aiSpamBannerFallback'), style: theme.textTheme.bodySmall),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.text)),
+            if (reason != null) ...[
+              const SizedBox(height: 2),
+              Text(reason!.isNotEmpty ? reason! : s.t('aiSpamBannerFallback'),
+                  style: TextStyle(fontSize: 13, height: 1.45, color: t.textSecondary)),
+            ],
           ]),
         ),
-        const SizedBox(width: 8),
-        OutlinedButton(onPressed: busy ? null : onNotSpam, child: Text(s.t('notSpam'))),
+        const SizedBox(width: 12),
+        Container(
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: PsgShadow.xs(context)),
+          child: PsgButton(s.t('notSpam'),
+              kind: PsgButtonKind.outline, height: 36, radius: 18, busy: busy, onPressed: busy ? null : onNotSpam),
+        ),
       ]),
     );
   }
 }
 
+/// web .meta-card: tinted avatar, sender, "发给" the recipients (bold),
+/// Cc / Bcc, and the date on the right (under the sender on phones).
 class _Header extends StatelessWidget {
   final Email email;
-  const _Header({required this.email});
+  final bool phone;
+  const _Header({required this.email, required this.phone});
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final theme = Theme.of(context);
+    final t = context.psg;
     final to = email.recipients.map((a) => a.address).join(', ');
     final cc = email.cc.map((a) => a.address).join(', ');
     final bcc = parseAddresses(email.bccJson).map((a) => a.address).join(', ');
-    final created = email.created;
     final who = email.name.isNotEmpty ? email.name : email.sendEmail;
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      CircleAvatar(child: Text(who.isEmpty ? '?' : who.substring(0, 1).toUpperCase())),
-      const SizedBox(width: 12),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(who, style: theme.textTheme.titleSmall),
-          if (email.name.isNotEmpty) Text(email.sendEmail, style: muted),
-          if (to.isNotEmpty || email.toEmail.isNotEmpty) Text('${s.t('sentTo')} ${to.isNotEmpty ? to : email.toEmail}', style: muted),
-          if (cc.isNotEmpty) Text('${s.t('cc')} $cc', style: muted),
-          if (bcc.isNotEmpty) Text('${s.t('bcc')} $bcc', style: muted),
-        ]),
-      ),
-      if (created != null)
-        Text(DateFormat.yMMMd(Localizations.localeOf(context).toLanguageTag()).add_Hm().format(created), style: muted),
+    final date = Text(formatDetailDate(email.created, en: !s.zh),
+        style: TextStyle(fontSize: 12, color: t.textSecondary, fontFeatures: const [FontFeature.tabularFigures()]));
+
+    Widget field(String label, String value, {bool strong = false}) => Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text.rich(
+            TextSpan(children: [
+              TextSpan(text: '$label  ', style: TextStyle(color: t.textSecondary)),
+              TextSpan(text: value, style: TextStyle(color: t.text, fontWeight: strong ? FontWeight.w700 : FontWeight.w400)),
+            ]),
+            style: const TextStyle(fontSize: 13, height: 1.5),
+          ),
+        );
+
+    final sender = phone
+        ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(who, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: t.text)),
+            if (email.name.isNotEmpty) Text(email.sendEmail, style: TextStyle(fontSize: 13, color: t.textSecondary)),
+          ])
+        : Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+            Flexible(
+              child: Text(who,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.text)),
+            ),
+            if (email.name.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(email.sendEmail,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: t.textSecondary)),
+              ),
+            ],
+          ]);
+
+    final avatarSize = phone ? 38.0 : 44.0;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        PsgAvatar(name: who, email: email.sendEmail, size: avatarSize),
+        SizedBox(width: phone ? 10 : 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            sender,
+            if (to.isNotEmpty || email.toEmail.isNotEmpty) field(s.t('sentTo'), to.isNotEmpty ? to : email.toEmail, strong: true),
+            if (cc.isNotEmpty) field(s.t('cc'), cc),
+            if (bcc.isNotEmpty) field(s.t('bcc'), bcc),
+          ]),
+        ),
+        if (!phone) ...[const SizedBox(width: 12), Padding(padding: const EdgeInsets.only(top: 2), child: date)],
+      ]),
+      if (phone) Padding(padding: EdgeInsets.only(left: avatarSize + 10, top: 4), child: date),
     ]);
   }
 }
@@ -570,13 +749,15 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = context.read<Session>();
+    final t = context.psg;
     if (email.content.trim().isEmpty) {
-      return Text(email.text, style: Theme.of(context).textTheme.bodyMedium);
+      return Text(email.text,
+          style: TextStyle(fontSize: 14, height: 1.8, color: t.textSecondary, fontFamily: 'monospace', fontFamilyFallback: const ['DM Sans']));
     }
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final dark = context.isDark;
     return HtmlWidget(
       resolveStoredImages(session, email.content),
-      textStyle: Theme.of(context).textTheme.bodyMedium,
+      textStyle: TextStyle(fontSize: 16, height: 1.75, color: t.text),
       onTapUrl: openExternal,
       customStylesBuilder: (el) {
         // Mail HTML often hardcodes a white page / black text; in dark mode
@@ -589,7 +770,7 @@ class _Body extends StatelessWidget {
           out['background-color'] = 'transparent';
         }
         if (RegExp(r'(^|;)\s*color\s*:\s*(#000\b|#000000|black|#333\b|#333333)', caseSensitive: false).hasMatch(style)) {
-          out['color'] = '#E6EAE7';
+          out['color'] = '#F2F2F7';
         }
         return out.isEmpty ? null : out;
       },
@@ -597,9 +778,12 @@ class _Body extends StatelessWidget {
   }
 }
 
+/// web .att-container: bordered box, one grey row per file with preview /
+/// download.
 class _Attachments extends StatelessWidget {
   final Email email;
-  const _Attachments({required this.email});
+  final bool phone;
+  const _Attachments({required this.email, required this.phone});
 
   Future<void> _save(BuildContext context, Attachment a) async {
     final session = context.read<Session>();
@@ -618,39 +802,190 @@ class _Attachments extends StatelessWidget {
     final url = context.read<Session>().ossUrl(a.key);
     showDialog<void>(
       context: context,
-      builder: (c) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: Stack(children: [
-          InteractiveViewer(maxScale: 6, child: Center(child: Image.network(url, fit: BoxFit.contain))),
-          Positioned(
-            right: 4,
-            top: 4,
-            child: IconButton.filledTonal(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(c)),
-          ),
-        ]),
-      ),
+      barrierColor: Colors.black87,
+      builder: (c) => Stack(children: [
+        Positioned.fill(child: InteractiveViewer(maxScale: 6, child: Center(child: Image.network(url, fit: BoxFit.contain)))),
+        Positioned(
+          right: 16,
+          top: 16,
+          child: PsgIconButton('psg:close', style: PsgIconButtonStyle.surface, size: 40, onPressed: () => Navigator.pop(c)),
+        ),
+      ]),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
+    final t = context.psg;
     final files = email.attachments.where((a) => !a.isInline).toList();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('${s.t('attachments')} · ${s.t('attCount', {'total': files.length})}',
-          style: Theme.of(context).textTheme.labelLarge),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final a in files)
-          InputChip(
-            avatar: Icon(isImageName(a.filename) ? Icons.image_outlined : Icons.insert_drive_file_outlined, size: 18),
-            label: Text('${a.filename} · ${formatSize(a.size)}'),
-            onPressed: isImageName(a.filename) ? () => _preview(context, a) : () => _save(context, a),
-            deleteIcon: const Icon(Icons.download, size: 18),
-            deleteButtonTooltipMessage: s.t('download'),
-            onDeleted: () => _save(context, a),
+    final r = phone ? PsgRadius.sm : PsgRadius.md;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 560),
+        margin: EdgeInsets.only(top: phone ? 28 : 40),
+        padding: EdgeInsets.all(phone ? 14 : 16),
+        decoration: BoxDecoration(border: Border.all(color: t.border), borderRadius: BorderRadius.circular(r)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Expanded(child: Text(s.t('attachments'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.text))),
+            Text(s.t('attCount', {'total': files.length}), style: TextStyle(fontSize: 12.5, color: t.textMuted)),
+          ]),
+          const SizedBox(height: 12),
+          for (final a in files)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Material(
+                color: t.surfaceMuted,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PsgRadius.sm), side: BorderSide(color: t.border)),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(PsgRadius.sm),
+                  hoverColor: t.surfaceActive,
+                  onTap: isImageName(a.filename) ? () => _preview(context, a) : () => _save(context, a),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(children: [
+                      PsgIcon(isImageName(a.filename) ? 'psg:gallery' : 'psg:paperclip', size: 20, color: t.textMuted),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(a.filename,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: t.text)),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(formatSize(a.size), style: TextStyle(fontSize: 12, color: t.textMuted)),
+                      const SizedBox(width: 6),
+                      if (isImageName(a.filename))
+                        PsgIconButton('psg:eye', size: 30, iconSize: 18, tooltip: s.t('preview'), onPressed: () => _preview(context, a)),
+                      PsgIconButton('psg:download', size: 30, iconSize: 18, tooltip: s.t('download'), onPressed: () => _save(context, a)),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// web .quick-reply: the docked "Reply to …" card at the bottom of the
+/// reader on wider screens.
+class _QuickReply extends StatelessWidget {
+  final Email email;
+  final ValueChanged<ReplyMode> onReply;
+  const _QuickReply({required this.email, required this.onReply});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final t = context.psg;
+    Widget btn(String icon, String label, ReplyMode m) => _HoverButton(
+          onTap: () => onReply(m),
+          hover: t.surface,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            PsgIcon(icon, size: 16, color: t.textSecondary),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: t.textSecondary)),
+          ]),
+        );
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+      decoration: BoxDecoration(color: t.surfaceMuted, borderRadius: BorderRadius.circular(PsgRadius.lg)),
+      child: Row(children: [
+        Expanded(
+          child: _HoverButton(
+            onTap: () => onReply(ReplyMode.reply),
+            hover: t.surface,
+            cursor: SystemMouseCursors.text,
+            child: Row(children: [
+              PsgIcon('psg:reply', size: 16, color: t.textMuted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(s.t('quickReplyTo', {'name': email.name.isNotEmpty ? email.name : email.sendEmail}),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: t.textMuted)),
+              ),
+            ]),
           ),
+        ),
+        const SizedBox(width: 8),
+        btn('psg:reply-all', s.t('replyAll'), ReplyMode.replyAll),
+        const SizedBox(width: 6),
+        btn('psg:forward', s.t('forward'), ReplyMode.forward),
+        const SizedBox(width: 6),
+        PsgButton(s.t('reply'), icon: 'psg:reply', height: 44, onPressed: () => onReply(ReplyMode.reply)),
       ]),
-    ]);
+    );
+  }
+}
+
+class _HoverButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  final Color hover;
+  final MouseCursor cursor;
+  const _HoverButton({required this.child, required this.onTap, required this.hover, this.cursor = SystemMouseCursors.click});
+
+  @override
+  State<_HoverButton> createState() => _HoverButtonState();
+}
+
+class _HoverButtonState extends State<_HoverButton> {
+  bool _on = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        cursor: widget.cursor,
+        onEnter: (_) => setState(() => _on = true),
+        onExit: (_) => setState(() => _on = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(color: _on ? widget.hover : Colors.transparent, borderRadius: BorderRadius.circular(PsgRadius.md)),
+            child: widget.child,
+          ),
+        ),
+      );
+}
+
+/// web .mobile-reader-actions: orange Reply plus grey Reply all / Forward.
+class _PhoneActions extends StatelessWidget {
+  final ValueChanged<ReplyMode> onReply;
+  final bool forwardOnly;
+  const _PhoneActions({required this.onReply, this.forwardOnly = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final t = context.psg;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    Widget btn(String icon, String label, ReplyMode m, {bool primary = false}) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: PsgButton(label,
+                icon: icon,
+                height: 48,
+                kind: primary ? PsgButtonKind.primary : PsgButtonKind.secondary,
+                expand: true,
+                onPressed: () => onReply(m)),
+          ),
+        );
+    return Container(
+      color: t.surface,
+      padding: EdgeInsets.fromLTRB(9, 10, 9, 12 + bottom),
+      child: Row(children: [
+        if (!forwardOnly) ...[
+          btn('psg:reply', s.t('reply'), ReplyMode.reply, primary: true),
+          btn('psg:reply-all', s.t('replyAll'), ReplyMode.replyAll),
+        ],
+        btn('psg:forward', s.t('forward'), ReplyMode.forward),
+      ]),
+    );
   }
 }

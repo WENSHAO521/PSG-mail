@@ -208,7 +208,9 @@ class UserInfo {
 class Page<T> {
   final List<T> items;
   final bool hasMore;
-  const Page(this.items, this.hasMore);
+  /// Server's row count for the folder, when it sends one.
+  final int? total;
+  const Page(this.items, this.hasMore, [this.total]);
 }
 
 /// A row of the Scheduled page (scheduled-email-service toClient()).

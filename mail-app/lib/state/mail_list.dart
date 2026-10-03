@@ -19,6 +19,8 @@ class MailList extends ChangeNotifier {
   bool loading = false;
   bool hasMore = true;
   Object? error;
+  /// Folder size from the server (web "共 N 封"); null when unknown.
+  int? total;
   bool unreadOnly = false;
   final Set<int> selected = {};
   bool _disposed = false;
@@ -60,6 +62,7 @@ class MailList extends ChangeNotifier {
         ..clear()
         ..addAll(page.items);
       hasMore = page.hasMore;
+      total = page.total;
       selected.removeWhere((id) => !_items.any((e) => e.emailId == id));
     } catch (e) {
       error = e;
@@ -109,7 +112,9 @@ class MailList extends ChangeNotifier {
 
   void remove(Iterable<int> ids) {
     final set = ids.toSet();
+    final before = _items.length;
     _items.removeWhere((e) => set.contains(e.emailId));
+    if (total != null) total = (total! - (before - _items.length)).clamp(0, 1 << 31);
     selected.removeAll(set);
     _notify();
     // Keep the page full after removals, like the web list.

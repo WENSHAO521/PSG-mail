@@ -7,7 +7,9 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../l10n/strings.dart';
 import '../state/session.dart';
-import 'folder_nav.dart';
+import '../ui/dialogs.dart';
+import '../ui/psg.dart';
+import 'mail_list_view.dart';
 
 enum MailAction { read, unread, star, unstar, archive, unarchive, spam, notSpam, delete, restore, exportEml, labels }
 
@@ -29,24 +31,7 @@ class MailActions {
       ..showSnackBar(SnackBar(content: Text(msg), action: action, persist: false));
   }
 
-  Future<bool> confirm(String message, {bool danger = true}) async {
-    final s = _s;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(s.t('cancel'))),
-          FilledButton(
-            style: danger ? FilledButton.styleFrom(backgroundColor: Theme.of(c).colorScheme.error) : null,
-            onPressed: () => Navigator.pop(c, true),
-            child: Text(s.t('confirm')),
-          ),
-        ],
-      ),
-    );
-    return ok == true;
-  }
+  Future<bool> confirm(String message, {bool danger = true}) => psgConfirm(context, message, danger: danger);
 
   /// Runs [action] on [mail]. Returns the ids that left the current folder
   /// (the caller removes them from its list).
@@ -152,7 +137,13 @@ class MailActions {
                       CheckboxListTile(
                         tristate: true,
                         value: state(l),
-                        secondary: Icon(Icons.label, color: labelColor(l.color)),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        secondary: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                              color: labelColor(l.color) ?? c.psg.textMuted, borderRadius: BorderRadius.circular(3)),
+                        ),
                         title: Text(l.name),
                         onChanged: (_) async {
                           final apply = state(l) != true;
@@ -173,7 +164,9 @@ class MailActions {
                       ),
                   ]),
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(c), child: Text(s.t('close')))],
+          actions: [
+            PsgButton(s.t('close'), kind: PsgButtonKind.outline, height: 36, radius: PsgRadius.sm, onPressed: () => Navigator.pop(c)),
+          ],
         );
       }),
     );

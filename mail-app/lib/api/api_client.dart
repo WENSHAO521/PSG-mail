@@ -164,7 +164,8 @@ class ApiClient {
         data = await get('/label/${f.labelId}/emails', {'emailId': before ?? 0, 'size': size});
     }
     final list = _emails(data);
-    return Page(list, list.length >= size);
+    final total = data is Map ? data['total'] : null;
+    return Page(list, list.length >= size, total is num ? total.toInt() : null);
   }
 
   Future<Page<Email>> search(String query, {required Account account, int? before, int size = 30}) async {
@@ -241,6 +242,11 @@ class ApiClient {
 
   Future<void> applyLabel(int labelId, List<int> ids) => post('/label/apply', {'labelId': labelId, 'emailIds': ids});
   Future<void> removeLabel(int labelId, List<int> ids) => post('/label/remove', {'labelId': labelId, 'emailIds': ids});
+  Future<MailLabel> createLabel(String name, String color) async =>
+      MailLabel.fromJson(Map<String, dynamic>.from(await post('/label/create', {'name': name, 'color': color}) as Map));
+  Future<void> updateLabel(int labelId, {String? name, String? color}) =>
+      put('/label/$labelId', {'name': ?name, 'color': ?color});
+  Future<void> deleteLabel(int labelId) => delete('/label/$labelId');
 
   // ── Scheduled ───────────────────────────────────────────────
 

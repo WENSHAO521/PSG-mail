@@ -5,14 +5,22 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/home_screen.dart';
+import 'state/app_settings.dart';
 import 'screens/login_screen.dart';
 import 'state/session.dart';
 import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final session = Session(await SharedPreferences.getInstance());
-  runApp(ChangeNotifierProvider.value(value: session, child: const PsgMailApp()));
+  final prefs = await SharedPreferences.getInstance();
+  final session = Session(prefs);
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider.value(value: session),
+      ChangeNotifierProvider(create: (_) => AppSettings(prefs)),
+    ],
+    child: const PsgMailApp(),
+  ));
 }
 
 class PsgMailApp extends StatelessWidget {
@@ -20,8 +28,11 @@ class PsgMailApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<AppSettings?>();
     return MaterialApp(
       title: 'PSG Mail',
+      themeMode: settings?.themeMode ?? ThemeMode.system,
+      locale: settings?.locale,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),

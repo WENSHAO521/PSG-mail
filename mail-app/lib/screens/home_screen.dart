@@ -13,15 +13,21 @@ import '../services/updater.dart';
 import '../state/drafts.dart';
 import '../state/mail_list.dart';
 import '../state/mail_watcher.dart';
+import '../state/notifications.dart';
 import '../state/session.dart';
+import '../ui/psg.dart';
 import '../widgets/folder_nav.dart';
 import '../widgets/mail_list_view.dart';
 import '../widgets/reader_view.dart';
+import '../widgets/shell_chrome.dart';
 import 'compose_screen.dart';
 
-/// The app shell. Phones: drawer + one screen at a time, a message opens as
-/// its own screen. Wider windows: list and message side by side, and on
-/// desktop widths the navigation stays visible as a third column.
+/// The app shell, laid out like the web app (layout/index.vue).
+///
+/// Wider than 1024px: the 72px top bar, then the folder column, the list
+/// card and the reader card on the mist. Phones: the big-title header, one
+/// white card, the ink tab bar and the orange compose button; a message
+/// opens as its own screen.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -30,21 +36,23 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _twoPane = 720.0;
-  static const _threePane = 1080.0;
+  /// Web: the phone layout applies at ≤1024px.
+  static const _phoneMax = 1024.0;
 
   Destination _dest = Destination.inbox;
   String _query = '';
-  bool _searching = false;
   bool _oldestFirst = false;
-  final _search = TextEditingController();
+  final _search = TextEditingController(); // top bar: all mailboxes
+  final _listSearch = TextEditingController(); // the list's own search row
   final _searchFocus = FocusNode();
+  final _listSearchFocus = FocusNode();
   final _shellFocus = FocusNode(debugLabel: 'shell');
   MailList? _list;
   int? _listAccountId;
-  Email? _open; // the message shown beside the list (wide layouts)
+  Email? _open; // the message shown beside the list (desktop)
   bool _wide = false;
   MailWatcher? _watcher;
+  late final NotificationCenter _notices = NotificationCenter(context.read<Session>().api);
 
   Folder get _folder => _dest.folder ?? Folder.inbox;
 
@@ -57,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startServices() async {
     final session = context.read<Session>();
     Notifier.instance.onOpen = _openById;
+    _notices.load();
     await Notifier.instance.init();
     await session.registerPush();
     if (mounted) _startWatcher();
@@ -70,7 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
       session.api,
       account: session.current!,
       pushEnabled: session.pushEnabled,
-      onNewMail: (_) {
+      onNewMail: (mail) {
+        for (final e in mail.reversed) {
+          _notices.push(e);
+        }
         final inboxLike = const {FolderKind.inbox, FolderKind.allInbox}.contains(_folder.kind);
         if (mounted && _dest.isMail && inboxLike && _query.isEmpty) _list?.refresh();
       },
@@ -93,7 +105,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openById(int emailId) async {
     try {
       final mail = await context.read<Session>().api.detail(emailId);
-      if (mail != null && mounted) _openMail(mail, _wide);
+      if (mail != null && mounted) {
+        if (!_dest.isMail) _go(Destination.inbox);
+        _openMail(mail, _wide);
+      }
     } catch (_) {}
   }
 
@@ -109,8 +124,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _watcher?.stop();
     Notifier.instance.onOpen = null;
     _list?.dispose();
+    _notices.dispose();
     _search.dispose();
+    _listSearch.dispose();
     _searchFocus.dispose();
+    _listSearchFocus.dispose();
     _shellFocus.dispose();
     super.dispose();
   }
@@ -130,9 +148,9 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _dest = d;
       _query = '';
-      _searching = false;
       _oldestFirst = false;
       _search.clear();
+      _listSearch.clear();
       if (d.isMail) _reload();
       _open = null;
     });
@@ -143,32 +161,31 @@ class _HomeScreenState extends State<HomeScreen> {
         _reload();
       });
 
-  // The shell's shortcut Focus already holds focus, so the field's own
-  // autofocus would be ignored; ask for it explicitly once it is built.
-  void _openSearch() {
+  /// Ctrl+F / "/" / the phone's search tab: focus the search box. The
+  /// shell's shortcut Focus holds focus, so ask explicitly once built.
+  void _focusSearch() {
     if (!_dest.isMail) _go(Destination.inbox);
-    setState(() => _searching = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _searchFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) => (_wide ? _searchFocus : _listSearchFocus).requestFocus());
   }
 
   void _runSearch(String q) {
     setState(() {
-      _query = q;
+      if (!_dest.isMail) _dest = Destination.inbox;
+      _query = q.trim();
+      _search.text = q;
+      _listSearch.text = q;
       _reload();
     });
     // Submitting drops focus; hand it back so window shortcuts keep working.
     _shellFocus.requestFocus();
   }
 
-  void _closeSearch() {
-    setState(() {
-      _searching = false;
-      _search.clear();
-      if (_query.isNotEmpty) {
-        _query = '';
-        _reload();
-      }
-    });
+  void _clearSearch() {
+    if (_query.isEmpty) {
+      _listSearch.clear();
+      return;
+    }
+    _runSearch('');
   }
 
   Future<void> _compose(
@@ -277,135 +294,256 @@ class _HomeScreenState extends State<HomeScreen> {
         : PageRouteBuilder(pageBuilder: (ctx, _, _) => build(ctx), transitionDuration: Duration.zero);
   }
 
-  PreferredSizeWidget _appBar(S s, bool showMenu) {
-    if (_searching) {
-      return AppBar(
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _closeSearch),
-        title: TextField(
-          controller: _search,
-          focusNode: _searchFocus,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(hintText: s.t('searchPlaceholder'), border: InputBorder.none),
-          onSubmitted: _runSearch,
-        ),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () => _runSearch(_search.text)),
-        ],
-      );
-    }
-    return AppBar(
-      automaticallyImplyLeading: showMenu,
-      title: Text(destinationTitle(s, _dest)),
-      actions: [
-        IconButton(tooltip: s.t('search'), icon: const Icon(Icons.search), onPressed: _openSearch),
-      ],
-    );
-  }
-
   Widget _page(PageKind p) => switch (p) {
         PageKind.drafts => DraftsPage(onOpen: (d) => _compose(draft: d)),
         PageKind.scheduled => ScheduledPage(onEdit: (payload) => _compose(prefill: payload)),
-        _ => Center(child: Text(S.of(context).t(pageInfo[p]!.labelKey))),
+        _ => _ComingPage(kind: p),
       };
+
+  String get _title {
+    final s = S.of(context);
+    if (_query.isNotEmpty) return s.t('search');
+    return destinationTitle(s, _dest);
+  }
+
+  /// Web .explorer-head: folder title (desktop), mailbox chips, search row.
+  Widget _explorerHead({required bool phone}) {
+    final s = S.of(context);
+    final t = context.psg;
+    final k = _folder.kind;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      if (!phone)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Text(_title,
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: t.text)),
+        ),
+      if (const {FolderKind.inbox, FolderKind.allInbox}.contains(k) && _query.isEmpty)
+        MailboxChips(
+          allActive: k == FolderKind.allInbox,
+          onAll: () => _go(const Destination.folder(Folder(FolderKind.allInbox))),
+          onAccount: (a) {
+            context.read<Session>().selectAccount(a);
+            if (k != FolderKind.inbox) _go(Destination.inbox);
+          },
+        ),
+      Padding(
+        padding: EdgeInsets.fromLTRB(phone ? 14 : 20, phone ? 8 : 12, phone ? 14 : 20, 0),
+        child: ListenableBuilder(
+          listenable: _listSearch,
+          builder: (context, _) => PsgSearchField(
+            controller: _listSearch,
+            focusNode: _listSearchFocus,
+            hint: s.t('searchPlaceholder'),
+            onSubmitted: _runSearch,
+            trailing: _listSearch.text.isEmpty && _query.isEmpty
+                ? null
+                : PsgIconButton('psg:close-circle', size: 24, iconSize: 14, tooltip: s.t('clear'), onPressed: _clearSearch),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _listPane(MailList list, {required bool phone, required bool wide, Email? selected}) {
+    final canSend = context.read<Session>().user?.can('email:send') ?? true;
+    return SortToggle(
+      onToggle: _toggleSort,
+      child: MailListView(
+        key: ObjectKey(list),
+        list: list,
+        head: _explorerHead(phone: phone),
+        selectedId: selected?.emailId,
+        onOpen: (e) => _openMail(e, wide),
+        onReply: canSend ? (mode, e) => _compose(mode: mode, original: e) : null,
+      ),
+    );
+  }
+
+  bool get _workspace => !_dest.isMail && sectionOf(_dest) != Section.mail;
+
+  Widget _desktop(BoxConstraints box, MailList list) {
+    final s = S.of(context);
+    final t = context.psg;
+    final narrow = box.maxWidth <= 1280;
+    final pad = narrow ? 16.0 : 24.0;
+    final canSend = context.read<Session>().user?.can('email:send') ?? true;
+    final selected = _open;
+
+    Widget body;
+    if (_workspace) {
+      body = PsgCard(child: ScaffoldMessenger(child: Scaffold(backgroundColor: t.surface, body: _page(_dest.page!))));
+    } else {
+      final Widget main;
+      if (!_dest.isMail) {
+        main = PsgCard(child: ScaffoldMessenger(child: Scaffold(backgroundColor: t.surface, body: _page(_dest.page!))));
+      } else {
+        final reader = selected == null
+            ? PsgCard(
+                child: Center(
+                  child: PsgEmpty(icon: 'psg:mail', title: s.t('selectEmailHint')),
+                ),
+              )
+            : PsgCard(child: _reader(selected, onClose: () => setState(() => _open = null), open: (m) => setState(() => _open = m)));
+        // Each pane keeps its own messenger so a notice shows once.
+        main = Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SizedBox(
+            width: narrow ? 360 : 420,
+            child: PsgCard(child: ScaffoldMessenger(child: Scaffold(backgroundColor: t.surface, body: _listPane(list, phone: false, wide: true, selected: selected)))),
+          ),
+          SizedBox(width: narrow ? 12 : 16),
+          Expanded(child: ScaffoldMessenger(child: Scaffold(backgroundColor: Colors.transparent, body: reader))),
+        ]);
+      }
+      body = Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SizedBox(
+          width: narrow ? 184 : 200,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: ListenableBuilder(
+              listenable: list,
+              builder: (context, _) => FolderNav(
+                selected: _dest,
+                onSelect: _go,
+                inboxUnread: _folder.kind == FolderKind.inbox && _query.isEmpty ? list.unreadCount : 0,
+              ),
+            ),
+          ),
+        ),
+        Expanded(child: main),
+      ]);
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(pad, 0, pad, pad),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        PsgTopBar(
+          dest: _dest,
+          onNavigate: _go,
+          search: _search,
+          searchFocus: _searchFocus,
+          onSearch: _runSearch,
+          onCompose: canSend ? () => _compose() : null,
+          onOpenMail: _openById,
+          compact: narrow,
+        ),
+        Expanded(child: body),
+      ]),
+    );
+  }
+
+  PhoneTab? get _phoneTab {
+    if (_dest.page == PageKind.settings) return PhoneTab.settings;
+    if (_query.isNotEmpty) return PhoneTab.search;
+    if (_dest.folder?.kind == FolderKind.starred) return PhoneTab.starred;
+    if (sectionOf(_dest) == Section.mail) return PhoneTab.mail;
+    return null;
+  }
+
+  void _onTab(PhoneTab tab) {
+    switch (tab) {
+      case PhoneTab.mail:
+        if (!(_dest == Destination.inbox && _query.isEmpty)) _go(Destination.inbox);
+      case PhoneTab.search:
+        _focusSearch();
+      case PhoneTab.starred:
+        _go(const Destination.folder(Folder(FolderKind.starred)));
+      case PhoneTab.settings:
+        _go(const Destination.page(PageKind.settings));
+    }
+  }
+
+  Widget _phone(MailList list) {
+    final t = context.psg;
+    final canSend = context.read<Session>().user?.can('email:send') ?? true;
+    final mailScreen = sectionOf(_dest) == Section.mail;
+    // Web COMPOSE_ROUTES: compose floats over the everyday lists only.
+    final showFab = canSend &&
+        (_dest.page == PageKind.drafts ||
+            (_dest.isMail && !const {FolderKind.archive, FolderKind.spam, FolderKind.trash}.contains(_folder.kind)));
+    final content = _dest.isMail ? _listPane(list, phone: true, wide: false) : _page(_dest.page!);
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return Stack(children: [
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SafeArea(
+          bottom: false,
+          child: ListenableBuilder(
+            listenable: list,
+            builder: (context, _) => PhoneHeader(
+              title: _title,
+              onTitle: mailScreen
+                  ? () => showFolderSheet(context,
+                      selected: _dest,
+                      onSelect: _go,
+                      inboxUnread: _folder.kind == FolderKind.inbox && _query.isEmpty ? list.unreadCount : 0)
+                  : null,
+              onNavigate: _go,
+              onOpenMail: _openById,
+            ),
+          ),
+        ),
+        Expanded(
+          child: PsgCard(child: ScaffoldMessenger(child: Scaffold(backgroundColor: t.surface, body: content))),
+        ),
+        const SizedBox(height: 6),
+        PhoneTabBar(current: _phoneTab, onTab: _onTab),
+      ]),
+      if (showFab)
+        Positioned(right: 18, bottom: 92 + bottom, child: PhoneFab(onPressed: () => _compose())),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final s = S.of(context);
     final session = context.watch<Session>();
     final canSend = session.user?.can('email:send') ?? true;
     final list = _list;
     if (list == null) return const SizedBox.shrink();
 
-    return LayoutBuilder(builder: (context, box) {
-      final wide = box.maxWidth >= _twoPane;
-      _wide = wide;
-      final railVisible = box.maxWidth >= _threePane;
-      final selected = wide ? _open : null;
-      final nav = FolderNav(selected: _dest, onSelect: _go);
-      final drawer = railVisible ? null : Drawer(child: FolderNav(selected: _dest, onSelect: _go, inDrawer: true));
-      final fab = canSend
-          ? FloatingActionButton.extended(
-              onPressed: () => _compose(),
-              icon: const Icon(Icons.edit_outlined),
-              label: Text(s.t('compose')),
-            )
-          : null;
-
-      Widget content;
-      if (!_dest.isMail) {
-        // A page fills everything right of the navigation.
-        final pageScaffold = Scaffold(
-          appBar: AppBar(automaticallyImplyLeading: !railVisible, title: Text(destinationTitle(s, _dest))),
-          drawer: drawer,
-          floatingActionButton: _dest.page == PageKind.drafts ? fab : null,
-          body: _page(_dest.page!),
+    return ChangeNotifierProvider.value(
+      value: _notices,
+      child: LayoutBuilder(builder: (context, box) {
+        final wide = box.maxWidth > _phoneMax;
+        _wide = wide;
+        final content = Scaffold(
+          backgroundColor: context.psg.canvas,
+          body: wide ? SafeArea(child: _desktop(box, list)) : _phone(list),
         );
-        content = railVisible
-            ? Scaffold(
-                body: Row(children: [
-                  SizedBox(width: 260, child: Material(child: nav)),
-                  const VerticalDivider(width: 1),
-                  Expanded(child: ScaffoldMessenger(child: pageScaffold)),
-                ]),
-              )
-            : pageScaffold;
-      } else {
-        final listPane = Scaffold(
-          appBar: _appBar(s, !railVisible),
-          drawer: drawer,
-          floatingActionButton: fab,
-          body: SortToggle(
-            onToggle: _toggleSort,
-            child: MailListView(
-              key: ObjectKey(list),
-              list: list,
-              selectedId: selected?.emailId,
-              onOpen: (e) => _openMail(e, wide),
-              onReply: canSend ? (mode, e) => _compose(mode: mode, original: e) : null,
-            ),
-          ),
+        return CallbackShortcuts(
+          bindings: {
+            if (canSend) const SingleActivator(LogicalKeyboardKey.keyN, control: true): () => _compose(),
+            if (canSend) const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () => _compose(),
+            const SingleActivator(LogicalKeyboardKey.keyF, control: true): _focusSearch,
+            const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _focusSearch,
+            const SingleActivator(LogicalKeyboardKey.slash): _focusSearch,
+            const SingleActivator(LogicalKeyboardKey.f5): () => list.refresh(),
+          },
+          child: Focus(focusNode: _shellFocus, autofocus: true, child: content),
         );
-        if (!wide) {
-          content = listPane;
-        } else {
-          final readerPane = selected == null
-              ? Scaffold(
-                  body: Center(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.mail_outline, size: 56, color: Theme.of(context).colorScheme.outlineVariant),
-                      const SizedBox(height: 8),
-                      Text(s.t('selectEmailHint'), style: TextStyle(color: Theme.of(context).colorScheme.outline)),
-                    ]),
-                  ),
-                )
-              : _reader(selected, onClose: () => setState(() => _open = null), open: (m) => setState(() => _open = m));
-          // Each pane keeps its own messenger so a notice shows once, across
-          // the window, from the outer Scaffold rather than in every pane.
-          content = Scaffold(
-            body: Row(children: [
-              if (railVisible) ...[
-                SizedBox(width: 260, child: Material(child: nav)),
-                const VerticalDivider(width: 1),
-              ],
-              SizedBox(width: railVisible ? 420 : box.maxWidth * .45, child: ScaffoldMessenger(child: listPane)),
-              const VerticalDivider(width: 1),
-              Expanded(child: ScaffoldMessenger(child: readerPane)),
-            ]),
-          );
-        }
-      }
+      }),
+    );
+  }
+}
 
-      return CallbackShortcuts(
-        bindings: {
-          if (canSend) const SingleActivator(LogicalKeyboardKey.keyN, control: true): () => _compose(),
-          if (canSend) const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () => _compose(),
-          const SingleActivator(LogicalKeyboardKey.keyF, control: true): _openSearch,
-          const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _openSearch,
-          const SingleActivator(LogicalKeyboardKey.f5): () => list.refresh(),
-        },
-        child: Focus(focusNode: _shellFocus, autofocus: true, child: content),
-      );
-    });
+/// Placeholder for a web page that has no native screen yet.
+class _ComingPage extends StatelessWidget {
+  final PageKind kind;
+  const _ComingPage({required this.kind});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final info = pageInfo[kind]!;
+    return Center(
+      child: PsgEmpty(
+        icon: info.icon,
+        title: s.t(info.labelKey),
+        action: PsgButton(s.webApp, kind: PsgButtonKind.secondary, height: 36, icon: 'psg:globe', onPressed: () {
+          final session = context.read<Session>();
+          openExternal(Session.apiBase(session.server).replaceFirst(RegExp(r'/api$'), ''));
+        }),
+      ),
+    );
   }
 }
 
