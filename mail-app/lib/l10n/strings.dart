@@ -74,5 +74,10 @@ class S {
   String get showImages => _t('显示图片', 'Show images');
   String get webOnlyHint => _t('管理与系统设置请在网页版中使用', 'Admin and system settings are in the web app');
   String get openWeb => _t('打开网页版', 'Open web app');
+  String get webApp => _t('网页版（设置与管理）', 'Web app (settings & admin)');
+  String updateAvailable(String v) => _t('PSG Mail $v 已发布', 'PSG Mail $v is available');
+  String get download => _t('下载', 'Download');
+  String get later => _t('稍后', 'Later');
+  String newMailCount(int n) => _t('$n 封新邮件', n == 1 ? '1 new message' : '$n new messages');
   String attachmentCount(int n) => _t('$n 个附件', n == 1 ? '1 attachment' : '$n attachments');
 }

@@ -5,6 +5,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../l10n/strings.dart';
 import '../state/session.dart';
+import 'reader_view.dart';
 
 String folderTitle(S s, Folder f) => switch (f.kind) {
       FolderKind.inbox => s.inbox,
@@ -96,6 +97,15 @@ class FolderNav extends StatelessWidget {
               ),
           ],
           const Divider(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: ListTile(
+              dense: true,
+              leading: const Icon(Icons.open_in_new),
+              title: Text(s.webApp, overflow: TextOverflow.ellipsis),
+              onTap: () => openExternal(Session.apiBase(session.server).replaceFirst(RegExp(r'/api$'), '')),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: ListTile(

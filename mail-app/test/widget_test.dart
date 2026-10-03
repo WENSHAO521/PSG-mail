@@ -9,6 +9,8 @@ import 'package:psg_mail/api/api_client.dart';
 import 'package:psg_mail/api/models.dart';
 import 'package:psg_mail/main.dart';
 import 'package:psg_mail/screens/compose_screen.dart';
+import 'package:psg_mail/services/updater.dart';
+import 'package:psg_mail/state/mail_watcher.dart';
 import 'package:psg_mail/state/session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -80,6 +82,59 @@ void main() {
       expect(api.ossUrl('a/b.png', ''), 'https://x.test/api/oss/a/b.png');
       expect(api.ossUrl('a/b.png', 'cdn.test/'), 'https://cdn.test/a/b.png');
     });
+  });
+
+  group('Updater', () {
+    test('compares versions', () {
+      expect(Updater.isNewer('v3.2.0', '3.1.2'), isTrue);
+      expect(Updater.isNewer('3.2.0', '3.2.0'), isFalse);
+      expect(Updater.isNewer('3.10.0', '3.9.9'), isTrue);
+      expect(Updater.isNewer('3.1', '3.1.1'), isFalse);
+    });
+
+    test('picks the asset for each platform', () {
+      final assets = [
+        {'name': 'PSG-Mail-3.2.0-android-universal.apk', 'browser_download_url': 'apk'},
+        {'name': 'PSG-Mail-3.2.0-windows-setup.exe', 'browser_download_url': 'exe'},
+        {'name': 'PSG-Mail-3.2.0-macos.dmg', 'browser_download_url': 'dmg'},
+        {'name': 'PSG-Mail-3.2.0-linux-x64.tar.gz', 'browser_download_url': 'tgz'},
+        {'name': 'SHA256SUMS', 'browser_download_url': 'sums'},
+      ];
+      expect(Updater.pickAsset(assets, 'android'), 'apk');
+      expect(Updater.pickAsset(assets, 'windows'), 'exe');
+      expect(Updater.pickAsset(assets, 'macos'), 'dmg');
+      expect(Updater.pickAsset(assets, 'linux'), 'tgz');
+      expect(Updater.pickAsset(assets, 'ios'), isNull);
+    });
+  });
+
+  testWidgets('MailWatcher reports only mail newer than the baseline', (tester) async {
+    final requests = <Uri>[];
+    final api = ApiClient(
+      baseUrl: 'https://x.test/api',
+      client: MockClient((req) async {
+        requests.add(req.url);
+        if (req.url.path.endsWith('/email/list')) {
+          return ok({'list': [{'emailId': 10, 'type': 0}]});
+        }
+        // /email/latest
+        return ok([
+          {'emailId': 12, 'type': 0, 'subject': 'b'},
+          {'emailId': 11, 'type': 0, 'subject': 'a'},
+        ]);
+      }),
+    );
+    final got = <int>[];
+    final watcher = MailWatcher(api,
+        account: Account.fromJson({'accountId': 3, 'allReceive': 0}),
+        onNewMail: (mail) => got.addAll(mail.map((e) => e.emailId)));
+    await tester.runAsync(() async {
+      await watcher.start();
+      await watcher.poll();
+    });
+    watcher.stop();
+    expect(requests.last.queryParameters['emailId'], '10');
+    expect(got, [12, 11]);
   });
 
   test('splitAddresses', () {

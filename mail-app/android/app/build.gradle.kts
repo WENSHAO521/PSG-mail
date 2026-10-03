@@ -15,19 +15,21 @@ val keyProps = Properties().apply {
 }
 
 android {
-    namespace = "com.psg.psg_mail"
+    namespace = "com.psg.mail"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by flutter_local_notifications.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
-        // Its own id, so it installs beside the current app while it covers
-        // only the core mail screens.
-        applicationId = "com.psg.psg_mail"
+        // Same id (and, in CI, the same signing key) as the web-wrapper app
+        // it replaces, so it installs as an update over existing installs.
+        applicationId = "com.psg.mail"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -66,4 +68,10 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Same version as the web-wrapper app's @capacitor/push-notifications.
+    implementation("com.google.firebase:firebase-messaging:25.0.1")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

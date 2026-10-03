@@ -1,8 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../services/notifier.dart';
 
 /// Signed-in state: server, token, user, addresses and labels.
 class Session extends ChangeNotifier {
@@ -23,6 +26,7 @@ class Session extends ChangeNotifier {
   static const _kServer = 'server';
   static const _kToken = 'token';
   static const _kAccount = 'accountId';
+  static const _kInstallation = 'installationUuid';
 
   final SharedPreferences _prefs;
   final ApiClient api;
@@ -36,6 +40,9 @@ class Session extends ChangeNotifier {
 
   /// Set when the server rejected the token; the login screen explains why.
   bool expired = false;
+
+  /// True once this device's FCM token is registered with the worker.
+  bool pushEnabled = false;
 
   bool get signedIn => api.token != null;
   String get server => _prefs.getString(_kServer) ?? defaultServer;
@@ -81,6 +88,29 @@ class Session extends ChangeNotifier {
         accounts.firstOrNull ??
         user?.account;
     notifyListeners();
+  }
+
+  /// Android: hands the FCM token to the worker so new mail arrives as a
+  /// push even when the app is closed (same endpoint the old app used).
+  Future<void> registerPush() async {
+    final token = await Notifier.instance.pushToken();
+    if (token == null) return;
+    var id = _prefs.getString(_kInstallation);
+    if (id == null) {
+      final r = Random.secure();
+      id = List.generate(16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+      await _prefs.setString(_kInstallation, id);
+    }
+    try {
+      await api.post('/notification/device', {
+        'platform': 'android',
+        'targetKind': 'fcm_token',
+        'target': token,
+        'deviceName': 'PSG Mail (Android)',
+        'installationUuid': id,
+      });
+      pushEnabled = true;
+    } catch (_) {}
   }
 
   Future<void> refreshLabels() async {

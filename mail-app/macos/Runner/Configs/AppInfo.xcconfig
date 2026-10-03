@@ -8,7 +8,7 @@
 PRODUCT_NAME = PSG Mail
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.psg.psgMail
+PRODUCT_BUNDLE_IDENTIFIER = com.psg.mail
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.psg. All rights reserved.

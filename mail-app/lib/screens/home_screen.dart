@@ -5,7 +5,10 @@ import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../l10n/strings.dart';
+import '../services/notifier.dart';
+import '../services/updater.dart';
 import '../state/mail_list.dart';
+import '../state/mail_watcher.dart';
 import '../state/session.dart';
 import '../widgets/folder_nav.dart';
 import '../widgets/mail_list_view.dart';
@@ -35,6 +38,55 @@ class _HomeScreenState extends State<HomeScreen> {
   MailList? _list;
   int? _listAccountId;
   Email? _open; // the message shown beside the list (wide layouts)
+  bool _wide = false;
+  MailWatcher? _watcher;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startServices());
+  }
+
+  Future<void> _startServices() async {
+    final session = context.read<Session>();
+    Notifier.instance.onOpen = _openById;
+    await Notifier.instance.init();
+    await session.registerPush();
+    _startWatcher();
+    Future.delayed(const Duration(seconds: 8), _checkForUpdate);
+  }
+
+  void _startWatcher() {
+    final session = context.read<Session>();
+    _watcher?.stop();
+    _watcher = MailWatcher(
+      session.api,
+      account: session.current!,
+      pushEnabled: session.pushEnabled,
+      onNewMail: (_) {
+        if (mounted && _folder.kind == FolderKind.inbox && _query.isEmpty) _list?.refresh();
+      },
+    )..start();
+  }
+
+  Future<void> _checkForUpdate() async {
+    final update = await Updater.check();
+    if (update == null || !mounted) return;
+    final s = S.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 20),
+      content: Text(s.updateAvailable(update.version)),
+      action: SnackBarAction(label: s.download, onPressed: () => openExternal(update.url)),
+    ));
+  }
+
+  /// Opens a message by id (tapped notification).
+  Future<void> _openById(int emailId) async {
+    try {
+      final mail = await context.read<Session>().api.detail(emailId);
+      if (mail != null && mounted) _openMail(mail, _wide);
+    } catch (_) {}
+  }
 
   @override
   void didChangeDependencies() {
@@ -45,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _watcher?.stop();
+    Notifier.instance.onOpen = null;
     _list?.dispose();
     _search.dispose();
     _searchFocus.dispose();
@@ -55,9 +109,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void _reload() {
     final session = context.read<Session>();
     _list?.dispose();
+    final accountChanged = _listAccountId != null && _listAccountId != session.current!.accountId;
     _listAccountId = session.current!.accountId;
     _list = MailList(session.api, folder: _folder, account: session.current!, query: _query)..refresh();
     _open = null;
+    if (accountChanged) _startWatcher();
   }
 
   void _selectFolder(Folder f) {
@@ -170,6 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= _twoPane;
+      _wide = wide;
       final railVisible = box.maxWidth >= _threePane;
       final selected = wide ? _open : null;
 

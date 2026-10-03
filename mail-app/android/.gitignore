@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Restored by CI from a secret; never commit.
+/app/src/main/assets/google-services.json
