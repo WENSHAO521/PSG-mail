@@ -331,12 +331,17 @@ function createWindow() {
   // The window has no address bar or back button: anything that would
   // navigate it away from the app (a link in a mail, a stray redirect)
   // opens in the system browser instead of stranding the user there.
+  // LinuxDo sign-in is the exception: it deliberately runs in the window
+  // (the callback logs this window in), so its authorize page and anything
+  // after it, once the window has left the packaged app, stay in-window.
+  const isAppUrl = u => isDev ? u.startsWith('http://localhost:3001') : u.startsWith('file:')
+  const isOAuthStart = u => /^https:\/\/connect\.linux\.do\//i.test(u)
   win.webContents.on('will-navigate', (event, url) => {
     const appUrl = win.webContents.getURL()
     const sameApp = isDev
-      ? url.startsWith('http://localhost:3001')
-      : url.startsWith('file:') && url.split('#')[0] === appUrl.split('#')[0]
-    if (sameApp) return
+      ? isAppUrl(url)
+      : isAppUrl(url) && url.split('#')[0] === appUrl.split('#')[0]
+    if (sameApp || isOAuthStart(url) || !isAppUrl(appUrl)) return
     event.preventDefault()
     if (isExternal(url)) shell.openExternal(url)
   })

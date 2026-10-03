@@ -6,6 +6,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import { useUiStore } from '@/store/ui.js'
 
 const props = defineProps({
@@ -249,15 +250,13 @@ function autoScale() {
 // "#section" link onto the router's hash (the desktop app's hash history
 // then shows the inbox / 404). Web links open outside the app instead and
 // in-mail anchors just scroll.
-async function openExternal(url) {
-  try {
-    const { Capacitor } = await import('@capacitor/core')
-    if (Capacitor.isNativePlatform()) {
-      const { Browser } = await import('@capacitor/browser')
-      await Browser.open({ url })
-      return
-    }
-  } catch {}
+// window.open must run inside the click's call stack, or strict popup
+// blockers (Safari) reject it; only the native path may go async.
+function openExternal(url) {
+  if (Capacitor.isNativePlatform()) {
+    import('@capacitor/browser').then(({ Browser }) => Browser.open({ url })).catch(() => {})
+    return
+  }
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
@@ -274,7 +273,9 @@ function onLinkClick(e) {
     target?.scrollIntoView({ block: 'start' })
     return
   }
-  if (/^(https?:)?\/\//i.test(href)) openExternal(a.href)
+  // Protocol-relative links would resolve against file:// in the desktop app.
+  if (href.startsWith('//')) openExternal('https:' + href)
+  else if (/^https?:\/\//i.test(href)) openExternal(a.href)
 }
 
 onMounted(() => {
