@@ -1,0 +1,131 @@
+name: Native app (Flutter)
+
+# Builds the native client in mail-app/ for Android, Windows, macOS and
+# Linux. Artifacts are attached to the run; nothing is published.
+on:
+  push:
+    branches: [main]
+    paths: ['mail-app/**', '.github/workflows/native-app.yml']
+  pull_request:
+    paths: ['mail-app/**', '.github/workflows/native-app.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.47.6'
+
+defaults:
+  run:
+    working-directory: mail-app
+
+jobs:
+  check:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  android:
+    name: Android APK
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Release signing (optional)
+        working-directory: mail-app/android
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 --decode > app/keystore.jks
+            {
+              echo "storeFile=keystore.jks"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "storePassword=$STORE_PASSWORD"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > key.properties
+          else
+            echo "::warning title=Native APK is debug-signed::ANDROID_KEYSTORE secret not set; the APK is signed with a debug key."
+          fi
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psg-mail-native-android
+          path: mail-app/build/app/outputs/flutter-apk/app-release.apk
+
+  linux:
+    name: Linux
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev
+        working-directory: .
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter build linux --release
+      - run: tar -czf psg-mail-native-linux-x64.tar.gz -C build/linux/x64/release bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psg-mail-native-linux
+          path: mail-app/psg-mail-native-linux-x64.tar.gz
+
+  windows:
+    name: Windows
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter build windows --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psg-mail-native-windows
+          path: mail-app/build/windows/x64/runner/Release/
+
+  macos:
+    name: macOS
+    needs: check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter build macos --release
+      - run: ditto -c -k --keepParent "build/macos/Build/Products/Release/PSG Mail.app" psg-mail-native-macos.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: psg-mail-native-macos
+          path: mail-app/psg-mail-native-macos.zip
