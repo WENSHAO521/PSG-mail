@@ -843,7 +843,7 @@
                            :show-overflow-tooltip="true"/>
         </el-table>
       </el-dialog>
-      <el-dialog v-model="resendQuotaFormShow" class="provider-config-dialog" width="380"
+      <el-dialog v-model="resendQuotaFormShow" class="provider-config-dialog" width="500"
                  :title="$t('providerConfigTitle', { name: 'Resend' })">
         <div class="provider-config-section">
           <div class="provider-config-label">API Key</div>
@@ -876,7 +876,7 @@
           </div>
         </template>
       </el-dialog>
-      <el-dialog v-model="mailjetFormShow" class="provider-config-dialog" width="380"
+      <el-dialog v-model="mailjetFormShow" class="provider-config-dialog" width="500"
                  :title="$t('providerConfigTitle', { name: 'Mailjet' })" @closed="cleanMailjetForm">
         <div class="provider-config-section">
           <div class="provider-config-label">API Key</div>
@@ -911,7 +911,7 @@
           </div>
         </template>
       </el-dialog>
-      <el-dialog v-model="alibabaFormShow" append-to-body class="provider-config-dialog" width="420"
+      <el-dialog v-model="alibabaFormShow" append-to-body class="provider-config-dialog" width="500"
                  :title="$t('providerConfigTitle', { name: $t('alibabaDirectmailTitle') })" @closed="cleanAlibabaForm">
         <p class="provider-config-hint" style="margin: -4px 0 12px;">{{ $t('alibabaDirectmailDesc') }}</p>
         <div class="provider-config-section">
@@ -2832,10 +2832,23 @@ function editSetting(settingForm, refreshStatus = true) {
   justify-content: space-between;
 }
 
+/* Alibaba config: test actions on the left, cancel / save on the right, one
+   row at the shared 500px dialog width; on phones the two groups stack, each
+   still a single row. */
+.alibaba-dialog-footer {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .alibaba-dialog-footer-group {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+
+  .el-button + .el-button { margin-left: 0; }
+
+  /* Cancel / save stay right-aligned, also when the groups stack. */
+  &:last-child { margin-left: auto; }
 }
 
 .notice-popup-item {
@@ -3124,6 +3137,13 @@ form .el-button {
 </style>
 
 <style>
+/* Provider config dialogs share the 500px width of the other setting
+   dialogs (Telegram, third-party mail, webhook…). Unscoped because the
+   Alibaba one is appended to <body>, out of reach of scoped styles. */
+.provider-config-dialog.el-dialog {
+  max-width: calc(100% - 40px);
+}
+
 .el-popper.is-dark {
 }
 </style>
