@@ -12,8 +12,15 @@ const props = defineProps({
   html: {
     type: String,
     required: true
+  },
+  // Put back trackers the server blocked on receipt (data-psg-tracker*).
+  showTrackers: {
+    type: Boolean,
+    default: false
   }
 })
+
+const emit = defineEmits(['trackers'])
 
 const uiStore = useUiStore()
 
@@ -117,6 +124,28 @@ function markDarkModeCandidates(root) {
   })
 }
 
+// ── Mail trackers ──
+// The worker neutralizes open-tracking pixels when mail arrives and leaves
+// the original URLs in data-psg-tracker-* attributes (see
+// mail-worker/src/service/tracker-service.js). Report what was blocked so the
+// reader can show it, and restore it only when the user asks.
+function collectTrackers(root) {
+  const blocked = Array.from(root.querySelectorAll('[data-psg-tracker]'))
+  const vendors = [...new Set(blocked.map(el => el.getAttribute('data-psg-tracker')).filter(Boolean))]
+  const clickTrackers = root.querySelectorAll('a[data-psg-click-tracker]').length
+  return { blocked: blocked.length, vendors, clickTrackers }
+}
+
+function restoreTrackers(root) {
+  root.querySelectorAll('[data-psg-tracker], source[data-psg-tracker-srcset]').forEach(el => {
+    for (const attr of ['src', 'srcset', 'style', 'background']) {
+      const saved = el.getAttribute(`data-psg-tracker-${attr}`)
+      if (saved != null) el.setAttribute(attr, saved)
+    }
+    if (el.tagName === 'IMG') el.removeAttribute('hidden')
+  })
+}
+
 function updateContent() {
   if (!shadowRoot) return;
 
@@ -137,6 +166,9 @@ function updateContent() {
       if (/^on/i.test(attr.name)) el.removeAttribute(attr.name)
     })
   })
+
+  emit('trackers', collectTrackers(tmp))
+  if (props.showTrackers) restoreTrackers(tmp)
 
   // 3b. Tag elements (including ones the body style implies) whose
   // hardcoded colors need neutralizing in dark mode.
@@ -284,7 +316,7 @@ onMounted(() => {
   autoScale()
 })
 
-watch(() => props.html, () => {
+watch(() => [props.html, props.showTrackers], () => {
   updateContent()
   autoScale()
 })

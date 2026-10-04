@@ -12,6 +12,7 @@ import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
 import spamService from '../service/spam-service';
+import trackerService from '../service/tracker-service';
 import notificationService from '../service/notification-service';
 import forwardingService from '../service/forwarding-service';
 import notificationEventService from '../service/notification-event-service';
@@ -40,7 +41,8 @@ export async function email(message, env, ctx) {
 			blackFrom,
 			aiCode,
 			aiCodeFilter,
-			aiSpam
+			aiSpam,
+			aiTrackerBlock
 		} = await settingService.query({ env });
 
 		if (receive === settingConst.receive.CLOSE) {
@@ -131,6 +133,15 @@ export async function email(message, env, ctx) {
 			isDel: isDel.DELETE,
 			status: emailConst.status.SAVING
 		};
+
+		// Neutralize open-tracking pixels before the mail is stored, so no
+		// client (web, desktop, phone, forwarding) ever fetches them. Rules
+		// first; ambiguous images go to Workers AI as the recipient. scrub()
+		// never rejects and returns the html unchanged on failure.
+		if (trackerService.enabled({ aiTrackerBlock }) && params.content) {
+			const scrubbed = await trackerService.scrub({ env }, params.content, { userId: params.userId });
+			params.content = scrubbed.html;
+		}
 
 		const attachments = [];
 		const cidAttachments = [];

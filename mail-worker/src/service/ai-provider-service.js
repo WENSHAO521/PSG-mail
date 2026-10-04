@@ -14,7 +14,7 @@ function estimateUnits(input) {
 	catch { return 1; }
 }
 
-const SYSTEM_TASKS = ['spam_detection'];
+const SYSTEM_TASKS = ['spam_detection', 'tracker_detection'];
 
 const aiProviderService = {
 	async models(c, task = 'chat') {
@@ -26,7 +26,7 @@ const aiProviderService = {
 		return { model, fallbackModel, quota: Math.max(0, Number(setting.aiDailyQuota) || 0) };
 	},
 
-	// System tasks (spam screening) run on mail the user did not ask for, so
+	// System tasks (spam screening, tracker detection) run on mail the user did not ask for, so
 	// they are counted against their own per-task ceiling and never eat into
 	// the user's interactive budget.
 	async reserveQuota(c, userId, task, input, quota, perTask = false) {
