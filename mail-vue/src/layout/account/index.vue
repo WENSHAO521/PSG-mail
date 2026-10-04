@@ -1,12 +1,14 @@
 <template>
   <div class="account-box">
     <div class="head-opt">
-      <div v-perm="'account:add'" class="icon" @click="add">
-        <Icon icon="psg:add-circle" width="20" height="20"/>
-      </div>
-      <div class="icon" @click="refresh">
+      <span class="head-count">{{ noLoading ? $t('accountTotal', { n: accounts.length }, accounts.length) : '' }}</span>
+      <button type="button" class="icon-btn" :title="$t('refresh')" :aria-label="$t('refresh')" @click="refresh">
         <Icon icon="psg:refresh" width="16" height="16"/>
-      </div>
+      </button>
+      <button v-perm="'account:add'" type="button" class="add-btn" @click="add">
+        <Icon icon="psg:add-circle" width="16" height="16"/>
+        <span>{{ $t('addAccount') }}</span>
+      </button>
     </div>
     <el-scrollbar class="scrollbar" ref="scrollbarRef">
       <div v-infinite-scroll="getAccountList" :infinite-scroll-distance="600" :infinite-scroll-immediate="false">
@@ -17,20 +19,29 @@
             <span v-else>{{ emailInitial(item.email, item.name) }}</span>
           </div>
           <div class="item-info">
-            <div class="item-name" v-if="item.name">{{ item.name }}</div>
-            <div class="item-email">{{ item.email }}</div>
+            <div class="item-name-row">
+              <span class="item-name">{{ item.name || item.email }}</span>
+              <span v-if="accountStore.currentAccountId === item.accountId" class="item-badge">{{ $t('accountCurrent') }}</span>
+              <span v-if="item.allReceive" class="item-badge item-badge-accent">{{ $t('accountAllReceive') }}</span>
+            </div>
+            <div class="item-email" v-if="item.name">{{ item.email }}</div>
           </div>
           <div class="item-actions" @click.stop>
-            <Icon @click="setAllReceive(item)" v-if="!item.allReceive"
-                  icon="psg:mail" width="15" height="15" class="action-icon"/>
-            <Icon @click="setAllReceive(item)" v-else
-                  icon="psg:mail" width="15" height="15" class="action-icon action-active"/>
-            <Icon icon="psg:copy" width="15" height="15" class="action-icon"
-                  @click.stop="copyAccount(item.email)"/>
-            <Icon icon="psg:settings" width="15" height="15" class="action-icon"
-                  v-if="showNullSetting(item)"/>
-            <el-dropdown v-else trigger="click">
-              <Icon icon="psg:settings" width="15" height="15" class="action-icon"/>
+            <el-tooltip :content="$t('accountAllReceiveTip')" placement="top" :show-after="400">
+              <button type="button" class="action-icon" :class="{ 'action-active': item.allReceive }"
+                      :aria-label="$t('accountAllReceiveTip')" :aria-pressed="!!item.allReceive" @click="setAllReceive(item)">
+                <Icon icon="psg:mail" width="16" height="16"/>
+              </button>
+            </el-tooltip>
+            <el-tooltip :content="$t('copy')" placement="top" :show-after="400">
+              <button type="button" class="action-icon" :aria-label="$t('copy')" @click.stop="copyAccount(item.email)">
+                <Icon icon="psg:copy" width="16" height="16"/>
+              </button>
+            </el-tooltip>
+            <el-dropdown v-if="!showNullSetting(item)" trigger="click">
+              <button type="button" class="action-icon" :aria-label="$t('more')">
+                <Icon icon="psg:more" width="16" height="16"/>
+              </button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item v-if="hasPerm('email:send')" @click="openSetName(item)">{{ $t('rename') }}</el-dropdown-item>
@@ -75,9 +86,6 @@
           </el-skeleton>
         </template>
 
-        <div class="noLoading" v-if="noLoading && accounts.length > 0">
-          <div>{{ $t('noMoreData') }}</div>
-        </div>
         <div class="empty" v-if="noLoading && accounts.length === 0">
           <el-empty :description="$t('noMessagesFound')"/>
         </div>
@@ -106,9 +114,9 @@
                         :value="item"
                     />
                   </el-select>
-                  <div>
+                  <div class="suffix-trigger">
                     <span>{{ addForm.suffix }}</span>
-                    <Icon class="setting-icon" icon="psg:chevron-down" width="20" height="20"/>
+                    <Icon icon="psg:chevron-down" width="16" height="16"/>
                   </div>
                 </div>
               </template>
@@ -588,64 +596,80 @@ path[fill="#ffdda1"] {
 </style>
 <style scoped lang="scss">
 .account-box {
-  border-right: 1px solid var(--psg-border);
-  background: var(--psg-surface);
   height: 100%;
   overflow: hidden;
 
-  /* ── Toolbar ── */
+  /* ── Toolbar: count on the left, refresh + add on the right ── */
   .head-opt {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    height: 36px;
-    border-bottom: 2px solid var(--psg-border-strong);
-    padding: 0 8px;
-    gap: 2px;
-    background: var(--psg-canvas);
+    gap: 8px;
+    min-height: 56px;
+    padding: 10px 16px 10px 22px;
+    border-bottom: 1px solid var(--psg-border);
 
-    .icon {
-      cursor: pointer;
-      width: 28px;
-      height: 28px;
-      border-radius: var(--psg-radius-sm);
-      display: flex;
+    .head-count {
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+      color: var(--psg-text-secondary);
+    }
+
+    .icon-btn {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 0;
+      border-radius: var(--psg-radius-full);
+      background: transparent;
       color: var(--psg-text-secondary);
+      cursor: pointer;
       transition: background 0.12s, color 0.12s;
-
       @media (hover: hover) {
-        &:hover {
-          background: var(--psg-surface-muted);
-          color: var(--psg-text);
-        }
+        &:hover { background: var(--psg-surface-active); color: var(--psg-text); }
       }
+    }
+
+    .add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: var(--psg-radius-full);
+      background: var(--psg-primary);
+      color: var(--psg-on-primary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter 0.12s;
+      @media (hover: hover) {
+        &:hover { filter: brightness(1.06); }
+      }
+    }
+
+    .icon-btn:focus-visible,
+    .add-btn:focus-visible {
+      outline: 2px solid var(--psg-focus);
+      outline-offset: 2px;
     }
   }
 
   .scrollbar {
     width: 100%;
-    height: calc(100% - 36px);
+    height: calc(100% - 56px);
     overflow: auto;
-    @media (max-width: 767px) { height: calc(100% - 98px); }
 
     .empty {
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100%;
-    }
-
-    .noLoading {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 14px 0;
-      font-size: 12px;
-      letter-spacing: 0;
-      color: var(--psg-border-strong);
-      text-transform: none;
     }
   }
 
@@ -654,28 +678,18 @@ path[fill="#ffdda1"] {
     margin-top: 15px;
   }
 
-  /* ── Account card — Google/Outlook style ── */
+  /* ── Mailbox row — same rhythm as the label / backup rows ── */
   .item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 10px 10px 10px;
-    margin: 3px 6px;
-    border-radius: var(--psg-radius-sm);
+    gap: 14px;
+    padding: 14px 16px 14px 22px;
+    border-bottom: 1px solid var(--psg-border);
     cursor: pointer;
-    background: transparent;
-    border: 1px solid transparent;
-    transition: background 0.15s ease, border-color 0.15s ease;
-    position: relative;
-
-    &:first-child { margin-top: 6px; }
-    &:last-child  { margin-bottom: 6px; }
-
+    transition: background 0.12s ease;
+    &:last-child { border-bottom: 0; }
     @media (hover: hover) {
-      &:hover:not(.item-choose) {
-        background: var(--psg-surface);
-        border-color: var(--psg-border);
-      }
+      &:hover { background: color-mix(in srgb, var(--psg-surface-active) 55%, transparent); }
     }
   }
 
@@ -689,77 +703,94 @@ path[fill="#ffdda1"] {
 
   .item-avatar {
     flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--psg-radius-xs);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--psg-radius-sm);
     background: var(--psg-primary);
     color: var(--psg-on-primary);
     font-weight: 700;
-    font-size: 13px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     user-select: none;
     overflow: hidden;
-    letter-spacing: 0;
   }
 
-  /* ── Text info — name primary, email secondary ── */
+  /* ── Name + badges, address below ── */
   .item-info {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
+
+    .item-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
 
     .item-name {
-      font-size: 12.5px;
+      min-width: 0;
+      font-size: 14px;
       font-weight: 600;
       color: var(--psg-text);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      letter-spacing: 0.01em;
+    }
+
+    .item-badge {
+      flex-shrink: 0;
+      padding: 1px 8px;
+      border-radius: var(--psg-radius-full);
+      background: var(--psg-surface-active);
+      color: var(--psg-text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 18px;
+    }
+
+    .item-badge-accent {
+      background: color-mix(in srgb, var(--psg-primary) 16%, transparent);
+      color: var(--psg-primary);
     }
 
     .item-email {
-      font-size: 10.5px;
-      font-weight: 400;
+      font-size: 12px;
       color: var(--psg-text-secondary);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      letter-spacing: 0;
     }
   }
 
-  /* ── Action icons — slide in from right ── */
+  /* ── Actions: always visible (touch has no hover) ── */
   .item-actions {
     flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 2px;
-    opacity: 0;
-    transform: translateX(10px);
-    transition: opacity 0.18s ease, transform 0.18s ease;
 
     .action-icon {
-      cursor: pointer;
-      color: var(--psg-text-secondary);
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
-      border-radius: var(--psg-radius-sm);
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 0;
+      border-radius: var(--psg-radius-full);
+      background: transparent;
+      color: var(--psg-text-secondary);
+      cursor: pointer;
       transition: color 0.12s, background 0.12s;
-
       @media (hover: hover) {
-        &:hover {
-          color: var(--psg-text);
-          background: var(--psg-surface-muted);
-        }
+        &:hover { color: var(--psg-text); background: var(--psg-surface-active); }
       }
+      &:focus-visible { outline: 2px solid var(--psg-focus); outline-offset: 1px; }
     }
 
     .action-active {
@@ -767,28 +798,24 @@ path[fill="#ffdda1"] {
     }
   }
 
-  .item:hover .item-actions,
-  .item-choose .item-actions {
-    opacity: 1;
-    transform: translateX(0);
+  /* ── Current mailbox: badge carries it; keep a light wash ── */
+  .item-choose {
+    background: color-mix(in srgb, var(--psg-surface-active) 40%, transparent);
   }
 
-  /* ── Selected — flat red wash ── */
-  .item-choose {
-    border-color: transparent !important;
-    box-shadow: none !important;
-    background: var(--psg-surface-active) !important;
-
-    .item-name {
-      font-weight: 700;
-    }
+  @media (max-width: 560px) {
+    .head-opt { padding: 10px 12px 10px 16px; }
+    .item { gap: 12px; padding: 12px 8px 12px 16px; }
+    .item-actions { gap: 0; }
   }
 }
 
-
-.setting-icon {
-  position: relative;
-  top: 6px;
+.suffix-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 /* ── Unified email + domain input in dialogs ── */
