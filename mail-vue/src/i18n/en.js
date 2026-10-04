@@ -783,6 +783,7 @@ const en = {
     externalApi: 'External API',
     apiKeyDesc: 'Create API keys so other apps can send, check status, delete, and export emails over HTTP',
     apiKeyCreate: 'Create key',
+    apiKeyCount: '{n} key | {n} keys',
     apiKeyEmpty: 'No API keys yet',
     apiKeyUnnamed: 'Unnamed key',
     apiKeyCreatedAt: 'Created',

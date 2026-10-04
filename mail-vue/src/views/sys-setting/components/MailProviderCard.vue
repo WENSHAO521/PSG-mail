@@ -98,10 +98,10 @@ function formatNum(n) {
 
 <style scoped lang="scss">
 .provider-card {
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-sm);
-  background: var(--psg-surface);
-  padding: 16px 18px;
+  /* Grey tile, same as the quota / stat tiles elsewhere. */
+  border-radius: var(--psg-radius-lg);
+  background: var(--psg-surface-muted);
+  padding: 18px 22px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -186,6 +186,6 @@ function formatNum(n) {
 }
 
 @media (max-width: 767px) {
-  .provider-card { padding: 14px; }
+  .provider-card { padding: 16px; }
 }
 </style>
