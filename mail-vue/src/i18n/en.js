@@ -221,7 +221,7 @@ const en = {
     notSpamDone: 'Moved back to the inbox — this sender will be trusted from now on',
     notSpam: 'Not spam',
     aiTrackerBlock: 'AI mail tracker blocking',
-    aiTrackerBlockDesc: 'Open-tracking pixels in incoming mail are removed before it is stored, so senders cannot see when or where it was read. Known tracking services and hidden images are caught by rules; ambiguous images are checked by AI (image addresses only, never the message text).',
+    aiTrackerBlockDesc: 'Open-tracking pixels in incoming mail are removed before it is stored, so senders cannot see when or where it was read. Rules decide on their own: known tracking services, image URLs carrying your address (or its hash), and hidden or tiny images are blocked outright; weaker signals are scored. If Workers AI is configured, images the rules cannot settle are also checked by AI (image addresses only, never the message text).',
     trackersBlocked: 'Blocked {n} mail tracker | Blocked {n} mail trackers',
     trackersShown: '{n} tracker loaded — the sender can see you opened this | {n} trackers loaded — the sender can see you opened this',
     clickTrackersOnly: 'This message tracks link clicks',

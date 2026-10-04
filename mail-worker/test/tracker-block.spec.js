@@ -127,6 +127,62 @@ describe('tracker blocking', () => {
 		expect(noAi.blocked).toBe(1);
 	});
 
+	it('blocks images carrying the recipient address or its hash, without AI', async () => {
+		const to = 'Reader@Example.org';
+		const bytes = new TextEncoder().encode(to.toLowerCase());
+		const hex = async alg => [...new Uint8Array(await crypto.subtle.digest(alg, bytes))]
+			.map(b => b.toString(16).padStart(2, '0')).join('');
+		const b64 = btoa(to.toLowerCase()).replace(/=+$/, '');
+		const html = [
+			`https://img.news.example/h/${await hex('MD5')}.png`,
+			`https://img.news.example/h/${(await hex('SHA-256')).toUpperCase()}.png`,
+			`https://img.news.example/v?who=${encodeURIComponent(to.toLowerCase())}`,
+			`https://img.news.example/b/${b64}`,
+			'https://img.news.example/banner.png',
+		].map(src => `<img src="${src}" width="600" alt="x">`).join('');
+		const out = await trackerService.scrub(ctx({ withAi: false }), html, { userId: 1, recipient: to });
+		expect(out.blocked).toBe(4);
+		expect(imgs(out.html).at(-1).getAttribute('src')).toBe('https://img.news.example/banner.png');
+	});
+
+	it('adds up weak signals and blocks at the threshold without AI', async () => {
+		// opaque token + lone foreign host + last image without alt + bulk headers = 4
+		const html = `<img src="https://cdn.shop.example/hero.jpg" width="600" alt="Sale">
+			<img src="https://e.mta-host.example/x/Q2xY9mK3pL7vR2tN8wB4zH6j">`;
+		const opts = {
+			userId: 1,
+			sender: 'news@shop.example',
+			headers: [{ key: 'list-unsubscribe', value: '<mailto:u@shop.example>' }],
+		};
+		const out = await trackerService.scrub(ctx({ withAi: false }), html, opts);
+		expect(out.blocked).toBe(1);
+		const [hero, beacon] = imgs(out.html);
+		expect(hero.getAttribute('src')).toContain('hero.jpg');
+		expect(beacon.hasAttribute('src')).toBe(false);
+
+		// Same image from a personal sender (no bulk headers): 3 points, kept.
+		const personal = await trackerService.scrub(ctx({ withAi: false }), html, { userId: 1, sender: 'alice@shop.example' });
+		expect(personal.blocked).toBe(0);
+	});
+
+	it('keeps a hashed-name footer logo from a bulk sender', async () => {
+		const html = `<img src="https://cdn.shop.example/hero.jpg" width="600" alt="Sale">
+			<img src="https://assets.cdn-host.example/i/7f3c2a9e1b8d4c6f0a2e5b7d9c1f3a8e.png">`;
+		const out = await trackerService.scrub(ctx({ withAi: false }), html, {
+			userId: 1, sender: 'news@shop.example', headers: [{ key: 'list-unsubscribe', value: 'x' }],
+		});
+		expect(out.blocked).toBe(0);
+	});
+
+	it('does not ask the AI about what the rules already decided', async () => {
+		const html = `<img src="https://e.mta-host.example/x/Q2xY9mK3pL7vR2tN8wB4zH6j">`;
+		const out = await trackerService.scrub(ctx(), html, {
+			userId: 1, sender: 'news@shop.example', headers: [{ key: 'x-sg-eid', value: 'abc' }],
+		});
+		expect(out.blocked).toBe(1);
+		expect(aiCalls).toBe(0);
+	});
+
 	it('neutralizes tracker CSS backgrounds and marks click-tracking links', async () => {
 		const html = `
 			<td style="background-image:url('https://sendgrid.net/wf/open?upn=xyz'); color:red">x</td>

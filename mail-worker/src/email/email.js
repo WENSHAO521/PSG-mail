@@ -136,10 +136,15 @@ export async function email(message, env, ctx) {
 
 		// Neutralize open-tracking pixels before the mail is stored, so no
 		// client (web, desktop, phone, forwarding) ever fetches them. Rules
-		// first; ambiguous images go to Workers AI as the recipient. scrub()
+		// decide; images they can't settle may go to Workers AI. scrub()
 		// never rejects and returns the html unchanged on failure.
 		if (trackerService.enabled({ aiTrackerBlock }) && params.content) {
-			const scrubbed = await trackerService.scrub({ env }, params.content, { userId: params.userId });
+			const scrubbed = await trackerService.scrub({ env }, params.content, {
+				userId: params.userId,
+				recipient: message.to,
+				sender: email.from?.address,
+				headers: email.headers,
+			});
 			params.content = scrubbed.html;
 		}
 
