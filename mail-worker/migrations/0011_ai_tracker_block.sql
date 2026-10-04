@@ -1,0 +1,11 @@
+-- Mail tracker blocking for incoming mail (src/service/tracker-service.js).
+--
+-- ai_tracker_block: admin switch on the psg_feature_setting singleton
+-- (0 = OPEN, 1 = CLOSE). On by default: it only removes open-tracking
+-- pixels from received mail, and its AI step sees image URLs, never the
+-- message text.
+--
+-- No table: what was blocked is recorded in the stored HTML itself
+-- (data-psg-tracker* attributes), which the reader uses for its notice and
+-- to restore the images on request.
+ALTER TABLE psg_feature_setting ADD COLUMN ai_tracker_block INTEGER NOT NULL DEFAULT 0;

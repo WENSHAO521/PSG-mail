@@ -54,6 +54,10 @@ const FEATURE_DEFAULTS = {
 	// AI spam screening of incoming mail (migrations/0010). CLOSE (1) by
 	// default: it sends message text to Workers AI, so an admin opts in.
 	aiSpam: 1,
+	// Tracker blocking of incoming mail (migrations/0011). OPEN (0) by
+	// default: it only protects the reader, and the AI step sees image URLs,
+	// never the message text.
+	aiTrackerBlock: 0,
 };
 
 const FEATURE_COLUMNS = {
@@ -80,6 +84,7 @@ const FEATURE_COLUMNS = {
 	alibabaMonthlyQuota: 'alibaba_monthly_quota',
 	syncDelete: 'sync_delete',
 	aiSpam: 'ai_spam',
+	aiTrackerBlock: 'ai_tracker_block',
 };
 
 // Polling is a recovery path for missed push signals and for Electron. A
@@ -127,6 +132,7 @@ async function readFeatureSetting(c) {
 			alibabaMonthlyQuota: Math.max(0, Number(row.alibaba_monthly_quota ?? FEATURE_DEFAULTS.alibabaMonthlyQuota)),
 			syncDelete: Number(row.sync_delete ?? FEATURE_DEFAULTS.syncDelete),
 			aiSpam: Number(row.ai_spam ?? FEATURE_DEFAULTS.aiSpam),
+			aiTrackerBlock: Number(row.ai_tracker_block ?? FEATURE_DEFAULTS.aiTrackerBlock),
 		};
 	} catch {
 		// A deployment can briefly run before the new migration is applied. Keep

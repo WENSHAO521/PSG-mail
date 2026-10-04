@@ -182,11 +182,27 @@
           <button type="button" class="spam-banner-btn" :disabled="notSpamBusy" @click="markNotSpam">{{ $t('notSpam') }}</button>
         </div>
 
+        <!-- Tracker notice: open-tracking pixels the server blocked on
+             receipt, with a way to load them anyway. -->
+        <div v-if="trackerInfo.blocked || trackerInfo.clickTrackers" class="tracker-banner" role="status">
+          <Icon icon="psg:shield" width="18" height="18" class="tracker-banner-icon" />
+          <div class="tracker-banner-text">
+            <strong v-if="trackerInfo.blocked">{{ showTrackers ? $t('trackersShown', { n: trackerInfo.blocked }, trackerInfo.blocked) : $t('trackersBlocked', { n: trackerInfo.blocked }, trackerInfo.blocked) }}</strong>
+            <strong v-else>{{ $t('clickTrackersOnly') }}</strong>
+            <span v-if="trackerInfo.vendors.length">{{ trackerInfo.vendors.join(' · ') }}</span>
+            <span v-if="trackerInfo.clickTrackers">{{ $t('clickTrackersFound', { n: trackerInfo.clickTrackers }, trackerInfo.clickTrackers) }}</span>
+          </div>
+          <button v-if="trackerInfo.blocked" type="button" class="tracker-banner-btn" @click="showTrackers = !showTrackers">
+            {{ showTrackers ? $t('blockTrackersAgain') : $t('loadTrackers') }}
+          </button>
+        </div>
+
         <div class="email-body" :class="{ 'is-zoomed': bodyZoom > 1 }"
              @touchstart="zoomTouchStart" @touchmove="zoomTouchMove"
              @touchend="zoomTouchEnd" @touchcancel="zoomTouchEnd">
           <div class="email-zoom" :style="bodyZoom !== 1 ? { zoom: bodyZoom } : null">
-            <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
+            <ShadowHtml class="shadow-html" :html="formatImage(email.content)" :show-trackers="showTrackers"
+                        @trackers="trackerInfo = $event" v-if="email.content" />
             <pre v-else class="email-text">{{ email.text }}</pre>
           </div>
         </div>
@@ -499,6 +515,15 @@ watch(() => email.value?.isSpam ? email.value.emailId : 0, async (emailId) => {
     if (email.value?.emailId === emailId) spamVerdict.value = verdict || null
   } catch {}
 }, { immediate: true })
+
+// Trackers blocked on receipt, as reported by ShadowHtml for the open message.
+const NO_TRACKERS = { blocked: 0, vendors: [], clickTrackers: 0 }
+const trackerInfo = ref(NO_TRACKERS)
+const showTrackers = ref(false)
+watch(() => email.value?.emailId, () => {
+  trackerInfo.value = NO_TRACKERS
+  showTrackers.value = false
+})
 
 async function markNotSpam() {
   const target = email.value
@@ -1462,6 +1487,44 @@ function handleDelete() {
   box-shadow: var(--psg-shadow-xs);
   &:disabled { opacity: .6; cursor: default; }
   @media (hover: hover) { &:hover:not(:disabled) { background: var(--psg-surface-active); } }
+}
+
+/* ── Tracker notice ── */
+.tracker-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 10px 14px 10px 16px;
+  border-radius: var(--psg-radius-lg);
+  background: color-mix(in srgb, var(--psg-primary) 8%, var(--psg-surface));
+  color: var(--psg-text);
+}
+.tracker-banner-icon { flex-shrink: 0; color: var(--psg-primary); }
+.tracker-banner-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  strong { font-size: 13px; font-weight: 600; }
+  span { color: var(--psg-text-secondary); overflow-wrap: anywhere; }
+}
+.tracker-banner-btn {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--psg-radius-full);
+  background: transparent;
+  color: var(--psg-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  @media (hover: hover) { &:hover { background: var(--psg-surface-active); } }
 }
 </style>
 

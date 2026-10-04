@@ -583,6 +583,13 @@
                 </div>
               </div>
               <div class="setting-item">
+                <div><span>{{ $t('aiTrackerBlock') }}</span><p>{{ $t('aiTrackerBlockDesc') }}</p></div>
+                <div>
+                  <el-switch @change="changeField('aiTrackerBlock', $event)" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.aiTrackerBlock"/>
+                </div>
+              </div>
+              <div class="setting-item">
                 <div><span>{{ $t('aiAssistant') }}</span></div>
                 <div>
                   <el-switch @change="changeField('aiAssistantStatus', $event)" :before-change="beforeChange" :active-value="0" :inactive-value="1"
