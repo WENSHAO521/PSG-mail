@@ -271,9 +271,9 @@
 
             <!-- ── Mail management section ── -->
             <div v-show="activeSection === 'mail'" class="settings-card">
-              <div class="auto-delete-notice">
-                <Icon icon="psg:warning" width="15" height="15" style="flex-shrink:0"/>
-                {{ $t('autoDeleteDaysUserWarn', { n: settingStore.settings.autoDeleteDays > 0 ? settingStore.settings.autoDeleteDays : 30 }) }}
+              <div class="auto-delete-notice" role="note">
+                <Icon icon="psg:warning" width="18" height="18" class="auto-delete-notice-icon"/>
+                <span>{{ $t('autoDeleteDaysUserWarn', { n: settingStore.settings.autoDeleteDays > 0 ? settingStore.settings.autoDeleteDays : 30 }) }}</span>
               </div>
               <div class="card-body mail-body">
                 <Account />
@@ -1264,6 +1264,9 @@ function submitPwd() {
 /* ── Sidebar ── */
 .settings-sidebar,
 .settings-panel {
+  /* Grid item: without this its track grows to the widest unwrappable
+     line (a long mailbox address) and the panel spills off phone screens. */
+  min-width: 0;
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -1403,15 +1406,19 @@ function submitPwd() {
 .auto-delete-notice {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 16px 20px 0;
-  padding: 10px 14px;
-  background: var(--psg-danger-muted);
-  border-left: 3px solid var(--psg-danger);
-  color: var(--psg-danger);
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: var(--psg-radius-lg);
+  background: color-mix(in srgb, var(--psg-warning) 12%, var(--psg-surface));
+  color: var(--psg-text);
   font-size: 13px;
-  font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.5;
+}
+
+.auto-delete-notice-icon {
+  flex-shrink: 0;
+  color: var(--psg-warning);
 }
 
 /* ── Labels ── */
@@ -1543,7 +1550,11 @@ function submitPwd() {
   border-radius: var(--psg-radius-lg);
 }
 
-.mail-body { padding: 0; }
+.mail-body {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
 
 .card-desc {
   font-size: 13px;
