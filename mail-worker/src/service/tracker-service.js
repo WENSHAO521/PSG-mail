@@ -92,8 +92,9 @@ const CLICK_TRACKERS = [
 	['Substack', 'substack.com', /\/redirect\//i],
 ];
 
-// Path shapes typical of open-tracking endpoints on custom domains.
-const TRACKING_PATH = /\/(track(ing)?\/open|open\.(gif|png|php|aspx|jsp)|wf\/open|e\/o\/|o\.gif|pixel(\.gif|\.png)?|beacon|imp(ression)?s?\b|openmail|trk\b|t\.gif|blank\.gif|spacer\.gif)/i;
+// Path shapes typical of open-tracking endpoints on custom domains. Each
+// must be a whole path segment: /pixel.gif is a beacon, /pixelart/x.png is not.
+const TRACKING_PATH = /\/(?:(?:track(?:ing)?\/open|wf\/open|e\/o|pixel|beacon|imp(?:ression)?s?|openmail|trk)(?:\.(?:gif|png|php|aspx?|jsp))?|open\.(?:gif|png|php|aspx?|jsp)|(?:o|t|blank|spacer)\.gif)(?=$|[/?#;])/i;
 // A per-recipient token: a long opaque run of base64url / hex characters
 // mixing letters and digits (a long hyphenated file name is not one).
 const OPAQUE_RUN = /[A-Za-z0-9_\-=%]{24,}/g;
