@@ -414,16 +414,20 @@ defineExpose({ openCreate: openAddRole })
     color: var(--psg-text-secondary);
   }
 
+  /* The class sits on the <svg> itself: padding keeps the glyph at 18px
+     inside a 32px round hit area, like the other toolbar icon buttons. */
   .icon {
     cursor: pointer;
-    color: var(--psg-text-muted);
+    color: var(--psg-text-secondary);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
-    border: 1px solid transparent;
-    border-radius: var(--psg-radius-sm);
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    padding: 7px;
+    border: 0;
+    border-radius: var(--psg-radius-full);
     flex-shrink: 0;
     transition: border-color 0.10s, color 0.10s, background 0.10s;
 

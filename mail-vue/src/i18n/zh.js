@@ -783,6 +783,7 @@ const zh = {
     externalApi: '外部 API',
     apiKeyDesc: '生成 API Key，供其他应用通过 HTTP 接口发信、查询状态、删除、导出邮件',
     apiKeyCreate: '创建密钥',
+    apiKeyCount: '共 {n} 个密钥',
     apiKeyEmpty: '暂无 API Key',
     apiKeyUnnamed: '未命名密钥',
     apiKeyCreatedAt: '创建于',

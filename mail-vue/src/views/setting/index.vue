@@ -191,7 +191,7 @@
 
             <!-- ── Push notification section ── -->
             <div v-show="activeSection === 'notification'" class="settings-card">
-              <div class="card-body">
+              <div class="card-body list-body notif-body">
 
                 <!-- 桌面通知 permission — web/PWA only; Electron and Android have their
                      own OS-level permission flows surfaced by the rows below instead. -->
@@ -252,8 +252,8 @@
                 <!-- Registered devices — web push subscriptions + Android FCM devices,
                      merged. Electron has no server-side device concept at all. -->
                 <div class="notif-devices" v-if="!isElectronPlatform">
-                  <div class="toggle-label" style="margin:16px 0 8px">{{ $t('notifDevices') }}</div>
-                  <div v-if="!allNotifDevices.length" class="card-desc">{{ $t('notifNoDevices') }}</div>
+                  <div class="toggle-label">{{ $t('notifDevices') }}</div>
+                  <div v-if="!allNotifDevices.length" class="card-desc" style="margin:0">{{ $t('notifNoDevices') }}</div>
                   <div v-for="d in allNotifDevices" :key="d.key" class="notif-device-row">
                     <div class="notif-device-main">
                       <span class="notif-device-name">{{ d.deviceName || d.platformLabel }}</span>
@@ -283,7 +283,6 @@
             <!-- ── Labels section ── -->
             <div v-show="activeSection === 'labels'" class="settings-card">
               <div class="card-body backup-body">
-                <div class="card-desc">{{ $t('labelManageDesc') }}</div>
                 <div class="label-create-row">
                   <el-input v-model="newLabelName" :placeholder="$t('newLabelPrompt')" size="default" @keyup.enter="createLabelFromSettings"/>
                   <div class="label-color-swatches">
@@ -383,10 +382,10 @@
             <!-- ── External API section ── -->
             <div v-show="activeSection === 'apikey'" class="settings-card">
               <div class="card-body backup-body">
-                <div class="card-desc">{{ $t('apiKeyDesc') }}</div>
-                <el-button size="small" type="primary" style="align-self:flex-start" @click="createApiKey">
-                  {{ $t('apiKeyCreate') }}
-                </el-button>
+                <div class="list-head">
+                  <span class="list-head-count">{{ $t('apiKeyCount', { n: apiKeyList.length }, apiKeyList.length) }}</span>
+                  <el-button type="primary" @click="createApiKey">{{ $t('apiKeyCreate') }}</el-button>
+                </div>
                 <div v-if="apiKeyList.length === 0" class="backup-empty-state">
                   {{ $t('apiKeyEmpty') }}
                 </div>
@@ -411,7 +410,7 @@
 
             <!-- ── Danger zone section ── -->
             <div v-show="activeSection === 'danger'" class="settings-card">
-              <div class="danger-inner">
+              <div class="card-body danger-inner">
                 <div class="danger-text">
                   <div class="danger-heading">{{ $t('deleteUserBtn') }}</div>
                   <div class="danger-desc-text">{{ $t('delAccountMsg') }}</div>
@@ -1426,7 +1425,7 @@ function submitPwd() {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 16px;
+  padding: 16px 16px 16px 22px;
   border-bottom: 1px solid var(--psg-border);
 }
 
@@ -1471,7 +1470,7 @@ function submitPwd() {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 24px;
+  padding: 16px 16px 16px 22px;
   border-bottom: 1px solid var(--psg-border);
 
   &:last-child { border-bottom: 0; }
@@ -1548,6 +1547,41 @@ function submitPwd() {
   gap: 16px;
   background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-lg);
+}
+
+/* ── Row lists (notifications, external API): one grey card, rows with
+   thin separators, like 邮箱管理 / 标签管理. ── */
+.list-body {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+
+  > * {
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--psg-border);
+    &:last-child { border-bottom: 0; }
+  }
+}
+
+.notif-body {
+  .notif-test-actions { margin-top: 0; }
+  .notif-device-row:first-of-type { margin-top: 8px; }
+}
+
+.list-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 16px 10px 22px;
+  border-bottom: 1px solid var(--psg-border);
+}
+
+.list-head-count {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--psg-text-secondary);
 }
 
 .mail-body {
@@ -1806,11 +1840,11 @@ function submitPwd() {
 
 /* ── Danger zone ── */
 .danger-inner {
-  display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 20px 24px 24px;
+  padding: 20px 22px;
 
   @media (max-width: 520px) {
     flex-direction: column; align-items: flex-start;
@@ -1818,8 +1852,8 @@ function submitPwd() {
 }
 
 .danger-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.danger-heading { font-size: 13.5px; font-weight: 700; color: var(--psg-text); }
-.danger-desc-text { font-size: 12.5px; line-height: 1.5; color: var(--psg-text-secondary); }
+.danger-heading { font-size: 14px; font-weight: 700; color: var(--psg-text); }
+.danger-desc-text { font-size: 13px; line-height: 1.5; color: var(--psg-text-secondary); }
 
 /* ── Password dialog ── */
 .pwd-form {

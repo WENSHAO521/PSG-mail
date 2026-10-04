@@ -2622,7 +2622,10 @@ function editSetting(settingForm, refreshStatus = true) {
 .provider-card-grid {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  gap: 12px;
+  /* The tiles carry the grey themselves; no well behind them. */
+  padding: 0 !important;
+  background: transparent !important;
 }
 
 .provider-config-section {
