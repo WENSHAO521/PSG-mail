@@ -71,6 +71,15 @@ describe('tracker blocking', () => {
 		expect(logo.hasAttribute('data-psg-tracker')).toBe(false);
 	});
 
+	it('keeps content images whose path only resembles a tracker', async () => {
+		const html = ['/pixelart/hero.png', '/beacon-hill-photo.jpg', '/static/beacons/banner.jpg', '/open/hero.png']
+			.map(p => `<img src="https://cdn.example.org${p}">`).join('');
+		const out = await trackerService.scrub(ctx(), html, { userId: 1 });
+		expect(out.blocked).toBe(0);
+		expect(out.html).toBe(html);
+		expect(aiCalls).toBe(0);
+	});
+
 	it('leaves mail without trackers untouched', async () => {
 		const html = '<div><img src="https://cdn.example.org/banner.jpg" width="600"><a href="https://example.org/">site</a></div>';
 		const out = await trackerService.scrub(ctx(), html, { userId: 1 });

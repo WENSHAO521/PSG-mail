@@ -215,6 +215,12 @@ function updateContent() {
         min-width: 100%;
       }
 
+      /* Trackers blocked on receipt carry [hidden]; mail CSS such as
+         img { display: block } would otherwise show them as broken images. */
+      img[data-psg-tracker][hidden] {
+        display: none !important;
+      }
+
       img:not(table img) {
         max-width: 100%;
         height: auto !important;
