@@ -441,6 +441,22 @@
                   </el-button>
                 </div>
               </div>
+              <!-- Alibaba DirectMail sends the external notification mail, so it
+                   is one more channel row; usage sits under the name and turns
+                   warning / danger near the quota (same 80% / 95% as the
+                   provider tiles). -->
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('alibabaDirectmailTitle') }}</span>
+                  <p :class="alibabaUsage.tone">{{ alibabaUsage.text }}</p>
+                </div>
+                <div class="forward">
+                  <span>{{ setting.alibabaSmtpConfigured ? $t('providerStatusNormal') : $t('providerStatusUnconfigured') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openAlibabaForm">
+                    <Icon icon="psg:settings" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
               <div class="setting-item">
                 <div><span>{{ $t('forwardingRules') }}</span></div>
                 <div class="forward">
@@ -450,17 +466,6 @@
                   </el-button>
                 </div>
               </div>
-            </div>
-            <div class="card-content provider-card-grid">
-              <MailProviderCard
-                  :name="$t('alibabaDirectmailTitle')"
-                  :configured="!!setting.alibabaSmtpConfigured"
-                  :today-sent="providerUsage.alibaba.todaySent"
-                  :daily-quota="setting.alibabaDailyQuota || 0"
-                  :month-sent="providerUsage.alibaba.monthSent"
-                  :monthly-quota="setting.alibabaMonthlyQuota || 0"
-                  @configure="openAlibabaForm"
-              />
             </div>
             <AdminForwarding :setting="setting" @saved="getSettings" />
           </div>
@@ -1289,6 +1294,23 @@ const providerUsage = reactive({
   mailjet: { todaySent: 0, monthSent: 0 },
   alibaba: { todaySent: 0, monthSent: 0 },
 })
+// One-line usage under the 阿里云邮件推送 row: "今日发送 0 / 2,000 · 本月发送
+// 17 / 62,000". A period without a quota shows just its count. The tone
+// follows the busier period: warning from 80%, danger from 95%.
+const alibabaUsage = computed(() => {
+  if (!setting.value.alibabaSmtpConfigured) return { text: t('alibabaDirectmailDesc'), tone: '' }
+  const num = n => Number(n || 0).toLocaleString()
+  const part = (label, sent, quota) => quota > 0 ? `${label} ${num(sent)} / ${num(quota)}` : `${label} ${num(sent)}`
+  const daily = Number(setting.value.alibabaDailyQuota) || 0
+  const monthly = Number(setting.value.alibabaMonthlyQuota) || 0
+  const { todaySent, monthSent } = providerUsage.alibaba
+  const percent = Math.max(daily ? todaySent / daily * 100 : 0, monthly ? monthSent / monthly * 100 : 0)
+  return {
+    text: [part(t('providerTodaySent'), todaySent, daily), part(t('providerMonthSent'), monthSent, monthly)].join(' · '),
+    tone: percent >= 95 ? 'usage-danger' : percent >= 80 ? 'usage-warning' : '',
+  }
+})
+
 const turnstileForm = reactive({
   siteKey: '',
   secretKey: ''
@@ -2739,6 +2761,9 @@ function editSetting(settingForm, refreshStatus = true) {
     .setting-item-value { margin-top: 6px; }
   }
 }
+
+.setting-item > div:first-child p.usage-warning { color: var(--psg-warning); }
+.setting-item > div:first-child p.usage-danger { color: var(--psg-danger); }
 
 .r2domain-item {
   min-height: 80px;
