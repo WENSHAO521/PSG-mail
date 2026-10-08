@@ -1,6 +1,6 @@
 import orm from '../entity/orm';
 import { externalApiKey } from '../entity/external-api-key';
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, desc, or, isNull, lt } from 'drizzle-orm';
 
 async function sha256Hex(str) {
 	const data = new TextEncoder().encode(str);
@@ -63,11 +63,17 @@ const externalApiKeyService = {
 		if (!row) return null;
 		// "Last used" is informational: write it at most every 10 minutes
 		// instead of on every call (one D1 write per request adds up fast).
+		// The cutoff is part of the UPDATE, so concurrent requests that all saw
+		// a stale value still produce a single write.
 		const last = row.lastUsedTime ? Date.parse(row.lastUsedTime) : 0;
 		if (!(Date.now() - last < 10 * 60 * 1000)) {
+			const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 			await orm(c).update(externalApiKey)
 				.set({ lastUsedTime: new Date().toISOString() })
-				.where(eq(externalApiKey.id, row.id))
+				.where(and(
+					eq(externalApiKey.id, row.id),
+					or(isNull(externalApiKey.lastUsedTime), lt(externalApiKey.lastUsedTime, cutoff))
+				))
 				.run();
 		}
 		return row.userId;

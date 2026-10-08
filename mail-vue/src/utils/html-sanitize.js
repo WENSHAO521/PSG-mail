@@ -14,8 +14,19 @@ function isDangerousUrl(value) {
 // Remote fetches from a stylesheet (@import, url(http…)) would tell the sender
 // the mail was opened, bypassing the worker's tracker blocking.
 function stripRemoteCssFetches(css) {
-  return css
+  // Decode CSS escapes first: `@\69mport` and `u\72l(` are the same tokens to
+  // the browser, so filtering the raw spelling would miss them. What we emit is
+  // the decoded text, i.e. exactly what we filtered.
+  const decoded = css
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) => {
+      const code = parseInt(hex, 16)
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : ''
+    })
+    .replace(/\\(\r\n|[\s\S])/g, (_, ch) => (/[\r\n]/.test(ch) ? '' : ch))
+  return decoded
     .replace(/@import\b[^;]*;?/gi, '')
+    .replace(/(?:-webkit-)?image-set\([^)]*\)/gi, 'none')
     .replace(/url\(\s*(['"]?)\s*(?:https?:)?\/\/[^)]*\)/gi, 'none')
 }
 
