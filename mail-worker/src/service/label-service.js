@@ -61,7 +61,7 @@ const labelService = {
 		const row = await orm(c).insert(mailLabel).values({
 			userId,
 			name,
-			color: color || '#7e7576',
+			color: color || '#636366',
 			sortOrder: (maxSort?.max ?? -1) + 1,
 		}).returning().get();
 		return row;
