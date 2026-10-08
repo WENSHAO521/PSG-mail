@@ -19,10 +19,32 @@ describe('translateSegments', () => {
 		expect(run).toHaveBeenCalledTimes(1);
 	});
 
-	it('keeps the original when the model returns garbage or too few items', async () => {
-		vi.spyOn(aiProviderService, 'run').mockResolvedValue({ response: '```json\n["only one"]\n```' });
-		const res = await aiMailService.translateSegments(ctx, 1, { segments: ['a', 'b'], targetLang: 'en' });
-		expect(res.segments).toEqual(['only one', 'b']);
+	it('retries with numbered lines when the JSON has the wrong item count', async () => {
+		const run = vi.spyOn(aiProviderService, 'run')
+			.mockResolvedValueOnce({ response: '```json\n["only one"]\n```' })
+			.mockResolvedValueOnce({ response: '[1] 甲\n[2] 乙' });
+		const res = await aiMailService.translateSegments(ctx, 1, { segments: ['a', 'b'], targetLang: 'zh' });
+		expect(res.segments).toEqual(['甲', '乙']);
+		expect(run).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps the original for fragments the retry still misses', async () => {
+		vi.spyOn(aiProviderService, 'run')
+			.mockResolvedValueOnce({ response: 'garbage' })
+			.mockResolvedValueOnce({ response: '[2] 乙' });
+		const res = await aiMailService.translateSegments(ctx, 1, { segments: ['a', 'b'], targetLang: 'zh' });
+		expect(res.segments).toEqual(['a', '乙']);
+	});
+
+	it('accepts a response Workers AI already parsed into an array', async () => {
+		vi.spyOn(aiProviderService, 'run').mockResolvedValue({ response: ['你好', '世界'] });
+		const res = await aiMailService.translateSegments(ctx, 1, { segments: ['Hello', 'World'], targetLang: 'zh' });
+		expect(res.segments).toEqual(['你好', '世界']);
+	});
+
+	it('throws instead of returning the untouched original', async () => {
+		vi.spyOn(aiProviderService, 'run').mockResolvedValue({ response: 'Sorry, I cannot help.' });
+		await expect(aiMailService.translateSegments(ctx, 1, { segments: ['a', 'b'], targetLang: 'zh' })).rejects.toThrow();
 	});
 
 	it('throws only when every batch failed', async () => {
