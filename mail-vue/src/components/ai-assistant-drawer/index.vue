@@ -7,6 +7,13 @@
     size="400px"
     :close-on-click-modal="false"
   >
+    <template #header>
+      <span class="ai-drawer-title">{{ $t('aiAssistant') }}</span>
+      <button v-if="v2" type="button" class="ai-drawer-gear" :aria-label="$t('agentSettingsTitle')" :title="$t('agentSettingsTitle')" @click="settingsShow = true">
+        <Icon icon="psg:settings" width="18" height="18"/>
+      </button>
+    </template>
+    <AgentSettingsDialog v-model="settingsShow"/>
     <div class="ai-chat">
       <div ref="scrollRef" class="ai-chat-body">
         <div v-if="messages.length === 0" class="ai-chat-welcome">
@@ -69,6 +76,7 @@ import { ref, computed, nextTick, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import { useUiStore } from '@/store/ui.js'
+import AgentSettingsDialog from './AgentSettingsDialog.vue'
 import { aiAssistantChat, aiAssistantConfirm, aiAgentStatus, aiAgentChat, aiAgentDecide } from '@/request/ai-assistant.js'
 
 defineOptions({ name: 'aiAssistantDrawer' })
@@ -92,6 +100,7 @@ const scrollRef = ref(null)
 // endpoints below are used unchanged.
 const v2 = ref(false)
 const conversationId = ref(null)
+const settingsShow = ref(false)
 aiAgentStatus().then(d => { v2.value = !!d?.enabled }).catch(() => {})
 
 const confirmActionLabel = computed(() => {
@@ -177,6 +186,18 @@ async function respondConfirm(approve) {
 </script>
 
 <style scoped>
+.ai-drawer-title { font-weight: 600; color: var(--psg-text); }
+.ai-drawer-gear {
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--psg-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--psg-radius-sm);
+}
+.ai-drawer-gear:hover, .ai-drawer-gear:focus-visible { color: var(--psg-text); background: var(--psg-surface-muted); }
+
 .ai-risk-flags {
   margin: 6px 0 0;
   padding-left: 18px;

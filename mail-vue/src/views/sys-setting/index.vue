@@ -28,7 +28,7 @@
                 <h1>{{ activeSettingMeta.label }}</h1>
                 <p>{{ activeSettingMeta.desc }}</p>
               </div>
-              <el-button class="settings-save-button" type="primary" :loading="settingLoading"
+              <el-button v-if="activeSettingSection !== 'governance'" class="settings-save-button" type="primary" :loading="settingLoading"
                          :disabled="activeSettingSection === 'customization' && !customizationDirty"
                          @click="saveActiveSetting">
                 {{ activeSettingSection === 'customization' ? $t('saveChanges') : $t('save') }}
@@ -368,6 +368,11 @@
                   @configure="openMailjetForm"
               />
             </div>
+          </div>
+
+          <!-- Data governance: retention policy + storage audit (admin) -->
+          <div v-if="activeSettingSection === 'governance'" class="settings-card">
+            <DataGovernanceCard/>
           </div>
 
           <!-- Object Storage Card -->
@@ -1190,6 +1195,7 @@ import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
 import AdminForwarding from '@/components/admin-forwarding/index.vue'
 import MailProviderCard from './components/MailProviderCard.vue'
+import DataGovernanceCard from './components/DataGovernanceCard.vue'
 
 defineOptions({
   name: 'sys-setting'
@@ -1384,6 +1390,7 @@ const systemSettingNav = computed(() => [
   {key: 'email', label: t('emailSetting'), icon: 'psg:mail', desc: t('sysEmailDesc')},
   {key: 'mail-provider', label: t('mailSendingService'), icon: 'psg:activity', desc: t('sysMailProviderDesc')},
   {key: 'storage', label: t('oss'), icon: 'psg:database', desc: t('sysStorageDesc')},
+  {key: 'governance', label: t('govNav'), icon: 'psg:shield', desc: t('govNavDesc')},
   {key: 'push', label: '通知与转发', icon: 'psg:send', desc: t('sysPushDesc')},
   {key: 'verify', label: t('turnstileSetting'), icon: 'psg:shield', desc: t('sysVerifyDesc')},
   {key: 'notice', label: t('noticeTitle'), icon: 'psg:megaphone', desc: t('sysNoticeDesc')},

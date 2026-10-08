@@ -225,10 +225,10 @@ export const TOOLS = {
 		parameters: { type: 'object', properties: { limit: num('default 20') }, required: [] },
 		async run(ctx, a) {
 			const { results } = await ctx.c.env.db.prepare(
-				`SELECT id, account_id, to_addrs, subject, source, reply_to_email_id, update_time FROM mail_draft
+				`SELECT id, account_id, to_addrs, subject, body, source, reply_to_email_id, update_time FROM mail_draft
 				 WHERE user_id = ? AND status = 'draft' ORDER BY id DESC LIMIT ?`
 			).bind(ctx.userId, Math.min(Number(a.limit) || 20, 50)).all();
-			return { drafts: results.filter(d => !ctx.scopeAccountIds || ctx.scopeAccountIds.has(d.account_id)).map(d => ({ draftId: d.id, accountId: d.account_id, to: JSON.parse(d.to_addrs), subject: d.subject, source: d.source, replyToEmailId: d.reply_to_email_id, updateTime: d.update_time })) };
+			return { drafts: results.filter(d => !ctx.scopeAccountIds || ctx.scopeAccountIds.has(d.account_id)).map(d => ({ draftId: d.id, accountId: d.account_id, to: JSON.parse(d.to_addrs), subject: d.subject, body: clip(d.body, 4000), source: d.source, replyToEmailId: d.reply_to_email_id, updateTime: d.update_time })) };
 		}
 	},
 

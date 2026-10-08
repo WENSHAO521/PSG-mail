@@ -20,3 +20,23 @@ export function aiAgentChat(message, conversationId) {
 export function aiAgentDecide(approvalId, approve) {
     return http.post(`/ai-assistant/v2/approvals/${encodeURIComponent(approvalId)}/${approve ? 'approve' : 'reject'}`, {}, { timeout: 60 * 1000 })
 }
+
+export function aiAgentGetSettings(accountId) {
+    return http.get('/ai-assistant/v2/settings', { params: { accountId: accountId || 0 } })
+}
+
+export function aiAgentPutSettings(settings) {
+    return http.put('/ai-assistant/v2/settings', settings)
+}
+
+export function aiAgentDrafts() {
+    return http.get('/ai-assistant/v2/drafts')
+}
+
+export function aiAgentDiscardDraft(id) {
+    return http.delete(`/ai-assistant/v2/drafts/${encodeURIComponent(id)}`)
+}
+
+export function aiAgentClearHistory() {
+    return http.delete('/ai-assistant/v2/conversations')
+}
