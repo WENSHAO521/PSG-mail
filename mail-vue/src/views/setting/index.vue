@@ -1756,7 +1756,12 @@ function submitPwd() {
 
 .autoreply-body {
   display: flex; flex-direction: column; gap: 12px;
-  overflow: hidden; margin-top: 4px;
+  /* overflow: hidden drives the expand transition, but it also clipped the
+     field's 2px focus ring down to its corners — pad by the ring width and
+     pull back with negative margins so the textarea keeps its position. */
+  overflow: hidden;
+  padding: 2px;
+  margin: 2px -2px -2px;
 }
 
 /* ── Push notification devices ── */
