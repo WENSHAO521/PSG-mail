@@ -46,16 +46,26 @@ export default {
 		}
 
 		if (c.cron === '*/30 * * * *') {
-			await analysisService.refreshEchartsCache({ env })
+			await analysisService.refreshEchartsCache({ env }, { onlyIfChanged: true })
 			return;
 		}
 
-		await verifyRecordService.clearRecord({ env })
-		await userService.resetDaySendCount({ env })
-		await emailService.completeReceiveAll({ env })
-		await emailService.purgeExpiredTrash({ env })
-		await emailService.autoClean({ env })
-		await oauthService.clearNoBindOathUser({ env })
-		await analysisService.refreshEchartsCache({ env })
+		// Independent jobs: one failing (e.g. a table not migrated yet) must not skip the rest.
+		const jobs = [
+			['clearRecord', () => verifyRecordService.clearRecord({ env })],
+			['resetDaySendCount', () => userService.resetDaySendCount({ env })],
+			['completeReceiveAll', () => emailService.completeReceiveAll({ env })],
+			['purgeExpiredTrash', () => emailService.purgeExpiredTrash({ env })],
+			['autoClean', () => emailService.autoClean({ env })],
+			['clearNoBindOathUser', () => oauthService.clearNoBindOathUser({ env })],
+			['refreshEchartsCache', () => analysisService.refreshEchartsCache({ env })],
+		];
+		for (const [name, job] of jobs) {
+			try {
+				await job();
+			} catch (e) {
+				console.error(`daily cron job failed: ${name}`, e?.message);
+			}
+		}
 	},
 };

@@ -504,22 +504,31 @@ const emailService = {
 		).bind(...idsToDelete).run();
 	},
 
+	// D1 allows 100 bound parameters per statement, so ids are handled in chunks of 90. Each run
+	// is capped (MAX_PURGE_PER_RUN) to stay inside the cron's time budget; whatever is left is
+	// picked up by the next daily run. Uses physicsDelete so stars/attachments/labels go with the mail.
 	async purgeExpiredTrash(c) {
 		const setting = await settingService.query(c);
 		const days = Number(setting.autoDeleteDays) || 30;
 		const cutoff = dayjs().subtract(days, 'day').format('YYYY-MM-DD HH:mm:ss');
-		let idsToDelete;
+		const CHUNK = 90;
+		const MAX_PURGE_PER_RUN = 5000;
+		let purged = 0;
 		try {
-			const { results } = await c.env.db.prepare(
-				`SELECT email_id FROM email WHERE is_del = 1 AND delete_time IS NOT NULL AND delete_time < ?`
-			).bind(cutoff).all();
-			idsToDelete = results.map(r => r.email_id);
-		} catch { return; }
-		if (!idsToDelete.length) return;
-		await attService.removeByEmailIds(c, idsToDelete);
-		await c.env.db.prepare(
-			`DELETE FROM email WHERE email_id IN (${idsToDelete.map(() => '?').join(',')})`
-		).bind(...idsToDelete).run();
+			await ensureDeleteTime(c);
+			while (purged < MAX_PURGE_PER_RUN) {
+				const { results } = await c.env.db.prepare(
+					`SELECT email_id FROM email WHERE is_del = 1 AND delete_time IS NOT NULL AND delete_time < ? ORDER BY email_id LIMIT ${CHUNK}`
+				).bind(cutoff).all();
+				if (!results.length) break;
+				await this.physicsDelete(c, { emailIds: results.map(r => r.email_id).join(',') });
+				purged += results.length;
+				if (results.length < CHUNK) break;
+			}
+		} catch (e) {
+			console.error('purgeExpiredTrash failed after', purged, 'mails:', e.message);
+		}
+		return { purged };
 	},
 
 	// Ownership-scoped single-row fetch (includes trashed rows) — shared by the
@@ -1448,10 +1457,17 @@ const emailService = {
 
 	async physicsDelete(c, params) {
 		let { emailIds } = params;
-		emailIds = emailIds.split(',').map(Number);
-		await attService.removeByEmailIds(c, emailIds);
-		await starService.removeByEmailIds(c, emailIds);
-		await orm(c).delete(email).where(inArray(email.emailId, emailIds)).run();
+		emailIds = emailIds.split(',').map(Number).filter(Number.isInteger);
+		// D1: max 100 bound parameters per statement.
+		for (let i = 0; i < emailIds.length; i += 90) {
+			const ids = emailIds.slice(i, i + 90);
+			await attService.removeByEmailIds(c, ids);
+			await starService.removeByEmailIds(c, ids);
+			try {
+				await c.env.db.prepare(`DELETE FROM mail_label_email WHERE email_id IN (${ids.map(() => '?').join(',')})`).bind(...ids).run();
+			} catch {} // labels table may not exist on deployments that skipped migration 0002
+			await orm(c).delete(email).where(inArray(email.emailId, ids)).run();
+		}
 	},
 
 	async allEmailDelete(c, params) {

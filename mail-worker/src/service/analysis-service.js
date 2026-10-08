@@ -20,24 +20,45 @@ const analysisService = {
 			return cache;
 		}
 
-		return await this.refreshEchartsCacheByKey(c, cacheKey);
+		return await this.refreshEchartsCacheByKey(c, cacheKey, await this.fingerprint(c));
 	},
 
-	async refreshEchartsCacheByKey(c, cacheKey) {
+	// Cheap change marker: three primary-key MAX() lookups (3 rows read) instead of the ~3 x N
+	// rows a full statistics refresh reads. New mail / users / accounts move it; deletions and
+	// status changes do not, so those show up at the next daily full refresh.
+	async fingerprint(c) {
+		const row = await c.env.db.prepare(
+			`SELECT (SELECT MAX(email_id) FROM email) AS e, (SELECT MAX(user_id) FROM user) AS u, (SELECT MAX(account_id) FROM account) AS a`
+		).first();
+		return `${row?.e ?? 0}:${row?.u ?? 0}:${row?.a ?? 0}`;
+	},
+
+	async refreshEchartsCacheByKey(c, cacheKey, fingerprint = null) {
 		const params = this.echartsParamsByCacheKey(cacheKey);
 		const data = await this.queryEcharts(c, params);
+		if (fingerprint) data._fp = fingerprint;
 		await c.env.kv.put(cacheKey, JSON.stringify(data));
 		return data;
 	},
 
-	async refreshEchartsCache(c) {
+	// onlyIfChanged: used by the 30-minute cron; the daily cron always does a full refresh.
+	async refreshEchartsCache(c, { onlyIfChanged = false } = {}) {
 		if (!this.analysisCacheEnabled(c)) {
 			return;
 		}
 
 		const { keys } = await c.env.kv.list({ prefix: kvConst.ANALYSIS_ECHARTS });
+		if (keys.length === 0) return;
 
-		await Promise.all(keys.map(key => this.refreshEchartsCacheByKey(c, key.name)));
+		const fingerprint = await this.fingerprint(c);
+
+		await Promise.all(keys.map(async key => {
+			if (onlyIfChanged) {
+				const cached = await c.env.kv.get(key.name, { type: 'json' });
+				if (cached?._fp === fingerprint) return;
+			}
+			return this.refreshEchartsCacheByKey(c, key.name, fingerprint);
+		}));
 	},
 
 	async queryEcharts(c, params) {

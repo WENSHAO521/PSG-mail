@@ -108,3 +108,19 @@ Not changed (decisions / backlog):
 - All-accounts view for users *with* shared accounts still uses the OR form (plan not yet optimized); first-page COUNT remains O(mailbox).
 
 Tests: 150/150 pass locally.
+
+## Batch 7 — Cron / scheduled jobs (reliability + measured cost)
+
+| # | Finding (reproduced by test first) | Impact | Fix |
+|---|---|---|---|
+| 1 | `purgeExpiredTrash` ran `DELETE … IN (<all expired ids>)`. D1 allows 100 bound parameters, so with **>100 expired trash mails the job throws `too many SQL variables`** | Trash was never purged once a backlog existed, and because the daily jobs ran sequentially the throw also **skipped `autoClean`, OAuth cleanup and the stats refresh** | purge in chunks of 90 (capped at 5000 mails per run, remainder next day), via `physicsDelete`; errors are caught and logged |
+| 2 | `physicsDelete` had the same 100-parameter limit (user permanent delete / batch delete / auto-clean with >100 ids) and left orphan rows in `mail_label_email` and (for the purge path) `star` | failures on large selections; orphan rows | `physicsDelete` chunks internally and also removes label links |
+| 3 | Daily cron: one failing job aborted all following jobs | missed cleanups | each job runs in its own try/catch and logs `daily cron job failed: <name>` |
+| 4 | Stats refresh (`analysis_cache` enabled): one refresh reads ≈ 3 × (mail count) rows — measured **≈9 000 rows for 3 004 mails** (full-table aggregate + two 15-day charts + sender ranking) — and ran every 30 minutes | scales with mailbox size × 48/day × timezones | the 30-minute run first reads a 3-row fingerprint (`MAX(email_id)`, `MAX(user_id)`, `MAX(account_id)`) and skips when nothing new arrived; the daily 16:00 run always refreshes in full. Trade-off: deletions / status changes appear in the dashboard counters at the next daily refresh instead of ≤30 min. Only matters when `analysis_cache = true`; with it off the 30-min cron is a no-op. |
+
+Measured and **left as is** (documented so it is not "optimized" later):
+- The every-minute fallback (`processDue` for scheduled mail and forwarding retries) is index-bound: with 2 000 historical rows in each table, an empty poll reads **< 5 rows and writes 0** (asserted in `cron-jobs.spec.js`). The fallback stays, as required; it is not a meaningful D1 cost. The Durable Object alarm path and the cron claim use the same atomic `UPDATE … WHERE status='pending' … RETURNING`, so a mail cannot be sent twice by both.
+
+Tests: `cron-jobs.spec.js` (5 cases), shared `test/helpers/full-schema.js`; 153/153 pass.
+Rollback: revert the commit; no schema change. Note `purgeExpiredTrash` now also calls `ensureDeleteTime` (adds the `delete_time` column if an old DB lacks it).
+Open: Durable Object / alarm usage metrics and cron success/latency statistics belong to the monitoring batch (P2).
