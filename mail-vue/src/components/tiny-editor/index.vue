@@ -155,6 +155,10 @@ function initEditor(initialContent = null) {
         --scrollbar-track-color: ${uiStore.dark ? '#1C1C1F' : '#FFFFFF'};
         --scrollbar-thumb-color: ${uiStore.dark ? '#3A3A3F' : '#D1D1D6'};
       }
+      /* Oxide pins the placeholder at left: 1px, ignoring the body padding,
+         so the hint sat left of where typed text actually starts. Letting it
+         take its static position lines the two up. */
+      .mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before { left: auto !important; right: auto !important; }
       body { padding: 12px 16px !important; font-size: 15px; line-height: 1.7; color: ${uiStore.dark ? '#F2F2F7' : '#1C1C1E'}; }
       a { color: ${uiStore.dark ? '#FF8A50' : '#C2410C'}; }
       blockquote, .mceNonEditable {

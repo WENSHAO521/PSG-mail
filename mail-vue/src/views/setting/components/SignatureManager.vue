@@ -331,7 +331,7 @@ defineExpose({ save, saving })
   font-size: 13px;
 }
 
-.sig-name-input :deep(.el-input__wrapper) { min-height: 40px; }
+.sig-name-input :deep(.el-input__wrapper) { min-height: 40px; padding: 0 16px; }
 .sig-name-input :deep(.el-input__inner) { font-weight: 600; }
 
 :where(.sig-editor) :deep(.sig-name-input .el-input__wrapper:not(.is-focus)) {
@@ -349,6 +349,57 @@ defineExpose({ save, saving })
 
   &:focus-within { box-shadow: 0 0 0 2px var(--psg-primary); }
 }
+
+/* Compose's toolbar is a grey pill floating above the page; inside this
+   small field that read as a box inside a box. Here the toolbar is a flat
+   strip on the field itself, split from the text by a hairline. */
+.editor-shell :deep(.tox .tox-editor-header) {
+  padding: 6px 8px !important;
+  border-bottom: 1px solid var(--psg-border) !important;
+}
+
+.editor-shell :deep(.tox .tox-toolbar),
+.editor-shell :deep(.tox .tox-toolbar__primary),
+.editor-shell :deep(.tox .tox-toolbar-overlord) {
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.editor-shell :deep(.tox .tox-toolbar__group) {
+  gap: 2px;
+  padding: 0 6px !important;
+}
+
+.editor-shell :deep(.tox .tox-toolbar__group:first-child) { padding-left: 0 !important; }
+
+/* Short centred divider instead of a full-height rule between groups. */
+.editor-shell :deep(.tox .tox-toolbar__group + .tox-toolbar__group) {
+  border-left: 0 !important;
+  background: linear-gradient(var(--psg-border), var(--psg-border)) left center / 1px 16px no-repeat !important;
+}
+
+.editor-shell :deep(.tox .tox-tbtn) {
+  height: 30px !important;
+  min-width: 30px;
+  width: 30px;
+}
+
+.editor-shell :deep(.tox .tox-tbtn:hover),
+.editor-shell :deep(.tox .tox-split-button:hover) {
+  background: var(--psg-surface-muted) !important;
+}
+
+.editor-shell :deep(.tox .tox-tbtn--enabled),
+.editor-shell :deep(.tox .tox-tbtn--enabled:hover) {
+  background: var(--psg-primary-muted) !important;
+  box-shadow: none;
+}
+
+/* Keep the text-colour arrow attached to its "A". */
+.editor-shell :deep(.tox .tox-split-button) { margin: 0 !important; }
+.editor-shell :deep(.tox .tox-split-button .tox-tbtn:not(.tox-split-button__chevron)) { width: 28px; min-width: 28px; }
+.editor-shell :deep(.tox .tox-split-button .tox-split-button__chevron) { width: 14px !important; min-width: 14px !important; }
 
 .sig-defaults { padding: 0; gap: 0; overflow: hidden; }
 
