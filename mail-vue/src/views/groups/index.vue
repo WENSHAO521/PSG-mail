@@ -29,6 +29,71 @@
         </div>
       </section>
 
+      <!-- Contacts derived from mail history -->
+      <section class="workspace-surface" aria-labelledby="contacts-title">
+        <header class="workspace-surface-header">
+          <div>
+            <h2 id="contacts-title">{{ $t('autoContacts') }}</h2>
+            <p>{{ $t('autoContactsDesc') }}</p>
+          </div>
+          <div class="workspace-header-actions">
+            <div class="ct-filter" role="tablist">
+              <button type="button" role="tab" :aria-selected="contactFilter === 'frequent'"
+                      :class="{ active: contactFilter === 'frequent' }" @click="contactFilter = 'frequent'">
+                {{ $t('frequentContact') }} {{ frequentCount }}
+              </button>
+              <button type="button" role="tab" :aria-selected="contactFilter === 'all'"
+                      :class="{ active: contactFilter === 'all' }" @click="contactFilter = 'all'">
+                {{ $t('all') }} {{ contacts.length }}
+              </button>
+            </div>
+            <el-input v-model="contactQuery" class="workspace-search" :placeholder="$t('contactSearch')" clearable>
+              <template #prefix><Icon icon="psg:search" width="14" height="14"/></template>
+            </el-input>
+          </div>
+        </header>
+
+        <div v-if="contactsLoading && !contacts.length" class="ct-empty" v-loading="true"></div>
+        <div v-else-if="!filteredContacts.length" class="ct-empty">
+          {{ contacts.length ? $t('noMatchingContacts') : $t('noAutoContacts') }}
+        </div>
+        <div v-else class="ct-list">
+          <div class="ct-row" v-for="c in filteredContacts" :key="c.email">
+            <div class="grp-avatar">{{ ((c.name || c.email)[0] || '#').toUpperCase() }}</div>
+            <div class="ct-main">
+              <div class="ct-name">
+                {{ c.name || c.email.split('@')[0] }}
+                <span v-if="c.frequent" class="ct-badge">{{ $t('frequentContact') }}</span>
+              </div>
+              <div class="ct-email">{{ c.email }}</div>
+            </div>
+            <div class="ct-stats" :title="$t('contactStatsTitle', { received: c.received, sent: c.sent })">
+              <span><Icon icon="psg:inbox" width="12" height="12"/> {{ c.received }}</span>
+              <span><Icon icon="psg:send" width="12" height="12"/> {{ c.sent }}</span>
+            </div>
+            <div class="ct-actions">
+              <button type="button" class="grp-action" @click="writeTo(c)" :aria-label="$t('writeEmail')">
+                <Icon icon="psg:send" width="13" height="13"/>
+              </button>
+              <el-dropdown trigger="click" @command="cmd => contactCommand(cmd, c)">
+                <button type="button" class="more-btn" :aria-label="$t('more')">
+                  <Icon icon="psg:settings" width="16" height="16"/>
+                </button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="g in groupList" :key="g.groupId" :command="{ group: g }">
+                      {{ $t('addToGroup', { name: g.name }) }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="newGroup" :divided="groupList.length > 0">{{ $t('addToNewGroup') }}</el-dropdown-item>
+                    <el-dropdown-item command="hide" divided class="danger-item">{{ $t('removeContact') }}</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="workspace-surface" aria-labelledby="groups-list-title">
         <header class="workspace-surface-header">
           <div>
@@ -165,6 +230,7 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { useUiStore } from '@/store/ui.js'
 import { contactGroupList, contactGroupAdd, contactGroupUpdate, contactGroupDelete } from '@/request/contact-group.js'
+import { contactList, contactHide } from '@/request/contact.js'
 import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 
 defineOptions({ name: 'groups' })
@@ -201,8 +267,61 @@ const filteredGroups = computed(() => {
   )
 })
 
+// Contacts from mail history: frequent ones by default, all on request.
+const contacts = ref([])
+const contactsLoading = ref(false)
+const contactFilter = ref('frequent')
+const contactQuery = ref('')
+const frequentCount = computed(() => contacts.value.filter(c => c.frequent).length)
+const filteredContacts = computed(() => {
+  const q = contactQuery.value.trim().toLowerCase()
+  return contacts.value.filter(c =>
+    (contactFilter.value === 'all' || c.frequent) &&
+    (!q || c.email.includes(q) || (c.name || '').toLowerCase().includes(q))
+  )
+})
+
+function loadContacts() {
+  contactsLoading.value = true
+  contactList().then(list => {
+    contacts.value = list
+    // Nobody frequent yet: show everyone rather than an empty list.
+    if (!list.some(c => c.frequent)) contactFilter.value = 'all'
+  }).catch(() => {}).finally(() => { contactsLoading.value = false })
+}
+
+function writeTo(c) {
+  uiStore.writerRef?.open?.({ to: [c.email] })
+}
+
+async function contactCommand(cmd, c) {
+  const member = { name: c.name || '', email: c.email }
+  if (cmd === 'hide') {
+    try {
+      await contactHide(c.email)
+      contacts.value = contacts.value.filter(x => x.email !== c.email)
+    } catch {}
+  } else if (cmd === 'newGroup') {
+    Object.assign(groupForm, { groupId: null, name: '', contacts: [member] })
+    drawerShow.value = true
+  } else if (cmd?.group) {
+    const g = cmd.group
+    if (g.contacts.some(x => (x.email || '').toLowerCase() === c.email)) {
+      ElMessage({ message: t('alreadyInGroup', { name: g.name }), type: 'info', plain: true })
+      return
+    }
+    const next = [...g.contacts, member]
+    try {
+      await contactGroupUpdate(g.groupId, g.name, next)
+      g.contacts = next
+      ElMessage({ message: t('addedToGroup', { name: g.name }), type: 'success', plain: true })
+    } catch {}
+  }
+}
+
 onMounted(() => {
   contactGroupList().then(list => groupList.value = list).catch(() => {})
+  loadContacts()
 })
 
 function addContact() { groupForm.contacts.push({ name: '', email: '' }) }
@@ -283,6 +402,110 @@ function sendToGroup(g) {
 </script>
 
 <style lang="scss" scoped>
+.ct-filter {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-md);
+
+  button {
+    border: 0;
+    background: transparent;
+    color: var(--psg-text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--psg-radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+
+    &.active { background: var(--psg-surface); color: var(--psg-text); }
+  }
+}
+
+.ct-empty {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--psg-text-secondary);
+  font-size: 13px;
+}
+
+.ct-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.ct-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--psg-border);
+
+  &:last-child { border-bottom: 0; }
+}
+
+.ct-main { flex: 1; min-width: 0; }
+
+.ct-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--psg-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: var(--psg-primary);
+  background: var(--psg-primary-muted-strong);
+}
+
+.ct-email {
+  font-size: 12px;
+  color: var(--psg-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-stats {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--psg-text-secondary);
+  font-variant-numeric: tabular-nums;
+
+  span { display: inline-flex; align-items: center; gap: 3px; }
+
+  @media (max-width: 640px) { display: none; }
+}
+
+.ct-actions { display: flex; align-items: center; gap: 4px; }
+
+@media (max-width: 760px) {
+  .workspace-surface-header:has(.ct-filter) {
+    flex-direction: column;
+    align-items: stretch;
+
+    .workspace-header-actions { flex-wrap: wrap; }
+    .workspace-search { width: 100%; }
+  }
+}
+
 .page-outer {
   max-width: 1240px;
   margin: 0 auto;

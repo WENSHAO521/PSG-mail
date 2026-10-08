@@ -613,6 +613,24 @@
                 <div><span>每日 AI 请求额度</span><p>0 表示不设置应用层额度，不会自动产生付费调用。</p></div>
                 <div><el-input-number v-model="setting.aiDailyQuota" :min="0" :max="10000" size="small" /></div>
               </div>
+              <div class="setting-item">
+                <div><span>{{ $t('translateEngine') }}</span><p>{{ $t('translateEngineDesc') }}</p></div>
+                <div>
+                  <el-select :model-value="setting.translateProvider || 'google'" size="small" style="width:160px"
+                             @change="changeField('translateProvider', $event)">
+                    <el-option value="google" :label="$t('translateEngineGoogle')"/>
+                    <el-option value="ai" :label="$t('translateEngineAi')"/>
+                  </el-select>
+                </div>
+              </div>
+              <div class="setting-item" v-if="(setting.translateProvider || 'google') === 'google'">
+                <div><span>{{ $t('googleTranslateKey') }}</span><p>{{ $t('googleTranslateKeyDesc') }}</p></div>
+                <div style="display:flex;gap:6px">
+                  <el-input v-model="googleKeyInput" size="small" style="width:180px" clearable
+                            :placeholder="setting.googleTranslateKey || $t('optional')"/>
+                  <el-button size="small" type="primary" @click="saveGoogleKey">{{ $t('save') }}</el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2125,6 +2143,12 @@ function saveActiveSetting() {
     return
   }
   change()
+}
+
+const googleKeyInput = ref('')
+function saveGoogleKey() {
+  editSetting({ googleTranslateKey: googleKeyInput.value.trim() })
+  googleKeyInput.value = ''
 }
 
 function changeField(key, value) {

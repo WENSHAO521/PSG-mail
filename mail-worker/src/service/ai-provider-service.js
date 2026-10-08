@@ -6,7 +6,11 @@ const DEFAULT_CHAT_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
 
 function responseText(result) {
 	if (typeof result === 'string') return result;
-	return result?.response || result?.result?.response || result?.translated_text || '';
+	const value = result?.response ?? result?.result?.response ?? result?.translated_text ?? '';
+	// Workers AI hands back already-parsed JSON when the model's output is
+	// valid JSON (e.g. a translation array), so re-serialise non-strings.
+	if (typeof value === 'string') return value;
+	try { return JSON.stringify(value); } catch { return ''; }
 }
 
 function estimateUnits(input) {
