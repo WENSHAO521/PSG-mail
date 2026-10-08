@@ -1,3 +1,4 @@
+import { isSafeOutboundUrl } from '../utils/url-guard';
 import webPushService from './web-push-service';
 import BizError from '../error/biz-error';
 import kvConst from '../const/kv-const';
@@ -24,7 +25,7 @@ const webPushSubscriptionService = {
 	validateSubscriptionInput(body) {
 		const { endpoint, p256dh, auth, deviceName } = body || {};
 
-		if (typeof endpoint !== 'string' || !/^https:\/\//.test(endpoint) || endpoint.length > 2048) {
+		if (typeof endpoint !== 'string' || !isSafeOutboundUrl(endpoint)) {
 			throw new BizError('endpoint must be an https URL', 400);
 		}
 		if (typeof p256dh !== 'string' || p256dh.length > 200) {

@@ -8,6 +8,7 @@ import userService from '../service/user-service';
 import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
+import { toSessionUser } from '../utils/session-user';
 import { isDel, userConst } from '../const/entity-const';
 import externalApiKeyService from '../service/external-api-key-service';
 
@@ -206,7 +207,11 @@ app.use('*', async (c, next) => {
 	const refreshTime = dayjs(authInfo.refreshTime).startOf('day');
 	const nowTime = dayjs().startOf('day')
 
-	if (!nowTime.isSame(refreshTime)) {
+	// Sessions written by older versions embed the password hash; scrub them on first use.
+	const legacyCredentials = 'password' in authInfo.user || 'salt' in authInfo.user;
+
+	if (!nowTime.isSame(refreshTime) || legacyCredentials) {
+		authInfo.user = toSessionUser(authInfo.user);
 		authInfo.refreshTime = dayjs().toISOString();
 		await userService.updateUserInfo(c, authInfo.user.userId);
 		await c.env.kv.put(authKey, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });

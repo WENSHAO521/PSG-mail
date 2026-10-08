@@ -21,6 +21,7 @@ import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
 import telegramService from './telegram-service';
+import { toSessionUser } from '../utils/session-user';
 import reqUtils from '../utils/req-utils';
 import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from './login-throttle';
 
@@ -258,12 +259,13 @@ const loginService = {
 			}
 
 			authInfo.tokens.push(uuid);
+			authInfo.user = toSessionUser(userRow);
 
 		} else {
 
 			authInfo = {
 				tokens: [],
-				user: userRow,
+				user: toSessionUser(userRow),
 				refreshTime: dayjs().toISOString()
 			};
 

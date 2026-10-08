@@ -37,3 +37,19 @@ Reviewed and left unchanged (documented decisions):
 Tests: 131/131 pass locally (new: oss-access, email-authz, login throttle).
 Rollback: revert the commit; no schema or data migration is involved (`schema-guard` only adds columns that older code also added lazily).
 Still open for P0: remaining per-route audit (labels, contacts, templates, forwarding, backup, AI), webhook replay/idempotency review, secret-at-rest encryption, session list/revoke, response-leak review (authInfo.user holds the password hash in KV).
+
+## Batch 3 — webhooks, outbound targets, secret exposure
+
+| # | Finding | Risk | Fix |
+|---|---|---|---|
+| 1 | `POST /webhooks` only verified the Svix signature **if** `resend_webhook_secret` was set; otherwise anyone could forge `delivered` / `bounced` / `complained` states for any `resend_email_id` | High | Fail closed (401) when the secret is missing. Explicit compatibility opt-out: set var `resend_webhook_insecure = "true"` (not recommended). **Deployments without the secret will stop receiving delivery-status updates until it is set** (Resend dashboard → webhook signing secret → `wrangler secret put resend_webhook_secret`). |
+| 2 | Webhook error path returned `e.message` to the caller | Low | generic `webhook processing failed`, detail only in server log |
+| 3 | No replay/idempotency handling beyond the 5-minute timestamp window | Medium | signed `svix-id` stored in KV for 10 min (longer than the tolerance window); duplicates return 200 without re-applying. Best-effort (KV is not atomic). |
+| 4 | Session record in KV (`auth-uid:<id>`) embedded the full user row **including password hash and salt**; `c.get('user')` carried it per request | Medium | `toSessionUser()` strips `password`/`salt` on login; existing sessions are scrubbed on their next request |
+| 5 | Web-push endpoint (user-supplied) and outbound webhook URL (admin-supplied) were fetched with only a weak `https://` check; the push request carries a VAPID Authorization header | Medium | `utils/url-guard.js`: https only (webhook may be http), no credentials, no IP literals (dotted/decimal/hex/IPv6), no localhost/`.local`/`.internal`-style names, push endpoints restricted to port 443. Enforced on save **and** at send time. |
+| 6 | `/setting/query` masked secrets but still revealed 12–20 leading characters of S3 secret, Mailjet secret, webhook secret, Telegram bot token | Low | reveal at most 4–8 characters |
+
+Checked, no change needed: `/setting/websiteConfig` is a field whitelist (no secrets); no console logging of tokens/passwords/mail bodies found; Telegram error logs print the API response, not the request URL.
+
+Tests: `webhook-security`, `url-guard`, `session-user` specs added; 138/138 pass locally.
+Rollback: revert the commit. For item 1 alone, set `resend_webhook_insecure = "true"` to restore the old (insecure) behaviour without a redeploy of code.

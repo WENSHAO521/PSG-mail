@@ -1,3 +1,4 @@
+import { isSafeOutboundUrl } from '../utils/url-guard';
 import KvConst from '../const/kv-const';
 import kvCache, { TTL } from '../cache/kv-cache';
 import setting from '../entity/setting';
@@ -265,20 +266,20 @@ const settingService = {
 			settingRow.siteKey = settingRow.siteKey ? `${settingRow.siteKey.slice(0, 6)}******` : null;
 		}
 
-		settingRow.secretKey = settingRow.secretKey ? `${settingRow.secretKey.slice(0, 6)}******` : null;
+		settingRow.secretKey = settingRow.secretKey ? `${settingRow.secretKey.slice(0, 4)}******` : null;
 
 		settingRow.resendTokens = { ...settingRow.resendTokens };
 		Object.keys(settingRow.resendTokens).forEach(key => {
-			settingRow.resendTokens[key] = `${settingRow.resendTokens[key].slice(0, 12)}******`;
+			settingRow.resendTokens[key] = `${settingRow.resendTokens[key].slice(0, 6)}******`;
 		});
 
 		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
-		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
-		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
+		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 4)}******` : null;
+		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 8)}******` : null;
 		settingRow.mailjetApiKey = settingRow.mailjetApiKey ? `${settingRow.mailjetApiKey.slice(0, 12)}******` : null;
-		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
+		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 4)}******` : null;
 		settingRow.googleTranslateKey = settingRow.googleTranslateKey ? '******' : null;
-		settingRow.webhookSecret = settingRow.webhookSecret ? `${settingRow.webhookSecret.slice(0, 12)}******` : null;
+		settingRow.webhookSecret = settingRow.webhookSecret ? `${settingRow.webhookSecret.slice(0, 4)}******` : null;
 		// SMTP password for a real mailbox — unlike the API-key-shaped secrets
 		// above, no partial reveal at all. The frontend only ever learns
 		// whether a password is set, never any part of its value.
@@ -340,6 +341,9 @@ const settingService = {
 
 		if (params.webhookUrl !== undefined) {
 			params.webhookUrl = domainUtils.toOssDomain(params.webhookUrl) || '';
+			if (params.webhookUrl && !isSafeOutboundUrl(params.webhookUrl, { allowHttp: true })) {
+				throw new BizError('Webhook URL must be a public http(s) address without credentials', 400);
+			}
 		}
 
 		if (params.loginDarkenFactor !== undefined) {
