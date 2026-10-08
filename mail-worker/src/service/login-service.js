@@ -25,6 +25,37 @@ import reqUtils from '../utils/req-utils';
 
 const PASSWORD_CHANGE_LIMIT = 8;
 const PASSWORD_CHANGE_WINDOW_SECONDS = 15 * 60;
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 128;
+const LOGIN_FAIL_WINDOW_SECONDS = 15 * 60;
+const LOGIN_ACCOUNT_LIMIT = 10;
+const LOGIN_IP_LIMIT = 40;
+
+// Best-effort brute-force throttle. KV is not atomic, so concurrent attempts can
+// slip a few extra tries through; it bounds sustained guessing, it is not a lock.
+async function loginThrottleKeys(c, email) {
+	const ip = reqUtils.getIp(c) || 'unknown';
+	return {
+		acct: `${KvConst.LOGIN_FAIL_ACCOUNT}${String(email).toLowerCase()}`,
+		ip: `${KvConst.LOGIN_FAIL_IP}${ip}`
+	};
+}
+
+async function assertLoginAllowed(c, keys) {
+	const [acct, ip] = await Promise.all([c.env.kv.get(keys.acct), c.env.kv.get(keys.ip)]);
+	if (Number(acct || 0) >= LOGIN_ACCOUNT_LIMIT || Number(ip || 0) >= LOGIN_IP_LIMIT) {
+		throw new BizError(t('loginRateLimit'), 429);
+	}
+	return { acct: Number(acct || 0), ip: Number(ip || 0) };
+}
+
+async function recordLoginFailure(c, keys, counts) {
+	await Promise.all([
+		c.env.kv.put(keys.acct, String(counts.acct + 1), { expirationTtl: LOGIN_FAIL_WINDOW_SECONDS }),
+		c.env.kv.put(keys.ip, String(counts.ip + 1), { expirationTtl: LOGIN_FAIL_WINDOW_SECONDS })
+	]);
+	console.warn('login failure', JSON.stringify({ ip: reqUtils.getIp(c), acctFails: counts.acct + 1, ipFails: counts.ip + 1 }));
+}
 
 const loginService = {
 
@@ -59,11 +90,11 @@ const loginService = {
 			throw new BizError(t('emailLengthLimit'));
 		}
 
-		if (password.length > 30) {
+		if (typeof password !== 'string' || password.length > PASSWORD_MAX_LENGTH) {
 			throw new BizError(t('pwdLengthLimit'));
 		}
 
-		if (password.length < 6) {
+		if (password.length < PASSWORD_MIN_LENGTH) {
 			throw new BizError(t('pwdMinLength'));
 		}
 
@@ -215,9 +246,13 @@ const loginService = {
 			throw new BizError(t('emailAndPwdEmpty'));
 		}
 
+		const throttle = noVerifyPwd ? null : await loginThrottleKeys(c, email);
+		const counts = throttle ? await assertLoginAllowed(c, throttle) : null;
+
 		const userRow = await userService.selectByEmailIncludeDel(c, email);
 
 		if (!userRow) {
+			if (throttle) await recordLoginFailure(c, throttle, counts);
 			throw new BizError(t('notExistUser'));
 		}
 
@@ -229,8 +264,15 @@ const loginService = {
 			throw new BizError(t('isBanUser'));
 		}
 
-		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
-			throw new BizError(t('IncorrectPwd'));
+		if (!noVerifyPwd) {
+			if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
+				await recordLoginFailure(c, throttle, counts);
+				throw new BizError(t('IncorrectPwd'));
+			}
+			if (counts.acct > 0) await c.env.kv.delete(throttle.acct);
+			if (cryptoUtils.needsRehash(userRow.password)) {
+				await userService.upgradePasswordHash(c, userRow, password);
+			}
 		}
 
 		const uuid = uuidv4();
@@ -275,11 +317,11 @@ const loginService = {
 			throw new BizError(t('passwordChangeInvalid'), 400);
 		}
 
-		if (newPassword.length < 6) {
+		if (newPassword.length < PASSWORD_MIN_LENGTH) {
 			throw new BizError(t('pwdMinLength'), 400);
 		}
 
-		if (newPassword.length > 30) {
+		if (newPassword.length > PASSWORD_MAX_LENGTH) {
 			throw new BizError(t('pwdLengthLimit'), 400);
 		}
 
@@ -313,8 +355,9 @@ const loginService = {
 		const logoutKey = KvConst.AUTH_INFO + userId;
 		// Read from KV directly on logout to ensure accuracy
 		const authInfo = await c.env.kv.get(logoutKey, { type: 'json' });
+		if (!authInfo) return;
 		const index = authInfo.tokens.findIndex(item => item === token);
-		authInfo.tokens.splice(index, 1);
+		if (index > -1) authInfo.tokens.splice(index, 1);
 		await c.env.kv.put(logoutKey, JSON.stringify(authInfo));
 		kvCache.set(logoutKey, authInfo, TTL.AUTH);  // update cache so revocation is immediate
 	}

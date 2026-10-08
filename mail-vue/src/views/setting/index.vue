@@ -1246,7 +1246,7 @@ function submitPwd() {
     ElMessage({ message: t('emptyPwdMsg'), type: 'error', plain: true })
     return
   }
-  if (form.password.length < 6) {
+  if (form.password.length < 8) {
     ElMessage({ message: t('pwdLengthMsg'), type: 'error', plain: true })
     return
   }

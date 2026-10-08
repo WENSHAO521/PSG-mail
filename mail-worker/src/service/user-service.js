@@ -322,11 +322,24 @@ const userService = {
 
 		const { password } = params;
 
-		if (password.length < 6) {
+		if (typeof password !== 'string' || password.length < 8) {
 			throw new BizError(t('pwdMinLength'));
+		}
+		if (password.length > 128) {
+			throw new BizError(t('pwdLengthLimit'));
 		}
 		const { salt, hash } = await cryptoUtils.hashPassword(password);
 		await orm(c).update(user).set({ password: hash, salt: salt }).where(eq(user.userId, userId)).run();
+	},
+
+	// Progressive migration: re-hash a legacy password after a verified login.
+	// Compare-and-set on the old hash so a concurrent password change is never overwritten.
+	async upgradePasswordHash(c, userRow, password) {
+		const { salt, hash } = await cryptoUtils.hashPassword(password);
+		await orm(c).update(user).set({ password: hash, salt })
+			.where(and(eq(user.userId, userRow.userId), eq(user.password, userRow.password))).run();
+		userRow.password = hash;
+		userRow.salt = salt;
 	},
 
 	selectByEmail(c, email) {

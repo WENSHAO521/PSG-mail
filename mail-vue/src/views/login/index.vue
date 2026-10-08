@@ -403,7 +403,7 @@ function submitChangePassword() {
     ElMessage({ message: t('emptyPwdMsg'), type: 'error', plain: true })
     return
   }
-  if (changeForm.newPassword.length < 6) {
+  if (changeForm.newPassword.length < 8) {
     ElMessage({ message: t('pwdLengthMsg'), type: 'error', plain: true })
     return
   }
@@ -800,7 +800,7 @@ function submitRegister() {
     return
   }
 
-  if (registerForm.password.length < 6) {
+  if (registerForm.password.length < 8) {
     ElMessage({
       message: t('pwdLengthMsg'),
       type: 'error',
