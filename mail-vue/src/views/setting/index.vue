@@ -426,7 +426,7 @@
     </el-scrollbar>
 
     <!-- Password dialog -->
-    <el-dialog class="password-settings-dialog" v-model="pwdShow" :title="$t('changePassword')" width="380">
+    <el-dialog class="password-settings-dialog" append-to-body v-model="pwdShow" :title="$t('changePassword')" width="380">
       <div class="pwd-form">
         <div class="pwd-field">
           <label class="pwd-label">{{ $t('currentPassword') }}</label>
@@ -448,7 +448,7 @@
     </el-dialog>
 
     <!-- Signed-in devices -->
-    <el-dialog class="password-settings-dialog" v-model="sessionsShow" :title="$t('signedInDevices')" width="460">
+    <el-dialog class="password-settings-dialog" append-to-body v-model="sessionsShow" :title="$t('signedInDevices')" width="460">
       <div class="pwd-form" v-loading="sessionsLoading">
         <div v-for="s in sessions" :key="s.sessionId" class="data-row">
           <span class="data-key">

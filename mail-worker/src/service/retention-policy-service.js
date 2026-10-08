@@ -140,6 +140,10 @@ const retentionPolicyService = {
 		];
 		if (keptButLosingFiles.n > 0) warnings.push(`${keptButLosingFiles.n} retained mails have attachments older than ${p.attachmentDays} days`);
 		if (!p.legalHoldAccountIds.length) warnings.push('no legal-hold mailboxes configured');
+		// Machine-readable twins of the strings above, for UIs to translate.
+		const warningCodes = [{ code: 'attachment_rule_not_enforced', days: p.attachmentDays }];
+		if (keptButLosingFiles.n > 0) warningCodes.push({ code: 'retained_losing_attachments', n: keptButLosingFiles.n, days: p.attachmentDays });
+		if (!p.legalHoldAccountIds.length) warningCodes.push({ code: 'no_legal_hold' });
 
 		return {
 			policy: p,
@@ -150,6 +154,7 @@ const retentionPolicyService = {
 			protectedAccountIds: protectedIds,
 			executable: await this.executable(c, p),
 			warnings,
+			warningCodes,
 		};
 	},
 
@@ -164,10 +169,10 @@ const retentionPolicyService = {
 	},
 
 	async executable(c, p) {
-		if (String(c.env.RETENTION_EXECUTION) !== 'true') return { ok: false, reason: 'RETENTION_EXECUTION not set' };
-		if (!p.enabled) return { ok: false, reason: 'policy disabled' };
-		if (p.status !== 'approved' || p.approvedHash !== await policyHash(p)) return { ok: false, reason: 'policy not approved' };
-		return { ok: true };
+		if (String(c.env.RETENTION_EXECUTION) !== 'true') return { ok: false, reason: 'RETENTION_EXECUTION not set', code: 'env_off' };
+		if (!p.enabled) return { ok: false, reason: 'policy disabled', code: 'disabled' };
+		if (p.status !== 'approved' || p.approvedHash !== await policyHash(p)) return { ok: false, reason: 'policy not approved', code: 'not_approved' };
+		return { ok: true, code: 'ok' };
 	},
 
 	// Daily cron. Soft-deletes (moves to Trash) only; bounded per run.

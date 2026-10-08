@@ -381,10 +381,6 @@ const dbInit = {
 
 	async v1_6DB(c) {
 
-		const noticeContent = '本项目仅供学习交流，禁止用于违法业务\n' +
-			'<br>\n' +
-			'请遵守当地法规，作者不承担任何法律责任'
-
 		const ADD_COLUMN_SQL_LIST = [
 			`ALTER TABLE setting ADD COLUMN reg_verify_count INTEGER NOT NULL DEFAULT 1;`,
 			`ALTER TABLE setting ADD COLUMN add_verify_count INTEGER NOT NULL DEFAULT 1;`,
@@ -425,7 +421,10 @@ const dbInit = {
 		});
 
 		await Promise.all(promises);
-		await c.env.db.prepare(`UPDATE setting SET notice_content = ? WHERE notice_content = '';`).bind(noticeContent).run();
+		// Upstream seeded a "for learning only" announcement here on EVERY init,
+		// which re-appeared after an admin cleared it and showed an
+		// inappropriate banner on fresh institutional installs. New installs now
+		// start with no announcement; existing text is left untouched.
 		try {
 			await c.env.db.batch([
 				c.env.db.prepare(`DROP INDEX IF EXISTS idx_account_email`),

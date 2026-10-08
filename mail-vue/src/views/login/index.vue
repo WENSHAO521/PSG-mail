@@ -558,7 +558,11 @@ const openSelect = () => {
 // there. Login/bind still respect the admin's hide-domain setting, where a
 // hidden domain means the user types their full existing address instead.
 const getFullEmail = (email, alwaysAppendDomain = false) => {
-  return (!alwaysAppendDomain && hideLoginDomain.value) ? email : email + suffix.value
+  const typed = String(email || '').trim()
+  // A full address (typed or pasted) is used as written; the domain selector
+  // only completes a bare name like "admin".
+  if (typed.includes('@')) return typed
+  return (!alwaysAppendDomain && hideLoginDomain.value) ? typed : typed + suffix.value
 }
 
 const getEmailName = (email) => {

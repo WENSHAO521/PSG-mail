@@ -29,7 +29,7 @@
         </div>
         <div class="gov-row">
           <label>{{ $t('govWorkdays') }}</label>
-          <el-checkbox-group v-model="form.workdays" size="small">
+          <el-checkbox-group v-model="form.workdays" size="small" class="gov-days">
             <el-checkbox-button v-for="d in 7" :key="d" :value="d">{{ weekdayName(d) }}</el-checkbox-button>
           </el-checkbox-group>
         </div>
@@ -63,8 +63,7 @@
           <div class="gov-stat"><b>{{ preview.emailsToTrash }}</b><span>{{ $t('govWouldTrash') }}</span></div>
           <div class="gov-stat"><b>{{ preview.retainedMailsLosingAttachments }}</b><span>{{ $t('govLosingAtt') }}</span></div>
           <ul class="gov-warn">
-            <li v-for="w in preview.warnings" :key="w">{{ w }}</li>
-            <li v-if="!preview.executable.ok">{{ $t('govNotExecutable', { reason: preview.executable.reason }) }}</li>
+            <li v-for="w in warningLines" :key="w">{{ w }}</li>
           </ul>
         </div>
       </div>
@@ -135,6 +134,16 @@ function apply(p) {
   loaded.value = true
 }
 
+// Server sends codes; show plain-language sentences.
+const warningLines = computed(() => {
+  if (!preview.value) return []
+  const lines = (preview.value.warningCodes || []).map(w => t('govWarn_' + w.code, w))
+  const ex = preview.value.executable
+  if (ex && !ex.ok) lines.push(t('govNotExecutable', { reason: t('govBlock_' + ex.code) }))
+  else if (ex?.ok) lines.push(t('govWillRun'))
+  return lines
+})
+
 const statusTone = computed(() => !form.enabled ? 'neutral' : form.status === 'approved' ? 'success' : 'warning')
 const statusLabel = computed(() => !form.enabled ? t('govStatusOff') : form.status === 'approved' ? t('govStatusApproved') : t('govStatusDraft'))
 
@@ -197,7 +206,10 @@ onMounted(async () => {
 .gov-stat { display: flex; flex-direction: column; min-width: 90px; }
 .gov-stat b { font-size: 20px; color: var(--psg-text); }
 .gov-stat span { font-size: 12px; color: var(--psg-text-secondary); }
-.gov-warn { flex-basis: 100%; margin: 0; padding-left: 18px; font-size: 12px; color: var(--psg-danger); }
+.gov-warn { flex-basis: 100%; margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: var(--psg-text-secondary); }
+.gov-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.gov-days :deep(.el-checkbox-button__inner) { border: 1px solid var(--psg-border); border-radius: var(--psg-radius-sm); box-shadow: none; }
+.gov-days :deep(.el-checkbox-button.is-checked .el-checkbox-button__inner) { box-shadow: none; }
 .gov-orphans { margin: 10px 0 0; padding-left: 18px; font-size: 12px; font-family: var(--psg-font-mono, monospace); word-break: break-all; color: var(--psg-text-secondary); }
 @media (max-width: 720px) {
   .gov-row { grid-template-columns: 1fr; gap: 6px; }

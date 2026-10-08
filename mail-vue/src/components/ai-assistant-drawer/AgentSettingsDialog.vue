@@ -47,6 +47,7 @@
             <div class="as-draft-to">{{ $t('agentDraftTo') }}: {{ (d.to || []).join(', ') }}</div>
             <pre class="as-draft-body">{{ d.body }}</pre>
             <div class="as-actions">
+              <el-button size="small" type="primary" @click="openInComposer(d)">{{ $t('agentDraftOpen') }}</el-button>
               <el-button size="small" @click="copy(d)">{{ $t('copy') }}</el-button>
               <el-button size="small" type="danger" plain @click="discard(d)">{{ $t('agentDraftDiscard') }}</el-button>
             </div>
@@ -61,11 +62,14 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useUiStore } from '@/store/ui.js'
+import { emailDetail } from '@/request/email.js'
 import { aiAgentGetSettings, aiAgentPutSettings, aiAgentDrafts, aiAgentDiscardDraft, aiAgentClearHistory } from '@/request/ai-assistant.js'
 
 const props = defineProps({ modelValue: Boolean })
 const emit = defineEmits(['update:modelValue'])
 const { t } = useI18n()
+const uiStore = useUiStore()
 
 const show = computed({ get: () => props.modelValue, set: (v) => emit('update:modelValue', v) })
 const tab = ref('prefs')
@@ -126,6 +130,20 @@ async function copy(d) {
     await navigator.clipboard.writeText(d.body || '')
     ElMessage({ message: t('copySuccessMsg'), type: 'success', plain: true })
   } catch { /* clipboard unavailable */ }
+}
+
+// Opens the draft in the normal composer (with the original mail quoted and
+// thread headers kept when it is a reply). The user reviews and sends it there.
+async function openInComposer(d) {
+  let replyEmail = null
+  if (d.replyToEmailId) {
+    try { replyEmail = await emailDetail(d.replyToEmailId) } catch { /* original gone: open as a new message */ }
+  }
+  const writer = uiStore.writerRef
+  if (!writer?.openAiDraft) return
+  writer.openAiDraft(d, replyEmail)
+  show.value = false
+  uiStore.aiAssistantShow = false
 }
 
 async function discard(d) {

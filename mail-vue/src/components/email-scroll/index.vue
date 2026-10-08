@@ -555,7 +555,11 @@ const accountShow = computed(() => uiStore.accountShow && settingStore.settings.
 function htmlToText(email) {
   if (email.content) {
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = email.content.replace(/<(img|iframe|object|embed|video|audio|source|link)[^>]*>/gi, '');
+    // textContent glues block elements together ("<p>Hi,</p><p>there" -> "Hi,there"),
+    // so give every block boundary a space first.
+    tempDiv.innerHTML = email.content
+      .replace(/<(img|iframe|object|embed|video|audio|source|link)[^>]*>/gi, '')
+      .replace(/<br\s*\/?>|<\/(p|div|li|tr|td|th|h[1-6]|blockquote|pre|section|article)>/gi, ' $&');
     tempDiv.querySelectorAll('script, style, title').forEach(el => el.remove());
     let text = tempDiv.textContent || tempDiv.innerText || '';
     text = text.replace(/\s+/g, ' ').trim();

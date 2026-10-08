@@ -186,6 +186,16 @@ describe('login + sessions (HTTP)', () => {
 	});
 });
 
+describe('user-agent parsing', () => {
+	it('never produces "undefined" for browsers/OSes without a version', async () => {
+		const { default: reqUtils } = await import('../src/utils/req-utils');
+		const ua = reqUtils.getUserAgent({ req: { header: () => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36' } });
+		expect(ua.os).toBe('Linux');
+		expect(ua.browser).toMatch(/^Chrome 141/);
+		expect(JSON.stringify(ua)).not.toContain('undefined');
+	});
+});
+
 describe('auth middleware path matching', () => {
 	it('an excluded prefix does not open sibling routes', async () => {
 		const { matchesPrefix } = await import('../src/security/security');

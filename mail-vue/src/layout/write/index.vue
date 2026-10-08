@@ -426,6 +426,7 @@ import {useMobileNavigationStore} from "@/store/mobile-navigation.js";
 
 defineExpose({
   open,
+  openAiDraft,
   openWithTemplate,
   openReply,
   openReplyAll,
@@ -1515,6 +1516,32 @@ function open(prefill) {
     form.bcc = [...new Set(prefill.bcc)]
     showBcc.value = true
   }
+}
+
+// Opens an AI-written draft in the normal composer so it is reviewed and sent
+// through the usual path. For a reply, the regular reply setup runs first
+// (recipient, "Re:", thread headers, quoted original) and the draft text is
+// placed above the quote.
+function openAiDraft(draft, replyEmail) {
+  const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const html = `<div>${esc(draft.body).replace(/\r?\n/g, '<br>')}</div>`
+  if (replyEmail) {
+    openReply({ ...replyEmail })
+    // openReply fills the editor in its own timeout; run after it.
+    setTimeout(() => {
+      if (draft.subject) form.subject = draft.subject
+      if (draft.to?.length) form.receiveEmail = [...new Set(draft.to)]
+      const cur = defValue.value || ''
+      const quoteAt = cur.indexOf('<div></div>')
+      defValue.value = html + '<p><br></p>' + (quoteAt >= 0 ? cur.slice(quoteAt) : cur)
+    }, 80)
+    return
+  }
+  open({ to: draft.to })
+  setTimeout(() => {
+    if (draft.subject) form.subject = draft.subject
+    defValue.value = html
+  }, 20)
 }
 
 function openWithTemplate(tpl) {

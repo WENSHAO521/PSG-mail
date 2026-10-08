@@ -73,6 +73,9 @@ describe('retention gates', () => {
 		const pv = await retentionPolicyService.preview(c(), NOW);
 		expect(pv.emailsToTrash).toBe(1); // normal/old only: held is legal-hold, starred is kept
 		expect(pv.warnings.join(' ')).toMatch(/attachment_rule_not_enforced/);
+		// structured twins for the admin UI, which shows plain-language text
+		expect(pv.warningCodes.map(w => w.code)).toEqual(expect.arrayContaining(['attachment_rule_not_enforced']));
+		expect(pv.executable).toMatchObject({ ok: false, code: 'env_off' });
 		expect(await live('old', normal.accountId)).toBe(0);
 	});
 

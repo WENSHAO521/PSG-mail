@@ -15,12 +15,14 @@ const reqUtils = {
 		let browserInfo = null;
 		let osInfo = null;
 
+		// Not every browser/OS reports a version ("Linux" has none) — joining
+		// blindly produced "Linuxundefined" in the device list.
 		if (browser.name) {
-			browserInfo = browser.name + ' ' + browser.version;
+			browserInfo = [browser.name, browser.version].filter(Boolean).join(' ');
 		}
 
 		if (os.name) {
-			osInfo = os.name + os.version;
+			osInfo = [os.name, os.version].filter(Boolean).join(' ');
 		}
 
 		let deviceInfo = 'Desktop';

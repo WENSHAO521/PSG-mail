@@ -120,7 +120,14 @@ export function gravatarUrl(email) {
 
 // Returns '' immediately if already known to be a miss; otherwise returns the URL.
 // Call this to get a candidate URL, then handle onError on the <img>.
+// Gravatar lookups send an MD5 of every correspondent's address to a
+// third party (gravatar.com) — who writes to whom is exactly what an
+// institutional mailbox should not leak. Off unless the build sets
+// VITE_GRAVATAR=true; initials / uploaded avatars are used instead.
+const GRAVATAR_ENABLED = import.meta.env.VITE_GRAVATAR === 'true'
+
 export function gravatarCandidate(email) {
+  if (!GRAVATAR_ENABLED) return ''
   if (!email) return ''
   if (gravatarCache.get(email) === 'miss') return ''
   return gravatarUrl(email)

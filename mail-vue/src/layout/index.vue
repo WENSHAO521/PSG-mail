@@ -256,7 +256,8 @@ watch(() => uiStore.changeNotice, () => {
 watch(() => uiStore.changePreview, () => { showNotice(uiStore.previewData) })
 
 function showNotice(data) {
-  if (data.notice === 1) return
+  // An enabled announcement with no text is not worth an empty popup.
+  if (data.notice === 1 || !String(data.noticeContent || '').trim()) return
   if (elNotification) elNotification.close()
   if (!noticeStyle) { noticeStyle = document.createElement('style'); document.head.appendChild(noticeStyle) }
   noticeStyle.innerHTML = `.custom-notice.el-notification{--el-notification-width:min(${data.noticeWidth}px,calc(100% - 30px))!important}`
@@ -265,7 +266,10 @@ function showNotice(data) {
     message: `<div style="width:100%;height:100%">${data.noticeContent}</div>`,
     type: data.noticeType === 'none' ? '' : data.noticeType,
     duration: data.noticeDuration, position: data.noticePosition,
-    offset: data.noticeOffset, dangerouslyUseHTMLString: true, customClass: 'custom-notice'
+    // Never let the announcement sit on top of the top bar (it covered the
+    // compose button and the account menu with the default offset of 0).
+    offset: Math.max(Number(data.noticeOffset) || 0, window.innerWidth > 1024 ? 76 : 68),
+    dangerouslyUseHTMLString: true, customClass: 'custom-notice'
   })
 }
 
