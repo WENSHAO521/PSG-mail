@@ -331,17 +331,23 @@ defineExpose({ save, saving })
   font-size: 13px;
 }
 
-.sig-name-input { max-width: 360px; }
+.sig-name-input :deep(.el-input__wrapper) { min-height: 40px; }
+.sig-name-input :deep(.el-input__inner) { font-weight: 600; }
 
 :where(.sig-editor) :deep(.sig-name-input .el-input__wrapper:not(.is-focus)) {
   background-color: var(--psg-surface) !important;
 }
 
+/* Same field skin as the name input above (and every other Mist field):
+   a borderless surface well that picks up the 2px accent ring on focus. */
 .editor-shell {
-  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface);
   overflow: hidden;
   height: 220px;
+  transition: box-shadow .14s ease;
+
+  &:focus-within { box-shadow: 0 0 0 2px var(--psg-primary); }
 }
 
 .sig-defaults { padding: 0; gap: 0; overflow: hidden; }
@@ -378,7 +384,6 @@ defineExpose({ save, saving })
   .sig-list { width: auto; border-right: 0; border-bottom: 1px solid var(--psg-border); }
   .sig-items { max-height: 220px; }
   .sig-editor { padding: 14px; }
-  .sig-name-input { max-width: none; }
   .sig-default-row { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 16px; }
   .sig-default-select { width: 100%; }
 }
