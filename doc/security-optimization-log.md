@@ -67,3 +67,20 @@ Route audit of label/star/my/backup/email/openapi/setting APIs: all derive the u
 
 Tests: `session-management.spec.js`; 142/142 worker tests pass; `vite build` of mail-vue succeeds. Pre-existing: `npm ci` in mail-vue fails on a peer-dependency conflict (`@vitejs/plugin-vue@5` vs vite 7/8) and needs `--legacy-peer-deps`.
 Rollback: revert the commit; no schema change (`sessions` is an extra field in the existing KV session record, ignored by old code).
+
+## Batch 5 — error handling, headers, maintenance endpoints, dependencies
+
+| # | Finding | Risk | Fix |
+|---|---|---|---|
+| 1 | Global `onError` returned `err.message` for every exception: SQL/D1 text, provider response bodies (e.g. Firebase token exchange) and parser errors reached the client | Medium | only `BizError` messages are returned; other errors → `500 Internal server error` (details stay in server logs); malformed JSON → `400 Invalid request body`. Existing "KV/D1 not bound / schema out of date" admin hints are kept. |
+| 2 | `/init` and `/reset-admin` (maintenance-secret endpoints) had no throttle; reset-admin accepted 6-char passwords | Medium | shared login throttle (10 bad tries / 15 min), min length 8 |
+| 3 | API responses had no `nosniff` / `no-store`; the SPA had no clickjacking / referrer / transport headers | Medium | API: `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` (default only; `/oss` keeps its own cache headers). SPA (`mail-vue/public/_headers`): `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, `Strict-Transport-Security: max-age=15552000` (no `includeSubDomains`, no preload). |
+| 4 | CORS is `*` | Low (auth is a bearer header, no cookies) | optional pin: var `cors_origins = "https://a,https://b"`; unset keeps `*` so Electron/Android/PWA clients are unaffected |
+| 5 | `pnpm audit --prod` (worker): 2 high — `sharp` (<0.35.5), `source-map-js` (<1.2.2), both transitive through `@cloudflare/vite-plugin`/miniflare (build/dev tooling, not in the Worker bundle). `npm audit` (vue): `source-map-js` | Low–Medium | overrides bumped (`sharp ^0.35.5`, `source-map-js ^1.2.2`), lock files regenerated; both audits now report 0 known vulnerabilities. Worker tests and `vite build` re-run green. |
+
+Not done on purpose:
+- **No enforced Content-Security-Policy for the SPA.** The app uses TinyMCE, Turnstile, Firebase and Element Plus inline styles; an enforced policy without a browser regression pass would risk breaking login/compose. Next step: ship `Content-Security-Policy-Report-Only` first, collect violations, then enforce. Mail HTML itself is already rendered through the inert DOMParser/sandbox path from earlier commits, and attachments are served with `sandbox` CSP.
+- Reviewed per-user routes for forwarding, scheduled mail, templates, contacts: user id always comes from the session; admin forwarding routes assert admin inside the service.
+
+Tests: `api-hardening.spec.js`; 147/147 worker tests pass.
+Rollback: revert the commit. If the generic 500 message hides something needed for support, the full error is in the Worker log (observability is enabled).

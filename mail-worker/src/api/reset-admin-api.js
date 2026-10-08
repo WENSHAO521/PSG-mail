@@ -1,3 +1,4 @@
+import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from '../service/login-throttle';
 import app from '../hono/hono';
 import result from '../model/result';
 import BizError from '../error/biz-error';
@@ -19,14 +20,18 @@ app.post('/reset-admin', async (c) => {
 	const auth = c.req.header('Authorization') || '';
 	const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
 
+	const throttle = await loginThrottleKeys(c, 'maintenance');
+	const counts = await assertLoginAllowed(c, throttle);
+
 	if (!secret || !timingSafeEqual(secret, c.env.maintenance_secret)) {
+		await recordLoginFailure(c, throttle, counts);
 		throw new BizError('secret mismatch', 401);
 	}
 
 	const { password } = await c.req.json();
 
-	if (!password || password.length < 6) {
-		throw new BizError('password must be at least 6 characters', 400);
+	if (!password || password.length < 8) {
+		throw new BizError('password must be at least 8 characters', 400);
 	}
 
 	const adminRow = await userService.selectByEmail(c, c.env.admin);
