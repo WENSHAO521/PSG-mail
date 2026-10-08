@@ -109,7 +109,20 @@ function normalizeSettingRow(row) {
 	return { ...row, autoRefresh: normalizeAutoRefresh(row.autoRefresh) };
 }
 
+const FEATURE_CACHE_KEY = 'feature-setting'
+
+// settingService.query() runs on most requests; the feature row only changes
+// when an admin saves settings (refresh() drops this cache), so don't hit D1
+// for it every time.
 async function readFeatureSetting(c) {
+	const hit = kvCache.get(FEATURE_CACHE_KEY);
+	if (hit) return { ...hit };
+	const value = await readFeatureSettingFromDb(c);
+	kvCache.set(FEATURE_CACHE_KEY, value, TTL.SETTING);
+	return { ...value };
+}
+
+async function readFeatureSettingFromDb(c) {
 	try {
 		const row = await c.env.db.prepare('SELECT * FROM psg_feature_setting WHERE id = 1').first();
 		if (!row) return { ...FEATURE_DEFAULTS };
@@ -158,6 +171,7 @@ const settingService = {
 		c.set('setting', settingRow);
 		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
 		kvCache.del(KvConst.SETTING);  // bust in-memory cache after update
+		kvCache.del(FEATURE_CACHE_KEY);
 	},
 
 	async query(c) {

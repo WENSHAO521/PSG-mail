@@ -267,6 +267,9 @@ async function pollLoop() {
     await sleep(safePollIntervalMs())
     if (!pollRunning) break
     if (!localStorage.getItem('token')) continue
+    // A hidden tab catches up through the visibilitychange handler when it
+    // comes back, so background tabs don't spend worker/D1 reads on polling.
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') continue
     await syncNow('poll')
   }
 }

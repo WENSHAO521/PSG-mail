@@ -16,11 +16,13 @@ const attService = {
 
 		// Upload all attachments in parallel instead of sequentially
 		await Promise.all(attachments.map(attachment => {
+			// The name comes from the sender; keep it out of the header syntax.
+			const fileName = String(attachment.filename || '').replace(/[\r\n"\\;]/g, '_')
 			const metadate = { contentType: attachment.mimeType }
 			if (!attachment.contentId) {
-				metadate.contentDisposition = `attachment;filename=${attachment.filename}`
+				metadate.contentDisposition = `attachment;filename="${fileName}"`
 			} else {
-				metadate.contentDisposition = `inline;filename=${attachment.filename}`
+				metadate.contentDisposition = `inline;filename="${fileName}"`
 				metadate.cacheControl = `max-age=259200`
 			}
 			return r2Service.putObj(c, attachment.key, attachment.content, metadate)

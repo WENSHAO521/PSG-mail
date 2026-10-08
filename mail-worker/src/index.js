@@ -11,6 +11,7 @@ import kvObjService from './service/kv-obj-service';
 import oauthService from "./service/oauth-service";
 import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
+import { safeObjectResponse } from './utils/safe-object-response';
 import forwardingService from './service/forwarding-service';
 // Durable Object classes must be exported by name from the Worker's main
 // entry — this is that export, not a self-contained secondary Worker. See
@@ -28,7 +29,8 @@ export default {
 		}
 
 		 if (['/static/','/attachments/'].some(p => url.pathname.startsWith(p))) {
-			 return await kvObjService.toObjResp( { env }, url.pathname.substring(1));
+			 const obj = await kvObjService.toObjResp( { env }, url.pathname.substring(1));
+			 return obj ? safeObjectResponse(obj) : new Response('Not Found', { status: 404 });
 		 }
 
 		return env.assets.fetch(req);
