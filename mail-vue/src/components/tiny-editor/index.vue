@@ -2,7 +2,9 @@
   <div class="editor-box" :class="showLoading ? 'editor-box-loading' : ''"
        :style="{ '--editor-radius': props.radius }">
     <loading class="loading" v-if="showLoading"/>
-    <textarea v-else style="outline: none" :id="editorId" ref="editorRef"></textarea>
+    <!-- Hidden: TinyMCE replaces it, and between a theme-switch destroy and
+         re-init it would otherwise flash as a bare native textarea. -->
+    <textarea v-else style="outline: none; visibility: hidden" :id="editorId" ref="editorRef"></textarea>
   </div>
 </template>
 
@@ -21,7 +23,8 @@ defineExpose({
   insertContent,
   getSelectedContent,
   getSelectedText,
-  replaceSelection
+  replaceSelection,
+  setSignature
 })
 
 const props = defineProps({
@@ -75,9 +78,13 @@ watch(() => props.defValue, (newValue) => {
   }
 });
 
+// Skin and UI language can only change by re-creating the editor. Carry the
+// current content across — re-initialising from defValue would throw away
+// whatever was typed since it was opened.
 watch(() => [uiStore.dark, settingStore.lang], () => {
+  const content = editor.value ? editor.value.getContent() : null;
   destroyEditor();
-  initEditor();
+  initEditor(content);
 });
 
 const language = computed(() => {
@@ -113,7 +120,7 @@ function initTinyMCE() {
   document.head.appendChild(script);
 }
 
-function initEditor() {
+function initEditor(initialContent = null) {
   window.tinymce.init({
     selector: `#${props.editorId}`,
     base_url: tinyBase,
@@ -278,7 +285,7 @@ function initEditor() {
       });
 
       ed.on('init', () => {
-        ed.setContent(props.defValue);
+        ed.setContent(initialContent ?? props.defValue);
         isInitialized.value = true;
         // TinyMCE's zh_CN pack labels the empty font-family select as
         // “预设”, which is misleading in a mail editor. Keep the native
@@ -346,6 +353,25 @@ function getContent() {
 
 function insertContent(html) {
   if (editor.value) editor.value.insertContent(html)
+}
+
+// Swaps the compose signature block (div.psg-signature) for `html`, removes
+// it when `html` is empty, or inserts a new one at the caret when there is
+// none yet. One undo step.
+function setSignature(html) {
+  const ed = editor.value
+  if (!ed) return
+  const existing = ed.getBody().querySelector('.psg-signature')
+  ed.undoManager.transact(() => {
+    if (existing && html) {
+      existing.innerHTML = html
+    } else if (existing) {
+      ed.dom.remove(existing)
+    } else if (html) {
+      ed.insertContent(`<div class="psg-signature">${html}</div>`)
+    }
+  })
+  emit('change', ed.getContent(), ed.getContent({ format: 'text' }))
 }
 
 function getSelectedContent() {

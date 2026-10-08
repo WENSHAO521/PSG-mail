@@ -18,6 +18,10 @@ beforeAll(async () => {
 		undo_send_seconds INTEGER NOT NULL DEFAULT 10,
 		reply_from_received INTEGER NOT NULL DEFAULT 1
 	)`).run();
+	await env.db.prepare(`CREATE TABLE IF NOT EXISTS psg_user_signature (
+		user_id INTEGER PRIMARY KEY,
+		data TEXT NOT NULL DEFAULT '{}'
+	)`).run();
 });
 
 describe('user preferences', () => {
@@ -39,5 +43,35 @@ describe('user preferences', () => {
 		await expect(userService.updateUndoSendSeconds(ctx, { seconds: null }, 103)).rejects.toThrow();
 		await expect(userService.updateReplyFromReceived(ctx, { enabled: 'yes' }, 103)).rejects.toThrow();
 		expect(await prefRow(103)).toBeNull();
+	});
+});
+
+describe('signatures', () => {
+	const sigRow = async (userId) => {
+		const row = await env.db.prepare('SELECT data FROM psg_user_signature WHERE user_id = ?').bind(userId).first();
+		return row ? JSON.parse(row.data) : null;
+	};
+
+	it('stores several signatures with separate new-mail and reply defaults', async () => {
+		const items = [
+			{ id: 'a1', name: 'Work', html: '<p>Work</p>' },
+			{ id: 'b2', name: 'Short', html: '<p>-- S</p>' },
+		];
+		await userService.updateSignatures(ctx, { items, newId: 'a1', replyId: 'b2' }, 201);
+		expect(await sigRow(201)).toEqual({ items, newId: 'a1', replyId: 'b2' });
+
+		await userService.updateSignatures(ctx, { items: items.slice(1), newId: null, replyId: 'b2' }, 201);
+		expect(await sigRow(201)).toEqual({ items: items.slice(1), newId: null, replyId: 'b2' });
+	});
+
+	it('rejects bad lists and defaults that point at nothing', async () => {
+		const ok = { id: 'x', name: 'n', html: '' };
+		await expect(userService.updateSignatures(ctx, { items: 'no' }, 202)).rejects.toThrow();
+		await expect(userService.updateSignatures(ctx, { items: [ok, ok] }, 202)).rejects.toThrow();
+		await expect(userService.updateSignatures(ctx, { items: [{ ...ok, id: 'bad id!' }] }, 202)).rejects.toThrow();
+		await expect(userService.updateSignatures(ctx, { items: [ok], newId: 'missing' }, 202)).rejects.toThrow();
+		const many = Array.from({ length: 21 }, (_, i) => ({ id: `s${i}`, name: '', html: '' }));
+		await expect(userService.updateSignatures(ctx, { items: many }, 202)).rejects.toThrow();
+		expect(await sigRow(202)).toBeNull();
 	});
 });

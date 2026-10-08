@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { loginUserInfo, updateSignature, updateUndoSendSeconds, updateReplyFromReceived, saveAvatar as apiSaveAvatar, clearAvatar as apiClearAvatar } from '@/request/my.js'
+import { loginUserInfo, updateSignatures, updateUndoSendSeconds, updateReplyFromReceived, saveAvatar as apiSaveAvatar, clearAvatar as apiClearAvatar } from '@/request/my.js'
 import { normalizeAvatarEmail, storedAvatar } from '@/utils/avatar.js'
 
 export const useUserStore = defineStore('user', {
@@ -8,6 +8,23 @@ export const useUserStore = defineStore('user', {
         refreshList: 0,
         avatar: '',
     }),
+    getters: {
+        // Gmail-style signature list; older servers only send `signature`.
+        signatureList(state) {
+            const sigs = state.user?.signatures
+            if (sigs && Array.isArray(sigs.items)) return sigs.items
+            return state.user?.signature ? [{ id: 'default', name: '', html: state.user.signature }] : []
+        },
+        // Signature a fresh compose ('new') or a reply/forward ('reply') starts with.
+        defaultSignature(state) {
+            return (kind) => {
+                const sigs = state.user?.signatures
+                if (!sigs || !Array.isArray(sigs.items)) return state.user?.signature || ''
+                const id = kind === 'reply' ? sigs.replyId : sigs.newId
+                return sigs.items.find(i => i.id === id)?.html || ''
+            }
+        },
+    },
     actions: {
         refreshUserList() {
             loginUserInfo().then(() => { this.refreshList++ })
@@ -49,9 +66,10 @@ export const useUserStore = defineStore('user', {
                 if (email !== normalizedEmail) localStorage.removeItem(`psg_avatar_${email}`)
             }
         },
-        async saveSignature(signature) {
-            await updateSignature(signature)
-            this.user.signature = signature
+        async saveSignatures(data) {
+            const saved = await updateSignatures(data)
+            this.user.signatures = saved
+            this.user.signature = saved.items.find(i => i.id === saved.newId)?.html || ''
         },
         async saveUndoSendSeconds(seconds) {
             await updateUndoSendSeconds(seconds)

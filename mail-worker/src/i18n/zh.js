@@ -33,6 +33,7 @@ const zh = {
 	notExistEmailReply: '邮件不存在无法回复',
 	imageAttLimit: '图片不能超过10个',
 	invalidAvatar: '头像图片格式无效或文件过大',
+	invalidSignatures: '签名数据无效',
 	invalidUndoSendSeconds: '撤销发送时长无效',
 	invalidReplyFromReceived: '回复发件地址设置无效',
 	attLimit: '附件不能超过10个',

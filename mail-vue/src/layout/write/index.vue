@@ -174,6 +174,21 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
+            <el-dropdown v-if="userStore.signatureList.length" trigger="click" @command="applySignature"
+                         :hide-on-click="true" popper-class="write-template-dropdown">
+              <div class="tb-btn tb-btn--label" :title="$t('signature')">
+                <Icon icon="psg:edit" width="16" height="16"/>
+                <span>{{ $t('signatureInsert') }}</span>
+              </div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="sig in userStore.signatureList" :key="sig.id" :command="sig">
+                    {{ sig.name || $t('signatureUntitled') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item divided command="none">{{ $t('signatureNone') }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
             <div class="att-list">
               <div class="att-item" v-for="(item,index) in form.attachments" :key="index">
                 <Icon v-bind="getIconByName(item.filename)" width="14" height="14"/>
@@ -1257,9 +1272,20 @@ function focusChange() {
   if (selectStatus) openSelect()
 }
 
-function sigBlock() {
-  const sig = userStore.user.signature
-  return sig ? `<p><br></p><p style="color:#999;margin-top:0">-- </p>${sig}` : ''
+// The "-- " separator lives inside the block so switching or removing the
+// signature from the toolbar takes it along.
+function sigInner(html) {
+  return html ? `<p style="color:#999;margin-top:0">-- </p>${html}` : ''
+}
+
+function sigBlock(kind = 'reply') {
+  const inner = sigInner(userStore.defaultSignature(kind))
+  return inner ? `<p><br></p><div class="psg-signature">${inner}</div>` : ''
+}
+
+// Toolbar picker: a signature entry, or 'none' to take it out.
+function applySignature(item) {
+  editor.value?.setSignature?.(item && typeof item === 'object' ? sigInner(item.html) : '')
 }
 
 function openForward(email) {
@@ -1481,10 +1507,8 @@ function _showWindow() {
 
 function open(prefill) {
   _showWindow()
-  const sig = userStore.user.signature
-  const sigHtml = sig
-    ? `<p><br></p><p><br></p><p style="color:#999;margin-top:0">-- </p>${sig}`
-    : ''
+  const sig = sigBlock('new')
+  const sigHtml = sig ? `<p><br></p>${sig}` : ''
   defValue.value = ''
   setTimeout(() => { defValue.value = sigHtml })
   if (prefill?.to?.length) form.receiveEmail = [...new Set(prefill.to)]
@@ -1496,10 +1520,8 @@ function open(prefill) {
 
 function openWithTemplate(tpl) {
   _showWindow()
-  const sig = userStore.user.signature
-  const sigHtml = sig
-    ? `<p><br></p><p><br></p><p style="color:#999;margin-top:0">-- </p>${sig}`
-    : ''
+  const sig = sigBlock('new')
+  const sigHtml = sig ? `<p><br></p>${sig}` : ''
   form.subject = tpl.subject || ''
   defValue.value = ''
   setTimeout(() => { defValue.value = (tpl.content || '') + sigHtml })
@@ -1558,9 +1580,7 @@ async function autoSaveDraft() {
   if (!content && !form.subject && form.receiveEmail.length === 0) return
   // Don't autosave a draft that only contains the signature with no user input
   if (!form.subject && form.receiveEmail.length === 0 && !form.draftId) {
-    const sigOnly = userStore.user.signature
-      ? content.includes(userStore.user.signature) && form.receiveEmail.length === 0
-      : false
+    const sigOnly = userStore.signatureList.some(sig => sig.html && content.includes(sig.html))
     if (sigOnly) return
   }
 
@@ -2524,18 +2544,52 @@ function close() {
   }
 }
 
-/* El overrides — flat field inputs */
-:deep(.field-tag .el-input-tag),
-:deep(.field-tag .el-input__wrapper) {
-  border-radius: var(--compose-radius) !important;
-  box-shadow: none !important;
+/* El overrides — flat field inputs.
+   The recipient fields sit inline in their row (no grey well, no hard
+   ring); focus gets the same soft halo as the subject line, and chips use
+   the app's rounded pill instead of Element's square tag. */
+.el-input-tag.field-tag {
+  min-height: 34px;
+  padding: 2px 6px !important;
+  margin-left: -6px;
   border: none !important;
-  background: transparent !important;
-  padding-left: 0 !important;
-}
-
-:deep(.field-tag .el-tag) {
   border-radius: var(--compose-radius) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: box-shadow 0.14s ease, background-color 0.14s ease;
+
+  &.is-focused {
+    background: transparent !important;
+    box-shadow: 0 0 0 3px var(--psg-primary-muted) !important;
+  }
+
+  :deep(.el-input-tag__input) {
+    font-size: 14px;
+    color: var(--psg-text);
+    outline: none !important;
+    &:focus, &:focus-visible { outline: none !important; box-shadow: none !important; }
+    &::placeholder { color: var(--psg-text-muted); }
+  }
+
+  :deep(.el-input-tag__inner) { gap: 4px 6px; }
+
+  :deep(.el-tag) {
+    height: 26px;
+    padding: 0 6px 0 10px;
+    border: 1px solid var(--psg-border) !important;
+    border-radius: 999px !important;
+    background: var(--psg-surface-muted) !important;
+    color: var(--psg-text) !important;
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+
+  :deep(.el-tag .el-tag__close) {
+    color: var(--psg-text-muted);
+    &:hover { background: var(--psg-surface-active); color: var(--psg-text); }
+  }
+
+  :deep(.el-input-tag__suffix) { padding-right: 0; }
 }
 
 :deep(.subject-input .el-input__wrapper) {
@@ -2565,7 +2619,6 @@ function close() {
   }
 }
 
-:deep(.el-input-tag__suffix) { padding-right: 0; }
 
 .email-row {
   white-space: nowrap;

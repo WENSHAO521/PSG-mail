@@ -18,6 +18,11 @@ app.put('/my/signature', async (c) => {
 	return c.json(result.ok());
 });
 
+app.put('/my/signatures', async (c) => {
+	const data = await userService.updateSignatures(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
+
 app.put('/my/undoSendSeconds', async (c) => {
 	await userService.updateUndoSendSeconds(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());
