@@ -1,6 +1,9 @@
 // CI gate for schema changes. Two checks:
 //  1. migrations/ files are named NNNN_<name>.sql, sequential, no gaps/dupes.
-//  2. Runtime DDL (ALTER/CREATE TABLE|INDEX in src/) may only shrink. The
+//  2. EXPECTED_SCHEMA_VERSION (src/db/schema-version.ts) equals the newest
+//     migration number, and APP_VERSION (src/shared/version.ts) equals the
+//     mail-vue package version.
+//  3. Runtime DDL (ALTER/CREATE TABLE|INDEX in src/) may only shrink. The
 //     legacy request-time pattern in src/init/init.js and a few hot paths is
 //     frozen at the counts in runtime-ddl-baseline.json; new schema changes
 //     must be a file in migrations/. Run with --update after REMOVING DDL to
@@ -21,7 +24,18 @@ files.forEach((f, i) => {
 	if (Number(m[1]) !== i + 1) errors.push(`migrations/${f}: expected number ${String(i + 1).padStart(4, '0')} (gap or duplicate)`);
 });
 
-// 2. runtime DDL ratchet
+// 2. version constants
+const expectedMatch = /EXPECTED_SCHEMA_VERSION = (\d+)/.exec(readFileSync(join(root, 'src/db/schema-version.ts'), 'utf8'));
+if (Number(expectedMatch?.[1]) !== files.length) {
+	errors.push(`src/db/schema-version.ts: EXPECTED_SCHEMA_VERSION is ${expectedMatch?.[1]}, but newest migration is ${files.length}`);
+}
+const appMatch = /APP_VERSION = '([^']+)'/.exec(readFileSync(join(root, 'src/shared/version.ts'), 'utf8'));
+const vuePkg = JSON.parse(readFileSync(join(root, '..', 'mail-vue', 'package.json'), 'utf8'));
+if (appMatch?.[1] !== vuePkg.version) {
+	errors.push(`src/shared/version.ts: APP_VERSION ${appMatch?.[1]} != mail-vue/package.json version ${vuePkg.version}`);
+}
+
+// 3. runtime DDL ratchet
 const DDL = /\b(ALTER\s+TABLE|CREATE\s+(UNIQUE\s+)?(TABLE|INDEX))\b/gi;
 function walk(dir) {
 	return readdirSync(dir).flatMap((n) => {

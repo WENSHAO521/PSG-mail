@@ -8,6 +8,8 @@ export default [
 	{ ignores: ['node_modules/**', '.wrangler/**', 'dist/**'] },
 	js.configs.recommended,
 	{ ...tseslint.configs.base, files: ['**/*.ts'] },
+	// tsc already reports undefined names (incl. ambient workers-types) in .ts.
+	{ files: ['**/*.ts'], rules: { 'no-undef': 'off' } },
 	{
 		files: ['**/*.{js,mjs,ts}'],
 		languageOptions: {

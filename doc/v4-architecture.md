@@ -1,6 +1,7 @@
 # PSG Mail 4.0 架构设计框架
 
-> 状态:设计草案(RFC)  ·  基线版本:3.1.1  ·  目标版本:4.0.0
+> 状态:实施中(当前 4.0.0-alpha.0)  ·  基线版本:3.1.1  ·  目标版本:4.0.0
+> 版本策略:不再发布 3.2;所有里程碑直接以 4.0.0-alpha.N / beta.N / rc.N 发布,主干始终可部署。
 > 范围:`mail-worker`(Cloudflare Workers 后端)、`mail-vue`(Web / Electron / Android 客户端)、CI/发布流程
 
 ---
@@ -337,7 +338,7 @@ apps/web/src
 
 | 阶段 | 版本 | 内容 | 退出标准 |
 |---|---|---|---|
-| M0 基础设施 | 3.2 | TS 配置、lint/typecheck/test 门禁、`traceId` 与结构化日志、DDL 棘轮(冻结 `init.js` 与请求期 DDL,新变更只能进 `migrations`)。**状态:后端部分已落地**(见 §11)。前端 pnpm workspace 与品牌命名统一顺延 | CI 门禁上线;运行期 DDL 数量只减不增 |
+| M0 基础设施 | 4.0.0-alpha.0 | TS 配置、lint/typecheck/test 门禁、`traceId` 与结构化日志、DDL 棘轮(冻结 `init.js` 与请求期 DDL,新变更只能进 `migrations`)。**状态:后端部分已落地**(见 §11)。前端 pnpm workspace 与品牌命名统一顺延 | CI 门禁上线;运行期 DDL 数量只减不增 |
 | M1 后端骨架 | 4.0-alpha.1 | `app/` 组合根、`platform/` 绑定封装、Provider 接口与 `transport`/`notify` 适配器;路由声明式权限 + Zod;`/api/v4` 与 `compat/v3` | 新增路由全部走声明式;权限覆盖测试通过 |
 | M2 事件管道 | 4.0-alpha.2 | EventBus(Queue + Inline 实现)、收信流水线拆分、死信与重放、后台 cron 改为发布任务 | 收信副作用全部异步订阅;失败不影响落库 |
 | M3 模块化迁移 | 4.0-beta.1 | 按映射表迁移 11 个模块,拆分 `email-service`;`message`/`compose` 先行 | `service/` 目录清空;边界 lint 零违规 |
@@ -346,7 +347,7 @@ apps/web/src
 | M6 发布 | 4.0.0 | 迁移指南、兼容层公告(`Sunset` 日期)、性能与安全复核 | 全部必测清单通过;升级/回滚演练成功 |
 
 ### 8.3 数据与配置迁移
-1. 先发布 3.2(含全部迁移脚本与 `schema_version`),升级时自动补齐建表。
+1. 先发布 4.0.0-alpha.0(含全部迁移脚本与 `schema_version` 检测),升级时自动补齐建表。
 2. 权限点重命名、设置项 key 变更通过编号迁移 + 兼容读取(旧 key 读取时回落,保留两个小版本)。
 3. 备份格式升级版本号;4.0 可导入 3.x 备份,反向仅保证 4.0.x 之间兼容。
 4. **回滚**:每个破坏性迁移前自动触发一次 `backup`;contract 步骤延后一个小版本,保证 N-1 可回退。
@@ -414,6 +415,11 @@ Queue consumer ─► handlers (并行、幂等、各自重试)
 - 顺手修复:`notification-event-service.js` 中超出 JS 精度的数字字面量(`9223372036854775807`)。
 
 未做(及原因):
-- **不删除 `init.js` 的历史 DDL**:`ALTER TABLE ADD COLUMN` 在 SQLite 里不可幂等,已升级过的线上库重复执行迁移会失败,需要先有 `schema_version` 检测再分步搬迁,留到 M1。
+- **不删除 `init.js` 的历史 DDL**:`ALTER TABLE ADD COLUMN` 在 SQLite 里不可幂等,已升级过的线上库重复执行迁移会失败,需要先有 `schema_version` 检测再分步搬迁,留到 M1;其前置的 schema 版本检测已在 alpha.0 落地(见下)。
 - **不改 wrangler `name`**:部署名由 CI 的 `NAME` secret 覆盖,改默认值只会让自部署用户的 Worker 被意外新建。
 - **前端 pnpm workspace**:`wrangler.toml` 的 `[build]` 与多个工作流依赖 `npm --prefix ../mail-vue`,需单独评估后迁移。
+
+**4.0.0-alpha.0 追加**
+- 版本号:`mail-vue/package.json`、Android `versionName`(`versionCode` 40000,保证大于 3.x)、`src/shared/version.ts` 统一为 `4.0.0-alpha.0`,`check:migrations` 校验后端与前端版本一致。
+- **schema 版本检测**:`src/db/schema-version.ts` 读取 wrangler 维护的 `d1_migrations` 表,与 `EXPECTED_SCHEMA_VERSION`(= 最新迁移编号,由门禁校验)比较;新增公开接口 `GET /api/health` 返回 `{ version, schema: { status: ok|behind|unknown, applied, expected } }`,落后时每个 isolate 记一条 warn 日志。
+- 与原设计的偏差:落后时**不返回 503**,只告警。原因是仅用旧版 `POST /init` 部署、从未跑过 wrangler 迁移的库目前也能正常运行,强制 503 会让它们直接不可用;等 `init.js` 的 DDL 全部迁入 `migrations` 后再改为强制。
