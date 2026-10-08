@@ -28,6 +28,11 @@ app.put('/my/undoSendSeconds', async (c) => {
 	return c.json(result.ok());
 });
 
+app.put('/my/translate', async (c) => {
+	await userService.updateTranslatePref(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
 app.put('/my/replyFromReceived', async (c) => {
 	await userService.updateReplyFromReceived(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());

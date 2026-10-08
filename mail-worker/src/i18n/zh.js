@@ -36,6 +36,8 @@ const zh = {
 	invalidSignatures: '签名数据无效',
 	invalidUndoSendSeconds: '撤销发送时长无效',
 	invalidReplyFromReceived: '回复发件地址设置无效',
+	invalidTranslateProvider: '翻译引擎设置无效',
+	invalidTranslateKey: 'Google 翻译 API 密钥格式无效',
 	attLimit: '附件不能超过10个',
 	pwdLengthLimit: '密码长度超出限制',
 	emailLengthLimit: '邮箱长度超出限制',

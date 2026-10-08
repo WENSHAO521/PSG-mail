@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { loginUserInfo, updateSignatures, updateUndoSendSeconds, updateReplyFromReceived, saveAvatar as apiSaveAvatar, clearAvatar as apiClearAvatar } from '@/request/my.js'
+import { loginUserInfo, updateSignatures, updateUndoSendSeconds, updateReplyFromReceived, updateTranslatePref, saveAvatar as apiSaveAvatar, clearAvatar as apiClearAvatar } from '@/request/my.js'
 import { normalizeAvatarEmail, storedAvatar } from '@/utils/avatar.js'
 
 export const useUserStore = defineStore('user', {
@@ -78,6 +78,11 @@ export const useUserStore = defineStore('user', {
         async saveReplyFromReceived(enabled) {
             await updateReplyFromReceived(enabled)
             this.user.replyFromReceived = enabled
+        },
+        async saveTranslatePref(provider, key) {
+            await updateTranslatePref(provider, key)
+            this.user.translateProvider = provider
+            if (key !== undefined) this.user.googleTranslateKey = key ? `${key.slice(0, 6)}******` : ''
         }
     }
 })

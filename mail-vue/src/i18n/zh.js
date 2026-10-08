@@ -1093,7 +1093,7 @@ const zh = {
     aiAssistantConfirmApprove: '确认',
     aiAssistantConfirmReject: '取消',
     translateEngine: '邮件翻译引擎',
-    translateEngineDesc: '阅读邮件时“翻译”按钮使用的服务。谷歌翻译更快更稳定，且不占用 AI 额度。',
+    translateEngineDesc: '阅读邮件时“翻译”按钮使用的服务。谷歌翻译更快更稳定，且不占用 AI 额度。这是全站默认值，用户可在个人设置里改用自己的引擎和密钥。',
     translateEngineGoogle: '谷歌翻译',
     translateEngineAi: 'AI 模型',
     googleTranslateKey: 'Google Cloud 翻译 API 密钥',
@@ -1112,5 +1112,7 @@ const zh = {
     removeContact: '从联系人中移除',
     alreadyInGroup: '已在「{name}」中',
     addedToGroup: '已加入「{name}」',
+    translateEngineDefault: '跟随系统默认',
+    myGoogleTranslateKey: '我的谷歌翻译密钥',
 }
 export default zh

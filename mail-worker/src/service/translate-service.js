@@ -59,9 +59,23 @@ async function cloud(input, target, key) {
 }
 
 const translateService = {
-	async provider(c) {
+	// The user's own choice (Settings → Account) wins over the admin default;
+	// their own key wins over the admin's.
+	async provider(c, userId) {
 		const setting = await settingService.query(c);
-		return { provider: setting.translateProvider === 'ai' ? 'ai' : 'google', key: setting.googleTranslateKey || '' };
+		let pref = null;
+		if (userId) {
+			try {
+				pref = await c.env.db
+					.prepare('SELECT translate_provider, google_translate_key FROM psg_user_pref WHERE user_id = ?')
+					.bind(userId).first();
+			} catch {} // migration 0015 not applied yet
+		}
+		const chosen = pref?.translate_provider || setting.translateProvider;
+		return {
+			provider: chosen === 'ai' ? 'ai' : 'google',
+			key: pref?.google_translate_key || setting.googleTranslateKey || '',
+		};
 	},
 
 	// One translation per segment, same order; segments Google drops keep

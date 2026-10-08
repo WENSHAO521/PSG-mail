@@ -1093,7 +1093,7 @@ const en = {
     aiAssistantConfirmApprove: 'Approve',
     aiAssistantConfirmReject: 'Cancel',
     translateEngine: 'Email translation engine',
-    translateEngineDesc: 'Service behind the Translate button in the reader. Google Translate is faster, more reliable and does not use AI quota.',
+    translateEngineDesc: 'Service behind the Translate button in the reader. Google Translate is faster, more reliable and does not use AI quota. This is the site default; users can pick their own engine and key in their settings.',
     translateEngineGoogle: 'Google Translate',
     translateEngineAi: 'AI model',
     googleTranslateKey: 'Google Cloud Translation API key',
@@ -1112,6 +1112,8 @@ const en = {
     removeContact: 'Remove from contacts',
     alreadyInGroup: 'Already in "{name}"',
     addedToGroup: 'Added to "{name}"',
+    translateEngineDefault: 'System default',
+    myGoogleTranslateKey: 'My Google Translate key',
 }
 
 export default en

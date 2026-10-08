@@ -89,3 +89,21 @@ describe('translateSegments (Google engine)', () => {
 		await expect(aiMailService.translateSegments(ctx, 1, { segments: ['a'], targetLang: 'zh' })).rejects.toThrow('429');
 	});
 });
+
+describe('translateService.provider', () => {
+	const settingService = () => import('../src/service/setting-service');
+	const db = (row) => ({ env: { db: { prepare: () => ({ bind: () => ({ first: async () => row }) }) } } });
+
+	it("uses the user's own engine and key over the admin default", async () => {
+		vi.spyOn((await settingService()).default, 'query').mockResolvedValue({ translateProvider: 'google', googleTranslateKey: 'admin' });
+		expect(await translateService.provider(db({ translate_provider: 'ai', google_translate_key: 'mine' }), 1))
+			.toEqual({ provider: 'ai', key: 'mine' });
+	});
+
+	it('falls back to the admin default when the user has no preference', async () => {
+		vi.spyOn((await settingService()).default, 'query').mockResolvedValue({ translateProvider: 'ai', googleTranslateKey: 'admin' });
+		expect(await translateService.provider(db({ translate_provider: '', google_translate_key: '' }), 1))
+			.toEqual({ provider: 'ai', key: 'admin' });
+		expect(await translateService.provider(db(null), 1)).toEqual({ provider: 'ai', key: 'admin' });
+	});
+});

@@ -140,7 +140,7 @@ const aiMailService = {
 		const source = (Array.isArray(segments) ? segments : [])
 			.slice(0, MAX_SEGMENTS)
 			.map(s => cleanText(s, MAX_SEGMENT_CHARS));
-		const { provider, key } = await translateService.provider(c);
+		const { provider, key } = await translateService.provider(c, userId);
 		if (provider === 'google') {
 			return { segments: await translateService.googleSegments(source, targetLang, key) };
 		}

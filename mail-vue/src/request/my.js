@@ -43,3 +43,8 @@ export function clearAvatar() {
 export function getAvatarByEmail(email) {
     return http.get('/my/avatar', { params: { email } })
 }
+
+// provider: '' (system default) | 'google' | 'ai'; key omitted keeps it, '' removes it.
+export function updateTranslatePref(provider, key) {
+    return http.put('/my/translate', key === undefined ? { provider } : { provider, key })
+}

@@ -118,6 +118,17 @@ const userService = {
 		} catch {}
 		user.undoSendSeconds = pref?.undo_send_seconds ?? DEFAULT_UNDO_SEND_SECONDS;
 		user.replyFromReceived = (pref?.reply_from_received ?? 1) === 1;
+		// Separate query: migration 0015 may not be applied yet.
+		let translatePref = null;
+		try {
+			translatePref = await c.env.db
+				.prepare('SELECT translate_provider, google_translate_key FROM psg_user_pref WHERE user_id = ?')
+				.bind(userId).first();
+		} catch {}
+		user.translateProvider = translatePref?.translate_provider || '';
+		// Never send the key back, only a masked hint that one is set.
+		const ownKey = translatePref?.google_translate_key || '';
+		user.googleTranslateKey = ownKey ? `${ownKey.slice(0, 6)}******` : '';
 
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE;
@@ -243,6 +254,31 @@ const userService = {
 			.prepare(`INSERT INTO psg_user_pref (user_id, reply_from_received) VALUES (?, ?)
 				ON CONFLICT(user_id) DO UPDATE SET reply_from_received = excluded.reply_from_received`)
 			.bind(userId, params.enabled ? 1 : 0).run();
+	},
+
+	// provider: '' (system default) | 'google' | 'ai'. key: omitted keeps
+	// the stored key, '' removes it.
+	async updateTranslatePref(c, params, userId) {
+		const provider = params?.provider ?? '';
+		if (!['', 'google', 'ai'].includes(provider)) {
+			throw new BizError(t('invalidTranslateProvider'));
+		}
+		const key = params?.key;
+		if (key !== undefined && (typeof key !== 'string' || key.length > 200 || /\s/.test(key.trim()))) {
+			throw new BizError(t('invalidTranslateKey'));
+		}
+		if (key === undefined) {
+			await c.env.db
+				.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider) VALUES (?, ?)
+					ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider`)
+				.bind(userId, provider).run();
+		} else {
+			await c.env.db
+				.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider, google_translate_key) VALUES (?, ?, ?)
+					ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider,
+					google_translate_key = excluded.google_translate_key`)
+				.bind(userId, provider, key.trim()).run();
+		}
 	},
 
 	async directory(c) {

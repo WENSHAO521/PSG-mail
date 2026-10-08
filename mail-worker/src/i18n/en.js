@@ -36,6 +36,8 @@ const en = {
 	invalidSignatures: 'Invalid signatures',
 	invalidUndoSendSeconds: 'Invalid undo send delay',
 	invalidReplyFromReceived: 'Invalid reply-from-address setting',
+	invalidTranslateProvider: 'Invalid translation engine',
+	invalidTranslateKey: 'Invalid Google Translate API key',
 	attLimit: 'The maximum number of attachments is 10.',
 	pwdLengthLimit: 'Password length exceeds the limit',
 	emailLengthLimit: 'Email length exceeds the limit',

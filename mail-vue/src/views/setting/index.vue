@@ -114,6 +114,26 @@
                                @change="setReplyFromReceived"/>
                   </div>
                 </div>
+                <div class="data-row">
+                  <span class="data-key">{{ $t('translateEngine') }}</span>
+                  <div class="data-val">
+                    <el-select :model-value="userStore.user.translateProvider || ''" size="small" style="width:150px"
+                               @change="setTranslateProvider">
+                      <el-option value="" :label="$t('translateEngineDefault')"/>
+                      <el-option value="google" :label="$t('translateEngineGoogle')"/>
+                      <el-option value="ai" :label="$t('translateEngineAi')"/>
+                    </el-select>
+                  </div>
+                </div>
+                <div class="data-row" v-if="userStore.user.translateProvider !== 'ai'">
+                  <span class="data-key">{{ $t('myGoogleTranslateKey') }}</span>
+                  <div class="data-val">
+                    <el-input v-model="translateKeyInput" size="small" style="width:170px" clearable
+                              :placeholder="userStore.user.googleTranslateKey || $t('optional')"/>
+                    <button class="link-btn" @click="saveTranslateKey">{{ $t('save') }}</button>
+                    <button v-if="userStore.user.googleTranslateKey" class="link-btn" @click="removeTranslateKey">{{ $t('delete') }}</button>
+                  </div>
+                </div>
                 <div class="data-row last">
                   <span class="data-key">{{ $t('memberSince') }}</span>
                   <span class="val-str">{{ memberSinceText }}</span>
@@ -1132,6 +1152,32 @@ function setName() {
     ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
     accountStore.changeUserAccountName = name
   }).catch(() => { userStore.user.name = prevName })
+}
+
+const translateKeyInput = ref('')
+
+async function setTranslateProvider(provider) {
+  try {
+    await userStore.saveTranslatePref(provider)
+    ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+  } catch {}
+}
+
+async function saveTranslateKey() {
+  const key = translateKeyInput.value.trim()
+  if (!key) return
+  try {
+    await userStore.saveTranslatePref(userStore.user.translateProvider || '', key)
+    translateKeyInput.value = ''
+    ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+  } catch {}
+}
+
+async function removeTranslateKey() {
+  try {
+    await userStore.saveTranslatePref(userStore.user.translateProvider || '', '')
+    ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+  } catch {}
 }
 
 async function setReplyFromReceived(enabled) {
