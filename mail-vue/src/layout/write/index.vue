@@ -93,8 +93,8 @@
               <el-select ref="mySelect" class="write-select" popper-class="write-select"
                          :show-arrow="false" :no-match-text="' '" :no-data-text="' '"
                          @visible-change="selectStatusChange" @change="selectChange">
-                <el-option v-for="item in selectRecipientList" :key="item"
-                           :label="item" :value="item" style="color:#999"/>
+                <el-option v-for="item in selectRecipientList" :key="item.email"
+                           :label="item.label" :value="item.email" style="color:#999"/>
               </el-select>
             </template>
           </el-input-tag>
@@ -303,6 +303,28 @@
                :title="t('recentContacts')" width="480" class="contacts-dialog">
       <el-tabs v-model="contactTab" @tab-change="onTabChange" class="contacts-tabs">
 
+        <!-- Contacts derived from mail history, frequent ones first -->
+        <el-tab-pane :label="t('contactsTab')" name="contacts">
+          <el-input v-model="autoContactSearch" :placeholder="t('contactSearch')" clearable style="margin-bottom:8px">
+            <template #prefix><Icon icon="psg:search" width="15" height="15"/></template>
+          </el-input>
+          <el-table ref="autoContactsTabRef" row-key="email" :data="filteredAutoContacts"
+                    v-loading="autoContactsLoading" style="height:340px" :empty-text="t('noAutoContacts')">
+            <el-table-column type="selection" width="32" />
+            <el-table-column :label="t('username')" width="130">
+              <template #default="{ row }">
+                <span class="dir-name">{{ row.name || '—' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('emailAccount')">
+              <template #default="{ row }">
+                <span class="email-row">{{ row.email }}</span>
+                <el-tag v-if="row.frequent" size="small" type="warning" effect="plain" round style="margin-left:6px">{{ t('frequentContact') }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+
         <!-- Recent contacts -->
         <el-tab-pane :label="t('recentTab')" name="recent">
           <el-table ref="contactsTabRef" row-key="email" :data="contacts" style="height: 380px">
@@ -418,6 +440,7 @@ import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
 import {ElMessage} from "element-plus";
 import {getDirectory} from "@/request/my.js";
+import {contactList} from "@/request/contact.js";
 import {templateList} from "@/request/template.js";
 import {contactGroupList} from "@/request/contact-group.js";
 import {accountList, accountListAll} from "@/request/account.js";
@@ -554,7 +577,7 @@ let contactsTouchStartY = 0
 let contactsTouchDeltaY = 0
 let contactsDragging = false
 const templatesList = ref([])
-const contactTab = ref('recent')
+const contactTab = ref('contacts')
 const groupsList = ref([])
 const groupsLoaded = ref(false)
 const directoryList = ref([])
@@ -792,13 +815,41 @@ const currentSenderAvatar = computed(() => {
 
 const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
 
-function openContacts() {
+// Everyone the user has exchanged mail with (server side), frequent first.
+const autoContactsTabRef = ref({})
+const autoContacts = ref([])
+const autoContactsLoading = ref(false)
+const autoContactSearch = ref('')
+let autoContactsLoadedAt = 0
+
+const filteredAutoContacts = computed(() => {
+  const q = autoContactSearch.value.trim().toLowerCase()
+  if (!q) return autoContacts.value
+  return autoContacts.value.filter(c => c.email.includes(q) || (c.name || '').toLowerCase().includes(q))
+})
+
+async function loadAutoContacts() {
+  // Refreshed at most once a minute; new mail rarely changes the list.
+  if (autoContactsLoading.value || Date.now() - autoContactsLoadedAt < 60000) return
+  autoContactsLoading.value = true
+  try {
+    autoContacts.value = await contactList()
+    autoContactsLoadedAt = Date.now()
+  } catch {} finally {
+    autoContactsLoading.value = false
+  }
+}
+
+async function openContacts() {
   showContacts.value = true
+  await loadAutoContacts()
   nextTick(() => {
     form.receiveEmail.forEach(item => {
       if (writerStore.sendRecipientRecord.includes(item)) {
         contactsTabRef.value.toggleRowSelection({email: item});
       }
+      const auto = autoContacts.value.find(c => c.email === item.toLowerCase())
+      if (auto) autoContactsTabRef.value.toggleRowSelection?.(auto, true)
     })
   })
 }
@@ -870,7 +921,7 @@ function insertGroup(g) {
 }
 
 function chooseContact() {
-  const tableRef = contactTab.value === 'directory' ? directoryTabRef.value : contactsTabRef.value
+  const tableRef = { directory: directoryTabRef, contacts: autoContactsTabRef }[contactTab.value]?.value || contactsTabRef.value
   const selected = tableRef.getSelectionRows().map(item => item.email)
 
   selected.forEach(email => {
@@ -889,8 +940,10 @@ function chooseContact() {
 function clearSelectContact() {
   contactsTabRef.value?.clearSelection?.()
   directoryTabRef.value?.clearSelection?.()
-  contactTab.value = 'recent'
+  autoContactsTabRef.value?.clearSelection?.()
+  contactTab.value = 'contacts'
   directorySearch.value = ''
+  autoContactSearch.value = ''
 }
 
 function selectChange(value) {
@@ -905,9 +958,31 @@ const openSelect = () => {
   mySelect.value.toggleMenu()
 }
 
+// Suggestions while typing a recipient: mail-history contacts (frequent
+// first, matched on address or name) plus locally remembered recipients.
+function recipientSuggestions(value) {
+  const q = (value || '').trim().toLowerCase()
+  if (!q) return []
+  const taken = new Set(form.receiveEmail.map(e => e.toLowerCase()))
+  const out = []
+  const push = (email, label) => {
+    if (taken.has(email.toLowerCase())) return
+    taken.add(email.toLowerCase())
+    out.push({ email, label })
+  }
+  autoContacts.value
+    .filter(c => c.email.startsWith(q) || (c.name || '').toLowerCase().split(/\s+/).some(w => w.startsWith(q)))
+    .forEach(c => push(c.email, c.name ? `${c.name} <${c.email}>` : c.email))
+  writerStore.sendRecipientRecord
+    .filter(item => item.toLowerCase().startsWith(q))
+    .forEach(item => push(item, item))
+  return out.slice(0, 10)
+}
+
 function inputChange(value) {
 
-  selectRecipientList.value = writerStore.sendRecipientRecord.filter(item => value && !form.receiveEmail.includes(item) && item.startsWith(value)).slice(0, 10);
+  loadAutoContacts()
+  selectRecipientList.value = recipientSuggestions(value)
 
   if (!selectStatus && selectRecipientList.value.length > 0) {
     openSelect()
