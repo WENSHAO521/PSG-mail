@@ -1,3 +1,4 @@
+import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from './login-throttle';
 import BizError from '../error/biz-error';
 import orm from '../entity/orm';
 import { v4 as uuidv4 } from 'uuid';
@@ -175,6 +176,10 @@ const publicService = {
 
 		const { email, password } = params
 
+		// Same brute-force throttle as /login: this endpoint also checks the admin password.
+		const throttle = await loginThrottleKeys(c, email);
+		const counts = await assertLoginAllowed(c, throttle);
+
 		const userRow = await userService.selectByEmailIncludeDel(c, email);
 
 		if (email !== c.env.admin) {
@@ -186,6 +191,7 @@ const publicService = {
 		}
 
 		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
+			await recordLoginFailure(c, throttle, counts);
 			throw new BizError(t('IncorrectPwd'));
 		}
 	}

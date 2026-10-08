@@ -26,6 +26,7 @@ import telegramService from './telegram-service';
 import kvCache from '../cache/kv-cache';
 import r2Service from './r2-service';
 import labelService from './label-service';
+import { ensureDeleteTime, ensureIsArchive, ensureIsSpam } from '../utils/schema-guard';
 
 // ── Per-request helpers ────────────────────────────────────────────────────
 
@@ -265,7 +266,7 @@ const emailService = {
 	async archiveEmail(c, params, userId) {
 		const emailIdList = String(params.emailIds).split(',').map(Number).filter(Boolean);
 		if (!emailIdList.length) return;
-		try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN is_archive INTEGER NOT NULL DEFAULT 0;`).run(); } catch {}
+		await ensureIsArchive(c);
 		const sharedIds = await getSharedAccountIds(c, userId)
 		const placeholders = emailIdList.map(() => '?').join(',');
 		const cond = sharedIds.length > 0 ? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))` : 'user_id = ?';
@@ -310,9 +311,7 @@ const emailService = {
 		const emailIdList = String(params.emailIds).split(',').map(Number).filter(Boolean);
 		if (!emailIdList.length) return;
 		// auto-add column if missing
-		try {
-			await c.env.db.prepare(`ALTER TABLE email ADD COLUMN is_spam INTEGER NOT NULL DEFAULT 0;`).run();
-		} catch {}
+		await ensureIsSpam(c);
 		const spamShared = await getSharedAccountIds(c, userId)
 		const placeholders = emailIdList.map(() => '?').join(',');
 		const spamCond = spamShared.length > 0
@@ -422,15 +421,19 @@ const emailService = {
 			return;
 		}
 
-		try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN delete_time TEXT;`).run(); } catch {}
-		await orm(c).update(email).set({ isDel: isDel.DELETE }).where(
-			and(accessCond, inArray(email.emailId, emailIdList)))
-			.run();
-		try {
-			await c.env.db.prepare(
-				`UPDATE email SET delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${emailIdList.map(() => '?').join(',')})`
-			).bind(...emailIdList).run();
-		} catch {}
+		await ensureDeleteTime(c);
+		// One scoped UPDATE: the trash timestamp is written only on rows the caller may access
+		// (it used to be a second, unscoped UPDATE by email_id alone).
+		const delIds = emailIdList.filter(Number.isInteger);
+		if (delIds.length === 0) return;
+		const delShared = sharedIds;
+		const delCond = delShared.length > 0
+			? `(user_id = ? OR account_id IN (${delShared.map(() => '?').join(',')}))`
+			: 'user_id = ?';
+		await c.env.db.prepare(
+			`UPDATE email SET is_del = ?, delete_time = CASE WHEN is_del = ? THEN delete_time ELSE CURRENT_TIMESTAMP END
+			 WHERE email_id IN (${delIds.map(() => '?').join(',')}) AND ${delCond}`
+		).bind(isDel.DELETE, isDel.DELETE, ...delIds, userId, ...delShared).run();
 	},
 
 	async restore(c, params, userId) {
@@ -1445,11 +1448,10 @@ const emailService = {
 		const toTrashIds = rows.filter(row => row.isDel !== isDel.DELETE).map(row => row.emailId);
 
 		if (toTrashIds.length > 0) {
-			try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN delete_time TEXT;`).run(); } catch {}
-			await orm(c).update(email).set({ isDel: isDel.DELETE }).where(inArray(email.emailId, toTrashIds)).run();
+			await ensureDeleteTime(c);
 			await c.env.db.prepare(
-				`UPDATE email SET delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${toTrashIds.map(() => '?').join(',')})`
-			).bind(...toTrashIds).run();
+				`UPDATE email SET is_del = ?, delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${toTrashIds.map(() => '?').join(',')})`
+			).bind(isDel.DELETE, ...toTrashIds).run();
 		}
 
 		if (alreadyTrashedIds.length > 0) {

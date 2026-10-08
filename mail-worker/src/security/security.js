@@ -8,6 +8,7 @@ import userService from '../service/user-service';
 import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
+import { isDel, userConst } from '../const/entity-const';
 import externalApiKeyService from '../service/external-api-key-service';
 
 const exclude = [
@@ -127,6 +128,27 @@ app.use('*', async (c, next) => {
 		if (!userId) {
 			throw new BizError(t('apiKeyInvalid'), 401);
 		}
+
+		// An API key must not outrank its owner: banned/deleted users are refused,
+		// and send/delete keep the same role permission the JWT routes require.
+		const owner = await userService.selectById(c, userId);
+		if (!owner || owner.isDel === isDel.DELETE || owner.status === userConst.status.BAN) {
+			throw new BizError(t('apiKeyInvalid'), 401);
+		}
+
+		const needPerm = openapiPerm(path, c.req.method);
+		if (needPerm && owner.email !== c.env.admin) {
+			const permCacheKey = 'perm:' + userId;
+			let permKeys = kvCache.get(permCacheKey);
+			if (!permKeys) {
+				permKeys = await permService.userPermKeys(c, userId);
+				kvCache.set(permCacheKey, permKeys, TTL.PERM);
+			}
+			if (!permKeys.includes(needPerm)) {
+				throw new BizError(t('unauthorized'), 403);
+			}
+		}
+
 		c.set('user', { userId });
 		return await next();
 	}
@@ -195,6 +217,12 @@ app.use('*', async (c, next) => {
 
 	return await next();
 });
+
+function openapiPerm(path, method) {
+	if (path === '/openapi/send') return 'email:send';
+	if (method === 'DELETE' || path === '/openapi/email/batch-delete') return 'email:delete';
+	return null;
+}
 
 function permKeyToPaths(permKeys) {
 

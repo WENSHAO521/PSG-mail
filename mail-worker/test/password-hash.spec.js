@@ -26,3 +26,20 @@ describe('password hashing', () => {
 		expect(await cryptoUtils.verifyPassword('a', salt, 'pbkdf2-sha256$999999999$abc')).toBe(false);
 	});
 });
+
+import { env } from 'cloudflare:test';
+import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from '../src/service/login-throttle';
+
+describe('login throttle', () => {
+	it('blocks an account after 10 recorded failures', async () => {
+		const c = { env, req: { header: () => '203.0.113.9' } };
+		const keys = await loginThrottleKeys(c, 'Victim@Example.com');
+		for (let i = 0; i < 10; i++) {
+			const counts = await assertLoginAllowed(c, keys);
+			await recordLoginFailure(c, keys, counts);
+		}
+		await expect(assertLoginAllowed(c, keys)).rejects.toMatchObject({ code: 429 });
+		await env.kv.delete(keys.acct);
+		await env.kv.delete(keys.ip);
+	});
+});

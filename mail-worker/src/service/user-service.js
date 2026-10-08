@@ -1,3 +1,4 @@
+import { ensureUserAvatar, ensureUserSignature } from '../utils/schema-guard';
 import BizError from '../error/biz-error';
 import accountService from './account-service';
 import orm from '../entity/orm';
@@ -59,9 +60,7 @@ function normalizeSignatures(raw, legacy) {
 }
 
 async function ensureAvatarColumn(c) {
-	try {
-		await c.env.db.prepare(`ALTER TABLE user ADD COLUMN avatar TEXT NOT NULL DEFAULT '';`).run();
-	} catch {}
+	await ensureUserAvatar(c);
 }
 
 const userService = {
@@ -199,9 +198,7 @@ const userService = {
 	async updateSignature(c, params, userId) {
 		const { signature } = params;
 		// ensure column exists (idempotent — silently skips if already added)
-		try {
-			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN signature TEXT NOT NULL DEFAULT '';`).run();
-		} catch {}
+		await ensureUserSignature(c);
 		await c.env.db
 			.prepare('UPDATE user SET signature = ? WHERE user_id = ?')
 			.bind(signature ?? '', userId).run();

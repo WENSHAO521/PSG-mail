@@ -22,41 +22,12 @@ import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
 import telegramService from './telegram-service';
 import reqUtils from '../utils/req-utils';
+import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from './login-throttle';
 
 const PASSWORD_CHANGE_LIMIT = 8;
 const PASSWORD_CHANGE_WINDOW_SECONDS = 15 * 60;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 128;
-const LOGIN_FAIL_WINDOW_SECONDS = 15 * 60;
-const LOGIN_ACCOUNT_LIMIT = 10;
-const LOGIN_IP_LIMIT = 40;
-
-// Best-effort brute-force throttle. KV is not atomic, so concurrent attempts can
-// slip a few extra tries through; it bounds sustained guessing, it is not a lock.
-async function loginThrottleKeys(c, email) {
-	const ip = reqUtils.getIp(c) || 'unknown';
-	return {
-		acct: `${KvConst.LOGIN_FAIL_ACCOUNT}${String(email).toLowerCase()}`,
-		ip: `${KvConst.LOGIN_FAIL_IP}${ip}`
-	};
-}
-
-async function assertLoginAllowed(c, keys) {
-	const [acct, ip] = await Promise.all([c.env.kv.get(keys.acct), c.env.kv.get(keys.ip)]);
-	if (Number(acct || 0) >= LOGIN_ACCOUNT_LIMIT || Number(ip || 0) >= LOGIN_IP_LIMIT) {
-		throw new BizError(t('loginRateLimit'), 429);
-	}
-	return { acct: Number(acct || 0), ip: Number(ip || 0) };
-}
-
-async function recordLoginFailure(c, keys, counts) {
-	await Promise.all([
-		c.env.kv.put(keys.acct, String(counts.acct + 1), { expirationTtl: LOGIN_FAIL_WINDOW_SECONDS }),
-		c.env.kv.put(keys.ip, String(counts.ip + 1), { expirationTtl: LOGIN_FAIL_WINDOW_SECONDS })
-	]);
-	console.warn('login failure', JSON.stringify({ ip: reqUtils.getIp(c), acctFails: counts.acct + 1, ipFails: counts.ip + 1 }));
-}
-
 const loginService = {
 
 	async register(c, params, oauth = false) {
