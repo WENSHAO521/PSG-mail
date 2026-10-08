@@ -134,6 +134,15 @@
                     <button v-if="userStore.user.googleTranslateKey" class="link-btn" @click="removeTranslateKey">{{ $t('delete') }}</button>
                   </div>
                 </div>
+                <div class="data-row" v-if="trustedSenders.length">
+                  <span class="data-key">{{ $t('trustedSenders') }}</span>
+                  <div class="data-val trusted-list">
+                    <span v-for="addr in trustedSenders" :key="addr" class="trusted-item">
+                      {{ addr }}
+                      <button class="link-btn" @click="removeTrusted(addr)">{{ $t('delete') }}</button>
+                    </span>
+                  </div>
+                </div>
                 <div class="data-row last">
                   <span class="data-key">{{ $t('memberSince') }}</span>
                   <span class="val-str">{{ memberSinceText }}</span>
@@ -462,6 +471,7 @@
 import { reactive, ref, computed, defineOptions, onMounted, onActivated, watch } from 'vue'
 import Account from '@/layout/account/index.vue'
 import { resetPassword, userDelete } from "@/request/my.js"
+import { trackerAllowList, trackerDisallow } from '@/request/tracker.js'
 import { useUserStore } from "@/store/user.js"
 import router from "@/router/index.js"
 import { accountSetName } from "@/request/account.js"
@@ -1172,6 +1182,20 @@ async function saveTranslateKey() {
     ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
   } catch {}
 }
+
+// Senders whose mail skips tracker blocking (added from the reader banner).
+const trustedSenders = ref([])
+async function loadTrusted() {
+  try { trustedSenders.value = (await trackerAllowList()) || [] } catch { trustedSenders.value = [] }
+}
+async function removeTrusted(addr) {
+  try {
+    await trackerDisallow(addr)
+    trustedSenders.value = trustedSenders.value.filter(a => a !== addr)
+  } catch {}
+}
+onActivated(loadTrusted)
+onMounted(loadTrusted)
 
 async function removeTranslateKey() {
   try {
@@ -1949,4 +1973,6 @@ function submitPwd() {
     margin: 12px auto !important;
   }
 }
+.trusted-list { flex-direction: column; align-items: flex-end; gap: 4px; }
+.trusted-item { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; word-break: break-all; }
 </style>

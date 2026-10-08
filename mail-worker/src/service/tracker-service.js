@@ -1,4 +1,5 @@
 import { parseHTML } from 'linkedom';
+import BizError from '../error/biz-error';
 import { settingConst } from '../const/entity-const';
 import aiProviderService from './ai-provider-service';
 
@@ -377,6 +378,48 @@ const trackerService = {
 	// Neutralizes trackers in one received message's HTML. Returns the
 	// rewritten html plus what was found; never throws — on any failure the
 	// rule-based result (or the original html) is returned.
+	// Trusted senders (psg_tracker_allow): their mail is stored untouched.
+	// A missing table (migration 0016 not applied) or any DB error means
+	// nobody is trusted, so blocking stays on.
+	async isAllowed(c, userId, sender) {
+		const address = String(sender || '').trim().toLowerCase();
+		if (!userId || !address) return false;
+		try {
+			const row = await c.env.db.prepare('SELECT 1 AS ok FROM psg_tracker_allow WHERE user_id = ? AND sender = ?')
+				.bind(userId, address).first();
+			return !!row;
+		} catch {
+			return false;
+		}
+	},
+
+	async listAllowed(c, userId) {
+		try {
+			const { results } = await c.env.db
+				.prepare('SELECT sender FROM psg_tracker_allow WHERE user_id = ? ORDER BY sender').bind(userId).all();
+			return (results || []).map(r => r.sender);
+		} catch {
+			return [];
+		}
+	},
+
+	async allow(c, userId, email) {
+		const address = String(email || '').trim().toLowerCase();
+		if (!address.includes('@') || address.length > 254 || /\s/.test(address)) throw new BizError('Invalid sender address');
+		try {
+			await c.env.db.prepare('INSERT OR IGNORE INTO psg_tracker_allow (user_id, sender) VALUES (?, ?)').bind(userId, address).run();
+		} catch (e) {
+			console.error('trackerService.allow failed', e?.message || e);
+			throw new BizError('Tracker allow list is temporarily unavailable', 503);
+		}
+	},
+
+	async disallow(c, userId, email) {
+		const address = String(email || '').trim().toLowerCase();
+		if (!address) return;
+		await c.env.db.prepare('DELETE FROM psg_tracker_allow WHERE user_id = ? AND sender = ?').bind(userId, address).run();
+	},
+
 	// recipient: the address this copy was delivered to; sender and headers
 	// come from the parsed message (postal-mime) and only feed the score.
 	async scrub(c, html, { userId, recipient, sender, headers, useAi = true } = {}) {

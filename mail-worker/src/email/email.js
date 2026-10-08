@@ -138,7 +138,8 @@ export async function email(message, env, ctx) {
 		// client (web, desktop, phone, forwarding) ever fetches them. Rules
 		// decide; images they can't settle may go to Workers AI. scrub()
 		// never rejects and returns the html unchanged on failure.
-		if (trackerService.enabled({ aiTrackerBlock }) && params.content) {
+		if (trackerService.enabled({ aiTrackerBlock }) && params.content
+			&& !(await trackerService.isAllowed({ env }, params.userId, email.from?.address))) {
 			const scrubbed = await trackerService.scrub({ env }, params.content, {
 				userId: params.userId,
 				recipient: message.to,

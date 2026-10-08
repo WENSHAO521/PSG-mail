@@ -200,3 +200,31 @@ describe('tracker blocking', () => {
 		expect(out.clickTrackers).toBe(1);
 	});
 });
+
+describe('tracker allow list', () => {
+	beforeAll(async () => {
+		await env.db.prepare(`CREATE TABLE IF NOT EXISTS psg_tracker_allow (
+			user_id INTEGER NOT NULL, sender TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (user_id, sender))`).run();
+	});
+
+	it('trusts exact addresses per user, case-insensitively, and can undo it', async () => {
+		const c = ctx();
+		expect(await trackerService.isAllowed(c, 31, 'News@Shop.test')).toBe(false);
+		await trackerService.allow(c, 31, ' News@Shop.test ');
+		await trackerService.allow(c, 31, 'news@shop.test'); // idempotent
+		expect(await trackerService.listAllowed(c, 31)).toEqual(['news@shop.test']);
+		expect(await trackerService.isAllowed(c, 31, 'NEWS@shop.test')).toBe(true);
+		expect(await trackerService.isAllowed(c, 31, 'other@shop.test')).toBe(false); // not the whole domain
+		expect(await trackerService.isAllowed(c, 32, 'news@shop.test')).toBe(false);  // not other users
+		await trackerService.disallow(c, 31, 'news@shop.test');
+		expect(await trackerService.isAllowed(c, 31, 'news@shop.test')).toBe(false);
+	});
+
+	it('rejects non-addresses and stays blocking when the table is missing', async () => {
+		await expect(trackerService.allow(ctx(), 31, 'not an address')).rejects.toThrow();
+		const broken = { env: { db: { prepare: () => { throw new Error('no such table'); } } } };
+		expect(await trackerService.isAllowed(broken, 31, 'a@b.test')).toBe(false);
+		expect(await trackerService.listAllowed(broken, 31)).toEqual([]);
+	});
+});
