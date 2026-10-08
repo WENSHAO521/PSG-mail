@@ -11,6 +11,19 @@ const INLINE_SAFE = new Set([
 	'application/pdf',
 ]);
 
+// Prefers the RFC 5987 filename* form (decoded), falls back to filename=.
+function originalFilename(disposition) {
+	let name = '';
+	const ext = /filename\*\s*=\s*(?:utf-8|UTF-8)''([^;]+)/i.exec(disposition);
+	if (ext) {
+		try { name = decodeURIComponent(ext[1].trim()); } catch { name = ext[1].trim(); }
+	} else {
+		const plain = /filename\s*=\s*"?([^";]+)"?/i.exec(disposition);
+		if (plain) name = plain[1].trim();
+	}
+	return name.replace(/[\u0000-\u001f"\\;\/]/g, '_');
+}
+
 export function hardenObjectHeaders(headers) {
 	const out = new Headers(headers);
 	const type = (out.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
@@ -18,9 +31,13 @@ export function hardenObjectHeaders(headers) {
 	if (!INLINE_SAFE.has(type)) {
 		out.set('Content-Type', 'application/octet-stream');
 		// Force a download but keep the (sanitized) original filename.
-		const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(out.get('Content-Disposition') || '');
-		const name = match ? match[1].trim().replace(/[\r\n"\\;]/g, '_') : '';
-		out.set('Content-Disposition', name ? `attachment; filename="${name}"` : 'attachment');
+		const name = originalFilename(out.get('Content-Disposition') || '');
+		if (!name) {
+			out.set('Content-Disposition', 'attachment');
+		} else {
+			const ascii = name.replace(/[^\x20-\x7e]/g, '_');
+			out.set('Content-Disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`);
+		}
 	}
 
 	out.set('X-Content-Type-Options', 'nosniff');
