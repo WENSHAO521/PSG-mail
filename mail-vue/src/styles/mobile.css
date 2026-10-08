@@ -170,7 +170,7 @@ body,
   }
 
   .rules-page {
-    padding: 18px 12px calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 18px 12px calc(92px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .rules-page .rules-hero {
@@ -213,7 +213,6 @@ body,
   .grp-card {
     min-width: 0;
     padding: 14px;
-    border-radius: var(--psg-radius-sm) !important;
   }
 
   .tpl-card .fav-btn,
@@ -297,7 +296,7 @@ body,
   }
 
   .page-outer {
-    padding: 16px 12px calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 16px 12px calc(92px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .page-outer .page-header {
@@ -403,7 +402,7 @@ body,
   }
 
   .tools-page .text-link {
-    min-height: 36px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
   }
@@ -428,7 +427,6 @@ body,
 
   .download-view .dl-card {
     padding: 16px 14px;
-    border-radius: var(--psg-radius-sm) !important;
   }
 
   .download-view .dl-btn,
@@ -454,12 +452,6 @@ body,
   .code-box {
     grid-template-columns: 1fr !important;
     gap: 10px !important;
-  }
-
-  .user-card,
-  .role-card,
-  .code-item {
-    border-radius: var(--psg-radius-sm) !important;
   }
 
   .el-drawer {
