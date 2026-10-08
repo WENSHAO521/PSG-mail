@@ -98,6 +98,12 @@
                   </div>
                 </div>
                 <div class="data-row">
+                  <span class="data-key">{{ $t('signedInDevices') }}</span>
+                  <div class="data-val">
+                    <button class="link-btn" @click="openSessions">{{ $t('manageDevices') }}</button>
+                  </div>
+                </div>
+                <div class="data-row">
                   <span class="data-key">{{ $t('undoSendSetting') }}</span>
                   <div class="data-val">
                     <el-select :model-value="userStore.user.undoSendSeconds ?? 10" size="small" style="width:100px"
@@ -423,6 +429,10 @@
     <el-dialog class="password-settings-dialog" v-model="pwdShow" :title="$t('changePassword')" width="380">
       <div class="pwd-form">
         <div class="pwd-field">
+          <label class="pwd-label">{{ $t('currentPassword') }}</label>
+          <el-input class="pwd-input" type="password" v-model="form.currentPassword" autocomplete="current-password" show-password/>
+        </div>
+        <div class="pwd-field">
           <label class="pwd-label">{{ $t('newPassword') }}</label>
           <el-input class="pwd-input" type="password" v-model="form.password" autocomplete="off" show-password/>
         </div>
@@ -430,8 +440,28 @@
           <label class="pwd-label">{{ $t('confirmPassword') }}</label>
           <el-input class="pwd-input" type="password" v-model="form.newPwd" autocomplete="off" show-password/>
         </div>
+        <p class="pwd-hint">{{ $t('pwdPolicyHint') }}</p>
         <el-button class="pwd-submit" type="primary" :loading="setPwdLoading" @click="submitPwd">
           {{ $t('save') }}
+        </el-button>
+      </div>
+    </el-dialog>
+
+    <!-- Signed-in devices -->
+    <el-dialog class="password-settings-dialog" v-model="sessionsShow" :title="$t('signedInDevices')" width="460">
+      <div class="pwd-form" v-loading="sessionsLoading">
+        <div v-for="s in sessions" :key="s.sessionId" class="data-row">
+          <span class="data-key">
+            {{ [s.browser, s.os].filter(Boolean).join(' · ') || s.device || $t('unknownDevice') }}
+            <el-tag v-if="s.current" size="small" type="success">{{ $t('thisDevice') }}</el-tag>
+          </span>
+          <div class="data-val">
+            <span class="val-str mono">{{ s.ip }} {{ s.lastSeenAt ? s.lastSeenAt.slice(0, 10) : '' }}</span>
+            <button v-if="!s.current" class="link-btn" @click="revokeSession(s)">{{ $t('signOut') }}</button>
+          </div>
+        </div>
+        <el-button class="pwd-submit" type="primary" :disabled="sessions.length < 2" @click="revokeOtherSessions">
+          {{ $t('signOutOtherDevices') }}
         </el-button>
       </div>
     </el-dialog>
@@ -441,7 +471,7 @@
 <script setup>
 import { reactive, ref, computed, defineOptions, onMounted, onActivated, watch } from 'vue'
 import Account from '@/layout/account/index.vue'
-import { resetPassword, userDelete } from "@/request/my.js"
+import { resetPassword, userDelete, listSessions, revokeSession as revokeSessionApi, revokeOtherSessions as revokeOtherSessionsApi } from "@/request/my.js"
 import { useUserStore } from "@/store/user.js"
 import router from "@/router/index.js"
 import { accountSetName } from "@/request/account.js"
@@ -524,7 +554,10 @@ const setNameShow = ref(false)
 const accountName = ref(null)
 const fileInputRef = ref(null)
 const pwdShow = ref(false)
-const form = reactive({ password: '', newPwd: '' })
+const form = reactive({ currentPassword: '', password: '', newPwd: '' })
+const sessionsShow = ref(false)
+const sessionsLoading = ref(false)
+const sessions = ref([])
 const signatureManagerRef = ref(null)
 const autoReplyEnabled = ref(false)
 const autoReplyMessage = ref('')
@@ -1170,12 +1203,38 @@ const deleteConfirm = () => {
   })
 }
 
+function openSessions() {
+  sessionsShow.value = true
+  sessionsLoading.value = true
+  listSessions().then(list => { sessions.value = list || [] })
+    .catch(() => {})
+    .finally(() => { sessionsLoading.value = false })
+}
+
+function revokeSession(s) {
+  revokeSessionApi(s.sessionId).then(() => {
+    sessions.value = sessions.value.filter(x => x.sessionId !== s.sessionId)
+    ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+  }).catch(() => {})
+}
+
+function revokeOtherSessions() {
+  revokeOtherSessionsApi().then(() => {
+    sessions.value = sessions.value.filter(x => x.current)
+    ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+  }).catch(() => {})
+}
+
 function submitPwd() {
+  if (!form.currentPassword) {
+    ElMessage({ message: t('emptyCurrentPwdMsg'), type: 'error', plain: true })
+    return
+  }
   if (!form.password) {
     ElMessage({ message: t('emptyPwdMsg'), type: 'error', plain: true })
     return
   }
-  if (form.password.length < 6) {
+  if (form.password.length < 8) {
     ElMessage({ message: t('pwdLengthMsg'), type: 'error', plain: true })
     return
   }
@@ -1184,9 +1243,10 @@ function submitPwd() {
     return
   }
   setPwdLoading.value = true
-  resetPassword(form.password).then(() => {
+  resetPassword(form.password, form.currentPassword).then(() => {
     ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
     pwdShow.value = false
+    form.currentPassword = ''
     form.password = ''
     form.newPwd = ''
   }).catch(() => {}).finally(() => { setPwdLoading.value = false })
@@ -1196,6 +1256,12 @@ function submitPwd() {
 <style scoped lang="scss">
 .settings-container {
   height: 100%;
+}
+
+.pwd-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .scroll {

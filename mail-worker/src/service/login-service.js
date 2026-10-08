@@ -5,14 +5,13 @@ import { isDel, settingConst, userConst } from '../const/entity-const';
 import JwtUtils from '../utils/jwt-utils';
 import { v4 as uuidv4 } from 'uuid';
 import KvConst from '../const/kv-const';
-import kvCache, { TTL } from '../cache/kv-cache';
 import constant from '../const/constant';
 import userContext from '../security/user-context';
 import verifyUtils from '../utils/verify-utils';
 import accountService from './account-service';
 import settingService from './setting-service';
 import saltHashUtils from '../utils/crypto-utils';
-import cryptoUtils from '../utils/crypto-utils';
+import cryptoUtils, { passwordIterations } from '../utils/crypto-utils';
 import turnstileService from './turnstile-service';
 import roleService from './role-service';
 import regKeyService from './reg-key-service';
@@ -22,9 +21,16 @@ import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
 import telegramService from './telegram-service';
 import reqUtils from '../utils/req-utils';
+import rateLimit from '../security/rate-limit';
+import sessionService from '../security/session-service';
+import securityAuditService, { SecurityEvent } from './security-audit-service';
+import { assertPassword } from '../utils/password-policy';
 
 const PASSWORD_CHANGE_LIMIT = 8;
 const PASSWORD_CHANGE_WINDOW_SECONDS = 15 * 60;
+const LOGIN_FAIL_LIMIT_PER_EMAIL = 10;
+const LOGIN_FAIL_LIMIT_PER_IP = 50;
+const LOGIN_FAIL_WINDOW_SECONDS = 15 * 60;
 
 const loginService = {
 
@@ -59,12 +65,9 @@ const loginService = {
 			throw new BizError(t('emailLengthLimit'));
 		}
 
-		if (password.length > 30) {
-			throw new BizError(t('pwdLengthLimit'));
-		}
-
-		if (password.length < 6) {
-			throw new BizError(t('pwdMinLength'));
+		// OAuth sign-up generates its own random password.
+		if (!oauth) {
+			assertPassword(password, { email });
 		}
 
 		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
@@ -132,7 +135,7 @@ const loginService = {
 			}
 		}
 
-		const { salt, hash } = await saltHashUtils.hashPassword(password);
+		const { salt, hash } = await saltHashUtils.hashPassword(password, passwordIterations(c));
 
 		const userId = await userService.insert(c, { email, regKeyId,password: hash, salt, type: type || defType });
 
@@ -209,60 +212,77 @@ const loginService = {
 
 	async login(c, params, noVerifyPwd = false) {
 
-		const { email, password } = params;
+		const email = typeof params?.email === 'string' ? params.email.trim() : '';
+		const password = typeof params?.password === 'string' ? params.password : '';
 
 		if ((!email || !password) && !noVerifyPwd) {
 			throw new BizError(t('emailAndPwdEmpty'));
 		}
 
+		const ip = reqUtils.getIp(c);
+		const emailKey = `login:e:${email.toLowerCase()}`;
+		const ipKey = `login:ip:${ip}`;
+
+		if (!noVerifyPwd) {
+			if (await rateLimit.isLimited(c, emailKey, LOGIN_FAIL_LIMIT_PER_EMAIL)
+				|| await rateLimit.isLimited(c, ipKey, LOGIN_FAIL_LIMIT_PER_IP)) {
+				await securityAuditService.log(c, SecurityEvent.LOGIN_RATE_LIMITED, { detail: { email } });
+				throw new BizError(t('loginRateLimit'), 429);
+			}
+		}
+
 		const userRow = await userService.selectByEmailIncludeDel(c, email);
 
-		if (!userRow) {
+		if (!noVerifyPwd) {
+			// Verify the password BEFORE revealing whether the account exists,
+			// is deleted or banned — otherwise the distinct error messages
+			// let anyone enumerate mailboxes without knowing a password.
+			const ok = userRow && await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password);
+			if (!ok) {
+				await Promise.all([
+					rateLimit.fail(c, emailKey, LOGIN_FAIL_WINDOW_SECONDS),
+					rateLimit.fail(c, ipKey, LOGIN_FAIL_WINDOW_SECONDS)
+				]);
+				await securityAuditService.log(c, SecurityEvent.LOGIN_FAIL, { userId: userRow?.userId, detail: { email } });
+				throw new BizError(t('loginFailed'));
+			}
+		} else if (!userRow) {
 			throw new BizError(t('notExistUser'));
 		}
 
-		if(userRow.isDel === isDel.DELETE) {
+		if (userRow.isDel === isDel.DELETE) {
 			throw new BizError(t('isDelUser'));
 		}
 
-		if(userRow.status === userConst.status.BAN) {
+		if (userRow.status === userConst.status.BAN) {
 			throw new BizError(t('isBanUser'));
 		}
 
-		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
-			throw new BizError(t('IncorrectPwd'));
-		}
-
-		const uuid = uuidv4();
-		const jwt = await JwtUtils.generateToken(c,{ userId: userRow.userId, token: uuid });
-
-		let authInfo = await c.env.kv.get(KvConst.AUTH_INFO + userRow.userId, { type: 'json' });
-
-		if (authInfo && (authInfo.user.email === userRow.email)) {
-
-			if (authInfo.tokens.length > 10) {
-				authInfo.tokens.shift();
+		if (!noVerifyPwd) {
+			await rateLimit.reset(c, emailKey);
+			// Transparent upgrade of legacy single-round SHA-256 hashes. Done
+			// only here, where we hold the verified plaintext — never by
+			// resetting anyone's password.
+			if (cryptoUtils.needsRehash(userRow.password, passwordIterations(c))) {
+				try {
+					const { salt, hash } = await cryptoUtils.hashPassword(password, passwordIterations(c));
+					await c.env.db.prepare('UPDATE user SET password = ?, salt = ? WHERE user_id = ? AND password = ?')
+						.bind(hash, salt, userRow.userId, userRow.password).run();
+					userRow.password = hash;
+					userRow.salt = salt;
+					await securityAuditService.log(c, SecurityEvent.PASSWORD_REHASH, { userId: userRow.userId });
+				} catch (e) {
+					console.warn('password rehash skipped:', e?.message);
+				}
 			}
-
-			authInfo.tokens.push(uuid);
-
-		} else {
-
-			authInfo = {
-				tokens: [],
-				user: userRow,
-				refreshTime: dayjs().toISOString()
-			};
-
-			authInfo.tokens.push(uuid);
-
 		}
+
+		const sessionId = uuidv4();
+		const jwt = await JwtUtils.generateToken(c, { userId: userRow.userId, token: sessionId }, constant.TOKEN_EXPIRE);
 
 		await userService.updateUserInfo(c, userRow.userId);
-
-		const loginKey = KvConst.AUTH_INFO + userRow.userId;
-		await c.env.kv.put(loginKey, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
-		kvCache.set(loginKey, authInfo, TTL.AUTH);  // warm cache immediately after login
+		await sessionService.create(c, userRow, sessionId);
+		await securityAuditService.log(c, SecurityEvent.LOGIN_SUCCESS, { userId: userRow.userId, detail: { session: sessionId.slice(0, 8), sso: !!noVerifyPwd } });
 		return jwt;
 	},
 
@@ -275,13 +295,7 @@ const loginService = {
 			throw new BizError(t('passwordChangeInvalid'), 400);
 		}
 
-		if (newPassword.length < 6) {
-			throw new BizError(t('pwdMinLength'), 400);
-		}
-
-		if (newPassword.length > 30) {
-			throw new BizError(t('pwdLengthLimit'), 400);
-		}
+		assertPassword(newPassword, { email });
 
 		if (newPassword === currentPassword) {
 			throw new BizError(t('passwordChangeSame'), 400);
@@ -304,19 +318,21 @@ const loginService = {
 			throw new BizError(t('passwordChangeInvalid'), 400);
 		}
 
-		await userService.setPwd(c, { password: newPassword, userId: userRow.userId });
+		// setPwd revokes every session — this flow runs logged-out.
+		await userService.setPwd(c, { password: newPassword, userId: userRow.userId }, { skipPolicy: true });
+		await securityAuditService.log(c, SecurityEvent.PASSWORD_CHANGE, { userId: userRow.userId, detail: { via: 'login' } });
 		await c.env.kv.delete(attemptKey);
 	},
 
 	async logout(c, userId) {
-		const token = userContext.getToken(c);
-		const logoutKey = KvConst.AUTH_INFO + userId;
-		// Read from KV directly on logout to ensure accuracy
-		const authInfo = await c.env.kv.get(logoutKey, { type: 'json' });
-		const index = authInfo.tokens.findIndex(item => item === token);
-		authInfo.tokens.splice(index, 1);
-		await c.env.kv.put(logoutKey, JSON.stringify(authInfo));
-		kvCache.set(logoutKey, authInfo, TTL.AUTH);  // update cache so revocation is immediate
+		// 3.x forgot to await getToken() here, so findIndex() returned -1 and
+		// splice(-1, 1) logged out the user's MOST RECENT OTHER device while
+		// leaving the caller's own token valid.
+		const sessionId = await userContext.getToken(c);
+		if (sessionId) {
+			await sessionService.revoke(c, userId, sessionId);
+		}
+		await securityAuditService.log(c, SecurityEvent.LOGOUT, { userId, detail: { session: sessionId?.slice(0, 8) } });
 	}
 
 };

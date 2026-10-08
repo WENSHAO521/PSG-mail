@@ -3,6 +3,7 @@ import result from '../model/result';
 import BizError from '../error/biz-error';
 import userService from '../service/user-service';
 import timingSafeEqual from '../utils/secure-compare';
+import { assertPassword } from '../utils/password-policy';
 
 // Recovery endpoint for when the admin account is locked out — the secret
 // itself is the credential (same pattern as /init), so this must stay in
@@ -25,9 +26,7 @@ app.post('/reset-admin', async (c) => {
 
 	const { password } = await c.req.json();
 
-	if (!password || password.length < 6) {
-		throw new BizError('password must be at least 6 characters', 400);
-	}
+	assertPassword(password);
 
 	const adminRow = await userService.selectByEmail(c, c.env.admin);
 
@@ -35,7 +34,7 @@ app.post('/reset-admin', async (c) => {
 		throw new BizError('admin user not found', 404);
 	}
 
-	await userService.setPwd(c, { password, userId: adminRow.userId });
+	await userService.setPwd(c, { password, userId: adminRow.userId }, { skipPolicy: true });
 
 	return c.json(result.ok());
 });

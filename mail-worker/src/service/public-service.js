@@ -3,11 +3,13 @@ import orm from '../entity/orm';
 import { v4 as uuidv4 } from 'uuid';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import saltHashUtils from '../utils/crypto-utils';
-import cryptoUtils from '../utils/crypto-utils';
+import cryptoUtils, { passwordIterations } from '../utils/crypto-utils';
 import emailUtils from '../utils/email-utils';
 import roleService from './role-service';
 import verifyUtils from '../utils/verify-utils';
 import { t } from '../i18n/i18n';
+import rateLimit from '../security/rate-limit';
+import securityAuditService, { SecurityEvent } from './security-audit-service';
 import reqUtils from '../utils/req-utils';
 import dayjs from 'dayjs';
 import { isDel, roleConst } from '../const/entity-const';
@@ -109,7 +111,8 @@ const publicService = {
 			}
 
 			const { salt, hash } = await saltHashUtils.hashPassword(
-				emailRow.password || cryptoUtils.genRandomPwd()
+				emailRow.password || cryptoUtils.genRandomPwd(),
+				passwordIterations(c)
 			);
 
 			emailRow.salt = salt;
@@ -135,14 +138,17 @@ const publicService = {
 				type = roleRow ? roleRow.roleId : type;
 			}
 
-			const userSql = `INSERT INTO user (email, password, salt, type, os, browser, active_ip, create_ip, device, active_time, create_time)
-			VALUES ('${email}', '${hash}', '${salt}', '${type}', '${os}', '${browser}', '${activeIp}', '${activeIp}', '${device}', '${activeTime}', '${activeTime}')`
+			// Bound parameters only. 3.x interpolated these into the SQL text,
+			// including os/browser/device parsed from the caller's
+			// User-Agent header — a straight SQL injection.
+			userList.push(c.env.db.prepare(
+				`INSERT INTO user (email, password, salt, type, os, browser, active_ip, create_ip, device, active_time, create_time)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			).bind(email, hash, salt, type, os, browser, activeIp, activeIp, device, activeTime, activeTime));
 
-			const accountSql = `INSERT INTO account (email, name, user_id)
-			VALUES ('${email}', '${emailUtils.getName(email)}', 0);`;
-
-			userList.push(c.env.db.prepare(userSql));
-			userList.push(c.env.db.prepare(accountSql));
+			userList.push(c.env.db.prepare(
+				`INSERT INTO account (email, name, user_id) VALUES (?, ?, 0)`
+			).bind(email, emailUtils.getName(email)));
 
 		}
 
@@ -173,21 +179,22 @@ const publicService = {
 
 	async verifyUser(c, params) {
 
-		const { email, password } = params
+		const { email, password } = params || {}
 
-		const userRow = await userService.selectByEmailIncludeDel(c, email);
-
-		if (email !== c.env.admin) {
-			throw new BizError(t('notAdmin'));
+		const limitKey = 'public_token:' + reqUtils.getIp(c);
+		if (await rateLimit.isLimited(c, limitKey, 10)) {
+			throw new BizError(t('verifyRateLimit'), 429);
 		}
 
-		if (!userRow || userRow.isDel === isDel.DELETE) {
-			throw new BizError(t('notExistUser'));
-		}
+		const userRow = email === c.env.admin ? await userService.selectByEmailIncludeDel(c, email) : null;
+		const ok = userRow && userRow.isDel !== isDel.DELETE
+			&& await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password);
 
-		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
-			throw new BizError(t('IncorrectPwd'));
+		if (!ok) {
+			await rateLimit.fail(c, limitKey, 15 * 60);
+			throw new BizError(t('loginFailed'), 401);
 		}
+		await securityAuditService.log(c, SecurityEvent.PUBLIC_TOKEN, { userId: userRow.userId });
 	}
 
 }

@@ -26,6 +26,7 @@ import telegramService from './telegram-service';
 import kvCache from '../cache/kv-cache';
 import r2Service from './r2-service';
 import labelService from './label-service';
+import attachmentAccess from '../security/attachment-access';
 
 // ── Per-request helpers ────────────────────────────────────────────────────
 
@@ -679,7 +680,7 @@ const emailService = {
 
 		const { resendTokens, r2Domain, send, domainList, mailjetApiKey, mailjetSecretKey } = await settingService.query(c);
 
-		let { imageDataList, html } = await attService.toImageUrlHtml(c, content);
+		let { imageDataList, html } = await attService.toImageUrlHtml(c, content, await userService.selectById(c, userId));
 
 		//判断是否关闭发件功能
 		if (send === settingConst.send.CLOSE) {
@@ -1640,6 +1641,11 @@ const emailService = {
 				emailRow.attList = attByEmailId.get(emailRow.emailId) || [];
 			});
 		}
+
+		// Signed object URLs for the attachment list and inline images. Every
+		// caller of emailAddAtt has already restricted `list` to mail the
+		// requester may read.
+		await attachmentAccess.decorateEmails(c, list);
 	},
 
 	async restoreByUserId(c, userId) {

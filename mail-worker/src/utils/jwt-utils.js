@@ -12,6 +12,17 @@ const base64urlDecode = (str) => {
 	return Uint8Array.from(atob(str), c => c.charCodeAt(0));
 };
 
+function secretOf(c) {
+	const secret = c.env.jwt_secret;
+	if (!secret) {
+		// Fail closed: an empty HMAC key makes every token forgeable. (No
+		// minimum length enforced here — that would lock out deployments
+		// with an existing short secret; the deploy checklist covers it.)
+		throw new Error('jwt_secret is not configured');
+	}
+	return secret;
+}
+
 const jwtUtils = {
 	async generateToken(c, payload, expiresInSeconds) {
 		const header = {
@@ -34,7 +45,7 @@ const jwtUtils = {
 
 		const key = await crypto.subtle.importKey(
 			'raw',
-			encoder.encode(c.env.jwt_secret),
+			encoder.encode(secretOf(c)),
 			{ name: 'HMAC', hash: 'SHA-256' },
 			false,
 			['sign']
@@ -56,10 +67,13 @@ const jwtUtils = {
 
 			if (!headerB64 || !payloadB64 || !signatureB64) return null;
 
+			const header = JSON.parse(decoder.decode(base64urlDecode(headerB64)));
+			if (header?.alg !== 'HS256') return null;
+
 			const data = `${headerB64}.${payloadB64}`;
 			const key = await crypto.subtle.importKey(
 				'raw',
-				encoder.encode(c.env.jwt_secret),
+				encoder.encode(secretOf(c)),
 				{ name: 'HMAC', hash: 'SHA-256' },
 				false,
 				['verify']
@@ -78,12 +92,15 @@ const jwtUtils = {
 			const payload = JSON.parse(payloadJson);
 
 			const now = Math.floor(Date.now() / 1000);
+			// Tokens issued by 3.x carry no exp; those stay valid exactly as
+			// long as their session id is in the KV allow-list (checked by
+			// security.js), which has its own 30-day TTL.
 			if (payload.exp && payload.exp < now) return null;
 
 			return payload;
 
 		} catch (err) {
-			console.log(err)
+			if (String(err?.message).startsWith('jwt_secret')) console.error(err.message);
 			return null;
 		}
 	}

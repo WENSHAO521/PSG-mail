@@ -1,4 +1,6 @@
 import BizError from '../error/biz-error';
+import rateLimit from '../security/rate-limit';
+import securityAuditService, { SecurityEvent } from './security-audit-service';
 import verifyUtils from '../utils/verify-utils';
 import emailUtils from '../utils/email-utils';
 import userService from './user-service';
@@ -117,13 +119,23 @@ const accountService = {
 
 		if (!email || !password) throw new BizError(t('emptyEmail'));
 
+		// Binding verifies another account's password, so it is a password
+		// oracle and gets the same brute-force cap as login.
+		const limitKey = `bind:${userId}:${String(email).toLowerCase()}`;
+		if (await rateLimit.isLimited(c, limitKey, 5)) {
+			throw new BizError(t('verifyRateLimit'), 429);
+		}
+
 		// Find the user registered with this email
 		const targetUser = await userService.selectByEmail(c, email);
-		if (!targetUser) throw new BizError(t('emailNotFound'));
 
-		// Verify password
-		const valid = await cryptoUtils.verifyPassword(password, targetUser.salt, targetUser.password);
-		if (!valid) throw new BizError(t('invalidPassword'));
+		// Verify password (same error for unknown mailbox and wrong password)
+		const valid = targetUser && await cryptoUtils.verifyPassword(password, targetUser.salt, targetUser.password);
+		if (!valid) {
+			await rateLimit.fail(c, limitKey, 15 * 60);
+			await securityAuditService.log(c, SecurityEvent.MAILBOX_BIND_FAIL, { userId, detail: { email } });
+			throw new BizError(t('invalidPassword'));
+		}
 
 		// Get the account record
 		const accountRow = await this.selectByEmailIncludeDel(c, email);

@@ -9,6 +9,8 @@ import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
 import externalApiKeyService from '../service/external-api-key-service';
+import sessionService, { publicUser } from './session-service';
+import timingSafeEqual from '../utils/secure-compare';
 
 const exclude = [
 	'/login',
@@ -20,7 +22,6 @@ const exclude = [
 	'/reset-admin',
 	'/public/genToken',
 	'/telegram',
-	'/test',
 	'/oauth',
 	'/backup/oauth',
 ];
@@ -54,6 +55,7 @@ const requirePerms = [
 	'/user/delete',
 	'/user/setPwd',
 	'/user/setStatus',
+	'/user/revokeSessions',
 	'/user/setType',
 	'/user/list',
 	'/user/restore',
@@ -84,7 +86,7 @@ const premKey = {
 	'user:add': ['/user/add'],
 	'user:reset-send': ['/user/resetSendCount'],
 	'user:set-pwd': ['/user/setPwd'],
-	'user:set-status': ['/user/setStatus', '/user/restore'],
+	'user:set-status': ['/user/setStatus', '/user/restore', '/user/revokeSessions'],
 	'user:set-type': ['/user/setType'],
 	'user:delete': ['/user/delete','/user/deleteAccount'],
 	'user:set-name': ['/user/setName'],
@@ -98,29 +100,33 @@ const premKey = {
 	'reg-key:delete': ['/regKey/delete','/regKey/clearNotUse'],
 };
 
+// Exact path or a whole-segment prefix: '/login' matches '/login' and
+// '/login/changePassword' but NOT '/loginAnything'. 3.x used a bare
+// startsWith(), so any future route merely sharing a prefix with an excluded
+// one (e.g. '/testFoo', '/oauthAdmin') would have silently skipped auth.
+export function matchesPrefix(path, prefix) {
+	return path === prefix || path.startsWith(prefix + '/');
+}
+
 app.use('*', async (c, next) => {
 
 	const path = c.req.path;
 
-	const index = exclude.findIndex(item => {
-		return path.startsWith(item);
-	});
-
-	if (index > -1) {
+	if (exclude.some(item => matchesPrefix(path, item))) {
 		return await next();
 	}
 
-	if (path.startsWith('/public')) {
+	if (matchesPrefix(path, '/public')) {
 
 		const userPublicToken = await c.env.kv.get(KvConst.PUBLIC_KEY);
 		const publicToken = c.req.header(constant.TOKEN_HEADER);
-		if (publicToken !== userPublicToken) {
+		if (!userPublicToken || !publicToken || !timingSafeEqual(publicToken, userPublicToken)) {
 			throw new BizError(t('publicTokenFail'), 401);
 		}
 		return await next();
 	}
 
-	if (path.startsWith('/openapi')) {
+	if (matchesPrefix(path, '/openapi')) {
 
 		const apiKey = c.req.header('X-Api-Key');
 		const userId = apiKey ? await externalApiKeyService.verify(c, apiKey) : null;
@@ -141,23 +147,16 @@ app.use('*', async (c, next) => {
 	}
 
 	const { userId, token } = result;
-	const authKey = KvConst.AUTH_INFO + userId;
-	let authInfo = kvCache.get(authKey);
-	if (!authInfo) {
-		authInfo = await c.env.kv.get(authKey, { type: 'json' });
-		if (authInfo) kvCache.set(authKey, authInfo, TTL.AUTH);
-	}
+	const authInfo = await sessionService.read(c, userId);
 
-	if (!authInfo) {
+	if (!sessionService.isValid(authInfo, token)) {
 		throw new BizError(t('authExpired'), 401);
 	}
 
-	if (!authInfo.tokens.includes(token)) {
-		throw new BizError(t('authExpired'), 401);
-	}
+	c.set('sessionId', token);
 
 	const permIndex = requirePerms.findIndex(item => {
-		return path.startsWith(item);
+		return matchesPrefix(path, item);
 	});
 
 	if (permIndex > -1) {
@@ -172,7 +171,7 @@ app.use('*', async (c, next) => {
 		const userPaths = permKeyToPaths(permKeys);
 
 		const userPermIndex = userPaths.findIndex(item => {
-			return path.startsWith(item);
+			return matchesPrefix(path, item);
 		});
 
 		if (userPermIndex === -1 && authInfo.user.email !== c.env.admin) {
@@ -186,12 +185,14 @@ app.use('*', async (c, next) => {
 
 	if (!nowTime.isSame(refreshTime)) {
 		authInfo.refreshTime = dayjs().toISOString();
+		sessionService.touch(authInfo, token, c);
+		// Drop credential fields from sessions created by 3.x.
+		authInfo.user = publicUser(authInfo.user);
 		await userService.updateUserInfo(c, authInfo.user.userId);
-		await c.env.kv.put(authKey, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
-		kvCache.set(authKey, authInfo, TTL.AUTH);  // keep cache in sync
+		await sessionService.write(c, userId, authInfo);
 	}
 
-	c.set('user',authInfo.user)
+	c.set('user', publicUser(authInfo.user))
 
 	return await next();
 });

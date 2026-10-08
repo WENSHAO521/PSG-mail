@@ -4,8 +4,20 @@ export function loginUserInfo() {
     return http.get('/my/loginUserInfo')
 }
 
-export function resetPassword(password) {
-    return http.put('/my/resetPassword', {password})
+export function resetPassword(password, currentPassword) {
+    return http.put('/my/resetPassword', {password, currentPassword})
+}
+
+export function listSessions() {
+    return http.get('/my/sessions')
+}
+
+export function revokeSession(sessionId) {
+    return http.delete('/my/sessions/' + encodeURIComponent(sessionId))
+}
+
+export function revokeOtherSessions() {
+    return http.post('/my/sessions/revokeOthers')
 }
 
 export function userDelete() {

@@ -2,6 +2,10 @@ import app from '../hono/hono';
 import userService from '../service/user-service';
 import result from '../model/result';
 import userContext from '../security/user-context';
+import sessionService from '../security/session-service';
+import securityAuditService, { SecurityEvent } from '../service/security-audit-service';
+import BizError from '../error/biz-error';
+import { t } from '../i18n/i18n';
 
 app.get('/my/loginUserInfo', async (c) => {
 	const user = await userService.loginUserInfo(c, userContext.getUserId(c));
@@ -62,3 +66,32 @@ app.get('/my/avatar', async (c) => {
 });
 
 
+
+// ── Device / session management ─────────────────────────────────────────
+app.get('/my/sessions', async (c) => {
+	const userId = userContext.getUserId(c);
+	const info = await sessionService.read(c, userId, { fresh: true });
+	const current = await userContext.getToken(c);
+	return c.json(result.ok(sessionService.list(info, current)));
+});
+
+app.delete('/my/sessions/:handle', async (c) => {
+	const userId = userContext.getUserId(c);
+	const removed = await sessionService.revokeByHandle(c, userId, c.req.param('handle'));
+	if (!removed) throw new BizError(t('sessionNotFound'), 404);
+	await securityAuditService.log(c, SecurityEvent.SESSION_REVOKE, { userId, detail: { handle: c.req.param('handle') } });
+	return c.json(result.ok());
+});
+
+app.post('/my/sessions/revokeOthers', async (c) => {
+	const userId = userContext.getUserId(c);
+	const current = await userContext.getToken(c);
+	const removed = await sessionService.revokeOthers(c, userId, current);
+	await securityAuditService.log(c, SecurityEvent.SESSION_REVOKE_OTHERS, { userId, detail: { removed } });
+	return c.json(result.ok({ removed }));
+});
+
+app.get('/my/securityLog', async (c) => {
+	const list = await securityAuditService.listByUser(c, userContext.getUserId(c), c.req.query('limit'));
+	return c.json(result.ok(list));
+});

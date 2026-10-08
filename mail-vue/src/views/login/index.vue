@@ -403,11 +403,11 @@ function submitChangePassword() {
     ElMessage({ message: t('emptyPwdMsg'), type: 'error', plain: true })
     return
   }
-  if (changeForm.newPassword.length < 6) {
+  if (changeForm.newPassword.length < 8) {
     ElMessage({ message: t('pwdLengthMsg'), type: 'error', plain: true })
     return
   }
-  if (changeForm.newPassword.length > 30) {
+  if (changeForm.newPassword.length > 128) {
     ElMessage({ message: t('passwordMaxLengthMsg'), type: 'error', plain: true })
     return
   }
@@ -440,6 +440,7 @@ function twoFactor() {
 const bindForm = reactive({
   email: '',
   oauthUserId: '',
+  bindTicket: '',
   code: ''
 })
 
@@ -584,6 +585,7 @@ async function linuxDoGetUser() {
     oauthLinuxDoLogin(code).then(data => {
 
       bindForm.oauthUserId = data.userInfo.oauthUserId;
+      bindForm.bindTicket = data.userInfo.bindTicket || '';
 
       if (!data.token) {
         showBindForm.value = true
@@ -654,7 +656,7 @@ function bind() {
 
   }
 
-  const form = {email, oauthUserId: bindForm.oauthUserId, code: bindForm.code}
+  const form = {email, bindTicket: bindForm.bindTicket, code: bindForm.code}
 
   bindLoading.value = true
   oauthBindUser(form).then(data => {
@@ -800,7 +802,7 @@ function submitRegister() {
     return
   }
 
-  if (registerForm.password.length < 6) {
+  if (registerForm.password.length < 8) {
     ElMessage({
       message: t('pwdLengthMsg'),
       type: 'error',

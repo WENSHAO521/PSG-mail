@@ -5,14 +5,35 @@ import { eq, inArray } from 'drizzle-orm';
 import userService from "./user-service";
 import loginService from "./login-service";
 import cryptoUtils from "../utils/crypto-utils";
+import { t } from '../i18n/i18n';
+import securityAuditService, { SecurityEvent } from './security-audit-service';
+
+const BIND_TICKET_PREFIX = 'oauth_bind_ticket:';
+const BIND_TICKET_TTL = 10 * 60;
 
 const oauthService = {
 
+	// PUT /oauth/bindUser is unauthenticated by necessity (the user has no
+	// account yet). 3.x trusted a client-supplied oauthUserId — which is a
+	// public LinuxDo user id — so anyone could pre-bind a mailbox to someone
+	// else's LinuxDo identity and keep a valid session for it. Now the only
+	// accepted input is the one-time ticket handed out by linuxDoLogin() to
+	// whoever actually completed the OAuth code exchange.
 	async bindUser(c, params) {
 
-		const { email, oauthUserId, code } = params;
+		const { email, code, bindTicket } = params || {};
+
+		const ticketKey = BIND_TICKET_PREFIX + String(bindTicket || '');
+		const oauthUserId = bindTicket ? await c.env.kv.get(ticketKey) : null;
+		if (!oauthUserId) {
+			throw new BizError(t('oauthBindTicketInvalid'), 401);
+		}
+		await c.env.kv.delete(ticketKey);
 
 		const oauthRow = await this.getById(c, oauthUserId);
+		if (!oauthRow) {
+			throw new BizError(t('oauthBindTicketInvalid'), 401);
+		}
 
 		let userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
 
@@ -24,7 +45,8 @@ const oauthService = {
 
 		userRow = await userService.selectByEmail(c, email);
 
-		orm(c).update(oauth).set({ userId: userRow.userId }).where(eq(oauth.oauthUserId, oauthUserId)).run();
+		await orm(c).update(oauth).set({ userId: userRow.userId }).where(eq(oauth.oauthUserId, oauthUserId)).run();
+		await securityAuditService.log(c, SecurityEvent.OAUTH_BIND, { userId: userRow.userId, detail: { provider: 'linuxdo' } });
 		const jwtToken = await loginService.login(c, { email, password: null }, true);
 
 		return { userInfo: oauthRow, token: jwtToken}
@@ -78,7 +100,9 @@ const oauthService = {
 		const userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
 
 		if (!userRow) {
-			return { userInfo: oauthRow, token: null }
+			const bindTicket = crypto.randomUUID();
+			await c.env.kv.put(BIND_TICKET_PREFIX + bindTicket, oauthRow.oauthUserId, { expirationTtl: BIND_TICKET_TTL });
+			return { userInfo: { ...oauthRow, bindTicket }, token: null }
 		}
 
 		const JwtToken = await loginService.login(c, { email: userRow.email, password: null }, true);

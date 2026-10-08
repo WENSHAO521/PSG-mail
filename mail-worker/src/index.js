@@ -7,11 +7,11 @@ import { email } from './email/email';
 import userService from './service/user-service';
 import verifyRecordService from './service/verify-record-service';
 import emailService from './service/email-service';
-import kvObjService from './service/kv-obj-service';
 import oauthService from "./service/oauth-service";
 import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
 import forwardingService from './service/forwarding-service';
+import securityAuditService from './service/security-audit-service';
 // Durable Object classes must be exported by name from the Worker's main
 // entry — this is that export, not a self-contained secondary Worker. See
 // src/durable/scheduled-send-alarm.js for what it's for.
@@ -27,9 +27,16 @@ export default {
 			return app.fetch(req, env, ctx);
 		}
 
-		 if (['/static/','/attachments/'].some(p => url.pathname.startsWith(p))) {
-			 return await kvObjService.toObjResp( { env }, url.pathname.substring(1));
-		 }
+		// Legacy object paths (inline images are stored as
+		// "{{domain}}attachments/<key>", which renders as /attachments/<key>
+		// when no public bucket domain is set). 3.x read these straight from
+		// KV with no access check — and only from KV, so R2/S3 deployments
+		// got 404s. Route them through the same access-controlled /oss
+		// handler as everything else.
+		if (['/static/','/attachments/'].some(p => url.pathname.startsWith(p))) {
+			url.pathname = '/oss' + url.pathname;
+			return app.fetch(new Request(url.toString(), req), env, ctx);
+		}
 
 		return env.assets.fetch(req);
 	},
@@ -54,6 +61,7 @@ export default {
 		await emailService.purgeExpiredTrash({ env })
 		await emailService.autoClean({ env })
 		await oauthService.clearNoBindOathUser({ env })
+		await securityAuditService.prune({ env })
 		await analysisService.refreshEchartsCache({ env })
 	},
 };

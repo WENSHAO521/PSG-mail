@@ -1,5 +1,10 @@
 import { defineConfig } from 'vitest/config';
-import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-pool-workers';
+import path from 'node:path';
+
+// The real migrations/ directory, handed to tests as a binding so
+// test/helpers/schema.js can apply exactly what production applies.
+const migrations = await readD1Migrations(path.join(__dirname, 'migrations'));
 
 // The installed @cloudflare/vitest-pool-workers version targets Vitest v4,
 // which moved config from `defineWorkersConfig({ test: { poolOptions... } })`
@@ -14,6 +19,7 @@ export default defineConfig({
 			// binding, which needs a built ./dist that doesn't exist pre-build)
 			// — see its header comment.
 			wrangler: { configPath: './wrangler.vitest.toml' },
+			miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
 		}),
 	],
 	// linkedom (used by email-service.js/email.js for HTML rewriting) pulls

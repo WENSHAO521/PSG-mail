@@ -7,13 +7,17 @@ import { emailConst, isDel, roleConst, settingConst, userConst } from '../const/
 import kvConst from '../const/kv-const';
 import KvConst from '../const/kv-const';
 import kvCache from '../cache/kv-cache';
-import cryptoUtils from '../utils/crypto-utils';
+import cryptoUtils, { passwordIterations } from '../utils/crypto-utils';
 import emailService from './email-service';
 import dayjs from 'dayjs';
 import permService from './perm-service';
 import roleService from './role-service';
 import emailUtils from '../utils/email-utils';
 import saltHashUtils from '../utils/crypto-utils';
+import sessionService from '../security/session-service';
+import securityAuditService, { SecurityEvent } from './security-audit-service';
+import { assertPassword } from '../utils/password-policy';
+import userContext from '../security/user-context';
 import constant from '../const/constant';
 import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
@@ -256,14 +260,32 @@ const userService = {
 		return results;
 	},
 
+	// Logged-in self-service password change (PUT /my/resetPassword). Requires
+	// the current password (a stolen session alone must not be able to lock
+	// the owner out) unless LEGACY_PASSWORD_RESET=true is set for old clients
+	// that don't send it yet. Signs out every other device afterwards.
 	async resetPassword(c, params, userId) {
 
-		const { password } = params;
+		const { password, currentPassword } = params || {};
+		const userRow = await this.selectById(c, userId);
+		if (!userRow) throw new BizError(t('notExistUser'));
 
-		if (password.length < 6) {
-			throw new BizError(t('pwdMinLength'));
+		assertPassword(password, { email: userRow.email });
+
+		const legacy = String(c.env.LEGACY_PASSWORD_RESET) === 'true';
+		if (!legacy || currentPassword) {
+			const ok = await cryptoUtils.verifyPassword(currentPassword, userRow.salt, userRow.password);
+			if (!ok) throw new BizError(t('currentPwdIncorrect'), 400);
 		}
-		const { salt, hash } = await cryptoUtils.hashPassword(password);
+
+		await this._writePassword(c, userId, password);
+		const current = await userContext.getToken(c);
+		await sessionService.revokeOthers(c, userId, current);
+		await securityAuditService.log(c, SecurityEvent.PASSWORD_CHANGE, { userId, detail: { via: 'settings' } });
+	},
+
+	async _writePassword(c, userId, password) {
+		const { salt, hash } = await cryptoUtils.hashPassword(password, passwordIterations(c));
 		await orm(c).update(user).set({ password: hash, salt: salt }).where(eq(user.userId, userId)).run();
 	},
 
@@ -468,12 +490,30 @@ const userService = {
 			.run();
 	},
 
-	async setPwd(c, params) {
+	// Admin set / logged-out change: sets the password and revokes EVERY
+	// session of that user.
+	// `opts.skipPolicy` is a separate argument on purpose: params is the raw
+	// request body for PUT /user/setPwd and must not be able to opt out.
+	async setPwd(c, params, opts = {}) {
 
 		const { password, userId } = params;
-		await this.resetPassword(c, { password }, userId);
-		await c.env.kv.delete(KvConst.AUTH_INFO + userId);
-		kvCache.del(KvConst.AUTH_INFO + userId);
+		const { skipPolicy = false } = opts;
+		if (!skipPolicy) {
+			const target = await this.selectByIdIncludeDel(c, userId);
+			assertPassword(password, { email: target?.email });
+		}
+		await this._writePassword(c, userId, password);
+		await sessionService.revokeAll(c, userId);
+		if (!skipPolicy) {
+			await securityAuditService.log(c, SecurityEvent.PASSWORD_ADMIN_SET, { userId, detail: { by: c.get?.('user')?.userId || 0 } });
+		}
+	},
+
+	async revokeSessions(c, params) {
+		const userId = Number(params?.userId);
+		if (!userId) throw new BizError(t('notExistUser'));
+		await sessionService.revokeAll(c, userId);
+		await securityAuditService.log(c, SecurityEvent.SESSION_ADMIN_REVOKE, { userId, detail: { by: c.get?.('user')?.userId || 0 } });
 	},
 
 	async setStatus(c, params) {
@@ -536,9 +576,7 @@ const userService = {
 			throw new BizError(t('notEmailDomain'));
 		}
 
-		if (password.length < 6) {
-			throw new BizError(t('pwdMinLength'));
-		}
+		assertPassword(password, { email });
 
 		const accountRow = await accountService.selectByEmailIncludeDel(c, email);
 
@@ -556,7 +594,7 @@ const userService = {
 			throw new BizError(t('roleNotExist'));
 		}
 
-		const { salt, hash } = await saltHashUtils.hashPassword(password);
+		const { salt, hash } = await saltHashUtils.hashPassword(password, passwordIterations(c));
 
 		const userId = await userService.insert(c, { email, password: hash, salt, type });
 

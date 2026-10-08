@@ -239,17 +239,17 @@
             <span class="att-count">{{ $t('attCount', { total: email.attList.length }) }}</span>
           </div>
           <div class="att-list">
-            <div class="att-item" v-for="att in email.attList" :key="att.attId" @click="showImage(att.key)">
+            <div class="att-item" v-for="att in email.attList" :key="att.attId" @click="showImage(att)">
               <Icon v-bind="getIconByName(att.filename)" class="att-icon-file" />
               <span class="att-name">{{ att.filename }}</span>
               <span class="att-size">{{ formatBytes(att.size) }}</span>
               <div class="att-actions">
                 <button v-if="isImage(att.filename)" type="button" class="icon-btn-sm"
-                        :aria-label="$t('preview')" :title="$t('preview')" @click.stop="showImage(att.key)">
+                        :aria-label="$t('preview')" :title="$t('preview')" @click.stop="showImage(att)">
                   <Icon icon="psg:eye" width="18" height="18" />
                 </button>
                 <a class="icon-btn-sm" :aria-label="$t('download')" :title="$t('download')"
-                   :href="cvtR2Url(att.key)" download @click.stop>
+                   :href="attUrl(att)" download @click.stop>
                   <Icon icon="psg:download" width="18" height="18" />
                 </a>
               </div>
@@ -310,7 +310,7 @@ import { useSettingStore } from '@/store/setting.js'
 import { formatDetailDate } from '@/utils/day.js'
 import { starAdd, starCancel } from '@/request/star.js'
 import { getExtName, formatBytes } from '@/utils/file-utils.js'
-import { cvtR2Url, toOssDomain } from '@/utils/convert.js'
+import { attUrl, inlineObjectPrefix } from '@/utils/convert.js'
 import { getIconByName } from '@/utils/icon-utils.js'
 import { allEmailDelete } from '@/request/all-email.js'
 import { useI18n } from 'vue-i18n'
@@ -616,13 +616,12 @@ function toMessage(message) {
 
 function formatImage(content) {
   content = content || ''
-  const domain = settingStore.settings.r2Domain
-  return content.replace(/{{domain}}/g, toOssDomain(domain) + '/')
+  return content.replace(/{{domain}}/g, inlineObjectPrefix())
 }
 
-function showImage(key) {
-  if (!isImage(key)) return
-  const url = cvtR2Url(key)
+function showImage(att) {
+  if (!att || !isImage(att.key)) return
+  const url = attUrl(att)
   srcList.length = 0
   srcList.push(url)
   showPreview.value = true

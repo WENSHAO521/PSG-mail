@@ -1,3 +1,4 @@
+import secretBox from '../utils/secret-box';
 import KvConst from '../const/kv-const';
 import kvCache, { TTL } from '../cache/kv-cache';
 import setting from '../entity/setting';
@@ -141,6 +142,32 @@ async function readFeatureSetting(c) {
 	}
 }
 
+// Credential columns encrypted at rest when DATA_ENCRYPTION_KEY(S) is set
+// (see utils/secret-box.js). KV `setting:` holds the same ciphertext as D1;
+// plaintext only ever exists in request memory.
+const SECRET_FIELDS = ['s3AccessKey', 's3SecretKey', 'tgBotToken', 'secretKey', 'mailjetApiKey', 'mailjetSecretKey', 'alibabaSmtpPassword'];
+
+async function decryptSecrets(env, row) {
+	if (!row) return row;
+	for (const field of SECRET_FIELDS) {
+		if (secretBox.isEncrypted(row[field])) {
+			row[field] = await secretBox.decrypt(env, row[field], 'setting:' + field);
+		}
+	}
+	if (row.resendTokens && typeof row.resendTokens === 'object') {
+		const out = {};
+		for (const [domain, token] of Object.entries(row.resendTokens)) {
+			out[domain] = await secretBox.decrypt(env, token, 'setting:resendTokens');
+		}
+		row.resendTokens = out;
+	}
+	return row;
+}
+
+async function encryptField(env, field, value) {
+	return secretBox.encrypt(env, value, 'setting:' + field);
+}
+
 const settingService = {
 
 	async refresh(c) {
@@ -148,9 +175,10 @@ const settingService = {
 		settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
 		settingRow.autoRefresh = normalizeAutoRefresh(settingRow.autoRefresh);
 		Object.assign(settingRow, await readFeatureSetting(c));
-		c.set('setting', settingRow);
 		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
 		kvCache.del(KvConst.SETTING);  // bust in-memory cache after update
+		// The request-scoped copy is decrypted; KV keeps the ciphertext.
+		c.set('setting', await decryptSecrets(c.env, JSON.parse(JSON.stringify(settingRow))));
 	},
 
 	async query(c) {
@@ -177,6 +205,8 @@ const settingService = {
 		// Feature policy lives in its own singleton table so migrations can run
 		// before the legacy setting table exists on a brand-new D1 database.
 		Object.assign(setting, await readFeatureSetting(c));
+
+		await decryptSecrets(c.env, setting);
 
 		let domainList = c.env.domain;
 
@@ -305,6 +335,14 @@ const settingService = {
 			if (resendTokens[domain]) resendTokens[domain] = resendTokens[domain].trim();
 			if (!resendTokens[domain]) delete resendTokens[domain];
 		});
+		for (const domain of Object.keys(resendTokens)) {
+			resendTokens[domain] = await encryptField(c.env, 'resendTokens', resendTokens[domain]);
+		}
+		for (const field of SECRET_FIELDS) {
+			if (typeof params[field] === 'string' && params[field]) {
+				params[field] = await encryptField(c.env, field, params[field].trim());
+			}
+		}
 
 		if (Array.isArray(params.emailPrefixFilter)) {
 			params.emailPrefixFilter = params.emailPrefixFilter + '';
@@ -349,6 +387,9 @@ const settingService = {
 			} else {
 				value = Math.max(0, Number(value));
 				if (key === 'forwardMaxAddresses') value = Math.min(20, Math.max(1, value || 3));
+			}
+			if (SECRET_FIELDS.includes(key) && value) {
+				value = await encryptField(c.env, key, value);
 			}
 			featureUpdate[column] = value;
 		}

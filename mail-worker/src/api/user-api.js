@@ -14,6 +14,13 @@ app.put('/user/setPwd', async (c) => {
 	return c.json(result.ok());
 });
 
+// Admin "sign this user out everywhere". Gated by the same permission as
+// ban/unban (user:set-status) in security.js.
+app.post('/user/revokeSessions', async (c) => {
+	await userService.revokeSessions(c, await c.req.json());
+	return c.json(result.ok());
+});
+
 app.put('/user/setStatus', async (c) => {
 	await userService.setStatus(c, await c.req.json());
 	return c.json(result.ok());

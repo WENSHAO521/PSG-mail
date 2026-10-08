@@ -9,6 +9,35 @@ import { parseHTML } from 'linkedom';
 import { v4 as uuidv4 } from 'uuid';
 import domainUtils from '../utils/domain-uitls';
 import settingService from "./setting-service";
+import attachmentAccess from '../security/attachment-access';
+
+function requestOrigin(c) {
+	try { return new URL(c.req.url).origin; } catch { return ''; }
+}
+
+// Map an <img src> that points at one of OUR stored objects back to its
+// storage key: public bucket domain, bare "attachments/<key>", or this
+// Worker's own /attachments/ or /api/oss/attachments/ paths (optionally with
+// a signed ?exp=&sig= query). Anything else — notably external images that
+// merely have "/attachments/" in their path — returns null.
+// (3.x tested src.startsWith(toOssDomain(r2Domain)), which is startsWith('')
+// — always true — when no bucket domain is set, so every external image in
+// an outgoing mail was rewritten to a dangling cid: reference.)
+export function siteObjectKey(src, ossPrefix, origin) {
+	const KEY_RE = /^attachments\/[A-Za-z0-9._-]+$/;
+	const clean = (k) => {
+		const key = String(k).split('?')[0].split('#')[0];
+		return KEY_RE.test(key) ? key : null;
+	};
+	if (ossPrefix && src.startsWith(ossPrefix + '/')) return clean(src.slice(ossPrefix.length + 1));
+	if (src.startsWith(constant.ATTACHMENT_PREFIX)) return clean(src);
+	let url;
+	try { url = new URL(src, origin || 'http://invalid.local'); } catch { return null; }
+	const sameSite = src.startsWith('/') || (origin && url.origin === origin);
+	if (!sameSite) return null;
+	const m = url.pathname.match(/^(?:\/api)?(?:\/oss)?\/(attachments\/[^/]+)$/);
+	return m ? clean(m[1]) : null;
+}
 
 const attService = {
 
@@ -42,7 +71,7 @@ const attService = {
 		).all();
 	},
 
-	async toImageUrlHtml(c, content) {
+	async toImageUrlHtml(c, content, user = null) {
 
 		const { r2Domain } = await settingService.query(c);
 
@@ -77,25 +106,17 @@ const attService = {
 			}
 
 			//邮件正文站内图片转cid附件
-			if (src && (src.startsWith(domainUtils.toOssDomain(r2Domain)) || src.startsWith('attachments/'))) {
-
+			const siteKey = src ? siteObjectKey(src, domainUtils.toOssDomain(r2Domain), requestOrigin(c)) : null;
+			if (siteKey) {
 				const cid = uuidv4().replace(/-/g, '')
-				img.setAttribute('src', 'cid:' + cid);
-
 				const attData = {};
-
-				if (src.startsWith(domainUtils.toOssDomain(r2Domain))) {
-					attData.key = src.replace(domainUtils.toOssDomain(r2Domain) + '/','');
-				}
-
-				if (src.startsWith('attachments/')) {
-					attData.key = src;
-				}
-
+				attData.key = siteKey;
 				attData.contentId = cid;
 				attData.type = attConst.type.EMBED;
+				// src is only swapped to cid: once the key is confirmed
+				// readable by the sender (below); otherwise it stays as is.
+				attData.img = img;
 				imageDataList.push(attData);
-
 			}
 
 			const hasInlineWidth = img.hasAttribute('width');
@@ -109,7 +130,15 @@ const attService = {
 		}
 
 		//查询已有内嵌url图片信息
-		const keys = [...new Set(imageDataList.filter(item => !item.content).map(item => item.key))];
+		let keys = [...new Set(imageDataList.filter(item => !item.content).map(item => item.key))];
+		// Only objects the sender can already read may be embedded — 3.x
+		// accepted any existing key, so a known key of someone else's
+		// attachment could be mailed out as a cid attachment.
+		if (user) {
+			keys = await attachmentAccess.filterAccessible(c, user, keys);
+		} else {
+			keys = [];
+		}
 		const dbImageList  = await this.selectOneByKeys(c, keys);
 
 		//设置给当前附件
@@ -137,6 +166,12 @@ const attService = {
 		}))
 
 		imageDataList = imageDataList.filter(image => image.content);
+		for (const image of imageDataList) {
+			if (image.img) {
+				image.img.setAttribute('src', 'cid:' + image.contentId);
+				delete image.img;
+			}
+		}
 
 		return { imageDataList, html: document.toString() };
 	},

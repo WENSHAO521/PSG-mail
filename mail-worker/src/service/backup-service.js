@@ -1,3 +1,4 @@
+import secretBox from '../utils/secret-box';
 import orm from '../entity/orm';
 import { cloudBackup } from '../entity/cloud-backup';
 import { email } from '../entity/email';
@@ -121,7 +122,19 @@ const backupService = {
 		};
 	},
 
-	async _saveTokens(c, userId, provider, tokens) {
+	// OAuth tokens are per-user dynamic credentials: encrypted at rest when a
+	// data encryption key is configured (utils/secret-box.js). The AAD binds
+	// each ciphertext to its user/provider/field.
+	_aad(userId, provider, field) {
+		return `cloud_backup:${userId}:${provider}:${field}`;
+	},
+
+	async _saveTokens(c, userId, provider, plainTokens) {
+		const tokens = {
+			...plainTokens,
+			accessToken: await secretBox.encrypt(c.env, plainTokens.accessToken, this._aad(userId, provider, 'access')),
+			refreshToken: await secretBox.encrypt(c.env, plainTokens.refreshToken, this._aad(userId, provider, 'refresh')),
+		};
 		const db = orm(c);
 		const existing = await db.select().from(cloudBackup)
 			.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)))
@@ -150,13 +163,16 @@ const backupService = {
 
 		if (!record || !record.accessToken) return null;
 
+		const accessToken = await secretBox.decrypt(c.env, record.accessToken, this._aad(userId, provider, 'access'));
+		const refreshToken = await secretBox.decrypt(c.env, record.refreshToken, this._aad(userId, provider, 'refresh'));
+
 		// Refresh 2 min before expiry
 		if (Date.now() > record.expiresAt - 120_000) {
-			if (!record.refreshToken) return null;
-			return await this._refreshToken(c, userId, provider, record.refreshToken);
+			if (!refreshToken) return null;
+			return await this._refreshToken(c, userId, provider, refreshToken);
 		}
 
-		return record.accessToken;
+		return accessToken || null;
 	},
 
 	async _refreshToken(c, userId, provider, refreshToken) {
@@ -184,7 +200,11 @@ const backupService = {
 		};
 
 		await orm(c).update(cloudBackup)
-			.set({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken, expiresAt: newTokens.expiresAt })
+			.set({
+				accessToken: await secretBox.encrypt(c.env, newTokens.accessToken, this._aad(userId, provider, 'access')),
+				refreshToken: await secretBox.encrypt(c.env, newTokens.refreshToken, this._aad(userId, provider, 'refresh')),
+				expiresAt: newTokens.expiresAt
+			})
 			.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)));
 
 		return newTokens.accessToken;

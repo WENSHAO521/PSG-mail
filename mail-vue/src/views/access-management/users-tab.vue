@@ -717,7 +717,7 @@ function submit() {
     return
   }
 
-  if (addForm.password.length < 6) {
+  if (addForm.password.length < 8) {
     ElMessage({
       message: t('pwdLengthMsg'),
       type: "error",
@@ -923,7 +923,7 @@ function updatePwd() {
     return
   }
 
-  if (userForm.password.length < 6) {
+  if (userForm.password.length < 8) {
     ElMessage({
       message: t('pwdLengthMsg'),
       type: 'error',
