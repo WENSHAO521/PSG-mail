@@ -2,6 +2,7 @@ import BizError from '../error/biz-error';
 import emailService from './email-service';
 import emailUtils from '../utils/email-utils';
 import aiProviderService from './ai-provider-service';
+import translateService from './translate-service';
 
 const OPERATIONS = new Set(['translate_zh', 'translate_en', 'rewrite', 'formal', 'concise', 'grammar']);
 const TARGET_LANGUAGE_NAMES = { zh: 'Chinese (Simplified)', en: 'English' };
@@ -139,6 +140,10 @@ const aiMailService = {
 		const source = (Array.isArray(segments) ? segments : [])
 			.slice(0, MAX_SEGMENTS)
 			.map(s => cleanText(s, MAX_SEGMENT_CHARS));
+		const { provider, key } = await translateService.provider(c);
+		if (provider === 'google') {
+			return { segments: await translateService.googleSegments(source, targetLang, key) };
+		}
 		const out = source.slice();
 		const targetName = TARGET_LANGUAGE_NAMES[targetLang] || targetLang || TARGET_LANGUAGE_NAMES.zh;
 

@@ -58,6 +58,9 @@ const FEATURE_DEFAULTS = {
 	// default: it only protects the reader, and the AI step sees image URLs,
 	// never the message text.
 	aiTrackerBlock: 0,
+	// Email translation engine (migrations/0013): 'google' or 'ai'.
+	translateProvider: 'google',
+	googleTranslateKey: '',
 };
 
 const FEATURE_COLUMNS = {
@@ -85,6 +88,8 @@ const FEATURE_COLUMNS = {
 	syncDelete: 'sync_delete',
 	aiSpam: 'ai_spam',
 	aiTrackerBlock: 'ai_tracker_block',
+	translateProvider: 'translate_provider',
+	googleTranslateKey: 'google_translate_key',
 };
 
 // Polling is a recovery path for missed push signals and for Electron. A
@@ -133,6 +138,8 @@ async function readFeatureSetting(c) {
 			syncDelete: Number(row.sync_delete ?? FEATURE_DEFAULTS.syncDelete),
 			aiSpam: Number(row.ai_spam ?? FEATURE_DEFAULTS.aiSpam),
 			aiTrackerBlock: Number(row.ai_tracker_block ?? FEATURE_DEFAULTS.aiTrackerBlock),
+			translateProvider: row.translate_provider === 'ai' ? 'ai' : FEATURE_DEFAULTS.translateProvider,
+			googleTranslateKey: row.google_translate_key || '',
 		};
 	} catch {
 		// A deployment can briefly run before the new migration is applied. Keep
@@ -254,6 +261,7 @@ const settingService = {
 		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
 		settingRow.mailjetApiKey = settingRow.mailjetApiKey ? `${settingRow.mailjetApiKey.slice(0, 12)}******` : null;
 		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
+		settingRow.googleTranslateKey = settingRow.googleTranslateKey ? `${settingRow.googleTranslateKey.slice(0, 8)}******` : null;
 		settingRow.webhookSecret = settingRow.webhookSecret ? `${settingRow.webhookSecret.slice(0, 12)}******` : null;
 		// SMTP password for a real mailbox — unlike the API-key-shaped secrets
 		// above, no partial reveal at all. The frontend only ever learns
@@ -336,8 +344,11 @@ const settingService = {
 		for (const [key, column] of Object.entries(FEATURE_COLUMNS)) {
 			if (!Object.prototype.hasOwnProperty.call(featureParams, key)) continue;
 			let value = featureParams[key];
-			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey', 'alibabaSmtpUser', 'alibabaSmtpPassword', 'alibabaSenderName'].includes(key)) {
+			if (['forwardAllowedDomains', 'publicAppUrl', 'aiDefaultModel', 'aiFallbackModel', 'mailjetApiKey', 'mailjetSecretKey', 'alibabaSmtpUser', 'alibabaSmtpPassword', 'alibabaSenderName', 'translateProvider', 'googleTranslateKey'].includes(key)) {
 				value = Array.isArray(value) ? value.join(',') : String(value ?? '').trim();
+				if (key === 'translateProvider') value = value === 'ai' ? 'ai' : 'google';
+				// The masked value the settings page shows is not a new key.
+				if (key === 'googleTranslateKey' && value.includes('******')) continue;
 				// alibabaSmtpUser (发信地址) ends up interpolated into raw SMTP
 				// command lines (MAIL FROM:<...>) and MIME headers in
 				// alibaba-directmail-service.js — reject anything that isn't a
