@@ -47,6 +47,15 @@ async function getSharedAccountIds(c, userId) {
 	return ids
 }
 
+// Access scope for a single-account read. The query already pins account_id = ?, so the
+// "own mail OR shared account" test collapses to ONE indexable predicate: a shared account
+// grants the whole account (no user filter), otherwise only the caller's own rows. Same result
+// set as the OR form, but it lets the planner use an (account_id, ...) or (user_id, account_id, ...)
+// index instead of walking idx_email_type and filtering every row.
+function accountAccessCond(userId, accountId, sharedIds) {
+	return sharedIds.includes(Number(accountId)) ? undefined : eq(email.userId, userId);
+}
+
 // Module-level schema detection cache — probing a column on every list request
 // adds 2 extra D1 queries. Cache the result for the Worker's lifetime.
 const SCHEMA_TTL = 3600
@@ -147,6 +156,10 @@ const emailService = {
 
 		size = Number(size);
 		emailId = Number(emailId);
+		// Follow-up pages (cursor given) skip the COUNT: it reads one index row per mail in the
+		// mailbox (measured: 2316 rows read for a 2316-mail inbox vs 21 for the page itself) and
+		// the client already has the total from page one.
+		const isFirstPage = !emailId;
 		timeSort = Number(timeSort);
 		accountId = Number(accountId);
 		allReceive = Number(allReceive);
@@ -171,9 +184,11 @@ const emailService = {
 		}
 
 		const sharedEmailAccountIds = await getSharedAccountIds(c, userId)
-		const accessCond = sharedEmailAccountIds.length > 0
-			? or(eq(email.userId, userId), inArray(email.accountId, sharedEmailAccountIds))
-			: eq(email.userId, userId);
+		const accessCond = allReceive
+			? (sharedEmailAccountIds.length > 0
+				? or(eq(email.userId, userId), inArray(email.accountId, sharedEmailAccountIds))
+				: eq(email.userId, userId))
+			: accountAccessCond(userId, accountId, sharedEmailAccountIds);
 
 		const spamFilter   = await columnExists(c, 'email', 'is_spam')    ? sql`COALESCE(email.is_spam, 0) = 0`    : null
 		const archiveFilter = await columnExists(c, 'email', 'is_archive') ? sql`COALESCE(email.is_archive, 0) = 0` : null
@@ -217,7 +232,7 @@ const emailService = {
 
 		// reuse the same sharedEmailAccountIds computed above
 
-		const totalQuery = orm(c).select({ total: count() }).from(email)
+		const totalQuery = isFirstPage ? orm(c).select({ total: count() }).from(email)
 			.leftJoin(
 				account,
 				eq(account.accountId, email.accountId)
@@ -230,7 +245,7 @@ const emailService = {
 					eq(email.isDel, isDel.NORMAL),
 					eq(account.isDel, isDel.NORMAL)
 				)
-		).get();
+		).get() : Promise.resolve(null);
 
 		const latestEmailQuery = orm(c).select().from(email).where(
 			and(
@@ -260,7 +275,7 @@ const emailService = {
 			}
 		}
 
-		return { list, total: totalRow.total, latestEmail };
+		return { list, total: totalRow ? totalRow.total : null, latestEmail };
 	},
 
 	async archiveEmail(c, params, userId) {
@@ -1397,9 +1412,11 @@ const emailService = {
 		}
 
 		const sharedLatestIds = await getSharedAccountIds(c, userId)
-		const latestAccessCond = sharedLatestIds.length > 0
-			? or(eq(email.userId, userId), inArray(email.accountId, sharedLatestIds))
-			: eq(email.userId, userId);
+		const latestAccessCond = allReceive
+			? (sharedLatestIds.length > 0
+				? or(eq(email.userId, userId), inArray(email.accountId, sharedLatestIds))
+				: eq(email.userId, userId))
+			: accountAccessCond(userId, accountId, sharedLatestIds);
 
 		// Mail the AI screening (or the user) moved to Spam must not reach
 		// clients that sync by polling (Electron, background tabs).

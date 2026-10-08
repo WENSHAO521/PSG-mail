@@ -84,3 +84,27 @@ Not done on purpose:
 
 Tests: `api-hardening.spec.js`; 147/147 worker tests pass.
 Rollback: revert the commit. If the generic 500 message hides something needed for support, the full error is in the Worker log (observability is enabled).
+
+## Batch 6 — D1 (first P1 pass; measured)
+
+Method: `mail-worker/test/d1-bench.spec.js` builds the real schema (init chain + `migrations/*.sql`) on local D1, seeds 3000 mails (≈2300 in the benchmark inbox; one shared account holding ≈10 % of the table), records every statement the service issues and replays it with `EXPLAIN QUERY PLAN` and `meta.rows_read`. **These are local-D1 numbers on synthetic data — not production Rows Read.** Set `PRINT_REPORT = true` in the file to print the full report.
+
+| Statement | Before | After |
+|---|---|---|
+| Inbox page 1, list rows | 21 rows read (index range scan, OK) | unchanged |
+| Inbox page 1, `COUNT(*)` | 2316 rows read — grows with mailbox size | unchanged (page 1 only) |
+| Inbox page 2+ (cursor), `COUNT(*)` | 2316 rows read **on every page** | **skipped** (`total: null`; client keeps page-1 total) |
+| Shared-account list page (account = 10 % of table) | 198 rows read, plan `idx_email_type (type, rowid)` + per-row filter | **21 rows**, `idx_email_account_list` |
+| Shared-account poll `latest` | plan `idx_email_type`, cost grows with the table share of *other* users' mail | `idx_email_account_list (account_id, type, is_del, email_id>?)`, 2 rows |
+| Owner poll `latest`, nothing new | 2 rows | unchanged |
+
+Changes:
+1. `list()` no longer runs the COUNT for cursor pages; frontend only overwrites `total` when the server sends one (older cached clients just keep/hide the count line until the next refresh).
+2. For single-account reads the access test `user_id = ? OR account_id IN (shared)` is replaced by the equivalent single predicate (shared account → whole account, otherwise own rows). The result set is identical — `d1-bench.spec.js` has authorization assertions (shared readable, foreign account empty, owner unaffected). The all-accounts view keeps the OR form.
+3. New migration `0017_email_account_list_index.sql` (`idx_email_account_list`). **Apply it to D1 before/with the deploy** (same procedure as the other files in `migrations/`); without it the code is still correct, only the shared-account queries keep the old plan. Rollback: `DROP INDEX idx_email_account_list;`. Cost: one more index to maintain on every mail insert (≈ one extra row written per mail).
+
+Not changed (decisions / backlog):
+- `list()` still returns full `content`/`text` for each row; the reader opens mails from that payload, so dropping it needs a coordinated frontend change (lazy detail fetch via `/email/detail`). Rows-read is unaffected; this is response size / D1 CPU.
+- All-accounts view for users *with* shared accounts still uses the OR form (plan not yet optimized); first-page COUNT remains O(mailbox).
+
+Tests: 150/150 pass locally.

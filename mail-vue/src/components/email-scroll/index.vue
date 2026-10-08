@@ -751,7 +751,7 @@ function getEmailList(refresh = false) {
     if (refresh) scrollbarRef.value?.setScrollTop(0);
     noLoading.value = data.list.length < queryParam.size;
     followLoading.value = data.list.length >= queryParam.size;
-    total.value = data.total;
+    if (data.total != null) total.value = data.total;
   }).finally(() => {
     loading.value = false; firstLoad.value = false; followLoading.value = false; reqLock = false;
   })
