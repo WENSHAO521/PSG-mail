@@ -35,7 +35,7 @@
               <el-button
                 v-if="activeSection === 'signature'"
                 class="settings-save-button" type="primary"
-                :loading="signatureLoading" @click="saveSignature"
+                :loading="signatureManagerRef?.saving" @click="signatureManagerRef?.save()"
               >{{ $t('save') }}</el-button>
               <el-button
                 v-else-if="activeSection === 'autoreply' && autoReplyEnabled"
@@ -150,20 +150,7 @@
 
             <!-- ── Signature section ── -->
             <div v-if="activeSection === 'signature'" class="settings-card">
-              <div class="card-body">
-                <div class="card-desc">{{ $t('signatureDesc') }}</div>
-                <div class="editor-shell">
-                  <tinyEditor
-                    ref="signatureEditorRef"
-                    :def-value="signatureText"
-                    editor-id="signature-editor"
-                    toolbar="bold italic underline | forecolor | link | code"
-                    height="200px"
-                    :placeholder="$t('signaturePlaceholder')"
-                    @change="onSignatureChange"
-                  />
-                </div>
-              </div>
+              <SignatureManager ref="signatureManagerRef" />
             </div>
 
             <!-- ── Auto-reply section ── -->
@@ -465,7 +452,7 @@ import { useMobileNavigationStore } from "@/store/mobile-navigation.js"
 import { useLabelStore } from "@/store/label.js"
 import { labelCreate, labelUpdate, labelDelete } from "@/request/label.js"
 import { Icon } from "@iconify/vue"
-import tinyEditor from "@/components/tiny-editor/index.vue"
+import SignatureManager from "./components/SignatureManager.vue"
 import http from "@/axios/index.js"
 import { hasPerm } from "@/perm/perm.js"
 import { backupProviders, backupConnectUrl, backupStatus, backupDisconnect, backupStart } from "@/request/backup.js"
@@ -538,9 +525,7 @@ const accountName = ref(null)
 const fileInputRef = ref(null)
 const pwdShow = ref(false)
 const form = reactive({ password: '', newPwd: '' })
-const signatureText = ref('')
-const signatureLoading = ref(false)
-const signatureEditorRef = ref(null)
+const signatureManagerRef = ref(null)
 const autoReplyEnabled = ref(false)
 const autoReplyMessage = ref('')
 const autoReplySaving = ref(false)
@@ -1025,12 +1010,10 @@ const activeMeta = computed(() => sectionMeta.value[activeSection.value] || { la
 
 onActivated(() => {
   mobileSettingsDetail.value = false
-  signatureText.value = userStore.user.signature || ''
 })
 
 onMounted(() => {
   userStore.loadAvatar()
-  signatureText.value = userStore.user.signature || ''
   http.get('/autoReply/get').then(data => {
     autoReplyEnabled.value = !!data.enabled
     autoReplyMessage.value = data.message || ''
@@ -1163,17 +1146,6 @@ async function setUndoSendSeconds(seconds) {
     await userStore.saveUndoSendSeconds(seconds)
     ElMessage({ message: t('undoSendSaved'), type: 'success', plain: true })
   } catch {}
-}
-
-function onSignatureChange(html) { signatureText.value = html }
-
-async function saveSignature() {
-  signatureLoading.value = true
-  try {
-    const html = signatureEditorRef.value?.getContent?.() ?? signatureText.value
-    await userStore.saveSignature(html)
-    ElMessage({ message: t('signatureSaved'), type: 'success', plain: true })
-  } finally { signatureLoading.value = false }
 }
 
 async function saveAutoReply() {
@@ -1770,12 +1742,6 @@ function submitPwd() {
 }
 
 /* ── Editor shell ── */
-.editor-shell {
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-sm); overflow: hidden;
-  height: 200px;
-}
-
 /* ── Auto-reply ── */
 .autoreply-toggle {
   display: flex; align-items: center; justify-content: space-between;

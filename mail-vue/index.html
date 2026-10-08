@@ -16,7 +16,11 @@
     if (uiStoreStr) {
       try {
         const uiStore = JSON.parse(uiStoreStr)
-        dark = !!uiStore.dark
+        // "Follow system" must read the OS now, not the value saved last
+        // session, or the first paint is the wrong theme until Vue boots.
+        dark = uiStore.themeMode === 'system'
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches
+          : uiStore.themeMode === 'dark' || (!uiStore.themeMode && !!uiStore.dark)
         document.documentElement.setAttribute('class', dark ? 'dark' : '')
       } catch {}
     }

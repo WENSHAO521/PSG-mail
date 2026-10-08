@@ -197,44 +197,30 @@
           </button>
         </div>
 
-        <div class="email-body" :class="{ 'is-zoomed': bodyZoom > 1 }"
-             @touchstart="zoomTouchStart" @touchmove="zoomTouchMove"
-             @touchend="zoomTouchEnd" @touchcancel="zoomTouchEnd">
-          <div class="email-zoom" :style="bodyZoom !== 1 ? { zoom: bodyZoom } : null">
-            <ShadowHtml class="shadow-html" :html="formatImage(email.content)" :show-trackers="showTrackers"
-                        @trackers="trackerInfo = $event" v-if="email.content" />
-            <pre v-else class="email-text">{{ email.text }}</pre>
+        <!-- Translate bar: the body below is swapped in place for the
+             translation (Google Translate style); this bar says so and
+             offers the way back. -->
+        <div v-if="showTranslation" class="translate-bar" role="status">
+          <Icon v-if="translating" icon="svg-spinners:3-dots-fade" width="18" height="18" class="translate-bar-icon" />
+          <Icon v-else icon="psg:globe" width="16" height="16" class="translate-bar-icon" />
+          <span class="translate-bar-text">
+            {{ translating ? $t('translating') : $t('translatedInto', { lang: translateTargetLang === 'zh' ? $t('langZh') : $t('langEn') }) }}
+          </span>
+          <div class="translate-bar-actions" v-if="!translating">
+            <button type="button" class="translate-bar-btn" @click="showTranslation = false">{{ $t('showOriginal') }}</button>
+            <button type="button" class="translate-bar-btn" @click="switchTranslateLang">
+              {{ translateTargetLang === 'zh' ? $t('translateToEn') : $t('translateToZh') }}
+            </button>
           </div>
         </div>
 
-        <div v-if="showTranslation" class="translate-panel">
-          <div class="translate-panel-header">
-            <span class="translate-panel-title">
-              <Icon icon="psg:globe" width="15" height="15" />
-              {{ $t('translatedResult') }}
-              <span class="translate-lang-tag">{{ translateTargetLang === 'zh' ? $t('translateToZh') : $t('translateToEn') }}</span>
-            </span>
-            <div class="translate-panel-actions">
-              <button type="button" class="translate-switch-btn" @click="switchTranslateLang">
-                {{ translateTargetLang === 'zh' ? $t('translateToEn') : $t('translateToZh') }}
-              </button>
-              <button type="button" class="icon-btn-sm" :aria-label="$t('close')" :title="$t('close')" @click="showTranslation = false">
-                <Icon icon="psg:close" width="15" height="15" />
-              </button>
-            </div>
-          </div>
-          <div v-if="translating" class="translate-loading">
-            <Icon icon="svg-spinners:3-dots-fade" width="24" height="24" />
-          </div>
-          <div v-else class="translate-comparison">
-            <div class="translate-column">
-              <span class="translate-column-label">{{ $t('showOriginal') }}</span>
-              <pre class="translate-body">{{ originalText }}</pre>
-            </div>
-            <div class="translate-column">
-              <span class="translate-column-label">{{ $t('translatedResult') }}</span>
-              <pre class="translate-body">{{ translatedText }}</pre>
-            </div>
+        <div class="email-body" :class="{ 'is-zoomed': bodyZoom > 1, 'is-translating': translating }"
+             @touchstart="zoomTouchStart" @touchmove="zoomTouchMove"
+             @touchend="zoomTouchEnd" @touchcancel="zoomTouchEnd">
+          <div class="email-zoom" :style="bodyZoom !== 1 ? { zoom: bodyZoom } : null">
+            <ShadowHtml class="shadow-html" :html="bodyHtml" :show-trackers="showTrackers"
+                        @trackers="trackerInfo = $event" v-if="email.content" />
+            <pre v-else class="email-text">{{ bodyText }}</pre>
           </div>
         </div>
 
@@ -314,7 +300,7 @@ import ShadowHtml from '@/components/shadow-html/index.vue'
 import { reactive, ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { emailDelete, emailRead, emailUnread, emailSpamVerdict, emailUnmarkSpam } from '@/request/email.js'
-import { translateEmail } from '@/request/translate.js'
+import { translateSegments } from '@/request/translate.js'
 import { aiEmailSummary, aiReplySuggestion } from '@/request/ai-mail.js'
 import { Icon } from '@iconify/vue'
 import { useEmailStore } from '@/store/email.js'
@@ -365,8 +351,9 @@ const srcList = reactive([])
 const translating = ref(false)
 const showTranslation = ref(false)
 const translatedText = ref('')
-const originalText = ref('')
+const translatedHtml = ref('')
 const translateTargetLang = ref('zh')
+let translateRun = 0
 const aiPanel = ref('')
 const aiResult = ref('')
 const aiLoading = ref(false)
@@ -395,28 +382,71 @@ function detectLang(text) {
   return cjk / Math.max(text.length, 1) > 0.1 ? 'zh' : 'en'
 }
 
+// Text nodes worth sending to the translator: visible, with at least one letter.
+const SKIP_TRANSLATE_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TITLE', 'TEMPLATE', 'CODE'])
+function translatableTextNodes(root) {
+  const nodes = []
+  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      for (let el = node.parentElement; el && el !== root; el = el.parentElement) {
+        if (SKIP_TRANSLATE_TAGS.has(el.tagName)) return NodeFilter.FILTER_REJECT
+      }
+      return /\p{L}/u.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+    }
+  })
+  while (walker.nextNode()) nodes.push(walker.currentNode)
+  return nodes
+}
+
+// Keeps the node's own leading/trailing whitespace so inline spacing survives.
+function replaceKeepingSpace(original, translated) {
+  const lead = original.match(/^\s*/)[0]
+  const trail = original.match(/\s*$/)[0]
+  return lead + translated + trail
+}
+
 async function runTranslate(targetLang) {
   const e = email.value
   if (!e) return
+  const emailId = e.emailId
+  const runId = ++translateRun
   translating.value = true
   showTranslation.value = true
-  translatedText.value = ''
-  originalText.value = e.text || e.content || ''
   try {
-    const res = await translateEmail({
-      html: e.content || undefined,
-      text: e.content ? undefined : (e.text || ''),
-      target_lang: targetLang,
-    })
-    translatedText.value = res?.translated_text || ''
-    originalText.value = res?.original_text || originalText.value
+    if (e.content) {
+      const doc = new DOMParser().parseFromString(formatImage(e.content), 'text/html')
+      const nodes = translatableTextNodes(doc.body)
+      if (!nodes.length) throw new Error(t('translateEmpty'))
+      const res = await translateSegments({ segments: nodes.map(n => n.nodeValue.trim()), target_lang: targetLang })
+      if (runId !== translateRun || email.value?.emailId !== emailId) return
+      const out = res?.segments || []
+      nodes.forEach((n, i) => { if (out[i]) n.nodeValue = replaceKeepingSpace(n.nodeValue, out[i]) })
+      translatedHtml.value = doc.documentElement.outerHTML
+    } else {
+      const lines = String(e.text || '').split('\n')
+      const idx = lines.map((l, i) => /\p{L}/u.test(l) ? i : -1).filter(i => i >= 0)
+      if (!idx.length) throw new Error(t('translateEmpty'))
+      const res = await translateSegments({ segments: idx.map(i => lines[i].trim()), target_lang: targetLang })
+      if (runId !== translateRun || email.value?.emailId !== emailId) return
+      const out = res?.segments || []
+      idx.forEach((li, k) => { if (out[k]) lines[li] = replaceKeepingSpace(lines[li], out[k]) })
+      translatedText.value = lines.join('\n')
+    }
   } catch (error) {
+    if (runId !== translateRun) return
     ElMessage({ message: error?.message || t('translateFailed'), type: 'error', plain: true })
     showTranslation.value = false
   } finally {
-    translating.value = false
+    if (runId === translateRun) translating.value = false
   }
 }
+
+const bodyHtml = computed(() => (showTranslation.value && translatedHtml.value)
+  ? translatedHtml.value
+  : formatImage(email.value?.content))
+const bodyText = computed(() => (showTranslation.value && translatedText.value)
+  ? translatedText.value
+  : email.value?.text)
 
 const aiPanelTitle = computed(() => aiPanel.value === 'summary' ? t('aiSummaryTitle') : t('aiReplySuggestionTitle'))
 
@@ -439,16 +469,25 @@ async function runAiAction(action) {
 function handleTranslate() {
   if (showTranslation.value) {
     showTranslation.value = false
+    translating.value = false
+    translateRun++
     return
   }
   const e = email.value
   if (!e) return
+  // Re-showing the same translation needs no new request.
+  if (translatedHtml.value || translatedText.value) {
+    showTranslation.value = true
+    return
+  }
   const sourceLang = detectLang(e.text || e.content || '')
   translateTargetLang.value = sourceLang === 'zh' ? 'en' : 'zh'
   runTranslate(translateTargetLang.value)
 }
 
 function switchTranslateLang() {
+  translatedHtml.value = ''
+  translatedText.value = ''
   translateTargetLang.value = translateTargetLang.value === 'zh' ? 'en' : 'zh'
   runTranslate(translateTargetLang.value)
 }
@@ -549,8 +588,10 @@ watch(email, (newEmail) => {
   }
   if (!newEmail) emailStore.contentData.showUnread = false
   showTranslation.value = false
+  translating.value = false
+  translateRun++
   translatedText.value = ''
-  originalText.value = ''
+  translatedHtml.value = ''
   aiPanel.value = ''
   aiResult.value = ''
 }, { immediate: true })
@@ -852,9 +893,12 @@ function handleDelete() {
 .detail-scroll { flex: 1; min-height: 0; }
 
 .detail-content {
-  /* Editorial reading measure — the pane itself can stretch on wide
-     monitors, but prose stays capped for readability. */
-  max-width: 820px;
+  /* Fills the reading pane at any width so there's no dead strip on the
+     right; email HTML brings its own measure (most newsletters are
+     600–700px tables), plain text wraps to the pane. */
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   margin: 0;
   padding: 8px 48px 40px;
   @media (max-width: 1280px) { padding: 24px 24px 40px; }
@@ -1204,26 +1248,40 @@ function handleDelete() {
   }
 }
 
-/* ── Translation panel ─────────────────────────────── */
-.translate-panel {
-  margin: 16px 0 8px;
+/* ── Translate bar (body is translated in place) ─────────── */
+.translate-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 0 0 16px;
+  padding: 8px 10px 8px 12px;
   border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-md);
-  overflow: hidden;
   background: var(--psg-surface-muted);
+  font-size: 13px;
+  color: var(--psg-text-secondary);
 }
+.translate-bar-icon { flex-shrink: 0; color: var(--psg-primary); }
+.translate-bar-text { flex: 1; min-width: 0; font-weight: 600; }
+.translate-bar-actions { display: flex; align-items: center; gap: 4px; }
+.translate-bar-btn {
+  border: 0;
+  border-radius: var(--psg-radius-xs);
+  background: transparent;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--psg-primary);
+  cursor: pointer;
+  &:hover { background: var(--psg-menu-active-bg); }
+}
+.email-body.is-translating { opacity: .55; transition: opacity .2s; }
 
-.translate-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--psg-border); }
-.translate-column { min-width: 0; padding: 10px 12px; background: var(--psg-surface-muted); }
-.translate-column-label { display: block; margin-bottom: 6px; color: var(--psg-text-muted); font-size: 11px; font-weight: 700; }
 .ai-mail-panel { margin: 16px 0 8px; border: 1px solid var(--psg-border); border-radius: var(--psg-radius-md); overflow: hidden; background: var(--psg-surface-muted); }
 .reader-ai-actions { display: flex; flex-direction: column; gap: 3px; }
 .reader-ai-actions button { display: flex; align-items: center; gap: 8px; border: 0; border-radius: var(--psg-radius-xs); padding: 8px 9px; background: transparent; color: var(--psg-text); font-size: 12.5px; text-align: left; cursor: pointer; }
 .reader-ai-actions button:hover { background: var(--psg-menu-active-bg); color: var(--psg-menu-active-text); }
-
-@media (max-width: 640px) {
-  .translate-comparison { grid-template-columns: 1fr; }
-}
 
 .translate-panel-header {
   display: flex;
@@ -1243,38 +1301,6 @@ function handleDelete() {
   letter-spacing: 0;
   text-transform: none;
   color: var(--psg-text-muted);
-}
-
-.translate-lang-tag {
-  background: var(--psg-primary);
-  color: var(--psg-on-primary);
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--psg-radius-xs);
-  letter-spacing: 0;
-}
-
-.translate-panel-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.translate-switch-btn {
-  font-family: var(--psg-font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--psg-text);
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-xs);
-  background: transparent;
-  padding: 3px 10px;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-  &:hover { background: var(--psg-primary); color: var(--psg-on-primary); border-color: var(--psg-primary); }
 }
 
 .translate-loading {
@@ -1396,7 +1422,7 @@ function handleDelete() {
   }
 
   .att-container,
-  .translate-panel {
+  .translate-bar {
     border-radius: var(--psg-radius-sm);
   }
 

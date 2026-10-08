@@ -27,6 +27,28 @@ const AVATAR_DATA_URL_PATTERN = /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za
 const MAX_AVATAR_DATA_URL_LENGTH = 256 * 1024;
 const UNDO_SEND_SECONDS_OPTIONS = [0, 5, 10, 20, 30];
 const DEFAULT_UNDO_SEND_SECONDS = 10;
+const MAX_SIGNATURES = 20;
+const MAX_SIGNATURE_NAME = 60;
+const MAX_SIGNATURE_HTML = 20000;
+const SIGNATURE_ID_PATTERN = /^[A-Za-z0-9_-]{1,40}$/;
+
+// Signatures as stored in psg_user_signature (migrations/0012). A user who
+// only has the legacy single `user.signature` gets it back as one entry used
+// for both new mail and replies, so nothing changes until they edit.
+function normalizeSignatures(raw, legacy) {
+	let data = null;
+	try { data = raw ? JSON.parse(raw) : null; } catch {}
+	if (!data || !Array.isArray(data.items)) {
+		if (!legacy) return { items: [], newId: null, replyId: null };
+		return { items: [{ id: 'default', name: '', html: legacy }], newId: 'default', replyId: 'default' };
+	}
+	const ids = new Set(data.items.map(i => i.id));
+	return {
+		items: data.items,
+		newId: ids.has(data.newId) ? data.newId : null,
+		replyId: ids.has(data.replyId) ? data.replyId : null,
+	};
+}
 
 async function ensureAvatarColumn(c) {
 	try {
@@ -78,6 +100,14 @@ const userService = {
 			user.signature = '';
 			user.avatar    = '';
 		}
+
+		let sigRow = null;
+		try {
+			sigRow = await c.env.db
+				.prepare('SELECT data FROM psg_user_signature WHERE user_id = ?')
+				.bind(userId).first();
+		} catch {}
+		user.signatures = normalizeSignatures(sigRow?.data, user.signature);
 
 		// psg_user_pref (migrations/0009): no row yet means defaults.
 		let pref = null;
@@ -156,6 +186,42 @@ const userService = {
 		await c.env.db
 			.prepare('UPDATE user SET signature = ? WHERE user_id = ?')
 			.bind(signature ?? '', userId).run();
+	},
+
+	async updateSignatures(c, params, userId) {
+		const items = params?.items;
+		if (!Array.isArray(items) || items.length > MAX_SIGNATURES) {
+			throw new BizError(t('invalidSignatures'));
+		}
+		const seen = new Set();
+		const clean = items.map(item => {
+			const id = item?.id;
+			const name = typeof item?.name === 'string' ? item.name.trim() : '';
+			const html = typeof item?.html === 'string' ? item.html : '';
+			if (typeof id !== 'string' || !SIGNATURE_ID_PATTERN.test(id) || seen.has(id)
+				|| name.length > MAX_SIGNATURE_NAME || html.length > MAX_SIGNATURE_HTML) {
+				throw new BizError(t('invalidSignatures'));
+			}
+			seen.add(id);
+			return { id, name, html };
+		});
+		const pick = id => (id == null || id === '' ? null : id);
+		const newId = pick(params.newId);
+		const replyId = pick(params.replyId);
+		if ((newId !== null && !seen.has(newId)) || (replyId !== null && !seen.has(replyId))) {
+			throw new BizError(t('invalidSignatures'));
+		}
+		const data = { items: clean, newId, replyId };
+		await c.env.db
+			.prepare(`INSERT INTO psg_user_signature (user_id, data) VALUES (?, ?)
+				ON CONFLICT(user_id) DO UPDATE SET data = excluded.data`)
+			.bind(userId, JSON.stringify(data)).run();
+		// Keep the legacy column on the new-mail default.
+		const legacy = clean.find(i => i.id === newId)?.html || '';
+		try {
+			await userService.updateSignature(c, { signature: legacy }, userId);
+		} catch {}
+		return data;
 	},
 
 	async updateUndoSendSeconds(c, params, userId) {

@@ -102,6 +102,15 @@ pre,
    so the in-app one runs instead. */
 [data-overscroll="contain"] { overscroll-behavior-y: contain; }
 
+/* Theme flip (store/ui.js applyTheme): no transitions for the one frame
+   the palette changes, so the whole page switches at once. */
+html.psg-theme-switching,
+html.psg-theme-switching *,
+html.psg-theme-switching *::before,
+html.psg-theme-switching *::after {
+  transition: none !important;
+}
+
 /* Respect the system "reduce motion" setting for gesture follow-through and
    other decorative motion. */
 @media (prefers-reduced-motion: reduce) {

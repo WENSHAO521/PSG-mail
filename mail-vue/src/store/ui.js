@@ -55,8 +55,22 @@ export const useUiStore = defineStore('ui', {
             this.dark = nextDark
 
             if (typeof document !== 'undefined') {
-                document.documentElement.classList.toggle('dark', nextDark)
-                document.documentElement.dataset.theme = nextMode
+                const root = document.documentElement
+                const changed = root.classList.contains('dark') !== nextDark
+                // Dozens of controls fade background/color at their own
+                // speeds; letting them run on a theme flip makes the page
+                // flash in patches. Switch everything in one frame instead.
+                if (changed) root.classList.add('psg-theme-switching')
+                root.classList.toggle('dark', nextDark)
+                root.dataset.theme = nextMode
+                document.getElementById('theme-color-meta')
+                    ?.setAttribute('content', nextDark ? '#111317' : '#F4F5F7')
+                if (changed) {
+                    void root.offsetHeight
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        root.classList.remove('psg-theme-switching')
+                    }))
+                }
             }
         },
         setThemeMode(mode) {
