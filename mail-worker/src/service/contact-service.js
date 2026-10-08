@@ -1,9 +1,13 @@
 // Auto contacts: everyone the user has exchanged mail with, derived from the
-// email table on each read so it never goes stale. Addresses the user sent
+// email table. The derivation aggregates the user's whole mail history, so the
+// result is cached in KV for a couple of minutes (and dropped when a contact
+// is removed) instead of being recomputed on every contacts/autocomplete read. Addresses the user sent
 // to count double, since a reply means a real two-way contact; frequent
 // contacts need at least one sent message, which keeps newsletters and
 // notification senders out however much they mail.
 const MAX_CONTACTS = 500;
+const CACHE_TTL_SECONDS = 120;
+const cacheKey = (userId) => `contacts:${userId}`;
 const SENT_WEIGHT = 2;
 const FREQUENT_MIN_SCORE = 4;
 const FREQUENT_MAX = 30;
@@ -38,6 +42,18 @@ async function hiddenSet(c, userId) {
 
 const contactService = {
 	async list(c, userId) {
+		try {
+			const cached = await c.env.kv.get(cacheKey(userId), { type: 'json' });
+			if (Array.isArray(cached)) return cached;
+		} catch {} // cache is best effort
+		const list = await this.compute(c, userId);
+		try {
+			await c.env.kv.put(cacheKey(userId), JSON.stringify(list), { expirationTtl: CACHE_TTL_SECONDS });
+		} catch {}
+		return list;
+	},
+
+	async compute(c, userId) {
 		let received;
 		try {
 			received = await rows(c, RECEIVED_SQL(true), userId);
@@ -88,6 +104,7 @@ const contactService = {
 		const value = String(email || '').trim().toLowerCase();
 		if (!value) return;
 		await c.env.db.prepare('INSERT OR IGNORE INTO psg_contact_hidden (user_id, email) VALUES (?, ?)').bind(userId, value).run();
+		try { await c.env.kv.delete(cacheKey(userId)); } catch {}
 	},
 };
 

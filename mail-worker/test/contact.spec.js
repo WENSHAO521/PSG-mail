@@ -60,4 +60,15 @@ describe('contactService.list', () => {
 		const list = await contactService.list(ctx, USER);
 		expect(list.find(c => c.email === 'bob@example.com')).toBeUndefined();
 	});
+
+	it('serves repeat reads from the cache and drops it when a contact is hidden', async () => {
+		await env.kv.delete(`contacts:${USER}`);
+		const first = await contactService.list(ctx, USER);
+		await received('erin@example.com', 'Erin', '2026-10-06 10:00:00');
+		expect(await contactService.list(ctx, USER)).toEqual(first); // cached, new mail not yet visible
+		await contactService.hide(ctx, USER, 'news@shop.test');
+		const after = await contactService.list(ctx, USER);
+		expect(after.find(c => c.email === 'erin@example.com')).toBeDefined();
+		expect(after.find(c => c.email === 'news@shop.test')).toBeUndefined();
+	});
 });
