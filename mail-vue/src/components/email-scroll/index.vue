@@ -883,13 +883,13 @@ function swipeTouchEnd(e, item) {
 
 // Shared by touch and trackpad: right past the threshold archives, left
 // past it parks the row open on its "More" action.
-function settleSwipe(item) {
+function settleSwipe(item, fromWheel = false) {
   const offset = swipeOffsets.get(item.emailId) || 0
   if (offset > 70 && props.archiveEmail) {
     vibrate(20)
     swipeOffsets.set(item.emailId, 0)
     archiveAction(item.emailId)
-  } else if (offset < -70) {
+  } else if (offset < -70 && !fromWheel) {
     vibrate(15)
     swipeOpenId.value = item.emailId
     swipeOffsets.set(item.emailId, -116)
@@ -917,7 +917,7 @@ function rowWheel(e, item) {
   clearTimeout(wheelSettle.get(item.emailId))
   wheelSettle.set(item.emailId, setTimeout(() => {
     wheelDragging.value = null
-    settleSwipe(item)
+    settleSwipe(item, true)
   }, 160))
 }
 const wheelDragging = ref(null)
