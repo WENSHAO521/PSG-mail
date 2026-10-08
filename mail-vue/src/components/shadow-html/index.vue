@@ -159,7 +159,7 @@ function updateContent() {
   const rawHtml = props.html.replace(/<\/?body[^>]*>/gi, '');
 
   // 3. Strip <script>/<noscript> and on* event handler attributes
-  const tmp = parseMailHtml(rawHtml)
+  const tmp = parseMailHtml(rawHtml, { keepHeadStyles: true })
 
   emit('trackers', collectTrackers(tmp))
   if (props.showTrackers) restoreTrackers(tmp)

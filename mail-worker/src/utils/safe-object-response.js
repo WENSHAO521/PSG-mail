@@ -14,7 +14,7 @@ const INLINE_SAFE = new Set([
 // Prefers the RFC 5987 filename* form (decoded), falls back to filename=.
 function originalFilename(disposition) {
 	let name = '';
-	const ext = /filename\*\s*=\s*(?:utf-8|UTF-8)''([^;]+)/i.exec(disposition);
+	const ext = /filename\*\s*=\s*utf-8'[^']*'([^;]+)/i.exec(disposition);
 	if (ext) {
 		try { name = decodeURIComponent(ext[1].trim()); } catch { name = ext[1].trim(); }
 	} else {
@@ -22,6 +22,11 @@ function originalFilename(disposition) {
 		if (plain) name = plain[1].trim();
 	}
 	return name.replace(/[\u0000-\u001f"\\;\/]/g, '_');
+}
+
+// encodeURIComponent leaves ' ( ) * raw, which RFC 5987 does not allow.
+function rfc5987(value) {
+	return encodeURIComponent(value).replace(/['()*]/g, ch => '%' + ch.charCodeAt(0).toString(16).toUpperCase());
 }
 
 export function hardenObjectHeaders(headers) {
@@ -36,7 +41,7 @@ export function hardenObjectHeaders(headers) {
 			out.set('Content-Disposition', 'attachment');
 		} else {
 			const ascii = name.replace(/[^\x20-\x7e]/g, '_');
-			out.set('Content-Disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`);
+			out.set('Content-Disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${rfc5987(name)}`);
 		}
 	}
 

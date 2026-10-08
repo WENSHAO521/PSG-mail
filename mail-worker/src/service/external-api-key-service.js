@@ -61,10 +61,15 @@ const externalApiKeyService = {
 			.where(and(eq(externalApiKey.keyHash, keyHash), eq(externalApiKey.status, 1)))
 			.get();
 		if (!row) return null;
-		await orm(c).update(externalApiKey)
-			.set({ lastUsedTime: new Date().toISOString() })
-			.where(eq(externalApiKey.id, row.id))
-			.run();
+		// "Last used" is informational: write it at most every 10 minutes
+		// instead of on every call (one D1 write per request adds up fast).
+		const last = row.lastUsedTime ? Date.parse(row.lastUsedTime) : 0;
+		if (!(Date.now() - last < 10 * 60 * 1000)) {
+			await orm(c).update(externalApiKey)
+				.set({ lastUsedTime: new Date().toISOString() })
+				.where(eq(externalApiKey.id, row.id))
+				.run();
+		}
 		return row.userId;
 	}
 };
