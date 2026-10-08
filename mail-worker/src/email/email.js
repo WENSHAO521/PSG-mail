@@ -18,6 +18,7 @@ import forwardingService from '../service/forwarding-service';
 import notificationEventService from '../service/notification-event-service';
 import webhookService from '../service/webhook-service';
 import receiveGuardService from '../service/receive-guard-service';
+import aiAutoDraftService from '../service/ai-auto-draft-service';
 
 export async function email(message, env, ctx) {
 
@@ -219,6 +220,9 @@ export async function email(message, env, ctx) {
 				forwardingService.dispatchIncoming({ env }, account, emailRow),
 			]);
 			ctx.waitUntil(spamCheck.then(isSpam => isSpam ? null : notifyAndForward()));
+			// Opt-in AI reply draft (AI_AGENT_V2 + user setting). Draft only,
+			// never sent; failures cannot affect delivery.
+			ctx.waitUntil(spamCheck.then(isSpam => isSpam ? null : aiAutoDraftService.maybeDraft(env, account, emailRow, email, message.to)));
 		}
 
 		// AI code extraction is a Workers AI inference call — can take

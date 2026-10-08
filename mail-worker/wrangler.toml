@@ -89,6 +89,14 @@ crons = ["* * * * *", "*/30 * * * *", "0 16 * * *"]	#每分钟处理定时发送
 #WEBHOOK_ALLOW_UNSIGNED = "false"    # 仅在迁移期临时设为 "true"
 #LEGACY_PASSWORD_RESET = "false"     # 旧客户端不发送当前密码时临时设为 "true"
 
+# ── AI Agent 2.0（默认关闭；详见 doc/psg-mail-4.0/04-p1-ai-agent.md）──
+#AI_AGENT_V2 = "true"               # 开启服务端会话、共享工具层、审批、自动草稿
+#AI_AGENT_DAILY_TOOL_CALLS = 500    # 每用户每日工具调用上限
+#AI_AUTO_DRAFT_DAILY = 50           # 每用户每日自动草稿上限
+#RECEIVE_DEDUP = "true"             # 收信幂等（默认开启）
+#EML_IMPORT = "true"                # POST /email/import（默认开启）
+#RETENTION_EXECUTION = "false"      # 保留策略执行总开关（默认不执行）
+
 # ── 云端备份 OAuth（不填则对应入口不显示）────────────────────────
 # Google Drive: https://console.cloud.google.com/ → APIs & Services → Credentials
 # 回调地址填: https://<your-domain>/backup/oauth/google/callback

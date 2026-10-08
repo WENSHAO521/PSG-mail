@@ -14,7 +14,7 @@ function estimateUnits(input) {
 	catch { return 1; }
 }
 
-const SYSTEM_TASKS = ['spam_detection', 'tracker_detection'];
+const SYSTEM_TASKS = ['spam_detection', 'tracker_detection', 'auto_draft'];
 
 const aiProviderService = {
 	async models(c, task = 'chat') {
@@ -60,6 +60,11 @@ const aiProviderService = {
 		// options.defaultQuota applies when the admin set none.
 		await this.reserveQuota(c, userId, task, input, quota || options.defaultQuota || 0, options.perTask);
 		const primary = options.model || model;
+		// options.meta (optional) receives which model answered and whether
+		// the fallback model had to be used — for task logs / the UI.
+		const meta = options.meta || {};
+		meta.model = primary;
+		meta.fallbackUsed = false;
 		try {
 			return await c.env.ai.run(primary, input);
 		} catch (firstError) {
@@ -68,7 +73,10 @@ const aiProviderService = {
 				throw new BizError('AI 服务暂时不可用', 503);
 			}
 			try {
-				return await c.env.ai.run(fallbackModel, input);
+				const out = await c.env.ai.run(fallbackModel, input);
+				meta.model = fallbackModel;
+				meta.fallbackUsed = true;
+				return out;
 			} catch (fallbackError) {
 				console.error('AI provider fallback failed', task, fallbackError?.message || fallbackError);
 				throw new BizError('AI 服务暂时不可用', 503);

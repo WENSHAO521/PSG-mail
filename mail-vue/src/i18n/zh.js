@@ -1097,6 +1097,10 @@ const zh = {
     aiAssistantConfirmTitle: '需要你的确认',
     aiAssistantConfirmSendEmail: '助手想要发送一封邮件',
     aiAssistantConfirmDeleteEmail: '助手想要删除一封邮件',
+    aiRiskNewRecipient: '新收件人（此前从未往来）：{addr}',
+    aiRiskUntrusted: '该操作是在助手读取邮件内容后提出的，请确认确为您的本意',
+    aiRiskInjection: '有邮件疑似包含针对助手的指令',
+    aiRiskDeletes: '将把邮件移入回收站',
     aiAssistantConfirmApprove: '确认',
     aiAssistantConfirmReject: '取消',
 }

@@ -15,6 +15,8 @@ import securityAuditService from './service/security-audit-service';
 import receiveGuardService from './service/receive-guard-service';
 import storageConsistencyService from './service/storage-consistency-service';
 import retentionPolicyService from './service/retention-policy-service';
+import aiConversationService from './service/ai-conversation-service';
+import aiApprovalService from './service/ai-approval-service';
 // Durable Object classes must be exported by name from the Worker's main
 // entry — this is that export, not a self-contained secondary Worker. See
 // src/durable/scheduled-send-alarm.js for what it's for.
@@ -65,6 +67,8 @@ export default {
 		await emailService.purgeExpiredTrash({ env })
 		await emailService.autoClean({ env })
 		await retentionPolicyService.execute({ env })
+		await aiConversationService.prune({ env })
+		await aiApprovalService.prune({ env })
 		await oauthService.clearNoBindOathUser({ env })
 		await securityAuditService.prune({ env })
 		await receiveGuardService.prune({ env })

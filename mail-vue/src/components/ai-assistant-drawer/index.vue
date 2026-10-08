@@ -21,6 +21,9 @@
           <div class="ai-confirm-title">{{ $t('aiAssistantConfirmTitle') }}</div>
           <div class="ai-confirm-body">
             <div class="ai-confirm-action">{{ confirmActionLabel }}</div>
+            <ul v-if="pending.riskFlags && pending.riskFlags.length" class="ai-risk-flags">
+              <li v-for="f in pending.riskFlags" :key="f">{{ riskLabel(f) }}</li>
+            </ul>
             <div class="ai-confirm-args">
               <div v-for="(v, k) in pending.args" :key="k" class="ai-confirm-arg-row">
                 <span class="ai-confirm-arg-key">{{ k }}</span>
@@ -66,7 +69,7 @@ import { ref, computed, nextTick, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import { useUiStore } from '@/store/ui.js'
-import { aiAssistantChat, aiAssistantConfirm } from '@/request/ai-assistant.js'
+import { aiAssistantChat, aiAssistantConfirm, aiAgentStatus, aiAgentChat, aiAgentDecide } from '@/request/ai-assistant.js'
 
 defineOptions({ name: 'aiAssistantDrawer' })
 
@@ -85,10 +88,26 @@ const confirmLoading = ref(false)
 const pending = ref(null)
 const scrollRef = ref(null)
 
+// Agent 2.0 is used when the server has it enabled; otherwise the original
+// endpoints below are used unchanged.
+const v2 = ref(false)
+const conversationId = ref(null)
+aiAgentStatus().then(d => { v2.value = !!d?.enabled }).catch(() => {})
+
 const confirmActionLabel = computed(() => {
   if (!pending.value) return ''
   return pending.value.tool === 'sendEmail' ? t('aiAssistantConfirmSendEmail') : t('aiAssistantConfirmDeleteEmail')
 })
+
+function riskLabel(flag) {
+  if (flag.startsWith('new_recipient:')) return t('aiRiskNewRecipient', { addr: flag.slice(14) })
+  const map = {
+    requested_after_reading_untrusted_content: 'aiRiskUntrusted',
+    injection_suspected: 'aiRiskInjection',
+    deletes_mail: 'aiRiskDeletes',
+  }
+  return map[flag] ? t(map[flag]) : flag
+}
 
 function scrollToBottom() {
   nextTick(() => {
@@ -105,8 +124,18 @@ async function send() {
   input.value = ''
   loading.value = true
   try {
-    const data = await aiAssistantChat(messages.value.map(m => ({ role: m.role, content: m.content })))
-    handleResult(data)
+    if (v2.value) {
+      const data = await aiAgentChat(text, conversationId.value)
+      conversationId.value = data.conversationId || conversationId.value
+      if (data.pendingApproval) {
+        pending.value = { ...data.pendingApproval, v2: true }
+        return
+      }
+      if (data.reply) messages.value.push({ role: 'assistant', content: data.reply })
+    } else {
+      const data = await aiAssistantChat(messages.value.map(m => ({ role: m.role, content: m.content })))
+      handleResult(data)
+    }
   } catch {
     ElMessage({ message: t('aiAssistantFail'), type: 'error', plain: true })
   } finally {
@@ -128,9 +157,16 @@ async function respondConfirm(approve) {
   if (!pending.value) return
   confirmLoading.value = true
   try {
-    const data = await aiAssistantConfirm(pending.value.confirmId, approve)
-    pending.value = null
-    handleResult(data)
+    if (pending.value.v2) {
+      const tool = pending.value.tool
+      await aiAgentDecide(pending.value.approvalId, approve)
+      pending.value = null
+      messages.value.push({ role: 'assistant', content: approve ? `✅ ${tool}` : `🚫 ${tool}` })
+    } else {
+      const data = await aiAssistantConfirm(pending.value.confirmId, approve)
+      pending.value = null
+      handleResult(data)
+    }
   } catch {
     ElMessage({ message: t('aiAssistantFail'), type: 'error', plain: true })
     pending.value = null
@@ -141,6 +177,13 @@ async function respondConfirm(approve) {
 </script>
 
 <style scoped>
+.ai-risk-flags {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--psg-danger, #c0392b);
+}
+
 .ai-chat {
   display: flex;
   flex-direction: column;

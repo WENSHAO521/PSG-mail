@@ -169,11 +169,18 @@ export function hardenObjectResponse(resp, key) {
 	headers.set('X-Content-Type-Options', 'nosniff');
 	headers.set('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox");
 	headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
-	if (!INLINE_SAFE.test(type)) {
-		const existing = headers.get('Content-Disposition') || '';
-		const filename = existing.match(/filename\*?=([^;]+)/i)?.[1]?.trim()
-			|| encodeURIComponent(key.split('/').pop() || 'file');
-		headers.set('Content-Disposition', `attachment; filename=${filename}`);
+	// Disposition is always rebuilt (RFC 6266): ASCII fallback + UTF-8
+	// filename*, so non-ASCII names like 稿件.pdf are valid header values.
+	const existing = headers.get('Content-Disposition') || '';
+	const rawName = existing.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)?.[1]?.trim() || key.split('/').pop() || 'file';
+	let name = rawName;
+	try { name = decodeURIComponent(rawName); } catch { /* keep raw */ }
+	name = name.replace(/[\r\n"\\/]/g, '_').slice(0, 200);
+	const ascii = name.replace(/[^\x20-\x7E]/g, '_') || 'file';
+	const kind = INLINE_SAFE.test(type) && /^inline/i.test(existing) ? 'inline' : 'attachment';
+	// A plain image with no stored disposition keeps rendering inline.
+	if (existing || !INLINE_SAFE.test(type)) {
+	headers.set('Content-Disposition', `${kind}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`);
 	}
 	if (isProtectedKey(key)) {
 		headers.set('Cache-Control', 'private, max-age=3600');

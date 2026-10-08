@@ -1097,6 +1097,10 @@ const en = {
     aiAssistantConfirmTitle: 'Your confirmation is needed',
     aiAssistantConfirmSendEmail: 'The assistant wants to send an email',
     aiAssistantConfirmDeleteEmail: 'The assistant wants to delete an email',
+    aiRiskNewRecipient: 'New recipient you have never corresponded with: {addr}',
+    aiRiskUntrusted: 'Requested after the assistant read email content — check it was your intent',
+    aiRiskInjection: 'An email appears to contain instructions aimed at the assistant',
+    aiRiskDeletes: 'This will move mail to trash',
     aiAssistantConfirmApprove: 'Approve',
     aiAssistantConfirmReject: 'Cancel',
 }
