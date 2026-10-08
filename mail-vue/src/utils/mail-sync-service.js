@@ -269,7 +269,9 @@ async function pollLoop() {
     if (!localStorage.getItem('token')) continue
     // A hidden tab catches up through the visibilitychange handler when it
     // comes back, so background tabs don't spend worker/D1 reads on polling.
-    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') continue
+    // Electron has no push transport: polling is its only new-mail path, and a
+    // minimized window counts as hidden, so it keeps polling.
+    if (!window.electronAPI && typeof document !== 'undefined' && document.visibilityState === 'hidden') continue
     await syncNow('poll')
   }
 }

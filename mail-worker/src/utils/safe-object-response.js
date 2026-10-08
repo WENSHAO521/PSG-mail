@@ -17,7 +17,10 @@ export function hardenObjectHeaders(headers) {
 
 	if (!INLINE_SAFE.has(type)) {
 		out.set('Content-Type', 'application/octet-stream');
-		out.set('Content-Disposition', 'attachment');
+		// Force a download but keep the (sanitized) original filename.
+		const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(out.get('Content-Disposition') || '');
+		const name = match ? match[1].trim().replace(/[\r\n"\\;]/g, '_') : '';
+		out.set('Content-Disposition', name ? `attachment; filename="${name}"` : 'attachment');
 	}
 
 	out.set('X-Content-Type-Options', 'nosniff');
