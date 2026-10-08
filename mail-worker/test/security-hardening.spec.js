@@ -21,7 +21,16 @@ describe('safeObjectResponse', () => {
 		const res = safeObjectResponse(new Response('x', {
 			headers: { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment;filename="report 1.zip"' },
 		}));
-		expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="report 1.zip"');
+		expect(res.headers.get('Content-Disposition')).toBe(`attachment; filename="report 1.zip"; filename*=UTF-8''report%201.zip`);
+	});
+
+	it('decodes the extended filename* form and prefers it', () => {
+		const res = safeObjectResponse(new Response('x', {
+			headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="cafe.zip"; filename*=UTF-8''caf%C3%A9.zip` },
+		}));
+		const cd = res.headers.get('Content-Disposition');
+		expect(cd).toContain(`filename*=UTF-8''caf%C3%A9.zip`);
+		expect(cd).toMatch(/^attachment/);
 	});
 
 	it('keeps plain images inline', () => {
