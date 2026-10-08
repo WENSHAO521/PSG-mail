@@ -53,3 +53,17 @@ Checked, no change needed: `/setting/websiteConfig` is a field whitelist (no sec
 
 Tests: `webhook-security`, `url-guard`, `session-user` specs added; 138/138 pass locally.
 Rollback: revert the commit. For item 1 alone, set `resend_webhook_insecure = "true"` to restore the old (insecure) behaviour without a redeploy of code.
+
+## Batch 4 — account takeover hardening and device sessions
+
+| # | Finding | Risk | Fix |
+|---|---|---|---|
+| 1 | `PUT /my/resetPassword` changed the password with **no current password** and left every other session alive: one stolen session/token = permanent account takeover | High | requires `currentPassword` (throttled like login, wrong attempts counted), then signs out all other devices; the current session stays. Frontend dialog now asks for the current password. **Older frontends that omit it get a 400.** |
+| 2 | No way to see or revoke sessions | Medium | `GET /my/sessions` (id, ip, os/browser/device, created; never the token), `DELETE /my/sessions/:id`, `DELETE /my/sessions` (all other devices). Session id = truncated hash; an id from another user matches nothing. Settings page gets a "Sign out other devices" button. Sessions that predate this change are listed with empty metadata. |
+
+Route audit of label/star/my/backup/email/openapi/setting APIs: all derive the user from the verified session, not from request parameters. Accepted/noted:
+- `GET /my/directory` and `GET /my/avatar?email=` expose name/email/avatar of all active users to any logged-in user (needed for compose autocomplete). On a multi-tenant deployment that is a privacy trade-off; a per-role switch is backlog.
+- Limits: sessions per user are still capped at ~11 (oldest evicted), 30-day token lifetime without server-side refresh.
+
+Tests: `session-management.spec.js`; 142/142 worker tests pass; `vite build` of mail-vue succeeds. Pre-existing: `npm ci` in mail-vue fails on a peer-dependency conflict (`@vitejs/plugin-vue@5` vs vite 7/8) and needs `--legacy-peer-deps`.
+Rollback: revert the commit; no schema change (`sessions` is an extra field in the existing KV session record, ignored by old code).

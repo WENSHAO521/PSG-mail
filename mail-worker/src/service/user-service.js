@@ -1,3 +1,5 @@
+import sessionService from './session-service';
+import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from './login-throttle';
 import { ensureUserAvatar, ensureUserSignature } from '../utils/schema-guard';
 import BizError from '../error/biz-error';
 import accountService from './account-service';
@@ -327,6 +329,25 @@ const userService = {
 		}
 		const { salt, hash } = await cryptoUtils.hashPassword(password);
 		await orm(c).update(user).set({ password: hash, salt: salt }).where(eq(user.userId, userId)).run();
+	},
+
+	// Self-service change from a logged-in session: the current password is required (a stolen
+	// session alone must not be able to take the account over) and every other device is signed out.
+	async changeOwnPassword(c, params, userId, currentToken) {
+		const currentPassword = typeof params?.currentPassword === 'string' ? params.currentPassword : '';
+		const row = await this.selectById(c, userId);
+		if (!row || !currentPassword) throw new BizError(t('passwordChangeInvalid'), 400);
+
+		const throttle = await loginThrottleKeys(c, row.email);
+		const counts = await assertLoginAllowed(c, throttle);
+		if (!await cryptoUtils.verifyPassword(currentPassword, row.salt, row.password)) {
+			await recordLoginFailure(c, throttle, counts);
+			throw new BizError(t('IncorrectPwd'), 400);
+		}
+		if (params.password === currentPassword) throw new BizError(t('passwordChangeSame'), 400);
+
+		await this.resetPassword(c, { password: params.password }, userId);
+		await sessionService.revokeOthers(c, userId, currentToken);
 	},
 
 	// Progressive migration: re-hash a legacy password after a verified login.

@@ -21,6 +21,7 @@ import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
 import telegramService from './telegram-service';
+import sessionService from './session-service';
 import { toSessionUser } from '../utils/session-user';
 import reqUtils from '../utils/req-utils';
 import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from './login-throttle';
@@ -273,6 +274,8 @@ const loginService = {
 
 		}
 
+		sessionService.remember(c, authInfo, uuid);
+
 		await userService.updateUserInfo(c, userRow.userId);
 
 		const loginKey = KvConst.AUTH_INFO + userRow.userId;
@@ -331,6 +334,7 @@ const loginService = {
 		if (!authInfo) return;
 		const index = authInfo.tokens.findIndex(item => item === token);
 		if (index > -1) authInfo.tokens.splice(index, 1);
+		if (authInfo.sessions) delete authInfo.sessions[token];
 		await c.env.kv.put(logoutKey, JSON.stringify(authInfo));
 		kvCache.set(logoutKey, authInfo, TTL.AUTH);  // update cache so revocation is immediate
 	}
