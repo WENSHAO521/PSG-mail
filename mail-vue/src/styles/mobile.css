@@ -103,7 +103,7 @@ body,
     max-width: 100% !important;
     height: min(78dvh, 620px);
     margin: 0 !important;
-    border-radius: var(--psg-radius-sm) var(--psg-radius-sm) 0 0 !important;
+    border-radius: var(--psg-radius-xl) var(--psg-radius-xl) 0 0 !important;
     transition: transform 160ms ease;
   }
 
@@ -121,7 +121,7 @@ body,
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    border-radius: var(--psg-radius-sm) var(--psg-radius-sm) 0 0 !important;
+    border-radius: var(--psg-radius-xl) var(--psg-radius-xl) 0 0 !important;
   }
 
   .tpl-preview-dialog.el-dialog {
@@ -132,7 +132,7 @@ body,
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    border-radius: var(--psg-radius-sm) var(--psg-radius-sm) 0 0 !important;
+    border-radius: var(--psg-radius-xl) var(--psg-radius-xl) 0 0 !important;
   }
 
   .tpl-preview-dialog .preview-html {

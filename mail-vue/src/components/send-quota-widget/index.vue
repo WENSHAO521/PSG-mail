@@ -109,7 +109,7 @@ const title = computed(() => {
 .send-quota-widget.is-full .sqw-bar-fill { background: var(--psg-danger); }
 .send-quota-widget.is-full .sqw-numbers { color: var(--psg-danger); }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   /* Mobile has its own fixed bottom tab bar (layout/mobile-tabbar) —
      no free corner to anchor a persistent widget without overlapping it. */
   .send-quota-widget { display: none; }
