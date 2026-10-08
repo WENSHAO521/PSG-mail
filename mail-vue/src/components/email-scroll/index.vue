@@ -1274,7 +1274,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .explorer-header {
     padding: 12px 14px 0;
   }
@@ -1427,7 +1427,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .mobile-selection-close { display: inline-grid; place-items: center; }
 }
 
@@ -1728,7 +1728,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 }
 
 /* The mobile header already names the folder. */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .explorer-header { display: none; }
 }
 </style>

@@ -939,7 +939,7 @@ function handleDelete() {
   font-family: var(--psg-font-sans);
   letter-spacing: -0.01em;
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     font-size: 22px;
     margin-bottom: 14px;
   }
@@ -1202,7 +1202,7 @@ function handleDelete() {
   background: var(--psg-surface-muted);
 
   /* Phones get the fixed action bar instead (.mobile-reader-actions). */
-  @media (max-width: 768px) { display: none; }
+  @media (max-width: 767px) { display: none; }
 }
 
 .quick-reply-prompt {
@@ -1345,7 +1345,7 @@ function handleDelete() {
   color: var(--psg-primary) !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .detail-header {
     min-height: calc(64px + env(safe-area-inset-top, 0px));
     padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
