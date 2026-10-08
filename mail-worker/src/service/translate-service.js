@@ -48,9 +48,11 @@ async function keyless(input, target) {
 }
 
 async function cloud(input, target, key) {
-	const res = await fetch(`${CLOUD_URL}?key=${encodeURIComponent(key)}`, {
+	// The key goes in a header, not the query string, so it can't end up in
+	// request logs or error messages that echo the URL.
+	const res = await fetch(CLOUD_URL, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'X-goog-api-key': key },
 		body: JSON.stringify({ q: input, target, format: 'text' }),
 	});
 	const data = await res.json().catch(() => null);

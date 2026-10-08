@@ -126,9 +126,9 @@ const userService = {
 				.bind(userId).first();
 		} catch {}
 		user.translateProvider = translatePref?.translate_provider || '';
-		// Never send the key back, only a masked hint that one is set.
+		// Never send the key back, not even a prefix, only that one is set.
 		const ownKey = translatePref?.google_translate_key || '';
-		user.googleTranslateKey = ownKey ? `${ownKey.slice(0, 6)}******` : '';
+		user.googleTranslateKey = ownKey ? '******' : '';
 
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE;
@@ -267,17 +267,23 @@ const userService = {
 		if (key !== undefined && (typeof key !== 'string' || key.length > 200 || /\s/.test(key.trim()))) {
 			throw new BizError(t('invalidTranslateKey'));
 		}
-		if (key === undefined) {
-			await c.env.db
-				.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider) VALUES (?, ?)
-					ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider`)
-				.bind(userId, provider).run();
-		} else {
-			await c.env.db
-				.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider, google_translate_key) VALUES (?, ?, ?)
-					ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider,
-					google_translate_key = excluded.google_translate_key`)
-				.bind(userId, provider, key.trim()).run();
+		try {
+			if (key === undefined) {
+				await c.env.db
+					.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider) VALUES (?, ?)
+						ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider`)
+					.bind(userId, provider).run();
+			} else {
+				await c.env.db
+					.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider, google_translate_key) VALUES (?, ?, ?)
+						ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider,
+						google_translate_key = excluded.google_translate_key`)
+					.bind(userId, provider, key.trim()).run();
+			}
+		} catch (e) {
+			// Migration 0015 not applied yet: say so instead of a bare 500.
+			console.error('updateTranslatePref failed', e?.message || e);
+			throw new BizError(t('translatePrefUnavailable'), 503);
 		}
 	},
 

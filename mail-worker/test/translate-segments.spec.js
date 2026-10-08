@@ -74,7 +74,8 @@ describe('translateSegments (Google engine)', () => {
 	it('uses the Cloud Translation API when a key is set', async () => {
 		vi.spyOn(translateService, 'provider').mockResolvedValue({ provider: 'google', key: 'k1' });
 		vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
-			expect(String(url)).toContain('key=k1');
+			expect(String(url)).not.toContain('k1');
+			expect(init.headers['X-goog-api-key']).toBe('k1');
 			const { q, target } = JSON.parse(init.body);
 			expect(target).toBe('en');
 			return new Response(JSON.stringify({ data: { translations: q.map(s => ({ translatedText: `E:${s} &amp;` })) } }), { status: 200 });
@@ -87,6 +88,17 @@ describe('translateSegments (Google engine)', () => {
 		vi.spyOn(translateService, 'provider').mockResolvedValue({ provider: 'google', key: '' });
 		vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('busy', { status: 429 }));
 		await expect(aiMailService.translateSegments(ctx, 1, { segments: ['a'], targetLang: 'zh' })).rejects.toThrow('429');
+	});
+});
+
+describe('Cloud Translation key handling', () => {
+	it('sends the key in a header, never in the URL', async () => {
+		const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			new Response(JSON.stringify({ data: { translations: [{ translatedText: 'x' }] } }), { status: 200 }));
+		await translateService.googleSegments(['a'], 'en', 'AIzaSECRET');
+		const [url, init] = spy.mock.calls[0];
+		expect(String(url)).not.toContain('AIzaSECRET');
+		expect(init.headers['X-goog-api-key']).toBe('AIzaSECRET');
 	});
 });
 

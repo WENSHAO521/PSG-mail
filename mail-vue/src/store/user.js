@@ -82,7 +82,7 @@ export const useUserStore = defineStore('user', {
         async saveTranslatePref(provider, key) {
             await updateTranslatePref(provider, key)
             this.user.translateProvider = provider
-            if (key !== undefined) this.user.googleTranslateKey = key ? `${key.slice(0, 6)}******` : ''
+            if (key !== undefined) this.user.googleTranslateKey = key ? '******' : ''
         }
     }
 })
