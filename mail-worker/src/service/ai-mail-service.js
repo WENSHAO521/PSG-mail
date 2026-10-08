@@ -141,9 +141,33 @@ const aiMailService = {
 			.slice(0, MAX_SEGMENTS)
 			.map(s => cleanText(s, MAX_SEGMENT_CHARS));
 		const { provider, key } = await translateService.provider(c, userId);
+		// Per-user cache: reopening or re-translating the same mail costs no
+		// engine call or AI quota. Keyed on a hash, so no mail text is stored
+		// in the key; the value is the translation, which expires after a day.
+		const cacheKey = source.some(Boolean) ? await translateService.cacheKey(userId, provider, targetLang, source) : '';
+		const cached = cacheKey ? await translateService.cacheGet(c, cacheKey, source.length) : null;
+		if (cached) return { segments: cached };
+		let out;
 		if (provider === 'google') {
-			return { segments: await translateService.googleSegments(source, targetLang, key) };
+			try {
+				out = await translateService.googleSegments(source, targetLang, key);
+			} catch (googleError) {
+				// Google is down or rate-limited: fall back to the AI model when
+				// it works; otherwise report Google's error, the real cause.
+				try {
+					out = (await this.aiSegments(c, userId, source, targetLang)).segments;
+				} catch {
+					throw googleError;
+				}
+			}
+		} else {
+			out = (await this.aiSegments(c, userId, source, targetLang)).segments;
 		}
+		if (cacheKey) await translateService.cachePut(c, cacheKey, out);
+		return { segments: out };
+	},
+
+	async aiSegments(c, userId, source, targetLang) {
 		const out = source.slice();
 		const targetName = TARGET_LANGUAGE_NAMES[targetLang] || targetLang || TARGET_LANGUAGE_NAMES.zh;
 

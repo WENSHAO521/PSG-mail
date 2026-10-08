@@ -119,3 +119,33 @@ describe('translateService.provider', () => {
 		expect(await translateService.provider(db(null), 1)).toEqual({ provider: 'ai', key: 'admin' });
 	});
 });
+
+describe('translateSegments cache and fallback', () => {
+	const store = new Map();
+	const kvCtx = { env: { kv: {
+		get: async (k) => (store.has(k) ? JSON.parse(store.get(k)) : null),
+		put: async (k, v) => { store.set(k, v); },
+	} }, get: () => undefined, set: () => {} };
+	beforeEach(() => store.clear());
+
+	it('serves a repeated request from the cache without calling the engine', async () => {
+		vi.spyOn(translateService, 'provider').mockResolvedValue({ provider: 'google', key: '' });
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify([['你好', 'en']]), { status: 200 }));
+		const req = { segments: ['Hello'], targetLang: 'zh' };
+		const a = await aiMailService.translateSegments(kvCtx, 1, req);
+		const b = await aiMailService.translateSegments(kvCtx, 1, req);
+		expect(b).toEqual(a);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		await aiMailService.translateSegments(kvCtx, 2, req); // other user: own cache entry
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('falls back to the AI model when Google fails, and reports Google when both fail', async () => {
+		vi.spyOn(translateService, 'provider').mockResolvedValue({ provider: 'google', key: '' });
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('busy', { status: 429 }));
+		const run = vi.spyOn(aiProviderService, 'run').mockResolvedValue({ response: JSON.stringify(['甲']) });
+		expect((await aiMailService.translateSegments(kvCtx, 1, { segments: ['a'], targetLang: 'zh' })).segments).toEqual(['甲']);
+		run.mockRejectedValue(new Error('ai down'));
+		await expect(aiMailService.translateSegments(kvCtx, 1, { segments: ['b'], targetLang: 'zh' })).rejects.toThrow('429');
+	});
+});
