@@ -262,6 +262,7 @@ import shadowHtml from '@/components/shadow-html/index.vue'
 import { useUiStore } from '@/store/ui.js'
 import { templateList, templateAdd, templateUpdate, templateDelete } from '@/request/template.js'
 import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
+import { htmlToPlainText } from '@/utils/html-sanitize.js'
 
 defineOptions({ name: 'templates' })
 
@@ -320,9 +321,7 @@ const categoryCount = computed(() => {
 
 function plainText(html) {
   if (!html) return ''
-  const div = document.createElement('div')
-  div.innerHTML = html
-  return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim()
+  return htmlToPlainText(html).replace(/\s+/g, ' ').trim()
 }
 
 const filteredList = computed(() => {

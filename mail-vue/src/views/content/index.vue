@@ -327,6 +327,7 @@ import { useLabelStore } from '@/store/label.js'
 import { labelApply, labelRemove } from '@/request/label.js'
 import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 import { hasPerm } from '@/perm/perm.js'
+import { parseMailHtml } from '@/utils/html-sanitize.js'
 
 const emit = defineEmits(['back'])
 
@@ -728,19 +729,7 @@ function escapePrintText(value) {
 }
 
 function sanitizePrintHtml(value) {
-  const root = document.createElement('div')
-  root.innerHTML = String(value || '')
-  root.querySelectorAll('script, noscript').forEach(node => node.remove())
-  root.querySelectorAll('*').forEach(node => {
-    Array.from(node.attributes).forEach(attr => {
-      const name = attr.name.toLowerCase()
-      if (/^on/i.test(name)) node.removeAttribute(attr.name)
-      if (['href', 'src', 'xlink:href'].includes(name) && /^\s*javascript:/i.test(attr.value)) {
-        node.removeAttribute(attr.name)
-      }
-    })
-  })
-  return root.innerHTML
+  return parseMailHtml(value).innerHTML
 }
 
 function handlePrint() {

@@ -324,6 +324,7 @@ import {EmailUnreadEnum} from "@/enums/email-enum.js";
 import { UseVirtualList } from '@vueuse/components'
 import { useScroll } from '@vueuse/core'
 import { downloadEml } from '@/utils/download-eml.js'
+import { htmlToPlainText } from '@/utils/html-sanitize.js'
 
 const props = defineProps({
   // Tag each received row with the address it arrived on — for views that
@@ -554,10 +555,7 @@ const accountShow = computed(() => uiStore.accountShow && settingStore.settings.
 
 function htmlToText(email) {
   if (email.content) {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = email.content.replace(/<(img|iframe|object|embed|video|audio|source|link)[^>]*>/gi, '');
-    tempDiv.querySelectorAll('script, style, title').forEach(el => el.remove());
-    let text = tempDiv.textContent || tempDiv.innerText || '';
+    let text = htmlToPlainText(email.content);
     text = text.replace(/\s+/g, ' ').trim();
     return cleanSpace(text)
   }
