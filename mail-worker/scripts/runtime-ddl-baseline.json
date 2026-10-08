@@ -1,0 +1,11 @@
+{
+	"src/api/auto-reply-api.js": 1,
+	"src/api/contact-group-api.js": 1,
+	"src/api/template-api.js": 1,
+	"src/init/init.js": 121,
+	"src/service/account-service.js": 1,
+	"src/service/email-service.js": 4,
+	"src/service/notification-service.js": 2,
+	"src/service/spam-service.js": 1,
+	"src/service/user-service.js": 2
+}

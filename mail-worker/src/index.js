@@ -12,6 +12,10 @@ import oauthService from "./service/oauth-service";
 import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
 import forwardingService from './service/forwarding-service';
+import { createLogger, serializeError } from './shared/logger';
+import { newTraceId } from './shared/trace';
+
+const cronLog = createLogger('cron');
 // Durable Object classes must be exported by name from the Worker's main
 // entry — this is that export, not a self-contained secondary Worker. See
 // src/durable/scheduled-send-alarm.js for what it's for.
@@ -35,25 +39,38 @@ export default {
 	},
 	email: email,
 	async scheduled(c, env, ctx) {
-		if (c.cron === '* * * * *') {
-			await Promise.all([
-				scheduledEmailService.processDue({ env }),
-				forwardingService.processDue({ env }),
-			])
-			return;
+		const traceId = newTraceId();
+		const start = Date.now();
+		cronLog.info('start', { traceId, cron: c.cron });
+		try {
+			await runScheduled(c, env);
+			cronLog.info('done', { traceId, cron: c.cron, durationMs: Date.now() - start });
+		} catch (err) {
+			cronLog.error('failed', { traceId, cron: c.cron, durationMs: Date.now() - start, ...serializeError(err) });
+			throw err;
 		}
-
-		if (c.cron === '*/30 * * * *') {
-			await analysisService.refreshEchartsCache({ env })
-			return;
-		}
-
-		await verifyRecordService.clearRecord({ env })
-		await userService.resetDaySendCount({ env })
-		await emailService.completeReceiveAll({ env })
-		await emailService.purgeExpiredTrash({ env })
-		await emailService.autoClean({ env })
-		await oauthService.clearNoBindOathUser({ env })
-		await analysisService.refreshEchartsCache({ env })
 	},
 };
+
+async function runScheduled(c, env) {
+	if (c.cron === '* * * * *') {
+		await Promise.all([
+			scheduledEmailService.processDue({ env }),
+			forwardingService.processDue({ env }),
+		])
+		return;
+	}
+
+	if (c.cron === '*/30 * * * *') {
+		await analysisService.refreshEchartsCache({ env })
+		return;
+	}
+
+	await verifyRecordService.clearRecord({ env })
+	await userService.resetDaySendCount({ env })
+	await emailService.completeReceiveAll({ env })
+	await emailService.purgeExpiredTrash({ env })
+	await emailService.autoClean({ env })
+	await oauthService.clearNoBindOathUser({ env })
+	await analysisService.refreshEchartsCache({ env })
+}

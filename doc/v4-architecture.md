@@ -17,7 +17,7 @@
 | 4 | 后台任务靠 3 个 cron + 1 个 Durable Object 拼装 | `wrangler.toml` 的 `crons`、`ScheduledSendAlarm` | 无重试/死信,任务可观测性弱 |
 | 5 | API 无版本、前后端契约靠约定 | `src/api/*-api.js` 直接挂根路径;前端 `request/*.js` 手写 | 破坏性变更无法灰度,第三方(Open API)被迫同步升级 |
 | 6 | 后端纯 JS,实体/DTO/权限无类型约束 | `entity/*.js`、`model/result.js` | 重构风险高,依赖人工 review |
-| 7 | 数据库迁移不完整 | `migrations/` 仅 0001–0006,其余建表逻辑在 `init/init.js` | 升级路径不确定,难以回滚 |
+| 7 | 数据库迁移不完整 | `migrations/` 已有 0001–0015,但历史建表/加列仍在 `init/init.js`(121 处)及 8 个业务文件的请求期 DDL 中 | 升级路径不确定,难以回滚 |
 | 8 | 三端(Web / Electron / Android)共用一个 Vue 工程但平台差异无抽象 | `electron/`、`android/`、`firebase-messaging-sw.js`、`psg-mail-sw.js` 与业务代码混在 `src/` | 平台特性(推送、通知、更新)与业务耦合 |
 | 9 | 测试与质量门禁薄弱 | 后端仅 `vitest` 骨架;前端无测试、无 lint/typecheck | 回归靠手测 |
 | 10 | 命名/品牌遗留 | `wrangler.toml` 中 `name = "cloud-mail"`、`dist` 绑定等 | 部署、监控中名称不一致 |
@@ -337,7 +337,7 @@ apps/web/src
 
 | 阶段 | 版本 | 内容 | 退出标准 |
 |---|---|---|---|
-| M0 基础设施 | 3.2 | pnpm workspace、TS 配置、lint/typecheck/test 门禁、`traceId` 与结构化日志、迁移全部建表到 `migrations`、统一品牌命名(wrangler `name` 等) | CI 门禁上线;`init.js` 不再建表 |
+| M0 基础设施 | 3.2 | TS 配置、lint/typecheck/test 门禁、`traceId` 与结构化日志、DDL 棘轮(冻结 `init.js` 与请求期 DDL,新变更只能进 `migrations`)。**状态:后端部分已落地**(见 §11)。前端 pnpm workspace 与品牌命名统一顺延 | CI 门禁上线;运行期 DDL 数量只减不增 |
 | M1 后端骨架 | 4.0-alpha.1 | `app/` 组合根、`platform/` 绑定封装、Provider 接口与 `transport`/`notify` 适配器;路由声明式权限 + Zod;`/api/v4` 与 `compat/v3` | 新增路由全部走声明式;权限覆盖测试通过 |
 | M2 事件管道 | 4.0-alpha.2 | EventBus(Queue + Inline 实现)、收信流水线拆分、死信与重放、后台 cron 改为发布任务 | 收信副作用全部异步订阅;失败不影响落库 |
 | M3 模块化迁移 | 4.0-beta.1 | 按映射表迁移 11 个模块,拆分 `email-service`;`message`/`compose` 先行 | `service/` 目录清空;边界 lint 零违规 |
@@ -401,3 +401,19 @@ Queue consumer ─► handlers (并行、幂等、各自重试)
                    ├─ automation.rules / auto-reply / forwarding
                    └─ notification.fanout (web-push · fcm · telegram · webhook)
 ```
+
+---
+
+## 11. M0 落地记录(mail-worker)
+
+已完成:
+- **结构化日志与 traceId**:`src/shared/{logger,trace}.ts`、`src/app/middleware/trace.ts`。每个 HTTP 请求带 `X-Trace-Id`(合法的入站 id 沿用,否则生成),响应头与错误响应体都带 `traceId`;请求完成记录一行 JSON(只记 path,不记 query,避免泄露 token);cron 任务记录 start/done/failed 与耗时。
+- **门禁脚本** `pnpm check` = `check:migrations` + `lint` + `typecheck` + `test`,CI 见 `.github/workflows/ci.yml`。
+  - `scripts/check-migrations.mjs`:迁移文件命名/连号检查;运行期 DDL 棘轮,基线在 `scripts/runtime-ddl-baseline.json`,新增 DDL 会使 CI 失败,删除 DDL 后用 `--update` 下调基线。
+  - ESLint(flat config,仅正确性规则为 error,风格类问题为 warning)与 `tsc --noEmit`(新代码 `.ts` 走 strict,既有 `.js` 暂不检查)。TypeScript 固定在 6.x,因为 typescript-eslint 尚不支持 7.0。
+- 顺手修复:`notification-event-service.js` 中超出 JS 精度的数字字面量(`9223372036854775807`)。
+
+未做(及原因):
+- **不删除 `init.js` 的历史 DDL**:`ALTER TABLE ADD COLUMN` 在 SQLite 里不可幂等,已升级过的线上库重复执行迁移会失败,需要先有 `schema_version` 检测再分步搬迁,留到 M1。
+- **不改 wrangler `name`**:部署名由 CI 的 `NAME` secret 覆盖,改默认值只会让自部署用户的 Worker 被意外新建。
+- **前端 pnpm workspace**:`wrangler.toml` 的 `[build]` 与多个工作流依赖 `npm --prefix ../mail-vue`,需单独评估后迁移。

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - "mail-worker/**"
+      - ".github/workflows/ci.yml"
+  push:
+    branches: [ main ]
+    paths:
+      - "mail-worker/**"
+      - ".github/workflows/ci.yml"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  worker:
+    name: mail-worker (migrations · lint · typecheck · test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mail-worker
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm version comes from "packageManager" in mail-worker/package.json.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: mail-worker/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: mail-worker/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:migrations
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test

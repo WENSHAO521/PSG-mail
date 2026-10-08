@@ -39,7 +39,7 @@ const notificationEventService = {
 				title, body, payload, read_at AS readAt, created_at AS createdAt
 			 FROM notification_event WHERE user_id = ? AND id < ?
 			 ORDER BY id DESC LIMIT ?`
-		).bind(userId, cursorId || 9223372036854775807, pageSize).all();
+		).bind(userId, cursorId || Number.MAX_SAFE_INTEGER, pageSize).all();
 		return results.map(row => ({ ...row, payload: parsePayload(row.payload), unread: !row.readAt }));
 	},
 
