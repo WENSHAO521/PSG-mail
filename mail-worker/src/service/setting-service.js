@@ -118,14 +118,16 @@ async function readFeatureSetting(c) {
 	const hit = kvCache.get(FEATURE_CACHE_KEY);
 	if (hit) return { ...hit };
 	const value = await readFeatureSettingFromDb(c);
-	kvCache.set(FEATURE_CACHE_KEY, value, TTL.SETTING);
-	return { ...value };
+	// Defaults returned for a missing row or a failed read are not policy.
+	if (!value.__fallback) kvCache.set(FEATURE_CACHE_KEY, value, TTL.SETTING);
+	const { __fallback, ...rest } = value;
+	return rest;
 }
 
 async function readFeatureSettingFromDb(c) {
 	try {
 		const row = await c.env.db.prepare('SELECT * FROM psg_feature_setting WHERE id = 1').first();
-		if (!row) return { ...FEATURE_DEFAULTS };
+		if (!row) return { ...FEATURE_DEFAULTS, __fallback: true };
 		return {
 			allowPersonalForward: Number(row.allow_personal_forward ?? FEATURE_DEFAULTS.allowPersonalForward),
 			allowForwardNotification: Number(row.allow_forward_notification ?? FEATURE_DEFAULTS.allowForwardNotification),
@@ -157,7 +159,7 @@ async function readFeatureSettingFromDb(c) {
 	} catch {
 		// A deployment can briefly run before the new migration is applied. Keep
 		// old settings and old routes usable during that compatibility window.
-		return { ...FEATURE_DEFAULTS };
+		return { ...FEATURE_DEFAULTS, __fallback: true };
 	}
 }
 

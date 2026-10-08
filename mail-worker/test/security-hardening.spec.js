@@ -11,10 +11,17 @@ describe('safeObjectResponse', () => {
 				headers: { 'Content-Type': type, 'Content-Disposition': 'inline;filename=a' },
 			}));
 			expect(res.headers.get('Content-Type')).toBe('application/octet-stream');
-			expect(res.headers.get('Content-Disposition')).toBe('attachment');
+			expect(res.headers.get('Content-Disposition')).toMatch(/^attachment/);
 			expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
 			expect(res.headers.get('Content-Security-Policy')).toContain('sandbox');
 		}
+	});
+
+	it('keeps a sanitized filename when forcing a download', () => {
+		const res = safeObjectResponse(new Response('x', {
+			headers: { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment;filename="report 1.zip"' },
+		}));
+		expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="report 1.zip"');
 	});
 
 	it('keeps plain images inline', () => {
@@ -37,6 +44,12 @@ describe('emailHtmlTemplate', () => {
 		expect(out).not.toMatch(/onerror/i);
 		expect(out).not.toMatch(/javascript:/i);
 		expect(out).not.toMatch(/iframe/i);
+	});
+
+	it('strips markup delimiters from the body style before it reaches <style>', () => {
+		// The style is extracted by the page script at runtime, so check the script.
+		const out = emailHtmlTemplate('<p>hi</p>', 'd.example');
+		expect(out).toContain("bodyStyleMatch[1].replace(/[<>]/g, '')");
 	});
 });
 
