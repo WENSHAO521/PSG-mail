@@ -1,8 +1,8 @@
 import app from '../hono/hono';
+import schemaGuard from '../init/schema-guard';
 import result from '../model/result';
 import userContext from '../security/user-context';
 
-const ENSURE = `CREATE TABLE IF NOT EXISTS contact_group (group_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', emails TEXT NOT NULL DEFAULT '[]', create_time DATETIME DEFAULT CURRENT_TIMESTAMP)`;
 
 function parseContacts(raw) {
 	try {
@@ -14,7 +14,7 @@ function parseContacts(raw) {
 }
 
 app.get('/contactGroup/list', async (c) => {
-	try { await c.env.db.prepare(ENSURE).run(); } catch {}
+	await schemaGuard.ensure(c);
 	const userId = userContext.getUserId(c);
 	const { results } = await c.env.db.prepare(
 		'SELECT group_id, name, emails FROM contact_group WHERE user_id = ? ORDER BY group_id DESC'
@@ -23,7 +23,7 @@ app.get('/contactGroup/list', async (c) => {
 });
 
 app.post('/contactGroup/add', async (c) => {
-	try { await c.env.db.prepare(ENSURE).run(); } catch {}
+	await schemaGuard.ensure(c);
 	const userId = userContext.getUserId(c);
 	const { name, contacts } = await c.req.json();
 	const row = await c.env.db.prepare(

@@ -1,4 +1,5 @@
 import secretBox from '../utils/secret-box';
+import emlService, { safeEmlFilename } from './eml-service';
 import orm from '../entity/orm';
 import { cloudBackup } from '../entity/cloud-backup';
 import { email } from '../entity/email';
@@ -280,8 +281,8 @@ const backupService = {
 
 			for (const em of emails) {
 				try {
-					const filename = this._safeFilename(em);
-					const eml = this._toEml(em);
+					const filename = safeEmlFilename(em);
+					const eml = await emlService.build(c, em);
 					if (provider === 'google') {
 						await this._uploadToGoogle(token, folderId, filename, eml);
 					} else {
@@ -306,34 +307,9 @@ const backupService = {
 		return { count, total };
 	},
 
-	// ── .eml generation ─────────────────────────────────────────
-	_toEml(em) {
-		const from = em.name ? `${em.name} <${em.sendEmail}>` : (em.sendEmail || 'unknown@unknown');
-		const to = em.toEmail || em.sendEmail || '';
-		const subject = em.subject || '(no subject)';
-		const date = em.createTime ? new Date(em.createTime).toUTCString() : new Date().toUTCString();
-		const body = em.content || em.text || '';
-		const isHtml = !!em.content;
-
-		return [
-			`From: ${from}`,
-			`To: ${to}`,
-			`Subject: ${subject}`,
-			`Date: ${date}`,
-			`Message-ID: <${em.emailId}@cloudmail>`,
-			`MIME-Version: 1.0`,
-			`Content-Type: ${isHtml ? 'text/html' : 'text/plain'}; charset=UTF-8`,
-			`Content-Transfer-Encoding: quoted-printable`,
-			``,
-			body,
-		].join('\r\n');
-	},
-
-	_safeFilename(em) {
-		const date = em.createTime ? dayjs(em.createTime).format('YYYY-MM-DD') : 'unknown';
-		const subject = (em.subject || 'no-subject').replace(/[\\/:*?"<>|]/g, '_').slice(0, 60);
-		return `${date}_${subject}_${em.emailId}.eml`;
-	},
+	// .eml generation lives in eml-service.js (shared with single-mail
+	// export) — includes Cc, threading headers, inline images and
+	// attachments, all properly MIME-encoded.
 
 	// ── Google Drive ─────────────────────────────────────────────
 	async _getOrCreateGoogleFolder(token) {

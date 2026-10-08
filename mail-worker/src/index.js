@@ -12,6 +12,9 @@ import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
 import forwardingService from './service/forwarding-service';
 import securityAuditService from './service/security-audit-service';
+import receiveGuardService from './service/receive-guard-service';
+import storageConsistencyService from './service/storage-consistency-service';
+import retentionPolicyService from './service/retention-policy-service';
 // Durable Object classes must be exported by name from the Worker's main
 // entry — this is that export, not a self-contained secondary Worker. See
 // src/durable/scheduled-send-alarm.js for what it's for.
@@ -52,6 +55,7 @@ export default {
 
 		if (c.cron === '*/30 * * * *') {
 			await analysisService.refreshEchartsCache({ env })
+			await storageConsistencyService.processDue({ env })
 			return;
 		}
 
@@ -60,8 +64,10 @@ export default {
 		await emailService.completeReceiveAll({ env })
 		await emailService.purgeExpiredTrash({ env })
 		await emailService.autoClean({ env })
+		await retentionPolicyService.execute({ env })
 		await oauthService.clearNoBindOathUser({ env })
 		await securityAuditService.prune({ env })
+		await receiveGuardService.prune({ env })
 		await analysisService.refreshEchartsCache({ env })
 	},
 };

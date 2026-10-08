@@ -15,6 +15,7 @@ import roleService from './role-service';
 import emailUtils from '../utils/email-utils';
 import saltHashUtils from '../utils/crypto-utils';
 import sessionService from '../security/session-service';
+import schemaGuard from '../init/schema-guard';
 import securityAuditService, { SecurityEvent } from './security-audit-service';
 import { assertPassword } from '../utils/password-policy';
 import userContext from '../security/user-context';
@@ -55,9 +56,7 @@ function normalizeSignatures(raw, legacy) {
 }
 
 async function ensureAvatarColumn(c) {
-	try {
-		await c.env.db.prepare(`ALTER TABLE user ADD COLUMN avatar TEXT NOT NULL DEFAULT '';`).run();
-	} catch {}
+	await schemaGuard.ensure(c);
 }
 
 const userService = {
@@ -183,10 +182,7 @@ const userService = {
 
 	async updateSignature(c, params, userId) {
 		const { signature } = params;
-		// ensure column exists (idempotent — silently skips if already added)
-		try {
-			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN signature TEXT NOT NULL DEFAULT '';`).run();
-		} catch {}
+		await schemaGuard.ensure(c);
 		await c.env.db
 			.prepare('UPDATE user SET signature = ? WHERE user_id = ?')
 			.bind(signature ?? '', userId).run();

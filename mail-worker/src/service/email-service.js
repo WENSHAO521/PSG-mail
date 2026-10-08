@@ -27,6 +27,9 @@ import kvCache from '../cache/kv-cache';
 import r2Service from './r2-service';
 import labelService from './label-service';
 import attachmentAccess from '../security/attachment-access';
+import schemaGuard from '../init/schema-guard';
+import deliveryEventService from './delivery-event-service';
+import emlService, { safeEmlFilename } from './eml-service';
 
 // ── Per-request helpers ────────────────────────────────────────────────────
 
@@ -60,41 +63,7 @@ async function columnExists(c, table, col) {
 	return exists
 }
 
-// ── .eml export helpers ─────────────────────────────────────────────────
-function arrayBufferToBase64(buf) {
-	const bytes = new Uint8Array(buf)
-	let binary = ''
-	const chunkSize = 0x8000
-	for (let i = 0; i < bytes.length; i += chunkSize) {
-		binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
-	}
-	return btoa(binary)
-}
-
-function utf8ToBase64(str) {
-	return arrayBufferToBase64(new TextEncoder().encode(str).buffer)
-}
-
-function wrapBase64(b64) {
-	return b64.replace(/(.{76})/g, '$1\r\n')
-}
-
-function encodeMimeWord(str) {
-	if (/^[\x00-\x7F]*$/.test(str)) return str
-	return `=?UTF-8?B?${utf8ToBase64(str)}?=`
-}
-
-// Strips CR/LF so untrusted values (subject, attachment filenames, sender
-// name…) can't inject extra header/MIME lines into the exported .eml.
-function sanitizeHeaderValue(str) {
-	return String(str ?? '').replace(/[\r\n]+/g, ' ')
-}
-
-function emlSafeFilename(row, emailId) {
-	const date = row.create_time ? String(row.create_time).slice(0, 10) : 'unknown'
-	const subject = (row.subject || 'no-subject').replace(/[\\/:*?"<>|]/g, '_').slice(0, 60)
-	return `${date}_${subject}_${emailId}.eml`
-}
+// .eml export lives in eml-service.js (shared with cloud backup).
 
 // archiveList()/spamList()/trashList() query via raw c.env.db.prepare()
 // instead of drizzle (they need dynamic WHERE clauses drizzle's typed query
@@ -137,6 +106,30 @@ function mapRawEmailRow(row) {
 		deleteTime: row.delete_time,
 		isStar: row.star_id != null ? 1 : 0,
 	};
+}
+
+// RFC 5322 §3.6.4: References of a reply = parent's References (or its
+// In-Reply-To when it has none) followed by the parent's Message-ID. 3.x sent
+// only the parent id, so threads broke in other clients after one hop.
+export function buildReferences(parent) {
+	if (!parent) return '';
+	const ids = [];
+	const push = (v) => {
+		for (const m of String(v || '').match(/<[^<>\s]+>/g) || []) {
+			if (!ids.includes(m)) ids.push(m);
+		}
+	};
+	push(parent.relation || parent.inReplyTo);
+	push(parent.messageId);
+	// Keep the header bounded; the first id (thread root) and the most
+	// recent ones matter most to threading algorithms.
+	const kept = ids.length > 20 ? [ids[0], ...ids.slice(-19)] : ids;
+	return kept.join(' ');
+}
+
+function isTransientSendError(error) {
+	const code = Number(error?.statusCode ?? error?.status ?? 0);
+	return code === 0 || code === 429 || code >= 500;
 }
 
 const emailService = {
@@ -266,7 +259,7 @@ const emailService = {
 	async archiveEmail(c, params, userId) {
 		const emailIdList = String(params.emailIds).split(',').map(Number).filter(Boolean);
 		if (!emailIdList.length) return;
-		try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN is_archive INTEGER NOT NULL DEFAULT 0;`).run(); } catch {}
+		await schemaGuard.ensure(c);
 		const sharedIds = await getSharedAccountIds(c, userId)
 		const placeholders = emailIdList.map(() => '?').join(',');
 		const cond = sharedIds.length > 0 ? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))` : 'user_id = ?';
@@ -310,10 +303,7 @@ const emailService = {
 	async markSpam(c, params, userId) {
 		const emailIdList = String(params.emailIds).split(',').map(Number).filter(Boolean);
 		if (!emailIdList.length) return;
-		// auto-add column if missing
-		try {
-			await c.env.db.prepare(`ALTER TABLE email ADD COLUMN is_spam INTEGER NOT NULL DEFAULT 0;`).run();
-		} catch {}
+		await schemaGuard.ensure(c);
 		const spamShared = await getSharedAccountIds(c, userId)
 		const placeholders = emailIdList.map(() => '?').join(',');
 		const spamCond = spamShared.length > 0
@@ -423,15 +413,19 @@ const emailService = {
 			return;
 		}
 
-		try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN delete_time TEXT;`).run(); } catch {}
-		await orm(c).update(email).set({ isDel: isDel.DELETE }).where(
-			and(accessCond, inArray(email.emailId, emailIdList)))
-			.run();
-		try {
-			await c.env.db.prepare(
-				`UPDATE email SET delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${emailIdList.map(() => '?').join(',')})`
-			).bind(...emailIdList).run();
-		} catch {}
+		await schemaGuard.ensure(c);
+		// One statement so delete_time is only ever stamped on rows the
+		// caller was allowed to trash (3.x stamped every id in the request).
+		// Raw SQL: delete_time is deliberately not in the drizzle entity —
+		// a select() listing it would fail on databases that predate it.
+		const ids = emailIdList.filter(Number.isFinite);
+		if (!ids.length) return;
+		const accessSql = sharedIds.length > 0
+			? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))`
+			: 'user_id = ?';
+		await c.env.db.prepare(
+			`UPDATE email SET is_del = ?, delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${ids.map(() => '?').join(',')}) AND ${accessSql}`
+		).bind(isDel.DELETE, ...ids, userId, ...sharedIds).run();
 	},
 
 	async restore(c, params, userId) {
@@ -574,86 +568,7 @@ const emailService = {
 		emailId = Number(emailId);
 		const row = await this.getOwned(c, emailId, userId);
 		if (!row) throw new BizError(t('emailNotExist'));
-
-		const attList = await attService.selectByEmailIds(c, [emailId]);
-
-		const boundaryAlt = `alt_${emailId}_${Date.now().toString(36)}`;
-		const boundaryMixed = `mix_${emailId}_${Date.now().toString(36)}`;
-
-		const dateHeader = row.create_time
-			? new Date(String(row.create_time).replace(' ', 'T') + 'Z').toUTCString()
-			: new Date().toUTCString();
-
-		const fromHeader = row.name
-			? `"${sanitizeHeaderValue(row.name).replace(/"/g, '')}" <${sanitizeHeaderValue(row.send_email)}>`
-			: sanitizeHeaderValue(row.send_email);
-
-		let cc = [];
-		try { cc = JSON.parse(row.cc || '[]'); } catch {}
-
-		const headerLines = [
-			`From: ${fromHeader}`,
-			`To: ${sanitizeHeaderValue(row.to_email)}`,
-			cc.length ? `Cc: ${sanitizeHeaderValue(cc.join(', '))}` : null,
-			`Subject: ${encodeMimeWord(sanitizeHeaderValue(row.subject || '(no subject)'))}`,
-			`Date: ${dateHeader}`,
-			`Message-ID: ${sanitizeHeaderValue(row.message_id || `<${emailId}@cloudmail>`)}`,
-			`MIME-Version: 1.0`,
-		].filter(Boolean);
-
-		const altLines = [
-			`Content-Type: multipart/alternative; boundary="${boundaryAlt}"`,
-			``,
-			`--${boundaryAlt}`,
-			`Content-Type: text/plain; charset=UTF-8`,
-			`Content-Transfer-Encoding: base64`,
-			``,
-			wrapBase64(utf8ToBase64(row.text || '')),
-			`--${boundaryAlt}`,
-			`Content-Type: text/html; charset=UTF-8`,
-			`Content-Transfer-Encoding: base64`,
-			``,
-			wrapBase64(utf8ToBase64(row.content || row.text || '')),
-			`--${boundaryAlt}--`,
-		];
-
-		const filename = emlSafeFilename(row, emailId);
-
-		if (!attList.length) {
-			return { filename, content: headerLines.concat(altLines).join('\r\n') };
-		}
-
-		const attParts = [];
-		for (const a of attList) {
-			try {
-				const obj = await r2Service.getObj(c, a.key);
-				if (!obj) continue;
-				const buf = await obj.arrayBuffer();
-				const safeMime = sanitizeHeaderValue(a.mimeType || 'application/octet-stream');
-				const safeName = sanitizeHeaderValue(a.filename || 'attachment').replace(/"/g, '');
-				attParts.push(
-					`--${boundaryMixed}`,
-					`Content-Type: ${safeMime}; name="${safeName}"`,
-					`Content-Transfer-Encoding: base64`,
-					`Content-Disposition: attachment; filename="${safeName}"`,
-					``,
-					wrapBase64(arrayBufferToBase64(buf)),
-				);
-			} catch (e) {
-				console.error(`export eml: failed to read attachment ${a.key}`, e);
-			}
-		}
-
-		const bodyLines = [
-			`Content-Type: multipart/mixed; boundary="${boundaryMixed}"`,
-			``,
-			`--${boundaryMixed}`,
-			...altLines,
-			...attParts,
-			`--${boundaryMixed}--`,
-		];
-
-		return { filename, content: headerLines.concat(bodyLines).join('\r\n') };
+		return { filename: safeEmlFilename(row), content: await emlService.build(c, row) };
 	},
 
 	receive(c, params, cidAttList, r2domain) {
@@ -785,6 +700,17 @@ const emailService = {
 
 		}
 
+		// Limits are checked BEFORE handing the mail to a provider — 3.x
+		// checked them after sending, so an over-limit mail was delivered
+		// externally and then reported to the user as a failure (and never
+		// saved to Sent).
+		if (imageDataList.length > 10) {
+			throw new BizError(t('imageAttLimit'));
+		}
+		if (attachments?.length > 10) {
+			throw new BizError(t('attLimit'));
+		}
+
 		let sendResult = {};
 		let provider = 'internal';
 
@@ -802,19 +728,25 @@ const emailService = {
 				html,
 				attachments: [...imageDataList, ...attachments],
 				sendType,
-				messageId: emailRow.messageId
+				messageId: emailRow.messageId,
+				references: sendType === 'reply' ? buildReferences(emailRow) : '',
+				idempotencyKey: crypto.randomUUID()
 			};
 
 			if (useCloudflareEmail) {
 				provider = 'cloudflare';
-				sendResult = await this.sendByCloudflareEmail(c, sendParams);
 			} else if (resendToken) {
 				provider = 'resend';
-				sendResult = await this.sendByResend(resendToken, sendParams);
 			} else {
 				provider = 'mailjet';
-				sendResult = await this.sendByMailjet({ apiKey: mailjetApiKey, secretKey: mailjetSecretKey }, sendParams);
 			}
+
+			sendResult = await this.dispatchToProvider(c, provider, sendParams, {
+				resendToken,
+				mailjetCreds: { apiKey: mailjetApiKey, secretKey: mailjetSecretKey },
+				accountId,
+				recipientCount: allRecipients.length
+			});
 
 		}
 
@@ -860,7 +792,7 @@ const emailService = {
 
 		if (sendType === 'reply') {
 			emailData.inReplyTo = emailRow.messageId;
-			emailData.relation = emailRow.messageId;
+			emailData.relation = buildReferences(emailRow) || emailRow.messageId;
 		}
 
 		//如果权限有发送次数增加用户发送次数
@@ -871,19 +803,23 @@ const emailService = {
 		//保存到数据库并返回结果
 		const emailResult = await orm(c).insert(email).values(emailData).returning().get();
 
+		if (provider !== 'internal') {
+			await deliveryEventService.record(c, {
+				emailId: emailResult.emailId,
+				provider,
+				providerMessageId: data?.id || null,
+				eventType: 'send.accepted',
+				status: emailData.status
+			});
+		}
+
 		//保存内嵌附件
 		if (imageDataList.length > 0) {
-			if (imageDataList.length > 10) {
-				throw new BizError(t('imageAttLimit'));
-			}
 			await attService.saveArticleAtt(c, imageDataList, userId, accountId, emailResult.emailId);
 		}
 
 		//保存普通附件
 		if (attachments?.length > 0) {
-			if (attachments.length > 10) {
-				throw new BizError(t('attLimit'));
-			}
 			await attService.saveSendAtt(c, attachments, userId, accountId, emailResult.emailId);
 		}
 
@@ -916,6 +852,40 @@ const emailService = {
 		return [ emailResult ];
 	},
 
+	// Single entry point to every outbound provider. Keeps the existing
+	// static priority (Cloudflare > Resend > Mailjet, chosen by the caller)
+	// and normalizes the result to {data, error}. Every attempt that fails is
+	// written to email_delivery_event so failures are auditable even though
+	// a failed send (by design) never creates an `email` row. Only Resend
+	// retries internally (idempotency key); the others are not retried
+	// automatically because a retry could deliver the mail twice.
+	async dispatchToProvider(c, provider, params, { resendToken, mailjetCreds, accountId = 0, recipientCount = 0 } = {}) {
+		let result;
+		try {
+			if (provider === 'cloudflare') {
+				result = await this.sendByCloudflareEmail(c, params);
+			} else if (provider === 'resend') {
+				result = await this.sendByResend(resendToken, params);
+			} else if (provider === 'mailjet') {
+				result = await this.sendByMailjet(mailjetCreds, params);
+			} else {
+				throw new Error('unknown provider ' + provider);
+			}
+		} catch (e) {
+			result = { data: null, error: { message: e?.message || String(e) } };
+		}
+		if (result?.error) {
+			await deliveryEventService.record(c, {
+				emailId: 0,
+				provider,
+				eventType: 'send.failed',
+				status: emailConst.status.FAILED,
+				detail: JSON.stringify({ accountId, recipientCount, error: String(result.error.message || '').slice(0, 500) })
+			});
+		}
+		return result || { data: null, error: { message: 'empty provider response' } };
+	},
+
 	async sendByCloudflareEmail(c, params) {
 		// Cloudflare Email API requires { email, name? } objects, not plain strings
 		const toAddr = e => (typeof e === 'string' ? { email: e } : e);
@@ -945,7 +915,7 @@ const emailService = {
 		if (params.sendType === 'reply' && params.messageId) {
 			sendForm.headers = {
 				'in-reply-to': params.messageId,
-				'references': params.messageId
+				'references': params.references || params.messageId
 			};
 		}
 
@@ -973,14 +943,27 @@ const emailService = {
 		if (params.cc?.length > 0)  sendForm.cc  = [...params.cc];
 		if (params.bcc?.length > 0) sendForm.bcc = [...params.bcc];
 
-		if (params.sendType === 'reply') {
+		if (params.sendType === 'reply' && params.messageId) {
 			sendForm.headers = {
 				'in-reply-to': params.messageId,
-				'references': params.messageId
+				'references': params.references || params.messageId
 			};
 		}
 
-		return await resend.emails.send(sendForm);
+		// Resend honors an Idempotency-Key, so a transient failure (network
+		// error, 429, 5xx) can be retried without risking a duplicate send.
+		const opts = params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined;
+		let result;
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				result = await resend.emails.send(sendForm, opts);
+			} catch (e) {
+				result = { data: null, error: { message: e?.message || 'Resend request failed', statusCode: 0 } };
+			}
+			if (!result?.error || !isTransientSendError(result.error) || !params.idempotencyKey) break;
+			await new Promise(r => setTimeout(r, 250 * (attempt + 1)));
+		}
+		return result;
 	},
 
 	// Mailjet has no Workers-compatible SDK, so this calls its v3.1 Send REST
@@ -1018,7 +1001,7 @@ const emailService = {
 		if (inline.length > 0) message.InlinedAttachments = inline;
 
 		if (params.sendType === 'reply' && params.messageId) {
-			message.Headers = { 'In-Reply-To': params.messageId, 'References': params.messageId };
+			message.Headers = { 'In-Reply-To': params.messageId, 'References': params.references || params.messageId };
 		}
 
 		const auth = btoa(`${mailjetCreds.apiKey}:${mailjetCreds.secretKey}`);
@@ -1446,7 +1429,7 @@ const emailService = {
 		const toTrashIds = rows.filter(row => row.isDel !== isDel.DELETE).map(row => row.emailId);
 
 		if (toTrashIds.length > 0) {
-			try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN delete_time TEXT;`).run(); } catch {}
+			await schemaGuard.ensure(c);
 			await orm(c).update(email).set({ isDel: isDel.DELETE }).where(inArray(email.emailId, toTrashIds)).run();
 			await c.env.db.prepare(
 				`UPDATE email SET delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${toTrashIds.map(() => '?').join(',')})`

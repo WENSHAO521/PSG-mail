@@ -1,11 +1,11 @@
 import app from '../hono/hono';
+import schemaGuard from '../init/schema-guard';
 import result from '../model/result';
 import userContext from '../security/user-context';
 
-const ENSURE = `CREATE TABLE IF NOT EXISTS email_template (template_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', create_time DATETIME DEFAULT CURRENT_TIMESTAMP)`;
 
 app.get('/template/list', async (c) => {
-	try { await c.env.db.prepare(ENSURE).run(); } catch {}
+	await schemaGuard.ensure(c);
 	const userId = userContext.getUserId(c);
 	const { results } = await c.env.db.prepare(
 		'SELECT template_id, name, subject, content FROM email_template WHERE user_id = ? ORDER BY template_id DESC'
@@ -19,7 +19,7 @@ app.get('/template/list', async (c) => {
 });
 
 app.post('/template/add', async (c) => {
-	try { await c.env.db.prepare(ENSURE).run(); } catch {}
+	await schemaGuard.ensure(c);
 	const userId = userContext.getUserId(c);
 	const { name, subject, content } = await c.req.json();
 	const row = await c.env.db.prepare(

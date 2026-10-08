@@ -5,6 +5,7 @@
 // using this helper fails.
 import { env, applyD1Migrations } from 'cloudflare:test';
 import { dbInit } from '../../src/init/init';
+import schemaGuard from '../../src/init/schema-guard';
 
 const LEGACY_STEPS = [
 	'intDB', 'v1_1DB', 'v1_2DB', 'v1_3DB', 'v1_3_1DB', 'v1_4DB', 'v1_5DB', 'v1_6DB', 'v1_7DB',
@@ -33,6 +34,7 @@ export async function bootstrapSchema() {
 		for (const step of LEGACY_STEPS) {
 			await dbInit[step](c);
 		}
+		await schemaGuard.ensureNow(c);
 		await applyD1Migrations(env.db, env.TEST_MIGRATIONS);
 	})();
 	return done;

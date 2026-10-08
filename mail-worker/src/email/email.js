@@ -17,6 +17,7 @@ import notificationService from '../service/notification-service';
 import forwardingService from '../service/forwarding-service';
 import notificationEventService from '../service/notification-event-service';
 import webhookService from '../service/webhook-service';
+import receiveGuardService from '../service/receive-guard-service';
 
 export async function email(message, env, ctx) {
 
@@ -50,16 +51,25 @@ export async function email(message, env, ctx) {
 			return;
 		}
 
-		const reader = message.raw.getReader();
-		let content = '';
+		// Read the raw message as BYTES and let PostalMime handle charsets and
+		// transfer encodings. 3.x decoded each stream chunk as UTF-8 on its
+		// own, which corrupted multi-byte characters split across chunk
+		// boundaries and mangled 8bit / non-UTF-8 bodies and attachments.
+		const rawBytes = new Uint8Array(await new Response(message.raw).arrayBuffer());
 
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			content += new TextDecoder().decode(value);
+		const email = await PostalMime.parse(rawBytes);
+
+		// Idempotency (see receive-guard-service.js): a re-delivery of a
+		// message this mailbox already stored is accepted and dropped.
+		let dedupKey = null;
+		if (receiveGuardService.enabled(env)) {
+			dedupKey = await receiveGuardService.dedupKey(message.to, email.messageId, rawBytes);
+			const existing = await receiveGuardService.findDuplicate({ env }, dedupKey);
+			if (existing) {
+				console.log(`duplicate delivery to ${message.to} ignored (email ${existing})`);
+				return;
+			}
 		}
-
-		const email = await PostalMime.parse(content);
 
 
 		const blockFlag = checkBlock(blackSubject, blackContent, blackFrom, email);
@@ -162,6 +172,10 @@ export async function email(message, env, ctx) {
 		}
 
 		let emailRow = await emailService.receive({ env }, params, cidAttachments, r2Domain);
+
+		if (dedupKey) {
+			await receiveGuardService.remember({ env }, dedupKey, emailRow.emailId);
+		}
 
 		attachments.forEach(attachment => {
 			attachment.emailId = emailRow.emailId;
@@ -272,7 +286,12 @@ export async function email(message, env, ctx) {
 				const arRow = await env.db.prepare(
 					'SELECT enabled, message FROM auto_reply WHERE user_id = ?'
 				).bind(account.userId).first();
-				if (arRow?.enabled && arRow.message && email.from?.address) {
+				const blockReason = receiveGuardService.autoReplyBlockReason(email, message.to);
+				if (blockReason) {
+					console.log('auto-reply suppressed:', blockReason);
+				}
+				if (arRow?.enabled && arRow.message && email.from?.address && !blockReason
+					&& await receiveGuardService.takeAutoReplySlot({ env }, account.userId, email.from.address)) {
 					await emailService.send({ env }, {
 						sendEmail: message.to,
 						receiveEmail: [email.from.address],

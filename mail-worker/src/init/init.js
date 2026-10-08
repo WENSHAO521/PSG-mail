@@ -2,6 +2,7 @@ import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
 import timingSafeEqual from '../utils/secure-compare';
+import schemaGuard from './schema-guard';
 
 const dbInit = {
 	async init(c) {
@@ -55,6 +56,8 @@ const dbInit = {
 		await this.v4_2DB(c);
 		await this.v4_3DB(c);
 		await this.v4_4DB(c);
+		// Objects that used to be created lazily by request handlers.
+		await schemaGuard.ensureNow(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},

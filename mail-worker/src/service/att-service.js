@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import domainUtils from '../utils/domain-uitls';
 import settingService from "./setting-service";
 import attachmentAccess from '../security/attachment-access';
+import storageConsistencyService from './storage-consistency-service';
 
 function requestOrigin(c) {
 	try { return new URL(c.req.url).origin; } catch { return ''; }
@@ -271,23 +272,33 @@ const attService = {
 		const delKeyList = attListResult.flatMap(r => r.results ? r.results.map(row => row.key) : []);
 
 		if (delKeyList.length > 0) {
-			try {
-				await this.batchDelete(c, delKeyList);
-			} catch (e) {
-				console.error('删除附件文件失败：', e);
-			}
+			await this.batchDelete(c, delKeyList);
 		}
 
 	},
 
+	// Deletes objects whose attachment rows are already gone. A failing chunk
+	// no longer just logs and orphans the objects: its keys are queued in
+	// attachment_cleanup_job and retried by the cron (which re-checks that
+	// nothing references them first). Never throws — the DB rows are already
+	// deleted at this point, so the caller's operation has succeeded.
 	async batchDelete(c, keys) {
 		if (!keys.length) return;
 
-		const BATCH_SIZE = 1000;
+		// R2 and S3 DeleteObjects accept up to 1000 keys per call; KV deletes
+		// are one subrequest each, so keep KV chunks small enough to stay
+		// under the per-invocation subrequest limit.
+		const storageType = await r2Service.storageType(c).catch(() => 'KV');
+		const BATCH_SIZE = storageType === 'KV' ? 40 : 1000;
 
 		for (let i = 0; i < keys.length; i += BATCH_SIZE) {
 			const batch = keys.slice(i, i + BATCH_SIZE);
-			await r2Service.delete(c, batch);
+			try {
+				await r2Service.delete(c, batch);
+			} catch (e) {
+				console.error('删除附件文件失败，已加入重试队列：', e?.message);
+				await storageConsistencyService.enqueue(c, batch, e);
+			}
 		}
 
 	},

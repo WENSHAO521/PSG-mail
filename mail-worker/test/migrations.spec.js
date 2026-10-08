@@ -39,6 +39,19 @@ describe('schema bootstrap + migrations', () => {
 		expect(results[0].n).toBe(env.TEST_MIGRATIONS.length);
 	});
 
+	it('schema guard is idempotent and adds a missing column on an old database', async () => {
+		const { default: schemaGuard, COLUMNS } = await import('../src/init/schema-guard');
+		await env.db.prepare('CREATE TABLE legacy_probe (id INTEGER PRIMARY KEY)').run();
+		COLUMNS.push({ table: 'legacy_probe', column: 'added_later', ddl: 'TEXT' });
+		try {
+			await schemaGuard.ensureNow({ env });
+			await schemaGuard.ensureNow({ env });
+			expect(await columns('legacy_probe')).toContain('added_later');
+		} finally {
+			COLUMNS.pop();
+		}
+	});
+
 	it('every migration file is additive (no DROP / TRUNCATE / DELETE)', () => {
 		for (const m of env.TEST_MIGRATIONS) {
 			const sql = m.queries.join('\n').replace(/--[^\n]*/g, '');
@@ -50,7 +63,7 @@ describe('schema bootstrap + migrations', () => {
 
 	it('legacy hot-path columns exist after bootstrap', async () => {
 		const emailCols = await columns('email');
-		for (const col of ['is_archive', 'is_spam', 'provider', 'message_id', 'in_reply_to', 'relation']) {
+		for (const col of ['is_archive', 'is_spam', 'delete_time', 'provider', 'message_id', 'in_reply_to', 'relation']) {
 			expect(emailCols).toContain(col);
 		}
 	});

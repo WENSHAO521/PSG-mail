@@ -1,3 +1,4 @@
+import schemaGuard from '../init/schema-guard';
 import emailUtils from '../utils/email-utils';
 import { settingConst } from '../const/entity-const';
 import aiProviderService from './ai-provider-service';
@@ -142,9 +143,7 @@ const spamService = {
 	},
 
 	async markBySystem(c, emailId, verdict) {
-		try {
-			await c.env.db.prepare('ALTER TABLE email ADD COLUMN is_spam INTEGER NOT NULL DEFAULT 0;').run();
-		} catch {}
+		await schemaGuard.ensure(c);
 		// One batch (a D1 transaction): never Spam without its verdict, so a
 		// failed write leaves the mail in the inbox and screen() reports false.
 		await c.env.db.batch([
