@@ -217,7 +217,7 @@ defineExpose({ open, close })
   align-items: flex-start;
   justify-content: center;
   padding-top: 12vh;
-  background: rgba(0, 0, 0, 0.40);
+  background: var(--bg-overlay);
 }
 
 /* ── Palette box — opaque, no glass ── */
@@ -225,7 +225,7 @@ defineExpose({ open, close })
   width: min(580px, calc(100vw - 32px));
   background: var(--psg-surface);
   border: 1px solid var(--psg-border);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10);
+  box-shadow: var(--psg-shadow-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;

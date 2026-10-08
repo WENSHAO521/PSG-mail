@@ -494,6 +494,7 @@ import { Capacitor } from "@capacitor/core"
 import dayjs from "dayjs"
 import PersonalForwarding from '@/components/personal-forwarding/index.vue'
 import { checkAndDownloadAndroidUpdate, isAndroidApp } from '@/utils/android-update-service.js'
+import { LABEL_COLORS } from '@/utils/label-colors.js'
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -838,7 +839,7 @@ async function sendTestNotif() {
 // ── Labels ──
 const labelStore = useLabelStore()
 const newLabelName = ref('')
-const LABEL_COLOR_OPTIONS = ['#7e7576', '#c48c00', '#2f9e52', '#1890ff', '#a855f7', '#ef1748']
+const LABEL_COLOR_OPTIONS = LABEL_COLORS
 const newLabelColor = ref(LABEL_COLOR_OPTIONS[0])
 const editingLabelId = ref(null)
 const editingLabelName = ref('')
@@ -1650,7 +1651,7 @@ function submitPwd() {
 .avatar-wrap {
   position: relative;
   width: 76px; height: 76px;
-  border-radius: 22px; overflow: hidden;
+  border-radius: var(--psg-radius-lg); overflow: hidden;
   cursor: pointer; flex-shrink: 0;
   background: var(--psg-primary);
   &:hover .avatar-lens { opacity: 1; }
@@ -1669,7 +1670,7 @@ function submitPwd() {
   position: absolute; inset: 0;
   background: rgba(0,0,0,0.54);
   display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 0.14s ease; color: #fff;
+  opacity: 0; transition: opacity 0.14s ease; color: var(--psg-on-primary);
 }
 
 .avatar-meta {

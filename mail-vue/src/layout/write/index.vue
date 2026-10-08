@@ -94,7 +94,7 @@
                          :show-arrow="false" :no-match-text="' '" :no-data-text="' '"
                          @visible-change="selectStatusChange" @change="selectChange">
                 <el-option v-for="item in selectRecipientList" :key="item.email"
-                           :label="item.label" :value="item.email" style="color:#999"/>
+                           :label="item.label" :value="item.email" style="color:var(--psg-text-muted)"/>
               </el-select>
             </template>
           </el-input-tag>
@@ -1806,7 +1806,7 @@ function close() {
   .schedule-datetime-popper .el-picker-panel {
     width: min(320px, calc(100vw - 32px)) !important;
     border-radius: var(--psg-radius-xs) !important;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.30) !important;
+    box-shadow: var(--psg-shadow-lg) !important;
   }
   .schedule-datetime-popper .el-date-picker__content {
     width: auto !important;
@@ -1852,11 +1852,11 @@ function close() {
 .write-box {
   background: var(--psg-surface);
   --compose-radius: var(--psg-radius-xs);
-  border-radius: 14px;
+  border-radius: var(--psg-radius-md);
   width: min(1300px, calc(100% - 16px));
   display: grid;
   grid-template-rows: auto 1fr;
-  box-shadow: 0 24px 60px rgba(20, 24, 21, 0.22), 0 2px 6px rgba(20, 24, 21, 0.08);
+  box-shadow: var(--psg-shadow-lg);
   overflow: hidden;
   transition: width 0.16s ease, height 0.16s ease;
 
@@ -2169,7 +2169,7 @@ function close() {
 
   &.wh-close:hover {
     background: var(--psg-danger);
-    color: #fff;
+    color: var(--psg-on-primary);
   }
 }
 
@@ -2962,7 +2962,7 @@ function close() {
 
 .write-box {
   --compose-radius: var(--psg-radius-sm);
-  border-radius: 28px;
+  border-radius: var(--psg-radius-xl);
   box-shadow: var(--psg-shadow-lg);
 }
 
@@ -2980,7 +2980,7 @@ function close() {
 .wh-action-btn {
   width: 36px;
   height: 36px;
-  border-radius: 12px;
+  border-radius: var(--psg-radius-sm);
   background: var(--psg-surface-muted);
   color: var(--psg-text-secondary);
 }
@@ -2994,7 +2994,7 @@ function close() {
   border-bottom: 1px solid var(--psg-border);
 }
 
-.field-row.from-row { border-radius: 18px 18px 0 0; }
+.field-row.from-row { border-radius: var(--psg-radius-lg) var(--psg-radius-lg) 0 0; }
 
 .subject-row {
   border-radius: 0 0 18px 18px;
@@ -3054,7 +3054,7 @@ function close() {
    top corners itself so nothing square pokes out. */
 .write-box:not([data-state="minimized"]) { overflow: visible; }
 .write-box:not([data-state="minimized"]) .editor-wrap { overflow: visible; }
-.write-box:not([data-state="minimized"]) .wh { border-radius: 28px 28px 0 0; }
+.write-box:not([data-state="minimized"]) .wh { border-radius: var(--psg-radius-xl) var(--psg-radius-xl) 0 0; }
 
 /* One column that never grows past the panel: without this the grid track
    sizes to its widest unwrappable child (toolbar, From row), and with the
@@ -3081,7 +3081,7 @@ function close() {
   }
   .write-box[data-state="minimized"] {
     height: 56px;
-    border-radius: 18px;
+    border-radius: var(--psg-radius-lg);
     background: var(--psg-surface);
     box-shadow: var(--psg-shadow-md);
     pointer-events: auto;
@@ -3090,7 +3090,7 @@ function close() {
     height: 56px;
     padding: 0 8px 0 16px;
     border-bottom: 0;
-    border-radius: 18px;
+    border-radius: var(--psg-radius-lg);
   }
 
   /* The header is the drag handle: a small grabber hints at it. */

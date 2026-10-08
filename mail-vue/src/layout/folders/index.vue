@@ -53,6 +53,7 @@ import { useEmailStore } from '@/store/email.js'
 import { useLabelStore } from '@/store/label.js'
 import { hasPerm } from '@/perm/perm.js'
 import { labelCreate } from '@/request/label.js'
+import { LABEL_COLORS } from '@/utils/label-colors.js'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -99,7 +100,6 @@ function go(to) {
   router.push(to)
 }
 
-const LABEL_COLORS = ['#636366', '#9A6200', '#25613A', '#2F6FB0', '#6B4FA0', '#C62828']
 async function promptCreateLabel() {
   try {
     const { value } = await ElMessageBox.prompt(t('newLabelPrompt'), t('newLabel'), {
@@ -211,7 +211,7 @@ async function promptCreateLabel() {
   width: 26px;
   height: 26px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--psg-radius-xs);
   background: transparent;
   color: var(--psg-text-muted);
   display: grid;

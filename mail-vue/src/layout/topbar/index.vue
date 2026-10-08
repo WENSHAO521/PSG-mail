@@ -304,7 +304,7 @@ function clickLogout() {
   font-family: var(--psg-font-mono);
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 6px;
+  border-radius: var(--psg-radius-xs);
   background: var(--psg-surface-muted);
   color: var(--psg-text-muted);
 }

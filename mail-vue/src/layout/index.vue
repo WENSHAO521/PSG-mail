@@ -628,7 +628,7 @@ onBeforeUnmount(() => {
   color: var(--psg-on-primary);
   border-radius: var(--psg-radius-sm);
   padding: 10px 14px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.20);
+  box-shadow: var(--psg-shadow-sm);
   font-size: 13px;
   white-space: nowrap;
   max-width: calc(100vw - 40px);
