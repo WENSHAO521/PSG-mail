@@ -11,12 +11,41 @@ function isDangerousUrl(value) {
   return v.startsWith('javascript:') || v.startsWith('vbscript:') || v.startsWith('data:text/html')
 }
 
-// Remote fetches from a stylesheet (@import, url(http…)) would tell the sender
-// the mail was opened, bypassing the worker's tracker blocking.
-function stripRemoteCssFetches(css) {
-  return css
-    .replace(/@import\b[^;]*;?/gi, '')
-    .replace(/url\(\s*(['"]?)\s*(?:https?:)?\/\/[^)]*\)/gi, 'none')
+// A stylesheet can contact the sender (@import, url(), image-set(), @font-face)
+// and so reveal that the mail was opened, bypassing the worker's tracker
+// blocking. Filtering the raw text is a losing game (CSS escapes, comments),
+// so let the browser's own CSS parser normalize it first: constructable
+// stylesheets never fetch on replaceSync(), @import is ignored, and
+// declaration values come back decoded, so one check on those is enough.
+const FETCHING_VALUE = /url\(|image-set\(|\bsrc\(|\bimage\(|\bcross-fade\(|\belement\(/i
+
+function safeRules(rules, out) {
+  for (const rule of Array.from(rules)) {
+    if (rule instanceof CSSStyleRule) {
+      for (const prop of Array.from(rule.style)) {
+        if (FETCHING_VALUE.test(rule.style.getPropertyValue(prop))) rule.style.removeProperty(prop)
+      }
+      out.push(rule.cssText)
+    } else if (rule instanceof CSSMediaRule) {
+      const inner = []
+      safeRules(rule.cssRules, inner)
+      out.push(`@media ${rule.conditionText || rule.media.mediaText} { ${inner.join('\n')} }`)
+    }
+    // @import, @font-face, @namespace, @supports, @keyframes ... are dropped.
+  }
+}
+
+function safeCss(css) {
+  if (typeof CSSStyleSheet !== 'function') return ''
+  try {
+    const sheet = new CSSStyleSheet()
+    sheet.replaceSync(String(css || ''))
+    const out = []
+    safeRules(sheet.cssRules, out)
+    return out.join('\n')
+  } catch {
+    return ''
+  }
 }
 
 // Returns an inert <body> element holding the cleaned markup.
@@ -30,7 +59,7 @@ export function parseMailHtml(html, { keepHeadStyles = false } = {}) {
   if (keepHeadStyles) {
     const headStyles = Array.from(doc.head.querySelectorAll('style'))
     for (const style of headStyles.reverse()) {
-      style.textContent = stripRemoteCssFetches(style.textContent || '')
+      style.textContent = safeCss(style.textContent || '')
       body.insertBefore(style, body.firstChild)
     }
   }
