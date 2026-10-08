@@ -33,6 +33,13 @@ describe('safeObjectResponse', () => {
 		expect(cd).toMatch(/^attachment/);
 	});
 
+	it('accepts a language tag and encodes RFC 5987 delimiters', () => {
+		const res = safeObjectResponse(new Response('x', {
+			headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename*=UTF-8'en'r%C3%A9sum%C3%A9%20(1).zip` },
+		}));
+		expect(res.headers.get('Content-Disposition')).toContain(`filename*=UTF-8''r%C3%A9sum%C3%A9%20%281%29.zip`);
+	});
+
 	it('keeps plain images inline', () => {
 		const res = safeObjectResponse(new Response('x', {
 			headers: { 'Content-Type': 'image/png', 'Content-Disposition': 'inline;filename="a.png"' },

@@ -11,13 +11,29 @@ function isDangerousUrl(value) {
   return v.startsWith('javascript:') || v.startsWith('vbscript:') || v.startsWith('data:text/html')
 }
 
+// Remote fetches from a stylesheet (@import, url(http…)) would tell the sender
+// the mail was opened, bypassing the worker's tracker blocking.
+function stripRemoteCssFetches(css) {
+  return css
+    .replace(/@import\b[^;]*;?/gi, '')
+    .replace(/url\(\s*(['"]?)\s*(?:https?:)?\/\/[^)]*\)/gi, 'none')
+}
+
 // Returns an inert <body> element holding the cleaned markup.
-export function parseMailHtml(html) {
+// keepHeadStyles: carry a full email's <head> stylesheet along. Only for
+// callers that render inside an isolated (shadow) root; the rules are not
+// scoped, so they must not land in the app's own document.
+export function parseMailHtml(html, { keepHeadStyles = false } = {}) {
   const doc = new DOMParser().parseFromString(String(html || ''), 'text/html')
   const body = doc.body
   // A full HTML email keeps its stylesheet in <head>; carry it along.
-  const headStyles = Array.from(doc.head.querySelectorAll('style'))
-  for (const style of headStyles.reverse()) body.insertBefore(style, body.firstChild)
+  if (keepHeadStyles) {
+    const headStyles = Array.from(doc.head.querySelectorAll('style'))
+    for (const style of headStyles.reverse()) {
+      style.textContent = stripRemoteCssFetches(style.textContent || '')
+      body.insertBefore(style, body.firstChild)
+    }
+  }
   body.querySelectorAll(DROP_TAGS).forEach(el => el.remove())
   body.querySelectorAll('*').forEach(el => {
     for (const attr of Array.from(el.attributes)) {
