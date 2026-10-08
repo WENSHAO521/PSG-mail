@@ -16,8 +16,8 @@ export function updateSignature(signature) {
     return http.put('/my/signature', { signature })
 }
 
-export function updateSignatures({ items, newId, replyId }) {
-    return http.put('/my/signatures', { items, newId, replyId })
+export function updateSignatures({ items, newId, replyId, bySender }) {
+    return http.put('/my/signatures', { items, newId, replyId, bySender })
 }
 
 export function updateUndoSendSeconds(seconds) {

@@ -1354,7 +1354,7 @@ function sigInner(html) {
 }
 
 function sigBlock(kind = 'reply') {
-  const inner = sigInner(userStore.defaultSignature(kind))
+  const inner = sigInner(userStore.defaultSignature(kind, form.sendEmail))
   return inner ? `<p><br></p><div class="psg-signature">${inner}</div>` : ''
 }
 

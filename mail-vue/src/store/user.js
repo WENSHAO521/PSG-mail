@@ -16,10 +16,13 @@ export const useUserStore = defineStore('user', {
             return state.user?.signature ? [{ id: 'default', name: '', html: state.user.signature }] : []
         },
         // Signature a fresh compose ('new') or a reply/forward ('reply') starts with.
+        // A signature bound to the sending address wins over the defaults.
         defaultSignature(state) {
-            return (kind) => {
+            return (kind, from = '') => {
                 const sigs = state.user?.signatures
                 if (!sigs || !Array.isArray(sigs.items)) return state.user?.signature || ''
+                const bound = sigs.bySender?.[String(from).trim().toLowerCase()]
+                if (bound !== undefined) return sigs.items.find(i => i.id === bound)?.html || ''
                 const id = kind === 'reply' ? sigs.replyId : sigs.newId
                 return sigs.items.find(i => i.id === id)?.html || ''
             }
