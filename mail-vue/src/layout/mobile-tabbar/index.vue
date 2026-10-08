@@ -58,7 +58,7 @@ function openCompose() {
   align-items: center;
   height: 64px;
   margin: 0 10px calc(10px + env(safe-area-inset-bottom, 0px));
-  border-radius: 22px;
+  border-radius: var(--psg-radius-lg);
   background: #1C1C1E;
   box-shadow: var(--psg-shadow-md);
 }
@@ -91,7 +91,7 @@ function openCompose() {
   height: 54px;
   padding: 0 20px;
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--psg-radius-lg);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
   font: inherit;

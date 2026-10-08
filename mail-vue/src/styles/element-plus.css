@@ -292,7 +292,7 @@ html.dark {
 
 .el-button--danger {
   background-color: var(--psg-danger);
-  color: #fff;
+  color: var(--psg-on-primary);
 }
 
 .el-button.is-text,
