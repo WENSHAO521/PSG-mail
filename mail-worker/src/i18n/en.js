@@ -38,6 +38,7 @@ const en = {
 	invalidReplyFromReceived: 'Invalid reply-from-address setting',
 	invalidTranslateProvider: 'Invalid translation engine',
 	invalidTranslateKey: 'Invalid Google Translate API key',
+	translatePrefUnavailable: 'Translation settings are temporarily unavailable, please try again later',
 	attLimit: 'The maximum number of attachments is 10.',
 	pwdLengthLimit: 'Password length exceeds the limit',
 	emailLengthLimit: 'Email length exceeds the limit',

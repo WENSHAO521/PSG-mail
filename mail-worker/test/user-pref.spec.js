@@ -58,10 +58,19 @@ describe('signatures', () => {
 			{ id: 'b2', name: 'Short', html: '<p>-- S</p>' },
 		];
 		await userService.updateSignatures(ctx, { items, newId: 'a1', replyId: 'b2' }, 201);
-		expect(await sigRow(201)).toEqual({ items, newId: 'a1', replyId: 'b2' });
+		expect(await sigRow(201)).toEqual({ items, newId: 'a1', replyId: 'b2', bySender: {} });
 
 		await userService.updateSignatures(ctx, { items: items.slice(1), newId: null, replyId: 'b2' }, 201);
-		expect(await sigRow(201)).toEqual({ items: items.slice(1), newId: null, replyId: 'b2' });
+		expect(await sigRow(201)).toEqual({ items: items.slice(1), newId: null, replyId: 'b2', bySender: {} });
+	});
+
+	it('binds signatures to sender addresses, lower-cased, with "" meaning none', async () => {
+		const items = [{ id: 'a1', name: 'Work', html: '<p>Work</p>' }];
+		await userService.updateSignatures(ctx, { items, newId: 'a1', replyId: 'a1', bySender: { 'Me@PSG.test': 'a1', 'alt@psg.test': '' } }, 203);
+		expect((await sigRow(203)).bySender).toEqual({ 'me@psg.test': 'a1', 'alt@psg.test': '' });
+		await expect(userService.updateSignatures(ctx, { items, bySender: { 'me@psg.test': 'gone' } }, 203)).rejects.toThrow();
+		await expect(userService.updateSignatures(ctx, { items, bySender: { notanaddress: 'a1' } }, 203)).rejects.toThrow();
+		await expect(userService.updateSignatures(ctx, { items, bySender: ['a1'] }, 203)).rejects.toThrow();
 	});
 
 	it('rejects bad lists and defaults that point at nothing', async () => {

@@ -48,9 +48,11 @@ async function keyless(input, target) {
 }
 
 async function cloud(input, target, key) {
-	const res = await fetch(`${CLOUD_URL}?key=${encodeURIComponent(key)}`, {
+	// The key goes in a header, not the query string, so it can't end up in
+	// request logs or error messages that echo the URL.
+	const res = await fetch(CLOUD_URL, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'X-goog-api-key': key },
 		body: JSON.stringify({ q: input, target, format: 'text' }),
 	});
 	const data = await res.json().catch(() => null);
@@ -58,7 +60,29 @@ async function cloud(input, target, key) {
 	return (data?.data?.translations || []).map(t => decodeEntities(t?.translatedText || ''));
 }
 
+const CACHE_TTL_SECONDS = 86400;
+
 const translateService = {
+	async cacheKey(userId, provider, targetLang, source) {
+		const data = new TextEncoder().encode(JSON.stringify([provider, targetLang || '', source]));
+		const hash = await crypto.subtle.digest('SHA-256', data);
+		const hex = [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+		return `translate:${userId}:${hex}`;
+	},
+
+	async cacheGet(c, key, length) {
+		try {
+			const hit = await c.env.kv.get(key, { type: 'json' });
+			return Array.isArray(hit) && hit.length === length ? hit : null;
+		} catch { return null; } // cache is best effort
+	},
+
+	async cachePut(c, key, segments) {
+		try {
+			await c.env.kv.put(key, JSON.stringify(segments), { expirationTtl: CACHE_TTL_SECONDS });
+		} catch {}
+	},
+
 	// The user's own choice (Settings → Account) wins over the admin default;
 	// their own key wins over the admin's.
 	async provider(c, userId) {

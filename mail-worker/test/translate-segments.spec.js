@@ -74,7 +74,8 @@ describe('translateSegments (Google engine)', () => {
 	it('uses the Cloud Translation API when a key is set', async () => {
 		vi.spyOn(translateService, 'provider').mockResolvedValue({ provider: 'google', key: 'k1' });
 		vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
-			expect(String(url)).toContain('key=k1');
+			expect(String(url)).not.toContain('k1');
+			expect(init.headers['X-goog-api-key']).toBe('k1');
 			const { q, target } = JSON.parse(init.body);
 			expect(target).toBe('en');
 			return new Response(JSON.stringify({ data: { translations: q.map(s => ({ translatedText: `E:${s} &amp;` })) } }), { status: 200 });
@@ -87,6 +88,17 @@ describe('translateSegments (Google engine)', () => {
 		vi.spyOn(translateService, 'provider').mockResolvedValue({ provider: 'google', key: '' });
 		vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('busy', { status: 429 }));
 		await expect(aiMailService.translateSegments(ctx, 1, { segments: ['a'], targetLang: 'zh' })).rejects.toThrow('429');
+	});
+});
+
+describe('Cloud Translation key handling', () => {
+	it('sends the key in a header, never in the URL', async () => {
+		const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			new Response(JSON.stringify({ data: { translations: [{ translatedText: 'x' }] } }), { status: 200 }));
+		await translateService.googleSegments(['a'], 'en', 'AIzaSECRET');
+		const [url, init] = spy.mock.calls[0];
+		expect(String(url)).not.toContain('AIzaSECRET');
+		expect(init.headers['X-goog-api-key']).toBe('AIzaSECRET');
 	});
 });
 
@@ -105,5 +117,35 @@ describe('translateService.provider', () => {
 		expect(await translateService.provider(db({ translate_provider: '', google_translate_key: '' }), 1))
 			.toEqual({ provider: 'ai', key: 'admin' });
 		expect(await translateService.provider(db(null), 1)).toEqual({ provider: 'ai', key: 'admin' });
+	});
+});
+
+describe('translateSegments cache and fallback', () => {
+	const store = new Map();
+	const kvCtx = { env: { kv: {
+		get: async (k) => (store.has(k) ? JSON.parse(store.get(k)) : null),
+		put: async (k, v) => { store.set(k, v); },
+	} }, get: () => undefined, set: () => {} };
+	beforeEach(() => store.clear());
+
+	it('serves a repeated request from the cache without calling the engine', async () => {
+		vi.spyOn(translateService, 'provider').mockResolvedValue({ provider: 'google', key: '' });
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify([['你好', 'en']]), { status: 200 }));
+		const req = { segments: ['Hello'], targetLang: 'zh' };
+		const a = await aiMailService.translateSegments(kvCtx, 1, req);
+		const b = await aiMailService.translateSegments(kvCtx, 1, req);
+		expect(b).toEqual(a);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		await aiMailService.translateSegments(kvCtx, 2, req); // other user: own cache entry
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('falls back to the AI model when Google fails, and reports Google when both fail', async () => {
+		vi.spyOn(translateService, 'provider').mockResolvedValue({ provider: 'google', key: '' });
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('busy', { status: 429 }));
+		const run = vi.spyOn(aiProviderService, 'run').mockResolvedValue({ response: JSON.stringify(['甲']) });
+		expect((await aiMailService.translateSegments(kvCtx, 1, { segments: ['a'], targetLang: 'zh' })).segments).toEqual(['甲']);
+		run.mockRejectedValue(new Error('ai down'));
+		await expect(aiMailService.translateSegments(kvCtx, 1, { segments: ['b'], targetLang: 'zh' })).rejects.toThrow('429');
 	});
 });

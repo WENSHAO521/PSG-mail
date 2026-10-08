@@ -30,6 +30,7 @@ const DEFAULT_UNDO_SEND_SECONDS = 10;
 const MAX_SIGNATURES = 20;
 const MAX_SIGNATURE_NAME = 60;
 const MAX_SIGNATURE_HTML = 20000;
+const MAX_SENDER_BINDINGS = 200;
 const SIGNATURE_ID_PATTERN = /^[A-Za-z0-9_-]{1,40}$/;
 
 // Signatures as stored in psg_user_signature (migrations/0012). A user who
@@ -39,14 +40,21 @@ function normalizeSignatures(raw, legacy) {
 	let data = null;
 	try { data = raw ? JSON.parse(raw) : null; } catch {}
 	if (!data || !Array.isArray(data.items)) {
-		if (!legacy) return { items: [], newId: null, replyId: null };
-		return { items: [{ id: 'default', name: '', html: legacy }], newId: 'default', replyId: 'default' };
+		if (!legacy) return { items: [], newId: null, replyId: null, bySender: {} };
+		return { items: [{ id: 'default', name: '', html: legacy }], newId: 'default', replyId: 'default', bySender: {} };
 	}
 	const ids = new Set(data.items.map(i => i.id));
+	// bySender: sender address -> signature id (or '' for "no signature"),
+	// overriding the new/reply defaults when composing from that address.
+	const bySender = {};
+	for (const [addr, id] of Object.entries(data.bySender || {})) {
+		if (id === '' || ids.has(id)) bySender[addr] = id;
+	}
 	return {
 		items: data.items,
 		newId: ids.has(data.newId) ? data.newId : null,
 		replyId: ids.has(data.replyId) ? data.replyId : null,
+		bySender,
 	};
 }
 
@@ -126,9 +134,9 @@ const userService = {
 				.bind(userId).first();
 		} catch {}
 		user.translateProvider = translatePref?.translate_provider || '';
-		// Never send the key back, only a masked hint that one is set.
+		// Never send the key back, not even a prefix, only that one is set.
 		const ownKey = translatePref?.google_translate_key || '';
-		user.googleTranslateKey = ownKey ? `${ownKey.slice(0, 6)}******` : '';
+		user.googleTranslateKey = ownKey ? '******' : '';
 
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE;
@@ -222,7 +230,19 @@ const userService = {
 		if ((newId !== null && !seen.has(newId)) || (replyId !== null && !seen.has(replyId))) {
 			throw new BizError(t('invalidSignatures'));
 		}
-		const data = { items: clean, newId, replyId };
+		const rawBy = params.bySender ?? {};
+		if (typeof rawBy !== 'object' || Array.isArray(rawBy) || Object.keys(rawBy).length > MAX_SENDER_BINDINGS) {
+			throw new BizError(t('invalidSignatures'));
+		}
+		const bySender = {};
+		for (const [addr, id] of Object.entries(rawBy)) {
+			const key = String(addr).trim().toLowerCase();
+			if (!key.includes('@') || key.length > 254 || (id !== '' && !seen.has(id))) {
+				throw new BizError(t('invalidSignatures'));
+			}
+			bySender[key] = id;
+		}
+		const data = { items: clean, newId, replyId, bySender };
 		await c.env.db
 			.prepare(`INSERT INTO psg_user_signature (user_id, data) VALUES (?, ?)
 				ON CONFLICT(user_id) DO UPDATE SET data = excluded.data`)
@@ -267,17 +287,23 @@ const userService = {
 		if (key !== undefined && (typeof key !== 'string' || key.length > 200 || /\s/.test(key.trim()))) {
 			throw new BizError(t('invalidTranslateKey'));
 		}
-		if (key === undefined) {
-			await c.env.db
-				.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider) VALUES (?, ?)
-					ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider`)
-				.bind(userId, provider).run();
-		} else {
-			await c.env.db
-				.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider, google_translate_key) VALUES (?, ?, ?)
-					ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider,
-					google_translate_key = excluded.google_translate_key`)
-				.bind(userId, provider, key.trim()).run();
+		try {
+			if (key === undefined) {
+				await c.env.db
+					.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider) VALUES (?, ?)
+						ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider`)
+					.bind(userId, provider).run();
+			} else {
+				await c.env.db
+					.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider, google_translate_key) VALUES (?, ?, ?)
+						ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider,
+						google_translate_key = excluded.google_translate_key`)
+					.bind(userId, provider, key.trim()).run();
+			}
+		} catch (e) {
+			// Migration 0015 not applied yet: say so instead of a bare 500.
+			console.error('updateTranslatePref failed', e?.message || e);
+			throw new BizError(t('translatePrefUnavailable'), 503);
 		}
 	},
 

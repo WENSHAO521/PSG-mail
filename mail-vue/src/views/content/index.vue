@@ -195,6 +195,10 @@
           <button v-if="trackerInfo.blocked" type="button" class="tracker-banner-btn" @click="showTrackers = !showTrackers">
             {{ showTrackers ? $t('blockTrackersAgain') : $t('loadTrackers') }}
           </button>
+          <button v-if="trackerInfo.blocked && email?.sendEmail" type="button" class="tracker-banner-btn"
+                  :disabled="trustBusy" @click="trustSender">
+            {{ $t('trustSenderTrackers') }}
+          </button>
         </div>
 
         <!-- Translate bar: the body below is swapped in place for the
@@ -301,6 +305,7 @@ import { reactive, ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { emailDelete, emailRead, emailUnread, emailSpamVerdict, emailUnmarkSpam } from '@/request/email.js'
 import { translateSegments } from '@/request/translate.js'
+import { trackerAllow } from '@/request/tracker.js'
 import { aiEmailSummary, aiReplySuggestion } from '@/request/ai-mail.js'
 import { Icon } from '@iconify/vue'
 import { useEmailStore } from '@/store/email.js'
@@ -559,6 +564,20 @@ watch(() => email.value?.isSpam ? email.value.emailId : 0, async (emailId) => {
 const NO_TRACKERS = { blocked: 0, vendors: [], clickTrackers: 0 }
 const trackerInfo = ref(NO_TRACKERS)
 const showTrackers = ref(false)
+const trustBusy = ref(false)
+
+// Future mail from this address skips tracker blocking; this message is
+// shown with its images now. Undo in Settings → Account.
+async function trustSender() {
+  trustBusy.value = true
+  try {
+    await trackerAllow(email.value.sendEmail)
+    showTrackers.value = true
+    ElMessage({ message: t('trustSenderDone', { email: email.value.sendEmail }), type: 'success', plain: true })
+  } finally {
+    trustBusy.value = false
+  }
+}
 watch(() => email.value?.emailId, () => {
   trackerInfo.value = NO_TRACKERS
   showTrackers.value = false

@@ -67,6 +67,21 @@
           <el-option v-for="item in items" :key="item.id" :label="displayName(item)" :value="item.id" />
         </el-select>
       </div>
+      <div v-if="senders.length > 1" class="sig-sender-block">
+        <div>
+          <div class="toggle-label">{{ $t('signatureBySender') }}</div>
+          <div class="card-desc">{{ $t('signatureBySenderDesc') }}</div>
+        </div>
+        <div v-for="addr in senders" :key="addr" class="sig-default-row sig-sender-row">
+          <span class="sig-sender-addr">{{ addr }}</span>
+          <el-select :model-value="bySender[addr] ?? FOLLOW_DEFAULT" class="sig-default-select"
+                     @update:model-value="v => setBound(addr, v)">
+            <el-option :label="$t('signatureFollowDefault')" :value="FOLLOW_DEFAULT" />
+            <el-option :label="$t('signatureNone')" :value="''" />
+            <el-option v-for="item in items" :key="item.id" :label="displayName(item)" :value="item.id" />
+          </el-select>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -78,6 +93,7 @@ import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import tinyEditor from '@/components/tiny-editor/index.vue'
 import { useUserStore } from '@/store/user.js'
+import { accountListAll } from '@/request/account.js'
 
 const MAX = 20
 
@@ -87,6 +103,9 @@ const userStore = useUserStore()
 const items = ref([])
 const newId = ref('')
 const replyId = ref('')
+const FOLLOW_DEFAULT = '__default__'
+const bySender = ref({})
+const senders = ref([])
 const activeId = ref('')
 const nameDraft = ref('')
 const editorValue = ref('')
@@ -105,12 +124,27 @@ function load() {
     items.value = sigs.items.map(i => ({ ...i }))
     newId.value = sigs.newId || ''
     replyId.value = sigs.replyId || ''
+    bySender.value = { ...(sigs.bySender || {}) }
   } else {
     items.value = userStore.signatureList.map(i => ({ ...i }))
     newId.value = items.value[0]?.id || ''
     replyId.value = items.value[0]?.id || ''
   }
   select(items.value[0]?.id || '', { flush: false })
+  loadSenders()
+}
+
+function setBound(addr, id) {
+  if (id === FOLLOW_DEFAULT) delete bySender.value[addr]
+  else bySender.value[addr] = id
+}
+
+async function loadSenders() {
+  try {
+    senders.value = (await accountListAll()).map(a => String(a.email || '').toLowerCase()).filter(Boolean)
+  } catch {
+    senders.value = []
+  }
 }
 
 // Writes what's in the editor back to the signature being edited.
@@ -149,6 +183,7 @@ function remove(id) {
   items.value.splice(idx, 1)
   if (newId.value === id) newId.value = ''
   if (replyId.value === id) replyId.value = ''
+  for (const addr of Object.keys(bySender.value)) if (bySender.value[addr] === id) delete bySender.value[addr]
   if (activeId.value === id) {
     select(items.value[Math.min(idx, items.value.length - 1)]?.id || '', { flush: false })
   }
@@ -170,6 +205,9 @@ async function save() {
       items: items.value.map(({ id, name, html }) => ({ id, name: (name || '').trim(), html: html || '' })),
       newId: newId.value || null,
       replyId: replyId.value || null,
+      // Only addresses still bound to an existing signature (or to "none").
+      bySender: Object.fromEntries(Object.entries(bySender.value)
+        .filter(([, id]) => id === '' || items.value.some(i => i.id === id))),
     })
     ElMessage({ message: t('signatureSaved'), type: 'success', plain: true })
   } finally {
@@ -403,6 +441,8 @@ defineExpose({ save, saving })
 
 .sig-defaults { padding: 0; gap: 0; overflow: hidden; }
 
+.sig-sender-block { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.sig-sender-addr { font-size: 13px; word-break: break-all; }
 .sig-default-row {
   display: flex;
   align-items: center;

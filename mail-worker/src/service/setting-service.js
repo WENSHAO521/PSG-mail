@@ -261,7 +261,7 @@ const settingService = {
 		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
 		settingRow.mailjetApiKey = settingRow.mailjetApiKey ? `${settingRow.mailjetApiKey.slice(0, 12)}******` : null;
 		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
-		settingRow.googleTranslateKey = settingRow.googleTranslateKey ? `${settingRow.googleTranslateKey.slice(0, 8)}******` : null;
+		settingRow.googleTranslateKey = settingRow.googleTranslateKey ? '******' : null;
 		settingRow.webhookSecret = settingRow.webhookSecret ? `${settingRow.webhookSecret.slice(0, 12)}******` : null;
 		// SMTP password for a real mailbox — unlike the API-key-shaped secrets
 		// above, no partial reveal at all. The frontend only ever learns
