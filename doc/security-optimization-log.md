@@ -190,3 +190,35 @@ Not done / backlog:
 - Signed, expiring download URLs for attachments remain a frontend-coordinated item.
 
 Tests: 176/176 pass. Apply `migrations/0019_attachments_key_index.sql` (rollback: `DROP INDEX idx_attachments_key;`). Without it the code is correct but the re-check scans the table once per 90 keys instead of using the index.
+
+## Batch 11 — Static asset routing (Workers requests) and sync polling review
+
+### Static assets: `run_worker_first = true` → path list
+
+Before: every request (each JS/CSS/font/icon/manifest/service-worker file) invoked the Worker only to forward to `env.assets.fetch`. `src/index.js` itself only handles three prefixes: `/api/`, `/attachments/`, `/static/`.
+
+Change (all four configs: `wrangler.toml`, `wrangler-action.toml`, `wrangler-dev.toml`, `wrangler-test.toml`):
+`run_worker_first = ["/api/*", "/attachments/*", "/static/*"]` — everything else is answered by Static Assets directly (no Worker invocation; Static Assets requests are not billed as Worker requests).
+
+Measured locally with `wrangler dev` (4.125.0) against the real built `mail-vue/dist`, counting root spans in the local observability store for the same 9 requests
+(`/`, one hashed JS asset, a deep SPA route, `favicon.svg`, `manifest.webmanifest`, `psg-mail-sw.js`, `/attachments/nope.png`, `/static/nope`, `/api/setting/websiteConfig`):
+
+| Config | Worker invocations | Responses |
+|---|---|---|
+| `run_worker_first = true` | 9 | identical statuses/content types |
+| `run_worker_first = [...]` | **3** (the `/api`, `/attachments`, `/static` requests) | identical; deep link `/inbox/some/spa/route` still returns `index.html` (SPA fallback), `_headers` rules still parsed |
+
+This shows the routing effect on a local run; the production saving depends on how many static files each page load fetches and on cache hit rates — **not measured on Cloudflare**. Auth is unaffected: API, private attachments and stored objects still go through the Worker; no authenticated or private route is served by Static Assets.
+
+Guard: `test/static-routing.spec.js` fails if `src/index.js` starts handling a new path prefix that is not in every wrangler config's list (otherwise that path would silently fall through to the SPA), or if a config goes back to `true`.
+
+**Verify in your test environment before production** (as required): deploy with `wrangler-test.toml`, then check login, deep-link refresh (`/settings`, `/label/1`), PWA install/update, avatar/background image, inline mail images (`/api/oss/...`), attachment download. Rollback: set `run_worker_first = true` again (config only, no data impact).
+
+### Service worker / PWA
+`psg-mail-sw.js` only precaches the build manifest (`globPatterns: []`, i.e. nothing) and has no runtime caching route: API responses and private attachments are never stored by the service worker. Hashed `/assets/*` are `immutable` via `_headers`. No change.
+
+### Sync polling (`mail-sync-service.js`) — reviewed, deliberately not changed
+Already present: one poller per app with a cross-tab `localStorage` lease, in-flight request sharing, 30 s minimum gap, cursor + de-dupe shared between push and poll, hidden tabs do not poll (they catch up on visibility), immediate catch-up on `online`/`focus`/`visibility`, cursor reset on account switch, polling stops on 401/403. An idle poll costs one Worker call and ~2 D1 rows (measured in batch 6).
+Not changed: the 30 s floor was set after a mail-sync incident and applies to Electron (no push). Lengthening it needs push-delivery data we do not have here. **Candidate experiment (no code change needed):** raise the admin setting `autoRefresh` to 60 in the test environment and compare Worker request counts and missed-push catch-up latency; the 60 s / 180–300 s figures from the brief remain candidates until measured.
+
+Tests: 181 worker tests pass (+5 routing).
