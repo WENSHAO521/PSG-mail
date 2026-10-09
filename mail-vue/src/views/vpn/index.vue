@@ -407,12 +407,12 @@ h2 {
   padding: 14px 16px;
   border-radius: var(--psg-radius-lg);
   background: var(--psg-surface-muted);
+  flex-wrap: wrap;
+  min-width: 0;
 
   &--current { box-shadow: inset 0 0 0 2px var(--psg-primary); }
 
   &--skeleton { animation: vpn-pulse 1.2s ease-in-out infinite; }
-
-  @media (max-width: 640px) { flex-wrap: wrap; }
 }
 
 .vpn-row-icon {
@@ -426,7 +426,7 @@ h2 {
   color: var(--psg-text);
 }
 
-.vpn-row-info { flex: 1; min-width: 0; }
+.vpn-row-info { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
 
 .vpn-row-title {
   display: flex;
@@ -455,19 +455,24 @@ h2 {
 
 .vpn-row-actions {
   display: flex;
+  flex: 0 1 auto;
   flex-wrap: wrap;
   justify-content: flex-end;
+  min-width: 0;
+  max-width: 100%;
   gap: 6px;
 
-  @media (max-width: 640px) { width: 100%; justify-content: flex-start; padding-left: 58px; }
+  /* Not enough room beside the info: drop under it, aligned with the text. */
+  @media (max-width: 900px) { flex: 1 1 100%; justify-content: flex-start; padding-left: 58px; }
 }
 
 .vpn-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
+  min-height: 36px;
   padding: 0 14px;
+  white-space: nowrap;
   border: 0;
   border-radius: var(--psg-radius-full);
   background: var(--psg-surface);
