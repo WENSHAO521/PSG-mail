@@ -441,7 +441,15 @@ defineExpose({ save, saving })
 
 .sig-defaults { padding: 0; gap: 0; overflow: hidden; }
 
-.sig-sender-block { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+/* .sig-defaults has no padding of its own, so the block's header needs the same 22px gutter as the
+   rows below it; otherwise the heading hugs the card edge while the addresses are indented. */
+.sig-sender-block {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--psg-border);
+  > div:first-child { padding: 16px 22px 6px; }
+  .sig-sender-row { padding-top: 10px; padding-bottom: 10px; }
+}
 .sig-sender-addr { font-size: 13px; word-break: break-all; }
 .sig-default-row {
   display: flex;
@@ -476,6 +484,7 @@ defineExpose({ save, saving })
   .sig-items { max-height: 220px; }
   .sig-editor { padding: 14px; }
   .sig-default-row { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 16px; }
+  .sig-sender-block > div:first-child { padding: 14px 16px 4px; }
   .sig-default-select { width: 100%; }
 }
 </style>
