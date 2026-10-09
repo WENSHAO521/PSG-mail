@@ -1,3 +1,4 @@
+import { recordMetric } from '../service/ops-metrics';
 import resendService from '../service/resend-service';
 import app from '../hono/hono';
 import { verifySvix } from '../utils/svix-verify';
@@ -11,11 +12,13 @@ app.post('/webhooks', async (c) => {
 
 		if (secret) {
 			if (!(await verifySvix(secret, c.req.raw.headers, raw))) {
+				recordMetric(c, 'webhook.invalid_signature');
 				return c.text('invalid signature', 401);
 			}
 		} else if (c.env.resend_webhook_insecure !== 'true') {
 			// Fail closed: without a secret anyone could forge delivered/bounced/complained states.
 			console.warn('resend webhook rejected: resend_webhook_secret is not configured');
+			recordMetric(c, 'webhook.rejected_no_secret');
 			return c.text('webhook secret not configured', 401);
 		}
 
@@ -23,6 +26,7 @@ app.post('/webhooks', async (c) => {
 		const eventId = secret ? c.req.header('svix-id') : null;
 		const dedupeKey = eventId ? `webhook_evt:${eventId}` : null;
 		if (dedupeKey && await c.env.kv.get(dedupeKey)) {
+			recordMetric(c, 'webhook.replay_ignored');
 			return c.text('success', 200);
 		}
 
@@ -34,6 +38,7 @@ app.post('/webhooks', async (c) => {
 		return c.text('success', 200);
 	} catch (e) {
 		console.error('resend webhook failed', e?.message);
+		recordMetric(c, 'webhook.error');
 		return c.text('webhook processing failed', 500);
 	}
 });

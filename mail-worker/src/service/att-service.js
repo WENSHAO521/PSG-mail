@@ -1,3 +1,4 @@
+import { bump } from './ops-metrics';
 import orm from '../entity/orm';
 import { att } from '../entity/att';
 import { and, eq, isNull, inArray, desc } from 'drizzle-orm';
@@ -300,6 +301,7 @@ const attService = {
 				await this.batchDelete(c, delKeyList);
 			} catch (e) {
 				console.error('删除附件文件失败：', e);
+				bump('storage.object_delete_failed');
 			}
 		}
 

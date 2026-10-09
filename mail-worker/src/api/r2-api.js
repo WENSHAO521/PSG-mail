@@ -1,3 +1,4 @@
+import { recordMetric } from '../service/ops-metrics';
 import r2Service from '../service/r2-service';
 import app from '../hono/hono';
 import constant from '../const/constant';
@@ -24,6 +25,7 @@ function toPublicObjectKey(path) {
 app.get('/oss/*', async (c) => {
 	const key = toPublicObjectKey(c.req.path);
 	if (!key) {
+		recordMetric(c, 'storage.oss_blocked');
 		return c.text('Not Found', 404);
 	}
 

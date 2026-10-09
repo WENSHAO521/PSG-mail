@@ -222,3 +222,34 @@ Already present: one poller per app with a cross-tab `localStorage` lease, in-fl
 Not changed: the 30 s floor was set after a mail-sync incident and applies to Electron (no push). Lengthening it needs push-delivery data we do not have here. **Candidate experiment (no code change needed):** raise the admin setting `autoRefresh` to 60 in the test environment and compare Worker request counts and missed-push catch-up latency; the 60 s / 180–300 s figures from the brief remain candidates until measured.
 
 Tests: 181 worker tests pass (+5 routing).
+
+## Batch 12 — Operations / security monitoring (P2)
+
+Design constraint from the brief: the monitoring must not add noticeable Cloudflare usage and must never hold secrets or personal data.
+
+**Mechanism** (`src/service/ops-metrics.js`, migration `0020_ops_metric.sql`): events are counted in memory per Worker instance and written as one small batch (`INSERT … ON CONFLICT DO UPDATE`) at most once a minute per instance, after the response (`waitUntil`), into `ops_metric(day, metric, count, total_ms, max_ms)`. One row per UTC day and metric, no per-event rows, 60-day retention (purged by the daily cron). Measured in `ops-metrics.spec.js`: 502 events → 2 rows written; a flood cannot write more than the number of distinct metrics (hard cap 64 names) per minute per instance. Idle minutes write nothing (the per-minute cron records only outcomes worth looking at).
+
+**What is recorded** (names only, no ids / IPs / addresses / mail content; asserted by a test that greps the stored rows):
+
+| Area | Metrics |
+|---|---|
+| Authentication | `auth.login_failed`, `auth.login_throttled`, `auth.session_invalid`, `auth.api_key_rejected`, `auth.public_token_rejected` |
+| Authorization | `authz.denied` (role-permission 403, JWT and API-key routes) |
+| Webhooks | `webhook.invalid_signature`, `webhook.rejected_no_secret`, `webhook.replay_ignored`, `webhook.error` |
+| Mail | `mail.scheduled_sent`, `mail.scheduled_failed`, `mail.scheduled_retry` |
+| Storage | `storage.oss_blocked` (blocked `/oss` key probes), `storage.object_delete_failed` |
+| AI | `ai.request.<task>`, `ai.quota_denied`, `ai.error` |
+| Cache | `cache.hit`, `cache.miss` (isolate-local KV cache; shows how often a KV read was avoided) |
+| Cron | `cron.minute.scheduled_processed` (+duration), `cron.minute.*_error`, `cron.daily.<job>` (count + avg/max ms), `cron.daily.<job>_error`, `cron.stats_refresh` |
+
+**Admin read API** (requires the `setting:query` permission; verified end-to-end through the real middleware in `admin-endpoints.spec.js`: 403 without it, 401 with a bad token, 200 for the admin):
+`GET /setting/opsMetrics?days=7` → daily metric rows plus live gauges: storage type, scheduled-mail backlog by status (indexed), failed forwarding deliveries, today's AI requests per task. Also available: `GET /setting/storageAudit` (orphan report, batch 10) and `GET /setting/providerUsage`.
+
+Behaviour notes:
+- Counts are **approximate** (an instance recycled before its flush loses under a minute); the API response says so. They are for trend and alerting, not billing.
+- The per-minute cron still fails the invocation when a job throws (Cloudflare's cron error status is preserved); it now also records the error first.
+- No frontend page was added; the endpoint returns JSON for an admin or a dashboard script.
+
+**Not available from inside the Worker (use Cloudflare analytics instead):** Workers request count and CPU time, D1 rows read/written and per-query latency, KV operation counts, R2 Class A/B operations and stored bytes, Durable Object requests/duration, actual Workers AI Neurons. The brief's requirement for those is met by the dashboard / GraphQL Analytics API; the numbers in this log that come from local D1 runs (batches 6, 7, 10, 11) are method demonstrations on synthetic data, not production savings.
+
+Tests: 187 pass (+ops-metrics, admin-endpoints). Apply `migrations/0020_ops_metric.sql`; rollback `DROP TABLE ops_metric;` (the app tolerates the table being absent).

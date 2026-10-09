@@ -1,3 +1,4 @@
+import { bump } from './ops-metrics';
 import orm from '../entity/orm';
 import scheduledEmail from '../entity/scheduled-email';
 import { and, eq, desc, lte } from 'drizzle-orm';
@@ -326,6 +327,9 @@ const scheduledEmailService = {
 	},
 
 	async finalize(c, row, patch) {
+		if (patch.status === STATUS.SENT) bump('mail.scheduled_sent');
+		if (patch.status === STATUS.FAILED) bump('mail.scheduled_failed');
+		if (patch.status === STATUS.PENDING && patch.attemptCount) bump('mail.scheduled_retry');
 		const result = await orm(c).update(scheduledEmail)
 			.set({ ...patch, updateTime: new Date().toISOString() })
 			.where(eq(scheduledEmail.id, row.id))

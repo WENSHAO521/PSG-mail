@@ -1,3 +1,4 @@
+import { bump } from './ops-metrics';
 import dayjs from 'dayjs';
 import BizError from '../error/biz-error';
 import settingService from './setting-service';
@@ -44,6 +45,7 @@ const aiProviderService = {
 				`SELECT COALESCE(SUM(request_count), 0) AS total FROM ai_usage WHERE user_id = ? AND usage_date = ? AND task NOT IN (${SYSTEM_TASKS.map(() => '?').join(',')})`
 			).bind(userId, date, ...SYSTEM_TASKS).first();
 		if (Number(existing?.total || 0) >= quota) {
+			bump('ai.quota_denied');
 			throw new BizError('AI 每日额度已用尽，请明天再试', 429);
 		}
 		const units = estimateUnits(input);
@@ -64,10 +66,12 @@ const aiProviderService = {
 		// options.defaultQuota applies when the admin set none.
 		await this.reserveQuota(c, userId, task, input, quota || options.defaultQuota || 0, options.perTask);
 		const primary = options.model || model;
+		bump('ai.request.' + String(task).toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 30));
 		try {
 			return await c.env.ai.run(primary, input);
 		} catch (firstError) {
 			if (!fallbackModel || fallbackModel === primary) {
+				bump('ai.error');
 				console.error('AI provider request failed', task, firstError?.message || firstError);
 				throw new BizError('AI 服务暂时不可用', 503);
 			}

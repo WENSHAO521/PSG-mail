@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 const app = new Hono();
 
 import result from '../model/result';
+import { maybeFlush } from '../service/ops-metrics';
 import { cors } from 'hono/cors';
 // Authentication is a bearer header (no cookies), so a wildcard origin cannot ride a
 // browser session. Deployments can still pin it: cors_origins = "https://mail.example.com,app://obsidian"
@@ -20,6 +21,7 @@ app.use('*', async (c, next) => {
 	if (!h.has('X-Content-Type-Options')) h.set('X-Content-Type-Options', 'nosniff');
 	if (!h.has('Referrer-Policy')) h.set('Referrer-Policy', 'no-referrer');
 	if (!h.has('Cache-Control') && !c.req.path.startsWith('/oss/')) h.set('Cache-Control', 'no-store');
+	maybeFlush(c); // at most one small D1 batch per minute per isolate, after the response
 });
 
 app.onError((err, c) => {

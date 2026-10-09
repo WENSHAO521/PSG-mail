@@ -8,6 +8,7 @@ import userService from '../service/user-service';
 import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
+import { bump } from '../service/ops-metrics';
 import { toSessionUser } from '../utils/session-user';
 import { isDel, userConst } from '../const/entity-const';
 import externalApiKeyService from '../service/external-api-key-service';
@@ -52,6 +53,7 @@ const requirePerms = [
 	'/setting/setBlacklist',
 	'/setting/providerUsage',
 	'/setting/storageAudit',
+	'/setting/opsMetrics',
 	'/setting/alibaba/testConnection',
 	'/setting/alibaba/testNotification',
 	'/user/delete',
@@ -93,7 +95,7 @@ const premKey = {
 	'user:set-name': ['/user/setName'],
 	'all-email:query': ['/allEmail/list','/allEmail/latest'],
 	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
-	'setting:query': ['/setting/query', '/setting/providerUsage', '/setting/storageAudit'],
+	'setting:query': ['/setting/query', '/setting/providerUsage', '/setting/storageAudit', '/setting/opsMetrics'],
 	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist','/setting/alibaba/testConnection','/setting/alibaba/testNotification'],
 	'analysis:query': ['/analysis/echarts'],
 	'reg-key:add': ['/regKey/add'],
@@ -118,6 +120,7 @@ app.use('*', async (c, next) => {
 		const userPublicToken = await c.env.kv.get(KvConst.PUBLIC_KEY);
 		const publicToken = c.req.header(constant.TOKEN_HEADER);
 		if (publicToken !== userPublicToken) {
+			bump('auth.public_token_rejected');
 			throw new BizError(t('publicTokenFail'), 401);
 		}
 		return await next();
@@ -128,6 +131,7 @@ app.use('*', async (c, next) => {
 		const apiKey = c.req.header('X-Api-Key');
 		const userId = apiKey ? await externalApiKeyService.verify(c, apiKey) : null;
 		if (!userId) {
+			bump('auth.api_key_rejected');
 			throw new BizError(t('apiKeyInvalid'), 401);
 		}
 
@@ -138,7 +142,8 @@ app.use('*', async (c, next) => {
 		if (!owner) {
 			const row = await userService.selectById(c, userId);
 			if (!row || row.isDel === isDel.DELETE || row.status === userConst.status.BAN) {
-				throw new BizError(t('apiKeyInvalid'), 401);
+				bump('auth.api_key_rejected');
+			throw new BizError(t('apiKeyInvalid'), 401);
 			}
 			owner = { email: row.email };
 			kvCache.set(ownerKey, owner, TTL.AUTH);
@@ -153,6 +158,7 @@ app.use('*', async (c, next) => {
 				kvCache.set(permCacheKey, permKeys, TTL.PERM);
 			}
 			if (!permKeys.includes(needPerm)) {
+				bump('authz.denied');
 				throw new BizError(t('unauthorized'), 403);
 			}
 		}
@@ -167,6 +173,7 @@ app.use('*', async (c, next) => {
 	const result = await jwtUtils.verifyToken(c, jwt);
 
 	if (!result) {
+		bump('auth.session_invalid');
 		throw new BizError(t('authExpired'), 401);
 	}
 
@@ -179,10 +186,12 @@ app.use('*', async (c, next) => {
 	}
 
 	if (!authInfo) {
+		bump('auth.session_invalid');
 		throw new BizError(t('authExpired'), 401);
 	}
 
 	if (!authInfo.tokens.includes(token)) {
+		bump('auth.session_invalid');
 		throw new BizError(t('authExpired'), 401);
 	}
 
@@ -206,7 +215,8 @@ app.use('*', async (c, next) => {
 		});
 
 		if (userPermIndex === -1 && authInfo.user.email !== c.env.admin) {
-			throw new BizError(t('unauthorized'), 403);
+			bump('authz.denied');
+				throw new BizError(t('unauthorized'), 403);
 		}
 
 	}

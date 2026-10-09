@@ -3,6 +3,7 @@ import result from '../model/result';
 import settingService from '../service/setting-service';
 import emailService from '../service/email-service';
 import attService from '../service/att-service';
+import opsService from '../service/ops-service';
 import userContext from "../security/user-context";
 import alibabaDirectmailService from '../service/alibaba-directmail-service';
 import forwardingService from '../service/forwarding-service';
@@ -42,6 +43,13 @@ app.put('/setting/setBlacklist', async (c) => {
 // Read-only: reports stored attachment objects that no mail references. Never deletes.
 app.get('/setting/storageAudit', async (c) => {
 	const data = await attService.auditOrphans(c, { cursor: c.req.query('cursor'), limit: c.req.query('limit') });
+	return c.json(result.ok(data));
+});
+
+// Aggregated operations / security counters (see service/ops-metrics.js) plus a few live backlog
+// gauges. Contains no user identifiers. ?days=1..60 (default 7).
+app.get('/setting/opsMetrics', async (c) => {
+	const data = await opsService.overview(c, Number(c.req.query('days')));
 	return c.json(result.ok(data));
 });
 
