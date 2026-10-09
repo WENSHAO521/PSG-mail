@@ -426,7 +426,7 @@ h2 {
   color: var(--psg-text);
 }
 
-.vpn-row-info { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.vpn-row-info { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
 
 .vpn-row-title {
   display: flex;
