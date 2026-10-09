@@ -1,6 +1,6 @@
 # PSG Mail — security hardening & resource optimization: summary
 
-Branch `claude/psg-mail-security-optimization-sm00ea` (12 batches, 11 commits on top of `309c63b`).
+Branch `claude/psg-mail-security-optimization-sm00ea` (13 batches on top of `309c63b`).
 Per-batch detail, evidence and rollback notes: `doc/security-optimization-log.md`.
 Nothing here was deployed, no production database or DNS/MX/route/secret was touched, no mail, user, attachment, setting or history was deleted, and no retention period was changed.
 
@@ -12,7 +12,7 @@ Nothing here was deployed, no production database or DNS/MX/route/secret was tou
 | P0 API authorization | **Done:** `/oss` allowlist (critical in KV mode), API-key RBAC + banned-owner check, unscoped `delete_time` update fixed, per-route review of the remaining modules (no further IDOR found) |
 | P0 attachments / objects | **Done:** attachment reference test is indexed and re-checked; safe response headers were already in place. **Open:** signed expiring URLs (needs frontend), owner-scoping of compose-time embedded images |
 | P0 webhooks / callbacks | **Done:** fail-closed signature, replay dedupe, outbound URL guard (web push, webhook), generic errors |
-| P0 secrets | **Partly:** responses mask secrets harder, no secrets in logs. **Open:** at-rest encryption of OAuth/backup/S3/Mailjet credentials and key rotation — needs your decision on where the master key lives (Workers Secret) |
+| P0 secrets | **Done (opt-in):** AES-GCM encryption at rest for provider/bot/S3/Mailjet/SMTP/translate keys and backup OAuth tokens with a Worker-secret master key, migration action and key rotation (batch 13); responses mask secrets harder, no secrets in logs. **Needs you:** set `credential_master_key` and run the migration |
 | P0 web app | **Done:** generic error bodies, API + SPA security headers, optional CORS pin, dependency audit clean. **Open:** enforced CSP (should ship report-only first) |
 | P1 Workers | **Done:** `run_worker_first` path list (locally verified, 9 → 3 Worker invocations for 9 requests). Polling reviewed, deliberately unchanged |
 | P1 D1 | **Done:** cursor pages skip `COUNT`, shared-account queries index-bound, 4 new indexes, request-time `ALTER TABLE` removed. **Open:** list still returns full bodies (frontend change) |
@@ -34,7 +34,7 @@ Nothing here was deployed, no production database or DNS/MX/route/secret was tou
 9. **HSTS** `max-age=15552000` (no `includeSubDomains`/preload) is sent for the SPA.
 10. **AI assistant**: default ceiling 200 model calls/user/day when no admin quota is set.
 
-New optional variables: `resend_webhook_insecure`, `cors_origins` (comma-separated origins; unset keeps `*`).
+New optional variables: `resend_webhook_insecure`, `cors_origins` (comma-separated origins; unset keeps `*`), Worker secrets `credential_master_key` / `credential_master_key_previous` (credential encryption; unset = unchanged behaviour).
 
 ## 3. Release checklist
 
@@ -42,7 +42,7 @@ New optional variables: `resend_webhook_insecure`, `cors_origins` (comma-separat
 2. Migrations — applied automatically by `deploy-cloudflare.yml` before `wrangler deploy`; manually: `pnpm wrangler d1 migrations apply db --remote -c wrangler-action.toml`:
    `0017_email_account_list_index`, `0018_verify_record_ip_index`, `0019_attachments_key_index`, `0020_ops_metric`.
    The app works without them (slower plans / no metrics storage). Like the existing `0007`, they index core tables, so they assume the database was initialised.
-3. Set `resend_webhook_secret` as a Worker secret.
+3. Set `resend_webhook_secret` as a Worker secret. Optionally set `credential_master_key` (back it up!) and run `POST /setting/credentialMigrate?dryRun=1` then without `dryRun` — see batch 13.
 4. Deploy to the **test environment** (`wrangler-test.toml`) and check: login (old-hash and new user), password change, "sign out other devices", deep-link refresh (`/settings`, `/label/1`), PWA install/update, avatar/background, inline mail images, attachment download/delete, scheduled send, a Resend status webhook, `GET /api/setting/opsMetrics`, `GET /api/setting/storageAudit`.
 5. Deploy production; watch `auth.*`, `webhook.*`, `cron.*_error`, `ai.quota_denied` for a few days.
 6. Optional experiments (not changes): `autoRefresh = 60` in the test environment; review `storageAudit` output before any manual orphan cleanup.
@@ -59,13 +59,13 @@ New optional variables: `resend_webhook_insecure`, `cors_origins` (comma-separat
 
 ## 5. Evidence and its limits
 
-- 187 automated tests (worker, local Workers runtime) pass; the Vue app builds. Security fixes were reproduced by a failing test first where feasible (`/oss` key leak, trash purge > 100 rows, attachment re-check).
+- 203 automated tests (worker, local Workers runtime) pass; the Vue app builds. Security fixes were reproduced by a failing test first where feasible (`/oss` key leak, trash purge > 100 rows, attachment re-check).
 - Performance numbers (rows read, query plans, Worker invocations) come from **local D1 / `wrangler dev` runs on synthetic data**, as stated in each batch. They show the mechanism and guard against regressions; they are **not** production savings. Production effect has to be read from Cloudflare analytics before/after the release.
 - Not performed: load testing, concurrent multi-user stress, large-attachment tests, backup/restore drill, push-outage and Cloudflare-outage drills, real-device sync tests.
 
 ## 6. Remaining risk, in suggested order
 
-1. **Credential encryption at rest** (OAuth/backup tokens, S3, Mailjet, Alibaba SMTP, user translate keys live in D1/KV as plaintext) — needs a master-key decision.
+1. **Turn credential encryption on** (code is shipped, off until `credential_master_key` is set); it protects against database/KV/export disclosure, not against code execution in the Worker.
 2. **Account enumeration** via distinct login error messages (registration also reveals existence) — product decision.
 3. **CSP**: ship `Content-Security-Policy-Report-Only`, collect violations, then enforce.
 4. **List payload**: omit bodies from `/email/list`, fetch on open (frontend + native clients).

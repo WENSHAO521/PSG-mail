@@ -1,4 +1,5 @@
 import { isSafeOutboundUrl } from '../utils/url-guard';
+import credentialService from './credential-service';
 import KvConst from '../const/kv-const';
 import kvCache, { TTL } from '../cache/kv-cache';
 import setting from '../entity/setting';
@@ -110,6 +111,38 @@ function normalizeSettingRow(row) {
 	return { ...row, autoRefresh: normalizeAutoRefresh(row.autoRefresh) };
 }
 
+// ── Credential encryption (see credential-service.js; active only with credential_master_key) ──
+const SETTING_SECRET_FIELDS = ['secretKey', 'tgBotToken', 'webhookSecret', 's3AccessKey', 's3SecretKey'];
+const FEATURE_SECRET_FIELDS = ['mailjetApiKey', 'mailjetSecretKey', 'alibabaSmtpPassword', 'googleTranslateKey'];
+
+const settingCtx = field => 'setting.' + field;
+const featureCtx = field => 'feature.' + field;
+
+// Stored form -> plaintext copy for in-memory use.
+async function decryptSettingRow(env, row) {
+	const out = { ...row };
+	for (const field of SETTING_SECRET_FIELDS) {
+		if (out[field]) out[field] = await credentialService.decrypt(env, out[field], settingCtx(field));
+	}
+	if (out.resendTokens && typeof out.resendTokens === 'object') {
+		const tokens = {};
+		for (const [domain, token] of Object.entries(out.resendTokens)) {
+			tokens[domain] = await credentialService.decrypt(env, token, settingCtx('resendToken'));
+		}
+		out.resendTokens = tokens;
+	}
+	return out;
+}
+
+async function encryptSettingParams(env, params) {
+	for (const field of SETTING_SECRET_FIELDS) {
+		if (typeof params[field] === 'string' && params[field]) {
+			params[field] = await credentialService.encrypt(env, params[field], settingCtx(field));
+		}
+	}
+	return params;
+}
+
 const FEATURE_CACHE_KEY = 'feature-setting'
 
 // settingService.query() runs on most requests; the feature row only changes
@@ -142,12 +175,12 @@ async function readFeatureSettingFromDb(c) {
 			aiDailyQuota: Math.max(0, Number(row.ai_daily_quota ?? FEATURE_DEFAULTS.aiDailyQuota)),
 			resendDailyQuota: Math.max(0, Number(row.resend_daily_quota ?? FEATURE_DEFAULTS.resendDailyQuota)),
 			resendMonthlyQuota: Math.max(0, Number(row.resend_monthly_quota ?? FEATURE_DEFAULTS.resendMonthlyQuota)),
-			mailjetApiKey: row.mailjet_api_key || '',
-			mailjetSecretKey: row.mailjet_secret_key || '',
+			mailjetApiKey: await credentialService.decrypt(c.env, row.mailjet_api_key || '', featureCtx('mailjetApiKey')),
+			mailjetSecretKey: await credentialService.decrypt(c.env, row.mailjet_secret_key || '', featureCtx('mailjetSecretKey')),
 			mailjetDailyQuota: Math.max(0, Number(row.mailjet_daily_quota ?? FEATURE_DEFAULTS.mailjetDailyQuota)),
 			mailjetMonthlyQuota: Math.max(0, Number(row.mailjet_monthly_quota ?? FEATURE_DEFAULTS.mailjetMonthlyQuota)),
 			alibabaSmtpUser: row.alibaba_smtp_user || '',
-			alibabaSmtpPassword: row.alibaba_smtp_password || '',
+			alibabaSmtpPassword: await credentialService.decrypt(c.env, row.alibaba_smtp_password || '', featureCtx('alibabaSmtpPassword')),
 			alibabaSenderName: row.alibaba_sender_name || FEATURE_DEFAULTS.alibabaSenderName,
 			alibabaDailyQuota: Math.max(0, Number(row.alibaba_daily_quota ?? FEATURE_DEFAULTS.alibabaDailyQuota)),
 			alibabaMonthlyQuota: Math.max(0, Number(row.alibaba_monthly_quota ?? FEATURE_DEFAULTS.alibabaMonthlyQuota)),
@@ -155,7 +188,7 @@ async function readFeatureSettingFromDb(c) {
 			aiSpam: Number(row.ai_spam ?? FEATURE_DEFAULTS.aiSpam),
 			aiTrackerBlock: Number(row.ai_tracker_block ?? FEATURE_DEFAULTS.aiTrackerBlock),
 			translateProvider: row.translate_provider === 'ai' ? 'ai' : FEATURE_DEFAULTS.translateProvider,
-			googleTranslateKey: row.google_translate_key || '',
+			googleTranslateKey: await credentialService.decrypt(c.env, row.google_translate_key || '', featureCtx('googleTranslateKey')),
 		};
 	} catch {
 		// A deployment can briefly run before the new migration is applied. Keep
@@ -167,12 +200,18 @@ async function readFeatureSettingFromDb(c) {
 const settingService = {
 
 	async refresh(c) {
-		const settingRow = await orm(c).select().from(setting).get();
-		settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
-		settingRow.autoRefresh = normalizeAutoRefresh(settingRow.autoRefresh);
-		Object.assign(settingRow, await readFeatureSetting(c));
+		const raw = await orm(c).select().from(setting).get();
+		raw.resendTokens = JSON.parse(raw.resendTokens);
+		raw.autoRefresh = normalizeAutoRefresh(raw.autoRefresh);
+		const feature = await readFeatureSetting(c);
+		// Request memo: plaintext, in memory only.
+		const settingRow = await decryptSettingRow(c.env, { ...raw, ...feature });
 		c.set('setting', settingRow);
-		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
+		// KV copy keeps credentials in their stored (encrypted when enabled) form, and omits the
+		// feature-policy secrets: query() re-reads those through readFeatureSetting() anyway.
+		const kvCopy = { ...raw, ...feature };
+		for (const field of FEATURE_SECRET_FIELDS) delete kvCopy[field];
+		await c.env.kv.put(KvConst.SETTING, JSON.stringify(kvCopy));
 		kvCache.del(KvConst.SETTING);  // bust in-memory cache after update
 		kvCache.del(FEATURE_CACHE_KEY);
 	},
@@ -186,7 +225,10 @@ const settingService = {
 		let setting = kvCache.get(KvConst.SETTING);
 		if (!setting) {
 			setting = await c.env.kv.get(KvConst.SETTING, { type: 'json' });
-			if (setting) kvCache.set(KvConst.SETTING, setting, TTL.SETTING);
+			if (setting) {
+				setting = await decryptSettingRow(c.env, setting); // plaintext lives in isolate memory only
+				kvCache.set(KvConst.SETTING, setting, TTL.SETTING);
+			}
 		}
 
 		// Shallow-clone so mutations below don't corrupt the cached reference
@@ -357,7 +399,11 @@ const settingService = {
 			params.autoRefresh = normalizeAutoRefresh(params.autoRefresh);
 		}
 
+		for (const domain of Object.keys(resendTokens)) {
+			resendTokens[domain] = await credentialService.encrypt(c.env, resendTokens[domain], settingCtx('resendToken'));
+		}
 		params.resendTokens = JSON.stringify(resendTokens);
+		await encryptSettingParams(c.env, params);
 		if (Object.keys(params).length > 0) {
 			await orm(c).update(setting).set({ ...params }).returning().get();
 		}
@@ -383,6 +429,7 @@ const settingService = {
 				value = Math.max(0, Number(value));
 				if (key === 'forwardMaxAddresses') value = Math.min(20, Math.max(1, value || 3));
 			}
+			if (FEATURE_SECRET_FIELDS.includes(key)) value = await credentialService.encrypt(c.env, value, featureCtx(key));
 			featureUpdate[column] = value;
 		}
 		if (Object.keys(featureUpdate).length > 0) {

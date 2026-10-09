@@ -253,3 +253,25 @@ Behaviour notes:
 **Not available from inside the Worker (use Cloudflare analytics instead):** Workers request count and CPU time, D1 rows read/written and per-query latency, KV operation counts, R2 Class A/B operations and stored bytes, Durable Object requests/duration, actual Workers AI Neurons. The brief's requirement for those is met by the dashboard / GraphQL Analytics API; the numbers in this log that come from local D1 runs (batches 6, 7, 10, 11) are method demonstrations on synthetic data, not production savings.
 
 Tests: 187 pass (+ops-metrics, admin-endpoints). Apply `migrations/0020_ops_metric.sql`; rollback `DROP TABLE ops_metric;` (the app tolerates the table being absent).
+
+## Batch 13 — Credential encryption at rest (opt-in)
+
+Credentials were stored as plaintext in D1 (`setting`, `psg_feature_setting`, `psg_user_pref`, `cloud_backup`) and in the KV copy of the settings: Resend tokens per domain, S3 access/secret key, Telegram bot token, Turnstile secret, outbound webhook secret, Mailjet key/secret, Alibaba SMTP password, the global and per-user Google Translate key, and the OAuth access/refresh tokens of cloud backups.
+
+**Design** (`service/credential-service.js`)
+- **Opt-in by a Worker secret:** `credential_master_key` (≥ 32 random characters). Without it the code does exactly what it did before — nothing is encrypted, nothing breaks, existing deployments are unaffected by deploying this release.
+- **With it:** AES-256-GCM, stored as `enc:v1:<iv>:<ciphertext>`. Each field has its own key (HKDF-SHA256 from the master key, field name as `info`) and the field name is also authenticated data, so a ciphertext copied to another field/table does not decrypt.
+- **Reads** decrypt transparently at the boundary (settings load, feature policy, translate provider, backup token use); plaintext legacy values keep working until migrated. Plaintext lives only in isolate memory (the 60 s settings cache); **the KV copy of the settings now keeps credentials in their stored form** and no longer contains the feature-policy secrets at all (they were redundant; `query()` re-reads them).
+- **Writes** encrypt when the key is present (admin settings save, user translate key, backup token save/refresh).
+- **Failure is closed:** a value that cannot be decrypted (key missing/wrong, tampering) reads as an empty string — never as the ciphertext — and is counted as `credentials.undecryptable` and logged (field name only). The feature that needs it then reports "not configured" instead of leaking or crashing.
+- **Migration** of existing plaintext: `POST /setting/credentialMigrate?dryRun=1` (counts only) then `POST /setting/credentialMigrate` (permission `setting:set`). Idempotent, never deletes, never returns or logs a value; unreadable values are left untouched and counted. `GET /setting/credentialStatus` (permission `setting:query`) tells whether encryption is active. The two paths are deliberately not prefixes of each other so a read-only role cannot trigger a migration (tested through the real middleware).
+- **Rotation:** set the new key as `credential_master_key`, keep the old as `credential_master_key_previous` (decrypt-only), run the migrate action (it re-encrypts everything still under the old key), then remove the previous key. Tested.
+
+**Roll-out**
+1. `wrangler secret put credential_master_key` (e.g. `openssl rand -base64 48`). **Back it up outside Cloudflare**: losing it makes every encrypted credential unreadable (they would have to be re-entered; mail, users and attachments are unaffected).
+2. Deploy. Run `credentialMigrate?dryRun=1`, then the real migrate. 3. Confirm sending (Resend/Mailjet), S3/R2 storage, Telegram, translation and cloud backup still work.
+4. Rollback: remove the secret is **not** a rollback (values stay encrypted). To go back to plaintext you must either keep the secret and the previous code path, or re-enter the credentials in Settings after removing the key. Reverting the code while values are encrypted would leave them unreadable by the old build — decide before migrating; the dry run changes nothing.
+
+**Not covered:** web-push subscription keys (`p256dh`/`auth`: per-device, useless without the push endpoint), short-lived Firebase access tokens in KV, the Worker's own secrets (those are Cloudflare Secrets already), and exposure through a compromised Worker runtime (the master key is in the same runtime by necessity — this protects against database/KV/backup/export disclosure, not against code execution inside the Worker).
+
+Tests: `credential-service.spec.js` (crypto properties, rotation, tamper, binding), `credential-migration.spec.js` (all four stores, write paths, no plaintext in D1 or the KV copy, idempotence, missing key, rotation), authorization cases in `admin-endpoints.spec.js`; 203 pass.

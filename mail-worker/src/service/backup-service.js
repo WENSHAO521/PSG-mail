@@ -1,3 +1,4 @@
+import credentialService from './credential-service';
 import orm from '../entity/orm';
 import { cloudBackup } from '../entity/cloud-backup';
 import { email } from '../entity/email';
@@ -126,16 +127,18 @@ const backupService = {
 		const existing = await db.select().from(cloudBackup)
 			.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)))
 			.get();
+		const storedAccess = await credentialService.encrypt(c.env, tokens.accessToken, 'backup.accessToken');
+		const storedRefresh = await credentialService.encrypt(c.env, tokens.refreshToken, 'backup.refreshToken');
 
 		if (existing) {
 			await db.update(cloudBackup)
-				.set({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, expiresAt: tokens.expiresAt, folderId: '' })
+				.set({ accessToken: storedAccess, refreshToken: storedRefresh, expiresAt: tokens.expiresAt, folderId: '' })
 				.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)));
 		} else {
 			await db.insert(cloudBackup).values({
 				userId, provider,
-				accessToken: tokens.accessToken,
-				refreshToken: tokens.refreshToken,
+				accessToken: storedAccess,
+				refreshToken: storedRefresh,
 				expiresAt: tokens.expiresAt,
 			});
 		}
@@ -150,13 +153,16 @@ const backupService = {
 
 		if (!record || !record.accessToken) return null;
 
+		const accessToken = await credentialService.decrypt(c.env, record.accessToken, 'backup.accessToken');
+		const refreshToken = await credentialService.decrypt(c.env, record.refreshToken, 'backup.refreshToken');
+
 		// Refresh 2 min before expiry
 		if (Date.now() > record.expiresAt - 120_000) {
-			if (!record.refreshToken) return null;
-			return await this._refreshToken(c, userId, provider, record.refreshToken);
+			if (!refreshToken) return null;
+			return await this._refreshToken(c, userId, provider, refreshToken);
 		}
 
-		return record.accessToken;
+		return accessToken || null;
 	},
 
 	async _refreshToken(c, userId, provider, refreshToken) {
@@ -184,7 +190,11 @@ const backupService = {
 		};
 
 		await orm(c).update(cloudBackup)
-			.set({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken, expiresAt: newTokens.expiresAt })
+			.set({
+				accessToken: await credentialService.encrypt(c.env, newTokens.accessToken, 'backup.accessToken'),
+				refreshToken: await credentialService.encrypt(c.env, newTokens.refreshToken, 'backup.refreshToken'),
+				expiresAt: newTokens.expiresAt,
+			})
 			.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)));
 
 		return newTokens.accessToken;

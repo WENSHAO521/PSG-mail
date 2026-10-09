@@ -5,17 +5,21 @@ import worker from '../src';
 import jwtUtils from '../src/utils/jwt-utils';
 import { setupFullSchema } from './helpers/full-schema';
 
-async function session(userId, email, roleId) {
+async function session(userId, email, roleId, permKeys = []) {
 	await env.db.prepare(`INSERT OR REPLACE INTO role (role_id, name, send_type) VALUES (?, ?, 'count')`).bind(roleId, 'r' + roleId).run();
+	for (const key of permKeys) {
+		const perm = await env.db.prepare(`SELECT perm_id FROM perm WHERE perm_key = ?`).bind(key).first();
+		await env.db.prepare(`INSERT INTO role_perm (role_id, perm_id) VALUES (?, ?)`).bind(roleId, perm.perm_id).run();
+	}
 	await env.db.prepare(`INSERT OR REPLACE INTO user (user_id, email, password, salt, type, status) VALUES (?, ?, 'x', 'x', ?, 0)`).bind(userId, email, roleId).run();
 	const token = 'tok-' + userId;
 	await env.kv.put('auth-uid:' + userId, JSON.stringify({ tokens: [token], user: { userId, email, type: roleId }, refreshTime: new Date().toISOString() }));
 	return await jwtUtils.generateToken({ env }, { userId, token });
 }
 
-async function get(path, jwt) {
+async function get(path, jwt, method = 'GET') {
 	const ctx = createExecutionContext();
-	const res = await worker.fetch(new Request('http://example.com/api' + path, { headers: { Authorization: jwt } }), env, ctx);
+	const res = await worker.fetch(new Request('http://example.com/api' + path, { method, headers: { Authorization: jwt } }), env, ctx);
 	await waitOnExecutionContext(ctx);
 	return res.json();
 }
@@ -35,4 +39,14 @@ describe('admin read endpoints', () => {
 			expect((await get(path, admin)).code).toBe(200);
 		});
 	}
+
+	it('credential encryption: status needs setting:query, migrate needs setting:set (no prefix overlap)', async () => {
+		const viewer = await session(7003, 'viewer@example.com', 7003, ['setting:query']);
+		expect((await get('/setting/credentialStatus', plain)).code).toBe(403);
+		expect((await get('/setting/credentialStatus', viewer)).code).toBe(200);
+		expect((await get('/setting/credentialMigrate?dryRun=1', viewer, 'POST')).code).toBe(403);
+		expect((await get('/setting/credentialMigrate?dryRun=1', plain, 'POST')).code).toBe(403);
+		// the admin reaches the handler; without a master key it answers 400, not 403
+		expect((await get('/setting/credentialMigrate?dryRun=1', admin, 'POST')).code).toBe(400);
+	});
 });

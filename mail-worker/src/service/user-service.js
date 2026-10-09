@@ -1,3 +1,4 @@
+import credentialService from './credential-service';
 import sessionService from './session-service';
 import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from './login-throttle';
 import { ensureUserAvatar, ensureUserSignature } from '../utils/schema-guard';
@@ -297,7 +298,7 @@ const userService = {
 					.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider, google_translate_key) VALUES (?, ?, ?)
 						ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider,
 						google_translate_key = excluded.google_translate_key`)
-					.bind(userId, provider, key.trim()).run();
+					.bind(userId, provider, await credentialService.encrypt(c.env, key.trim(), 'userpref.google_translate_key')).run();
 			}
 		} catch (e) {
 			// Migration 0015 not applied yet: say so instead of a bare 500.

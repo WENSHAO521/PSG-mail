@@ -1,3 +1,4 @@
+import credentialService from './credential-service';
 import BizError from '../error/biz-error';
 import settingService from './setting-service';
 
@@ -98,7 +99,7 @@ const translateService = {
 		const chosen = pref?.translate_provider || setting.translateProvider;
 		return {
 			provider: chosen === 'ai' ? 'ai' : 'google',
-			key: pref?.google_translate_key || setting.googleTranslateKey || '',
+			key: (await credentialService.decrypt(c.env, pref?.google_translate_key || '', 'userpref.google_translate_key')) || setting.googleTranslateKey || '',
 		};
 	},
 

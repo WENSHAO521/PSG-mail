@@ -4,6 +4,7 @@ import settingService from '../service/setting-service';
 import emailService from '../service/email-service';
 import attService from '../service/att-service';
 import opsService from '../service/ops-service';
+import credentialMigration from '../service/credential-migration';
 import userContext from "../security/user-context";
 import alibabaDirectmailService from '../service/alibaba-directmail-service';
 import forwardingService from '../service/forwarding-service';
@@ -50,6 +51,18 @@ app.get('/setting/storageAudit', async (c) => {
 // gauges. Contains no user identifiers. ?days=1..60 (default 7).
 app.get('/setting/opsMetrics', async (c) => {
 	const data = await opsService.overview(c, Number(c.req.query('days')));
+	return c.json(result.ok(data));
+});
+
+// Credential encryption at rest (service/credential-service.js). GET = whether a master key is
+// configured; POST ?dryRun=1 counts what would change, POST encrypts plaintext credentials with
+// the current key (idempotent; re-encrypts values still under the previous key). Never returns values.
+app.get('/setting/credentialStatus', async (c) => {
+	return c.json(result.ok(credentialMigration.status(c.env)));
+});
+
+app.post('/setting/credentialMigrate', async (c) => {
+	const data = await credentialMigration.run(c, { dryRun: c.req.query('dryRun') === '1' });
 	return c.json(result.ok(data));
 });
 
