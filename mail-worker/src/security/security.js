@@ -26,6 +26,7 @@ const exclude = [
 	'/test',
 	'/oauth',
 	'/backup/oauth',
+	'/csp-report',
 ];
 
 const requirePerms = [

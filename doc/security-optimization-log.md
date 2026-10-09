@@ -275,3 +275,13 @@ Credentials were stored as plaintext in D1 (`setting`, `psg_feature_setting`, `p
 **Not covered:** web-push subscription keys (`p256dh`/`auth`: per-device, useless without the push endpoint), short-lived Firebase access tokens in KV, the Worker's own secrets (those are Cloudflare Secrets already), and exposure through a compromised Worker runtime (the master key is in the same runtime by necessity — this protects against database/KV/backup/export disclosure, not against code execution inside the Worker).
 
 Tests: `credential-service.spec.js` (crypto properties, rotation, tamper, binding), `credential-migration.spec.js` (all four stores, write paths, no plaintext in D1 or the KV copy, idempotence, missing key, rotation), authorization cases in `admin-endpoints.spec.js`; 203 pass.
+
+## Batch 14 — CSP report-only channel (prepared, off by default)
+
+An enforced Content-Security-Policy could break login (Turnstile), compose (TinyMCE), push or backup if the policy misses a source, and it cannot be verified without a browser pass over every screen. So this batch ships the *measurement* path, not the enforcement:
+
+- `POST /api/csp-report` (public by necessity; browsers send reports without credentials). It reads at most 8 KB, accepts both the legacy `csp-report` and the Reporting API format, and only increments `csp.violation.<directive>` for a fixed list of directive names (`script-src`, `img-src`, … , `other`) in the aggregated ops metrics. **It stores no URL, source or document address** (asserted by a test with token-bearing URLs). Malformed or oversized bodies are ignored; the answer is always 204.
+- `mail-vue/public/_headers` contains a ready `Content-Security-Policy-Report-Only` policy, **commented out**: every violation is one request to the Worker, so a noisy policy would cost invocations. Procedure: uncomment in a test environment, browse all screens (login, compose, settings, push, backup, admin), read `csp.violation.*` in `GET /api/setting/opsMetrics`, adjust the policy, then decide whether to enforce and whether to drop `'unsafe-inline'` for styles.
+- Verified that `wrangler` still parses `_headers` (4 valid rules; the commented lines are ignored).
+
+Tests: `csp-report.spec.js`; 205 pass. Rollback: revert; nothing is stored beyond the existing `ops_metric` counters.

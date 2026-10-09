@@ -1,6 +1,6 @@
 # PSG Mail — security hardening & resource optimization: summary
 
-Branch `claude/psg-mail-security-optimization-sm00ea` (13 batches on top of `309c63b`).
+Branch `claude/psg-mail-security-optimization-sm00ea` (14 batches on top of `309c63b`).
 Per-batch detail, evidence and rollback notes: `doc/security-optimization-log.md`.
 Nothing here was deployed, no production database or DNS/MX/route/secret was touched, no mail, user, attachment, setting or history was deleted, and no retention period was changed.
 
@@ -13,7 +13,7 @@ Nothing here was deployed, no production database or DNS/MX/route/secret was tou
 | P0 attachments / objects | **Done:** attachment reference test is indexed and re-checked; safe response headers were already in place. **Open:** signed expiring URLs (needs frontend), owner-scoping of compose-time embedded images |
 | P0 webhooks / callbacks | **Done:** fail-closed signature, replay dedupe, outbound URL guard (web push, webhook), generic errors |
 | P0 secrets | **Done (opt-in):** AES-GCM encryption at rest for provider/bot/S3/Mailjet/SMTP/translate keys and backup OAuth tokens with a Worker-secret master key, migration action and key rotation (batch 13); responses mask secrets harder, no secrets in logs. **Needs you:** set `credential_master_key` and run the migration |
-| P0 web app | **Done:** generic error bodies, API + SPA security headers, optional CORS pin, dependency audit clean. **Open:** enforced CSP (should ship report-only first) |
+| P0 web app | **Done:** generic error bodies, API + SPA security headers, optional CORS pin, dependency audit clean. **Prepared, not enabled:** CSP report-only policy + `/api/csp-report` collector (batch 14) — enable in a test environment, then decide on enforcing |
 | P1 Workers | **Done:** `run_worker_first` path list (locally verified, 9 → 3 Worker invocations for 9 requests). Polling reviewed, deliberately unchanged |
 | P1 D1 | **Done:** cursor pages skip `COUNT`, shared-account queries index-bound, 4 new indexes, request-time `ALTER TABLE` removed. **Open:** list still returns full bodies (frontend change) |
 | P1 KV / R2 | **Done:** public config no longer scans, API-key lookups cached 30 s, R2 upload dedupe, orphan audit (read-only). **Open:** dangling-row scan, automatic orphan cleanup (intentionally manual) |
@@ -59,7 +59,7 @@ New optional variables: `resend_webhook_insecure`, `cors_origins` (comma-separat
 
 ## 5. Evidence and its limits
 
-- 203 automated tests (worker, local Workers runtime) pass; the Vue app builds. Security fixes were reproduced by a failing test first where feasible (`/oss` key leak, trash purge > 100 rows, attachment re-check).
+- 205 automated tests (worker, local Workers runtime) pass; the Vue app builds. Security fixes were reproduced by a failing test first where feasible (`/oss` key leak, trash purge > 100 rows, attachment re-check).
 - Performance numbers (rows read, query plans, Worker invocations) come from **local D1 / `wrangler dev` runs on synthetic data**, as stated in each batch. They show the mechanism and guard against regressions; they are **not** production savings. Production effect has to be read from Cloudflare analytics before/after the release.
 - Not performed: load testing, concurrent multi-user stress, large-attachment tests, backup/restore drill, push-outage and Cloudflare-outage drills, real-device sync tests.
 
@@ -67,7 +67,7 @@ New optional variables: `resend_webhook_insecure`, `cors_origins` (comma-separat
 
 1. **Turn credential encryption on** (code is shipped, off until `credential_master_key` is set); it protects against database/KV/export disclosure, not against code execution in the Worker.
 2. **Account enumeration** via distinct login error messages (registration also reveals existence) — product decision.
-3. **CSP**: ship `Content-Security-Policy-Report-Only`, collect violations, then enforce.
+3. **CSP**: uncomment the report-only header in a test environment (batch 14), read the `csp.violation.*` counters, then enforce.
 4. **List payload**: omit bodies from `/email/list`, fetch on open (frontend + native clients).
 5. **AI confirmation** single-use via an atomic D1 claim; pending confirmations keep conversation text in KV for 5 minutes.
 6. **Attachment URLs** are capability links (unguessable but shareable); signed expiring URLs would need frontend work.
