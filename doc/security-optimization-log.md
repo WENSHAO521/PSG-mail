@@ -167,3 +167,26 @@ Not done / limits (stated plainly):
 
 Tests: `ai-assistant-security.spec.js` (history sanitising, quota enforcement, held confirmation, cross-user confirm refused), `ai-summary-cache.spec.js`; 165/165 pass.
 Rollback: revert the commit. To raise/lower the assistant ceiling set the admin AI daily quota; no schema change.
+
+## Batch 10 — Attachments / R2 lifecycle
+
+Attachment objects are content-addressed (`attachments/<hash16><ext>`) and shared by every row with the same content, so deletion needs a correct reference test. Findings (all covered by `attachment-lifecycle.spec.js`; the loss/leak cases were verified to fail when the fix is removed):
+
+| # | Finding | Impact | Fix |
+|---|---|---|---|
+| 1 | "Is the object still referenced?" was `GROUP BY key HAVING COUNT(*) = 1` over the **whole attachments table, once per deleted mail** | rows read = table size × mails deleted (50 mails × 100 k attachments ≈ 5 M rows); `attachments.key` had no index | rewritten: `SELECT DISTINCT key … WHERE email_id = ?` (indexed) + one `key IN (…)` re-check per 90 keys; new migration `0019_attachments_key_index.sql` (`idx_attachments_key`). Measured on 3 000 rows: both lookups read < 10 rows. |
+| 2 | An object attached twice to the same mail was never deleted (count = 2 for both rows) | storage leak | handled by the new logic |
+| 3 | Object deletion was decided before the rows were gone and not re-checked: a mail arriving with the same content in between could end up with a row pointing at a deleted object | **data loss window** (small) | the candidate keys are re-checked against the table immediately before storage deletion; test injects a new reference between DELETE and the storage delete |
+| 4 | Every inbound/outbound attachment was uploaded even if byte-identical content with identical headers was already stored | R2 Class A PUT per duplicate | R2 mode only: if the key is already referenced in D1 → HEAD (Class B); skip the PUT only when contentType, contentDisposition and cacheControl match, so downloads behave exactly as before. New content costs no extra operation. After the rows are inserted the object is HEAD-verified again and re-uploaded if it vanished (closes the race with a concurrent delete). Net per duplicate: 1 PUT → 2 HEAD. **Not measured on production traffic** — the saving depends on your duplicate rate (e.g. repeated newsletter logos), unique files cost nothing extra. |
+| 5 | Sent attachments: rows were inserted before the object was uploaded (a failed upload left a row without an object) | broken attachment link | upload → insert rows → verify |
+| 6 | No way to find orphaned objects | storage growth | `GET /setting/storageAudit?cursor=&limit=` (permission `setting:query`): lists one page of stored objects and reports those no row references. **Read-only — it never deletes.** R2 and KV storage; S3 reports "unsupported". Deleting orphans stays a manual, reviewed step (R2/KV have no trash, so there is no undo); the list is the audit trail. |
+
+Also: `removeAttByField` now whitelists the column name (`email_id`/`user_id`/`account_id`).
+
+Not done / backlog:
+- Dangling rows (row exists, object missing) are not scanned; it needs a HEAD per key.
+- No automatic orphan deletion and no R2 object lifecycle rules were configured; retention periods are unchanged.
+- Embedded compose images (`saveArticleAtt`) still upload without dedupe (rare path).
+- Signed, expiring download URLs for attachments remain a frontend-coordinated item.
+
+Tests: 176/176 pass. Apply `migrations/0019_attachments_key_index.sql` (rollback: `DROP INDEX idx_attachments_key;`). Without it the code is correct but the re-check scans the table once per 90 keys instead of using the index.

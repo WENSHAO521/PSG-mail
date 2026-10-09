@@ -2,6 +2,7 @@ import app from '../hono/hono';
 import result from '../model/result';
 import settingService from '../service/setting-service';
 import emailService from '../service/email-service';
+import attService from '../service/att-service';
 import userContext from "../security/user-context";
 import alibabaDirectmailService from '../service/alibaba-directmail-service';
 import forwardingService from '../service/forwarding-service';
@@ -37,6 +38,12 @@ app.put('/setting/setBlacklist', async (c) => {
 	const setting = await settingService.setBlacklist(c, await c.req.json());
 	return c.json(result.ok(setting));
 })
+
+// Read-only: reports stored attachment objects that no mail references. Never deletes.
+app.get('/setting/storageAudit', async (c) => {
+	const data = await attService.auditOrphans(c, { cursor: c.req.query('cursor'), limit: c.req.query('limit') });
+	return c.json(result.ok(data));
+});
 
 app.get('/setting/providerUsage', async (c) => {
 	const usage = await emailService.getProviderUsage(c);
