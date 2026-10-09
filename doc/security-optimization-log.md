@@ -144,3 +144,26 @@ Not measured: real KV read/write counts need production analytics (`wrangler kv`
 
 Tests: 154 worker tests pass (+ `openapi-rbac.spec.js`).
 Apply `migrations/0018_verify_record_ip_index.sql` with the usual migration procedure; rollback `DROP INDEX idx_verify_record_ip;`.
+
+## Batch 9 — Workers AI: assistant security, quota, summary cache
+
+Audit result for the AI surface (assistant tools, mail summary / reply / translate / compose, spam screening, tracker detection, code extraction):
+
+Already in place (verified, unchanged): per-feature admin switches (`aiAssistantStatus`, `aiSpam`, `aiTrackerBlock`, `aiCode`); spam/tracker screening have per-task daily ceilings, a confidence threshold, own-domain/known-sender skips; translation has a per-user hash-keyed cache; email tools are ownership-scoped (`getOwned`, `searchOwned`, `attService.list(userId)`); `sendEmail`/`deleteEmail` are only reachable through `/ai-assistant/confirm` with server-stored arguments bound to the user id.
+
+| # | Finding | Risk | Fix |
+|---|---|---|---|
+| 1 | The assistant called `c.env.ai.run` directly: **no daily quota, no usage record, no fallback model**; up to 8 model calls per request with a growing context, unlimited requests | High (cost abuse by any user with the feature on) | goes through `aiProviderService.run` (task `assistant`): admin `aiDailyQuota` applies, usage is recorded, fallback model works; if the admin set no quota a default of 200 model calls/user/day applies |
+| 2 | The client sent the whole conversation and it was forwarded verbatim: crafted `system`/`tool` messages or `tool_calls` could be planted, and size was unbounded | Medium | `sanitizeHistory`: only plain `user`/`assistant` text; ≤30 messages, ≤8 000 chars each, ≤40 000 total |
+| 3 | Prompt injection: mail bodies and attachment text reach the model as tool output with no framing | Medium | system prompt states tool output is untrusted third-party data and that only the user's own messages can request actions; `getEmail`/`getAttachmentText` results carry an explicit untrusted-content notice. Hard guarantee unchanged and unaffected by the model's behaviour: send/delete need the user's confirmation, with the actual recipient/arguments shown, executed from server-stored args. |
+| 4 | Mail summary re-ran the model on every click, even for an unchanged mail | Cost | cached in KV for 7 days under `ai_summary:<userId>:<emailId>:<content hash>` — the key is user-scoped and ownership is checked first, so a cached summary is never served across users; changed content hashes differently |
+
+Not done / limits (stated plainly):
+- **Neuron consumption is not recorded.** Workers AI returns no per-call Neuron figure; `ai_usage` stores requests and an input-size estimate only. Real Neurons must come from the Cloudflare dashboard/GraphQL analytics.
+- Prompt-injection resistance of the *model* cannot be guaranteed by prompts; the protection that holds is structural (ownership scoping + mandatory confirmation + quotas). The confirm step is not strictly single-use under a concurrent double click (KV get-then-delete is not atomic); moving it to an atomic D1 claim is backlog.
+- Pending confirmations keep the conversation (which can include mail text) in KV for 5 minutes.
+- No MCP server exists in this repository; the external HTTP API (`/openapi`) is covered by the RBAC checks from batch 3.
+- Reply suggestion and compose-transform are user-triggered and intentionally not cached.
+
+Tests: `ai-assistant-security.spec.js` (history sanitising, quota enforcement, held confirmation, cross-user confirm refused), `ai-summary-cache.spec.js`; 165/165 pass.
+Rollback: revert the commit. To raise/lower the assistant ceiling set the admin AI daily quota; no schema change.
