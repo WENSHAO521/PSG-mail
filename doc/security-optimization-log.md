@@ -124,3 +124,23 @@ Measured and **left as is** (documented so it is not "optimized" later):
 Tests: `cron-jobs.spec.js` (5 cases), shared `test/helpers/full-schema.js`; 153/153 pass.
 Rollback: revert the commit; no schema change. Note `purgeExpiredTrash` now also calls `ensureDeleteTime` (adds the `delete_time` column if an old DB lacks it).
 Open: Durable Object / alarm usage metrics and cron success/latency statistics belong to the monitoring batch (P2).
+
+## Batch 8 — KV / cache audit and public-endpoint D1 reads
+
+KV call-site inventory (`grep kv.get|put|delete|list` over `src`, ~60 sites). Hot paths already had an isolate-local TTL cache from earlier work and were left alone: settings (60 s, plus per-request memo), session record (30 s), role permissions (120 s), schema probes (1 h). Findings in the rest:
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | `GET /setting/websiteConfig` (public, hit by **every login-page visitor**) always ran `SELECT … FROM verify_record WHERE ip = ?` — a table scan (no index on `ip`) — although the result only matters in "COUNT" verify mode | query only when `registerVerify` or `addEmailVerify` is COUNT (value 2); new migration `0018_verify_record_ip_index.sql` for the COUNT-mode case |
+| 2 | `/openapi/*` (API-key clients, typically polling) cost one D1 read for the key lookup, and — since batch 3 — one more for the owner status check on every call | key-hash → user id and owner status cached in the isolate for 30 s (same window as session revocation); only the hash is cached. Revoking/banning takes effect within 30 s per isolate |
+| 3 | Batch 3 `/openapi` RBAC/ban checks had no end-to-end test | `openapi-rbac.spec.js`: unknown key 401, banned owner 401, no `email:send` → 403, no `email:delete` → 403, permitted owner passes auth |
+
+KV cost of the new security features (so it is accounted for, not hidden):
+- Login: +2 KV reads per login attempt (account and IP failure counters); +2 writes only on a **failed** attempt, +1 delete after a successful login that follows failures. Session list/revoke: 1 read (+1 write on revoke).
+- Resend webhook: 1 read + 1 write (10-min TTL) per signed event for replay dedupe.
+- Not changed: KV is still not used as the sole basis for any strict counter; the login throttle is explicitly best-effort and says so.
+
+Not measured: real KV read/write counts need production analytics (`wrangler kv` / dashboard); the above is call-site analysis, not a measured saving.
+
+Tests: 154 worker tests pass (+ `openapi-rbac.spec.js`).
+Apply `migrations/0018_verify_record_ip_index.sql` with the usual migration procedure; rollback `DROP INDEX idx_verify_record_ip;`.

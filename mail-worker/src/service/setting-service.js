@@ -3,7 +3,7 @@ import KvConst from '../const/kv-const';
 import kvCache, { TTL } from '../cache/kv-cache';
 import setting from '../entity/setting';
 import orm from '../entity/orm';
-import {verifyRecordType} from '../const/entity-const';
+import { verifyRecordType, settingConst } from '../const/entity-const';
 import fileUtils from '../utils/file-utils';
 import r2Service from './r2-service';
 import constant from '../const/constant';
@@ -256,10 +256,12 @@ const settingService = {
 
 	async get(c, showSiteKey = false) {
 
-		const [settingRow, recordList] = await Promise.all([
-			await this.query(c),
-			verifyRecordService.selectListByIP(c)
-		]);
+		const settingRow = await this.query(c);
+		// The per-IP counters are only meaningful in COUNT mode; skip the D1 read otherwise
+		// (this endpoint backs the public login page, hit by every visitor).
+		const needsRecords = settingRow.registerVerify === settingConst.registerVerify.COUNT
+			|| settingRow.addEmailVerify === settingConst.addEmailVerify.COUNT;
+		const recordList = needsRecords ? await verifyRecordService.selectListByIP(c) : [];
 
 
 		if (!showSiteKey) {

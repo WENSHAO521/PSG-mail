@@ -132,9 +132,15 @@ app.use('*', async (c, next) => {
 
 		// An API key must not outrank its owner: banned/deleted users are refused,
 		// and send/delete keep the same role permission the JWT routes require.
-		const owner = await userService.selectById(c, userId);
-		if (!owner || owner.isDel === isDel.DELETE || owner.status === userConst.status.BAN) {
-			throw new BizError(t('apiKeyInvalid'), 401);
+		const ownerKey = 'apikey-owner:' + userId;
+		let owner = kvCache.get(ownerKey);
+		if (!owner) {
+			const row = await userService.selectById(c, userId);
+			if (!row || row.isDel === isDel.DELETE || row.status === userConst.status.BAN) {
+				throw new BizError(t('apiKeyInvalid'), 401);
+			}
+			owner = { email: row.email };
+			kvCache.set(ownerKey, owner, TTL.AUTH);
 		}
 
 		const needPerm = openapiPerm(path, c.req.method);

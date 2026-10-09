@@ -1,3 +1,4 @@
+import kvCache, { TTL } from '../cache/kv-cache';
 import orm from '../entity/orm';
 import { externalApiKey } from '../entity/external-api-key';
 import { and, eq, desc, or, isNull, lt } from 'drizzle-orm';
@@ -51,12 +52,18 @@ const externalApiKeyService = {
 		await orm(c).delete(externalApiKey)
 			.where(and(eq(externalApiKey.id, Number(id)), eq(externalApiKey.userId, userId)))
 			.run();
+		// Other isolates drop their cached entry within TTL.AUTH (30 s).
 	},
 
 	// Returns the owning userId, or null if the key is missing/revoked.
 	async verify(c, plaintextKey) {
 		if (!plaintextKey) return null;
 		const keyHash = await sha256Hex(plaintextKey);
+		// Short isolate-local cache (same 30 s window as sessions): API clients poll, and each
+		// call used to cost a D1 read. Only the hash is cached, never the key.
+		const cacheKey = 'apikey:' + keyHash;
+		const cached = kvCache.get(cacheKey);
+		if (cached) return cached;
 		const row = await orm(c).select().from(externalApiKey)
 			.where(and(eq(externalApiKey.keyHash, keyHash), eq(externalApiKey.status, 1)))
 			.get();
@@ -76,6 +83,7 @@ const externalApiKeyService = {
 				))
 				.run();
 		}
+		kvCache.set(cacheKey, row.userId, TTL.AUTH);
 		return row.userId;
 	}
 };
