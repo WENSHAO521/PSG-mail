@@ -36,4 +36,21 @@ describe('/csp-report', () => {
 		await flushMetrics(env);
 		expect(await readMetrics(env, 1)).toEqual([]);
 	});
+
+	it('never buffers an unbounded body that has no Content-Length', async () => {
+		let pulled = 0;
+		const chunk = new Uint8Array(4096).fill(120);
+		const stream = new ReadableStream({
+			pull(controller) {
+				pulled += chunk.byteLength;
+				if (pulled > 50_000_000) controller.close();     // safety stop for the test itself
+				else controller.enqueue(chunk);
+			},
+		});
+		const ctx = createExecutionContext();
+		const res = await worker.fetch(new Request('http://example.com/api/csp-report', { method: 'POST', body: stream, duplex: 'half' }), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(204);
+		expect(pulled).toBeLessThan(200_000);                    // stopped shortly after the 8 KiB cap, not at 50 MB
+	});
 });

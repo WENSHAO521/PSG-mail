@@ -4,6 +4,8 @@ import { env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { setupFullSchema } from './helpers/full-schema';
 import aiAssistantService, { sanitizeHistory } from '../src/service/ai-assistant-service';
+import aiProviderService from '../src/service/ai-provider-service';
+import { flushMetrics, readMetrics, _resetForTests } from '../src/service/ops-metrics';
 
 function ctxWith(aiRun, setting = {}) {
 	const store = new Map([['setting', { aiDailyQuota: 0, resendTokens: {}, autoRefresh: 0, ...setting }]]);
@@ -32,6 +34,29 @@ describe('sanitizeHistory', () => {
 		expect(sanitizeHistory(big)[0].content.length).toBe(8000);
 		const huge = Array.from({ length: 30 }, () => ({ role: 'user', content: 'y'.repeat(8000) }));
 		expect(sanitizeHistory(huge).length).toBeLessThanOrEqual(5);
+	});
+});
+
+describe('sanitizeHistory budget', () => {
+	it('drops the oldest context first and always keeps the latest prompt', () => {
+		const msgs = Array.from({ length: 6 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: String(i).repeat(8000) }));
+		msgs.push({ role: 'user', content: 'CURRENT PROMPT' });
+		const out = sanitizeHistory(msgs);
+		expect(out.at(-1).content).toBe('CURRENT PROMPT');
+		// 4 x 8000 + the 14-char prompt fit in 40000; the next older message would not -> oldest 0 and 1 dropped
+		expect(out.map(m => m.content[0])).toEqual(['2', '3', '4', '5', 'C']);
+		expect(out.reduce((n, m) => n + m.content.length, 0)).toBeLessThanOrEqual(40000);
+	});
+});
+
+describe('provider error metric', () => {
+	it('counts an outage even when a fallback model is configured and also fails', async () => {
+		_resetForTests();
+		await env.db.prepare('DELETE FROM ops_metric').run();
+		const c = ctxWith(async () => { throw new Error('model down'); }, { aiDailyQuota: 0, aiFallbackModel: '@cf/fallback/model' });
+		await expect(aiProviderService.run(c, 9201, 'summary', { messages: [] })).rejects.toMatchObject({ code: 503 });
+		await flushMetrics(env);
+		expect((await readMetrics(env, 1)).find(r => r.metric === 'ai.error')?.count).toBe(1);
 	});
 });
 

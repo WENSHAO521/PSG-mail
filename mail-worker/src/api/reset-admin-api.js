@@ -1,4 +1,4 @@
-import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from '../service/login-throttle';
+import { maintenanceThrottleKeys, assertLoginAllowed, recordLoginFailure } from '../service/login-throttle';
 import app from '../hono/hono';
 import result from '../model/result';
 import BizError from '../error/biz-error';
@@ -20,7 +20,7 @@ app.post('/reset-admin', async (c) => {
 	const auth = c.req.header('Authorization') || '';
 	const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
 
-	const throttle = await loginThrottleKeys(c, 'maintenance');
+	const throttle = await maintenanceThrottleKeys(c);
 	const counts = await assertLoginAllowed(c, throttle);
 
 	if (!secret || !timingSafeEqual(secret, c.env.maintenance_secret)) {

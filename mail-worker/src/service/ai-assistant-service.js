@@ -37,15 +37,17 @@ export function sanitizeHistory(history) {
 	if (!Array.isArray(history)) return [];
 	const clean = [];
 	let total = 0;
-	for (const message of history.slice(-MAX_HISTORY_MESSAGES)) {
+	// Newest first: when the budget runs out it is the oldest context that is dropped, never the
+	// user's current prompt. Order is restored below.
+	for (const message of history.slice(-MAX_HISTORY_MESSAGES).reverse()) {
 		if (!message || (message.role !== 'user' && message.role !== 'assistant')) continue;
 		if (typeof message.content !== 'string' || !message.content) continue;
 		const content = message.content.slice(0, MAX_MESSAGE_CHARS);
+		if (total + content.length > MAX_HISTORY_CHARS) break;
 		total += content.length;
-		if (total > MAX_HISTORY_CHARS) break;
 		clean.push({ role: message.role, content });
 	}
-	return clean;
+	return clean.reverse();
 }
 
 const TOOLS = [

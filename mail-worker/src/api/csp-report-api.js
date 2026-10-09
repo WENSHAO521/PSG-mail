@@ -15,11 +15,39 @@ function directiveOf(report) {
 	return DIRECTIVES.has(raw) ? raw : 'other';
 }
 
+// Reads at most MAX_BYTES from the request stream. Returns null when the body is larger (declared or
+// actual), so a chunked / length-less upload can never be buffered whole in the isolate.
+async function readLimited(request) {
+	const declared = Number(request.headers.get('content-length') || 0);
+	if (declared > MAX_BYTES) return null;
+	if (!request.body) return '';
+	const reader = request.body.getReader();
+	const chunks = [];
+	let size = 0;
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			size += value.byteLength;
+			if (size > MAX_BYTES) {
+				await reader.cancel();
+				return null;
+			}
+			chunks.push(value);
+		}
+	} finally {
+		reader.releaseLock?.();
+	}
+	const all = new Uint8Array(size);
+	let offset = 0;
+	for (const chunk of chunks) { all.set(chunk, offset); offset += chunk.byteLength; }
+	return new TextDecoder().decode(all);
+}
+
 app.post('/csp-report', async (c) => {
 	try {
-		const declared = Number(c.req.header('content-length') || 0);
-		if (declared <= MAX_BYTES) {
-			const text = (await c.req.text()).slice(0, MAX_BYTES);
+		const text = await readLimited(c.req.raw);
+		if (text) {
 			const body = JSON.parse(text);
 			// legacy {"csp-report": {...}} or Reporting API [{type, body}, ...]
 			const reports = Array.isArray(body) ? body.map(r => r?.body) : [body?.['csp-report']];

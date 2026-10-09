@@ -16,6 +16,10 @@ import { bump } from './ops-metrics';
 // `credential_master_key_previous` (decrypt-only), run the admin "migrate" action to re-encrypt
 // everything, then delete the previous key.
 const PREFIX = 'enc:v1:';
+// A real envelope is enc:v1:<12-byte IV, 16 base64url chars>:<ciphertext + 16-byte tag, >= 22 chars>.
+// Matching the whole shape (not just the prefix) keeps an ordinary plaintext credential that merely
+// starts with "enc:v1:" from being mistaken for ciphertext.
+const ENVELOPE = /^enc:v1:[A-Za-z0-9_-]{16}:[A-Za-z0-9_-]{22,}$/;
 const MIN_KEY_LENGTH = 32;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -62,7 +66,7 @@ async function deriveKey(master, slot, context) {
 const credentialService = {
 
 	isEncrypted(value) {
-		return typeof value === 'string' && value.startsWith(PREFIX);
+		return typeof value === 'string' && ENVELOPE.test(value);
 	},
 
 	enabled(env) {

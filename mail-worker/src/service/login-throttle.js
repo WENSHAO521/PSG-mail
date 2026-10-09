@@ -18,6 +18,13 @@ export async function loginThrottleKeys(c, email) {
 	};
 }
 
+// /init and /reset-admin: the "account" counter is per source IP, never a shared constant -
+// otherwise anyone could lock the deployment/recovery endpoints for everybody by failing ten times.
+export async function maintenanceThrottleKeys(c) {
+	const ip = reqUtils.getIp(c) || 'unknown';
+	return loginThrottleKeys(c, 'maintenance:' + ip);
+}
+
 export async function assertLoginAllowed(c, keys) {
 	const [acct, ip] = await Promise.all([c.env.kv.get(keys.acct), c.env.kv.get(keys.ip)]);
 	if (Number(acct || 0) >= LOGIN_ACCOUNT_LIMIT || Number(ip || 0) >= LOGIN_IP_LIMIT) {

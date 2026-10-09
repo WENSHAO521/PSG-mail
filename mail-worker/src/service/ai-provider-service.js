@@ -78,6 +78,7 @@ const aiProviderService = {
 			try {
 				return await c.env.ai.run(fallbackModel, input);
 			} catch (fallbackError) {
+				bump('ai.error');
 				console.error('AI provider fallback failed', task, fallbackError?.message || fallbackError);
 				throw new BizError('AI 服务暂时不可用', 503);
 			}
