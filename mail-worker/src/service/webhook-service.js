@@ -1,3 +1,4 @@
+import { isSafeOutboundUrl } from '../utils/url-guard';
 import domainUtils from '../utils/domain-uitls';
 
 const webhookService = {
@@ -7,6 +8,11 @@ const webhookService = {
 		webhookUrl = domainUtils.toOssDomain(webhookUrl);
 
 		if (!webhookUrl) {
+			return;
+		}
+
+		if (!isSafeOutboundUrl(webhookUrl, { allowHttp: true })) {
+			console.error('Webhook 推送已跳过：目标地址不安全');
 			return;
 		}
 

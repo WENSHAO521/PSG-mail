@@ -1,3 +1,18 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=15552000
+
+# Content-Security-Policy in REPORT-ONLY mode (never blocks). Disabled by default because every
+# violation is one request to /api/csp-report. Enable it in a TEST environment first, browse the
+# app (login, compose with TinyMCE, settings, push, backup), read the csp.violation.* counters at
+# GET /api/setting/opsMetrics, adjust the policy, then consider enforcing. Remove the leading "# "
+# on the two lines below to enable:
+#/*
+#  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.gstatic.com; frame-src 'self' https://challenges.cloudflare.com blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; report-uri /api/csp-report
+
 /assets/*
   Cache-Control: public, max-age=31556952, immutable
 /tinymce/*

@@ -2,6 +2,9 @@ import app from '../hono/hono';
 import result from '../model/result';
 import settingService from '../service/setting-service';
 import emailService from '../service/email-service';
+import attService from '../service/att-service';
+import opsService from '../service/ops-service';
+import credentialMigration from '../service/credential-migration';
 import userContext from "../security/user-context";
 import alibabaDirectmailService from '../service/alibaba-directmail-service';
 import forwardingService from '../service/forwarding-service';
@@ -37,6 +40,31 @@ app.put('/setting/setBlacklist', async (c) => {
 	const setting = await settingService.setBlacklist(c, await c.req.json());
 	return c.json(result.ok(setting));
 })
+
+// Read-only: reports stored attachment objects that no mail references. Never deletes.
+app.get('/setting/storageAudit', async (c) => {
+	const data = await attService.auditOrphans(c, { cursor: c.req.query('cursor'), limit: c.req.query('limit') });
+	return c.json(result.ok(data));
+});
+
+// Aggregated operations / security counters (see service/ops-metrics.js) plus a few live backlog
+// gauges. Contains no user identifiers. ?days=1..60 (default 7).
+app.get('/setting/opsMetrics', async (c) => {
+	const data = await opsService.overview(c, Number(c.req.query('days')));
+	return c.json(result.ok(data));
+});
+
+// Credential encryption at rest (service/credential-service.js). GET = whether a master key is
+// configured; POST ?dryRun=1 counts what would change, POST encrypts plaintext credentials with
+// the current key (idempotent; re-encrypts values still under the previous key). Never returns values.
+app.get('/setting/credentialStatus', async (c) => {
+	return c.json(result.ok(credentialMigration.status(c.env)));
+});
+
+app.post('/setting/credentialMigrate', async (c) => {
+	const data = await credentialMigration.run(c, { dryRun: c.req.query('dryRun') === '1' });
+	return c.json(result.ok(data));
+});
 
 app.get('/setting/providerUsage', async (c) => {
 	const usage = await emailService.getProviderUsage(c);

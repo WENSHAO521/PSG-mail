@@ -8,6 +8,9 @@ import userService from '../service/user-service';
 import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
+import { bump } from '../service/ops-metrics';
+import { toSessionUser } from '../utils/session-user';
+import { isDel, userConst } from '../const/entity-const';
 import externalApiKeyService from '../service/external-api-key-service';
 
 const exclude = [
@@ -23,6 +26,7 @@ const exclude = [
 	'/test',
 	'/oauth',
 	'/backup/oauth',
+	'/csp-report',
 ];
 
 const requirePerms = [
@@ -49,6 +53,10 @@ const requirePerms = [
 	'/setting/query',
 	'/setting/setBlacklist',
 	'/setting/providerUsage',
+	'/setting/storageAudit',
+	'/setting/opsMetrics',
+	'/setting/credentialStatus',
+	'/setting/credentialMigrate',
 	'/setting/alibaba/testConnection',
 	'/setting/alibaba/testNotification',
 	'/user/delete',
@@ -90,8 +98,8 @@ const premKey = {
 	'user:set-name': ['/user/setName'],
 	'all-email:query': ['/allEmail/list','/allEmail/latest'],
 	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
-	'setting:query': ['/setting/query', '/setting/providerUsage'],
-	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist','/setting/alibaba/testConnection','/setting/alibaba/testNotification'],
+	'setting:query': ['/setting/query', '/setting/providerUsage', '/setting/storageAudit', '/setting/opsMetrics', '/setting/credentialStatus'],
+	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist','/setting/alibaba/testConnection','/setting/alibaba/testNotification', '/setting/credentialMigrate'],
 	'analysis:query': ['/analysis/echarts'],
 	'reg-key:add': ['/regKey/add'],
 	'reg-key:query': ['/regKey/list','/regKey/history'],
@@ -115,6 +123,7 @@ app.use('*', async (c, next) => {
 		const userPublicToken = await c.env.kv.get(KvConst.PUBLIC_KEY);
 		const publicToken = c.req.header(constant.TOKEN_HEADER);
 		if (publicToken !== userPublicToken) {
+			bump('auth.public_token_rejected');
 			throw new BizError(t('publicTokenFail'), 401);
 		}
 		return await next();
@@ -125,8 +134,38 @@ app.use('*', async (c, next) => {
 		const apiKey = c.req.header('X-Api-Key');
 		const userId = apiKey ? await externalApiKeyService.verify(c, apiKey) : null;
 		if (!userId) {
+			bump('auth.api_key_rejected');
 			throw new BizError(t('apiKeyInvalid'), 401);
 		}
+
+		// An API key must not outrank its owner: banned/deleted users are refused,
+		// and send/delete keep the same role permission the JWT routes require.
+		const ownerKey = 'apikey-owner:' + userId;
+		let owner = kvCache.get(ownerKey);
+		if (!owner) {
+			const row = await userService.selectById(c, userId);
+			if (!row || row.isDel === isDel.DELETE || row.status === userConst.status.BAN) {
+				bump('auth.api_key_rejected');
+			throw new BizError(t('apiKeyInvalid'), 401);
+			}
+			owner = { email: row.email };
+			kvCache.set(ownerKey, owner, TTL.AUTH);
+		}
+
+		const needPerm = openapiPerm(path, c.req.method);
+		if (needPerm && owner.email !== c.env.admin) {
+			const permCacheKey = 'perm:' + userId;
+			let permKeys = kvCache.get(permCacheKey);
+			if (!permKeys) {
+				permKeys = await permService.userPermKeys(c, userId);
+				kvCache.set(permCacheKey, permKeys, TTL.PERM);
+			}
+			if (!permKeys.includes(needPerm)) {
+				bump('authz.denied');
+				throw new BizError(t('unauthorized'), 403);
+			}
+		}
+
 		c.set('user', { userId });
 		return await next();
 	}
@@ -137,6 +176,7 @@ app.use('*', async (c, next) => {
 	const result = await jwtUtils.verifyToken(c, jwt);
 
 	if (!result) {
+		bump('auth.session_invalid');
 		throw new BizError(t('authExpired'), 401);
 	}
 
@@ -149,10 +189,12 @@ app.use('*', async (c, next) => {
 	}
 
 	if (!authInfo) {
+		bump('auth.session_invalid');
 		throw new BizError(t('authExpired'), 401);
 	}
 
 	if (!authInfo.tokens.includes(token)) {
+		bump('auth.session_invalid');
 		throw new BizError(t('authExpired'), 401);
 	}
 
@@ -176,7 +218,8 @@ app.use('*', async (c, next) => {
 		});
 
 		if (userPermIndex === -1 && authInfo.user.email !== c.env.admin) {
-			throw new BizError(t('unauthorized'), 403);
+			bump('authz.denied');
+				throw new BizError(t('unauthorized'), 403);
 		}
 
 	}
@@ -184,7 +227,11 @@ app.use('*', async (c, next) => {
 	const refreshTime = dayjs(authInfo.refreshTime).startOf('day');
 	const nowTime = dayjs().startOf('day')
 
-	if (!nowTime.isSame(refreshTime)) {
+	// Sessions written by older versions embed the password hash; scrub them on first use.
+	const legacyCredentials = 'password' in authInfo.user || 'salt' in authInfo.user;
+
+	if (!nowTime.isSame(refreshTime) || legacyCredentials) {
+		authInfo.user = toSessionUser(authInfo.user);
 		authInfo.refreshTime = dayjs().toISOString();
 		await userService.updateUserInfo(c, authInfo.user.userId);
 		await c.env.kv.put(authKey, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
@@ -195,6 +242,12 @@ app.use('*', async (c, next) => {
 
 	return await next();
 });
+
+function openapiPerm(path, method) {
+	if (path === '/openapi/send') return 'email:send';
+	if (method === 'DELETE' || path === '/openapi/email/batch-delete') return 'email:delete';
+	return null;
+}
 
 function permKeyToPaths(permKeys) {
 

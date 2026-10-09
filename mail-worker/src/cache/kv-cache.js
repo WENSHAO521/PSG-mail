@@ -1,3 +1,4 @@
+import { bump } from '../service/ops-metrics'
 /**
  * Module-level in-memory TTL cache for KV reads.
  * Cloudflare Worker isolates reuse the same module instance across many
@@ -23,11 +24,13 @@ function evictExpiredOrOldest() {
 
 function get(key) {
 	const entry = store.get(key)
-	if (!entry) return null
+	if (!entry) { bump('cache.miss'); return null }
 	if (Date.now() > entry.expiry) {
 		store.delete(key)
+		bump('cache.miss')
 		return null
 	}
+	bump('cache.hit')
 	return entry.value
 }
 

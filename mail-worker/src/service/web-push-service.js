@@ -1,3 +1,4 @@
+import { isSafeOutboundUrl } from '../utils/url-guard';
 import webPushCryptoService from './web-push-crypto-service';
 import webPushVapidService from './web-push-vapid-service';
 
@@ -16,6 +17,8 @@ const webPushService = {
 	// disableDeviceById-style cleanup work unmodified across both transports.
 	async sendPush(c, device, payload) {
 		const { env } = c;
+
+		if (!isSafeOutboundUrl(device.endpoint)) return false;
 
 		const uaPublic = base64UrlToBytes(device.p256dh);
 		const authSecret = base64UrlToBytes(device.auth);

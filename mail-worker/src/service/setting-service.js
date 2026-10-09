@@ -1,8 +1,10 @@
+import { isSafeOutboundUrl } from '../utils/url-guard';
+import credentialService from './credential-service';
 import KvConst from '../const/kv-const';
 import kvCache, { TTL } from '../cache/kv-cache';
 import setting from '../entity/setting';
 import orm from '../entity/orm';
-import {verifyRecordType} from '../const/entity-const';
+import { verifyRecordType, settingConst } from '../const/entity-const';
 import fileUtils from '../utils/file-utils';
 import r2Service from './r2-service';
 import constant from '../const/constant';
@@ -109,6 +111,38 @@ function normalizeSettingRow(row) {
 	return { ...row, autoRefresh: normalizeAutoRefresh(row.autoRefresh) };
 }
 
+// ── Credential encryption (see credential-service.js; active only with credential_master_key) ──
+const SETTING_SECRET_FIELDS = ['secretKey', 'tgBotToken', 'webhookSecret', 's3AccessKey', 's3SecretKey'];
+const FEATURE_SECRET_FIELDS = ['mailjetApiKey', 'mailjetSecretKey', 'alibabaSmtpPassword', 'googleTranslateKey'];
+
+const settingCtx = field => 'setting.' + field;
+const featureCtx = field => 'feature.' + field;
+
+// Stored form -> plaintext copy for in-memory use.
+async function decryptSettingRow(env, row) {
+	const out = { ...row };
+	for (const field of SETTING_SECRET_FIELDS) {
+		if (out[field]) out[field] = await credentialService.decrypt(env, out[field], settingCtx(field));
+	}
+	if (out.resendTokens && typeof out.resendTokens === 'object') {
+		const tokens = {};
+		for (const [domain, token] of Object.entries(out.resendTokens)) {
+			tokens[domain] = await credentialService.decrypt(env, token, settingCtx('resendToken'));
+		}
+		out.resendTokens = tokens;
+	}
+	return out;
+}
+
+async function encryptSettingParams(env, params) {
+	for (const field of SETTING_SECRET_FIELDS) {
+		if (typeof params[field] === 'string' && params[field]) {
+			params[field] = await credentialService.encrypt(env, params[field], settingCtx(field));
+		}
+	}
+	return params;
+}
+
 const FEATURE_CACHE_KEY = 'feature-setting'
 
 // settingService.query() runs on most requests; the feature row only changes
@@ -141,12 +175,12 @@ async function readFeatureSettingFromDb(c) {
 			aiDailyQuota: Math.max(0, Number(row.ai_daily_quota ?? FEATURE_DEFAULTS.aiDailyQuota)),
 			resendDailyQuota: Math.max(0, Number(row.resend_daily_quota ?? FEATURE_DEFAULTS.resendDailyQuota)),
 			resendMonthlyQuota: Math.max(0, Number(row.resend_monthly_quota ?? FEATURE_DEFAULTS.resendMonthlyQuota)),
-			mailjetApiKey: row.mailjet_api_key || '',
-			mailjetSecretKey: row.mailjet_secret_key || '',
+			mailjetApiKey: await credentialService.decrypt(c.env, row.mailjet_api_key || '', featureCtx('mailjetApiKey')),
+			mailjetSecretKey: await credentialService.decrypt(c.env, row.mailjet_secret_key || '', featureCtx('mailjetSecretKey')),
 			mailjetDailyQuota: Math.max(0, Number(row.mailjet_daily_quota ?? FEATURE_DEFAULTS.mailjetDailyQuota)),
 			mailjetMonthlyQuota: Math.max(0, Number(row.mailjet_monthly_quota ?? FEATURE_DEFAULTS.mailjetMonthlyQuota)),
 			alibabaSmtpUser: row.alibaba_smtp_user || '',
-			alibabaSmtpPassword: row.alibaba_smtp_password || '',
+			alibabaSmtpPassword: await credentialService.decrypt(c.env, row.alibaba_smtp_password || '', featureCtx('alibabaSmtpPassword')),
 			alibabaSenderName: row.alibaba_sender_name || FEATURE_DEFAULTS.alibabaSenderName,
 			alibabaDailyQuota: Math.max(0, Number(row.alibaba_daily_quota ?? FEATURE_DEFAULTS.alibabaDailyQuota)),
 			alibabaMonthlyQuota: Math.max(0, Number(row.alibaba_monthly_quota ?? FEATURE_DEFAULTS.alibabaMonthlyQuota)),
@@ -154,7 +188,7 @@ async function readFeatureSettingFromDb(c) {
 			aiSpam: Number(row.ai_spam ?? FEATURE_DEFAULTS.aiSpam),
 			aiTrackerBlock: Number(row.ai_tracker_block ?? FEATURE_DEFAULTS.aiTrackerBlock),
 			translateProvider: row.translate_provider === 'ai' ? 'ai' : FEATURE_DEFAULTS.translateProvider,
-			googleTranslateKey: row.google_translate_key || '',
+			googleTranslateKey: await credentialService.decrypt(c.env, row.google_translate_key || '', featureCtx('googleTranslateKey')),
 		};
 	} catch {
 		// A deployment can briefly run before the new migration is applied. Keep
@@ -166,12 +200,18 @@ async function readFeatureSettingFromDb(c) {
 const settingService = {
 
 	async refresh(c) {
-		const settingRow = await orm(c).select().from(setting).get();
-		settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
-		settingRow.autoRefresh = normalizeAutoRefresh(settingRow.autoRefresh);
-		Object.assign(settingRow, await readFeatureSetting(c));
+		const raw = await orm(c).select().from(setting).get();
+		raw.resendTokens = JSON.parse(raw.resendTokens);
+		raw.autoRefresh = normalizeAutoRefresh(raw.autoRefresh);
+		const feature = await readFeatureSetting(c);
+		// Request memo: plaintext, in memory only.
+		const settingRow = await decryptSettingRow(c.env, { ...raw, ...feature });
 		c.set('setting', settingRow);
-		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
+		// KV copy keeps credentials in their stored (encrypted when enabled) form, and omits the
+		// feature-policy secrets: query() re-reads those through readFeatureSetting() anyway.
+		const kvCopy = { ...raw, ...feature };
+		for (const field of FEATURE_SECRET_FIELDS) delete kvCopy[field];
+		await c.env.kv.put(KvConst.SETTING, JSON.stringify(kvCopy));
 		kvCache.del(KvConst.SETTING);  // bust in-memory cache after update
 		kvCache.del(FEATURE_CACHE_KEY);
 	},
@@ -185,7 +225,10 @@ const settingService = {
 		let setting = kvCache.get(KvConst.SETTING);
 		if (!setting) {
 			setting = await c.env.kv.get(KvConst.SETTING, { type: 'json' });
-			if (setting) kvCache.set(KvConst.SETTING, setting, TTL.SETTING);
+			if (setting) {
+				setting = await decryptSettingRow(c.env, setting); // plaintext lives in isolate memory only
+				kvCache.set(KvConst.SETTING, setting, TTL.SETTING);
+			}
 		}
 
 		// Shallow-clone so mutations below don't corrupt the cached reference
@@ -255,30 +298,32 @@ const settingService = {
 
 	async get(c, showSiteKey = false) {
 
-		const [settingRow, recordList] = await Promise.all([
-			await this.query(c),
-			verifyRecordService.selectListByIP(c)
-		]);
+		const settingRow = await this.query(c);
+		// The per-IP counters are only meaningful in COUNT mode; skip the D1 read otherwise
+		// (this endpoint backs the public login page, hit by every visitor).
+		const needsRecords = settingRow.registerVerify === settingConst.registerVerify.COUNT
+			|| settingRow.addEmailVerify === settingConst.addEmailVerify.COUNT;
+		const recordList = needsRecords ? await verifyRecordService.selectListByIP(c) : [];
 
 
 		if (!showSiteKey) {
 			settingRow.siteKey = settingRow.siteKey ? `${settingRow.siteKey.slice(0, 6)}******` : null;
 		}
 
-		settingRow.secretKey = settingRow.secretKey ? `${settingRow.secretKey.slice(0, 6)}******` : null;
+		settingRow.secretKey = settingRow.secretKey ? `${settingRow.secretKey.slice(0, 4)}******` : null;
 
 		settingRow.resendTokens = { ...settingRow.resendTokens };
 		Object.keys(settingRow.resendTokens).forEach(key => {
-			settingRow.resendTokens[key] = `${settingRow.resendTokens[key].slice(0, 12)}******`;
+			settingRow.resendTokens[key] = `${settingRow.resendTokens[key].slice(0, 6)}******`;
 		});
 
 		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
-		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
-		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
+		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 4)}******` : null;
+		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 8)}******` : null;
 		settingRow.mailjetApiKey = settingRow.mailjetApiKey ? `${settingRow.mailjetApiKey.slice(0, 12)}******` : null;
-		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 12)}******` : null;
+		settingRow.mailjetSecretKey = settingRow.mailjetSecretKey ? `${settingRow.mailjetSecretKey.slice(0, 4)}******` : null;
 		settingRow.googleTranslateKey = settingRow.googleTranslateKey ? '******' : null;
-		settingRow.webhookSecret = settingRow.webhookSecret ? `${settingRow.webhookSecret.slice(0, 12)}******` : null;
+		settingRow.webhookSecret = settingRow.webhookSecret ? `${settingRow.webhookSecret.slice(0, 4)}******` : null;
 		// SMTP password for a real mailbox — unlike the API-key-shaped secrets
 		// above, no partial reveal at all. The frontend only ever learns
 		// whether a password is set, never any part of its value.
@@ -340,6 +385,9 @@ const settingService = {
 
 		if (params.webhookUrl !== undefined) {
 			params.webhookUrl = domainUtils.toOssDomain(params.webhookUrl) || '';
+			if (params.webhookUrl && !isSafeOutboundUrl(params.webhookUrl, { allowHttp: true })) {
+				throw new BizError('Webhook URL must be a public http(s) address without credentials', 400);
+			}
 		}
 
 		if (params.loginDarkenFactor !== undefined) {
@@ -351,7 +399,11 @@ const settingService = {
 			params.autoRefresh = normalizeAutoRefresh(params.autoRefresh);
 		}
 
+		for (const domain of Object.keys(resendTokens)) {
+			resendTokens[domain] = await credentialService.encrypt(c.env, resendTokens[domain], settingCtx('resendToken'));
+		}
 		params.resendTokens = JSON.stringify(resendTokens);
+		await encryptSettingParams(c.env, params);
 		if (Object.keys(params).length > 0) {
 			await orm(c).update(setting).set({ ...params }).returning().get();
 		}
@@ -377,6 +429,7 @@ const settingService = {
 				value = Math.max(0, Number(value));
 				if (key === 'forwardMaxAddresses') value = Math.min(20, Math.max(1, value || 3));
 			}
+			if (FEATURE_SECRET_FIELDS.includes(key)) value = await credentialService.encrypt(c.env, value, featureCtx(key));
 			featureUpdate[column] = value;
 		}
 		if (Object.keys(featureUpdate).length > 0) {

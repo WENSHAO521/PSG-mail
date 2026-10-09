@@ -1,3 +1,4 @@
+import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from './login-throttle';
 import BizError from '../error/biz-error';
 import verifyUtils from '../utils/verify-utils';
 import emailUtils from '../utils/email-utils';
@@ -117,13 +118,23 @@ const accountService = {
 
 		if (!email || !password) throw new BizError(t('emptyEmail'));
 
+		// Verifying another account's password is a guessing oracle: same throttle as /login.
+		const throttle = await loginThrottleKeys(c, email);
+		const counts = await assertLoginAllowed(c, throttle);
+
 		// Find the user registered with this email
 		const targetUser = await userService.selectByEmail(c, email);
-		if (!targetUser) throw new BizError(t('emailNotFound'));
+		if (!targetUser) {
+			await recordLoginFailure(c, throttle, counts);
+			throw new BizError(t('emailNotFound'));
+		}
 
 		// Verify password
 		const valid = await cryptoUtils.verifyPassword(password, targetUser.salt, targetUser.password);
-		if (!valid) throw new BizError(t('invalidPassword'));
+		if (!valid) {
+			await recordLoginFailure(c, throttle, counts);
+			throw new BizError(t('invalidPassword'));
+		}
 
 		// Get the account record
 		const accountRow = await this.selectByEmailIncludeDel(c, email);

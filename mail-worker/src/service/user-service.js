@@ -1,3 +1,7 @@
+import credentialService from './credential-service';
+import sessionService from './session-service';
+import { loginThrottleKeys, assertLoginAllowed, recordLoginFailure } from './login-throttle';
+import { ensureUserAvatar, ensureUserSignature } from '../utils/schema-guard';
 import BizError from '../error/biz-error';
 import accountService from './account-service';
 import orm from '../entity/orm';
@@ -59,9 +63,7 @@ function normalizeSignatures(raw, legacy) {
 }
 
 async function ensureAvatarColumn(c) {
-	try {
-		await c.env.db.prepare(`ALTER TABLE user ADD COLUMN avatar TEXT NOT NULL DEFAULT '';`).run();
-	} catch {}
+	await ensureUserAvatar(c);
 }
 
 const userService = {
@@ -199,9 +201,7 @@ const userService = {
 	async updateSignature(c, params, userId) {
 		const { signature } = params;
 		// ensure column exists (idempotent — silently skips if already added)
-		try {
-			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN signature TEXT NOT NULL DEFAULT '';`).run();
-		} catch {}
+		await ensureUserSignature(c);
 		await c.env.db
 			.prepare('UPDATE user SET signature = ? WHERE user_id = ?')
 			.bind(signature ?? '', userId).run();
@@ -298,7 +298,7 @@ const userService = {
 					.prepare(`INSERT INTO psg_user_pref (user_id, translate_provider, google_translate_key) VALUES (?, ?, ?)
 						ON CONFLICT(user_id) DO UPDATE SET translate_provider = excluded.translate_provider,
 						google_translate_key = excluded.google_translate_key`)
-					.bind(userId, provider, key.trim()).run();
+					.bind(userId, provider, await credentialService.encrypt(c.env, key.trim(), 'userpref.google_translate_key')).run();
 			}
 		} catch (e) {
 			// Migration 0015 not applied yet: say so instead of a bare 500.
@@ -322,11 +322,43 @@ const userService = {
 
 		const { password } = params;
 
-		if (password.length < 6) {
+		if (typeof password !== 'string' || password.length < 8) {
 			throw new BizError(t('pwdMinLength'));
+		}
+		if (password.length > 128) {
+			throw new BizError(t('pwdLengthLimit'));
 		}
 		const { salt, hash } = await cryptoUtils.hashPassword(password);
 		await orm(c).update(user).set({ password: hash, salt: salt }).where(eq(user.userId, userId)).run();
+	},
+
+	// Self-service change from a logged-in session: the current password is required (a stolen
+	// session alone must not be able to take the account over) and every other device is signed out.
+	async changeOwnPassword(c, params, userId, currentToken) {
+		const currentPassword = typeof params?.currentPassword === 'string' ? params.currentPassword : '';
+		const row = await this.selectById(c, userId);
+		if (!row || !currentPassword) throw new BizError(t('passwordChangeInvalid'), 400);
+
+		const throttle = await loginThrottleKeys(c, row.email);
+		const counts = await assertLoginAllowed(c, throttle);
+		if (!await cryptoUtils.verifyPassword(currentPassword, row.salt, row.password)) {
+			await recordLoginFailure(c, throttle, counts);
+			throw new BizError(t('IncorrectPwd'), 400);
+		}
+		if (params.password === currentPassword) throw new BizError(t('passwordChangeSame'), 400);
+
+		await this.resetPassword(c, { password: params.password }, userId);
+		await sessionService.revokeOthers(c, userId, currentToken);
+	},
+
+	// Progressive migration: re-hash a legacy password after a verified login.
+	// Compare-and-set on the old hash so a concurrent password change is never overwritten.
+	async upgradePasswordHash(c, userRow, password) {
+		const { salt, hash } = await cryptoUtils.hashPassword(password);
+		await orm(c).update(user).set({ password: hash, salt })
+			.where(and(eq(user.userId, userRow.userId), eq(user.password, userRow.password))).run();
+		userRow.password = hash;
+		userRow.salt = salt;
 	},
 
 	selectByEmail(c, email) {

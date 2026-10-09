@@ -38,7 +38,11 @@ new_sqlite_classes = ["ScheduledSendAlarm"]
 binding = "assets"
 directory = "./dist"
 not_found_handling = "single-page-application"
-run_worker_first = true
+# Only these paths run the Worker first (API, KV-stored attachments/backgrounds). Everything else
+# (JS/CSS/fonts/icons/manifest/service worker/SPA routes) is served by Static Assets directly:
+# no Worker invocation, and Static Assets requests are free. Keep this list in sync with the
+# prefixes handled in src/index.js (test/static-routing.spec.js enforces it).
+run_worker_first = ["/api/*", "/attachments/*", "/static/*"]
 
 [triggers]
 crons = ["* * * * *", "*/30 * * * *", "0 16 * * *"]

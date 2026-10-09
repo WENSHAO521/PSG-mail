@@ -13,6 +13,7 @@ import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
 import { safeObjectResponse } from './utils/safe-object-response';
 import forwardingService from './service/forwarding-service';
+import { bump, flushMetrics, purgeOldMetrics } from './service/ops-metrics';
 // Durable Object classes must be exported by name from the Worker's main
 // entry — this is that export, not a self-contained secondary Worker. See
 // src/durable/scheduled-send-alarm.js for what it's for.
@@ -37,25 +38,62 @@ export default {
 	},
 	email: email,
 	async scheduled(c, env, ctx) {
-		if (c.cron === '* * * * *') {
-			await Promise.all([
-				scheduledEmailService.processDue({ env }),
-				forwardingService.processDue({ env }),
-			])
-			return;
+		try {
+			await runScheduled(c, env);
+		} finally {
+			await flushMetrics(env);
 		}
-
-		if (c.cron === '*/30 * * * *') {
-			await analysisService.refreshEchartsCache({ env })
-			return;
-		}
-
-		await verifyRecordService.clearRecord({ env })
-		await userService.resetDaySendCount({ env })
-		await emailService.completeReceiveAll({ env })
-		await emailService.purgeExpiredTrash({ env })
-		await emailService.autoClean({ env })
-		await oauthService.clearNoBindOathUser({ env })
-		await analysisService.refreshEchartsCache({ env })
 	},
 };
+
+async function runScheduled(c, env) {
+	if (c.cron === '* * * * *') {
+		// Per-minute fallback. Only outcomes worth looking at are recorded (never "ran, nothing due"),
+		// so monitoring adds no D1 writes to idle minutes.
+		const started = Date.now();
+		const [sched, fwd] = await Promise.allSettled([
+			scheduledEmailService.processDue({ env }),
+			forwardingService.processDue({ env }),
+		]);
+		if (sched.status === 'rejected') { bump('cron.minute.scheduled_error'); console.error('minute cron scheduled-mail failed', sched.reason?.message); }
+		if (fwd.status === 'rejected') { bump('cron.minute.forwarding_error'); console.error('minute cron forwarding failed', fwd.reason?.message); }
+		const processed = sched.status === 'fulfilled' ? Number(sched.value?.processed || 0) : 0;
+		if (processed > 0) bump('cron.minute.scheduled_processed', { n: processed, ms: Date.now() - started });
+		// Keep the cron run marked as failed in Cloudflare when a job threw, as before.
+		if (sched.status === 'rejected') throw sched.reason;
+		if (fwd.status === 'rejected') throw fwd.reason;
+		return;
+	}
+
+	if (c.cron === '*/30 * * * *') {
+		await timed('cron.stats_refresh', () => analysisService.refreshEchartsCache({ env }, { onlyIfChanged: true }));
+		return;
+	}
+
+	// Independent jobs: one failing (e.g. a table not migrated yet) must not skip the rest.
+	const jobs = [
+		['clearRecord', () => verifyRecordService.clearRecord({ env })],
+		['resetDaySendCount', () => userService.resetDaySendCount({ env })],
+		['completeReceiveAll', () => emailService.completeReceiveAll({ env })],
+		['purgeExpiredTrash', () => emailService.purgeExpiredTrash({ env })],
+		['autoClean', () => emailService.autoClean({ env })],
+		['clearNoBindOathUser', () => oauthService.clearNoBindOathUser({ env })],
+		['refreshEchartsCache', () => analysisService.refreshEchartsCache({ env })],
+		['purgeOpsMetrics', () => purgeOldMetrics(env)],
+	];
+	for (const [name, job] of jobs) {
+		await timed('cron.daily.' + name.replace(/[A-Z]/g, ch => '_' + ch.toLowerCase()), job);
+	}
+}
+
+// Runs a cron job, records its duration, and records + logs a failure without throwing.
+async function timed(metric, job) {
+	const started = Date.now();
+	try {
+		await job();
+		bump(metric, { ms: Date.now() - started });
+	} catch (e) {
+		bump(metric + '_error', { ms: Date.now() - started });
+		console.error(`cron job failed: ${metric}`, e?.message);
+	}
+}

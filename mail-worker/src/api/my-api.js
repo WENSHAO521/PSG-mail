@@ -2,6 +2,9 @@ import app from '../hono/hono';
 import userService from '../service/user-service';
 import result from '../model/result';
 import userContext from '../security/user-context';
+import sessionService from '../service/session-service';
+import BizError from '../error/biz-error';
+import { t } from '../i18n/i18n';
 
 app.get('/my/loginUserInfo', async (c) => {
 	const user = await userService.loginUserInfo(c, userContext.getUserId(c));
@@ -9,7 +12,24 @@ app.get('/my/loginUserInfo', async (c) => {
 });
 
 app.put('/my/resetPassword', async (c) => {
-	await userService.resetPassword(c, await c.req.json(), userContext.getUserId(c));
+	await userService.changeOwnPassword(c, await c.req.json(), userContext.getUserId(c), await userContext.getToken(c));
+	return c.json(result.ok());
+});
+
+app.get('/my/sessions', async (c) => {
+	const list = await sessionService.list(c, userContext.getUserId(c), await userContext.getToken(c));
+	return c.json(result.ok(list));
+});
+
+// Sign out every other device (the current session stays valid).
+app.delete('/my/sessions', async (c) => {
+	const count = await sessionService.revokeOthers(c, userContext.getUserId(c), await userContext.getToken(c));
+	return c.json(result.ok({ revoked: count }));
+});
+
+app.delete('/my/sessions/:id', async (c) => {
+	const ok = await sessionService.revoke(c, userContext.getUserId(c), c.req.param('id'));
+	if (!ok) throw new BizError(t('authExpired'), 404);
 	return c.json(result.ok());
 });
 

@@ -1,3 +1,4 @@
+import { maintenanceThrottleKeys, assertLoginAllowed, recordLoginFailure } from '../service/login-throttle';
 import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
@@ -19,7 +20,11 @@ const dbInit = {
 		const auth = c.req.header('Authorization') || '';
 		const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
 
+		const throttle = await maintenanceThrottleKeys(c);
+		const counts = await assertLoginAllowed(c, throttle);
+
 		if (!secret || !timingSafeEqual(secret, c.env.maintenance_secret)) {
+			await recordLoginFailure(c, throttle, counts);
 			return c.text('❌ maintenance secret mismatch', 401);
 		}
 

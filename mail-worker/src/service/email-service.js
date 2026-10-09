@@ -26,6 +26,7 @@ import telegramService from './telegram-service';
 import kvCache from '../cache/kv-cache';
 import r2Service from './r2-service';
 import labelService from './label-service';
+import { ensureDeleteTime, ensureIsArchive, ensureIsSpam } from '../utils/schema-guard';
 
 // ── Per-request helpers ────────────────────────────────────────────────────
 
@@ -44,6 +45,15 @@ async function getSharedAccountIds(c, userId) {
 	} catch {}
 	c.set(ctxKey, ids)
 	return ids
+}
+
+// Access scope for a single-account read. The query already pins account_id = ?, so the
+// "own mail OR shared account" test collapses to ONE indexable predicate: a shared account
+// grants the whole account (no user filter), otherwise only the caller's own rows. Same result
+// set as the OR form, but it lets the planner use an (account_id, ...) or (user_id, account_id, ...)
+// index instead of walking idx_email_type and filtering every row.
+function accountAccessCond(userId, accountId, sharedIds) {
+	return sharedIds.includes(Number(accountId)) ? undefined : eq(email.userId, userId);
 }
 
 // Module-level schema detection cache — probing a column on every list request
@@ -146,6 +156,10 @@ const emailService = {
 
 		size = Number(size);
 		emailId = Number(emailId);
+		// Follow-up pages (cursor given) skip the COUNT: it reads one index row per mail in the
+		// mailbox (measured: 2316 rows read for a 2316-mail inbox vs 21 for the page itself) and
+		// the client already has the total from page one.
+		const isFirstPage = !emailId;
 		timeSort = Number(timeSort);
 		accountId = Number(accountId);
 		allReceive = Number(allReceive);
@@ -170,9 +184,11 @@ const emailService = {
 		}
 
 		const sharedEmailAccountIds = await getSharedAccountIds(c, userId)
-		const accessCond = sharedEmailAccountIds.length > 0
-			? or(eq(email.userId, userId), inArray(email.accountId, sharedEmailAccountIds))
-			: eq(email.userId, userId);
+		const accessCond = allReceive
+			? (sharedEmailAccountIds.length > 0
+				? or(eq(email.userId, userId), inArray(email.accountId, sharedEmailAccountIds))
+				: eq(email.userId, userId))
+			: accountAccessCond(userId, accountId, sharedEmailAccountIds);
 
 		const spamFilter   = await columnExists(c, 'email', 'is_spam')    ? sql`COALESCE(email.is_spam, 0) = 0`    : null
 		const archiveFilter = await columnExists(c, 'email', 'is_archive') ? sql`COALESCE(email.is_archive, 0) = 0` : null
@@ -216,7 +232,7 @@ const emailService = {
 
 		// reuse the same sharedEmailAccountIds computed above
 
-		const totalQuery = orm(c).select({ total: count() }).from(email)
+		const totalQuery = isFirstPage ? orm(c).select({ total: count() }).from(email)
 			.leftJoin(
 				account,
 				eq(account.accountId, email.accountId)
@@ -229,7 +245,7 @@ const emailService = {
 					eq(email.isDel, isDel.NORMAL),
 					eq(account.isDel, isDel.NORMAL)
 				)
-		).get();
+		).get() : Promise.resolve(null);
 
 		const latestEmailQuery = orm(c).select().from(email).where(
 			and(
@@ -259,13 +275,13 @@ const emailService = {
 			}
 		}
 
-		return { list, total: totalRow.total, latestEmail };
+		return { list, total: totalRow ? totalRow.total : null, latestEmail };
 	},
 
 	async archiveEmail(c, params, userId) {
 		const emailIdList = String(params.emailIds).split(',').map(Number).filter(Boolean);
 		if (!emailIdList.length) return;
-		try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN is_archive INTEGER NOT NULL DEFAULT 0;`).run(); } catch {}
+		await ensureIsArchive(c);
 		const sharedIds = await getSharedAccountIds(c, userId)
 		const placeholders = emailIdList.map(() => '?').join(',');
 		const cond = sharedIds.length > 0 ? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))` : 'user_id = ?';
@@ -310,9 +326,7 @@ const emailService = {
 		const emailIdList = String(params.emailIds).split(',').map(Number).filter(Boolean);
 		if (!emailIdList.length) return;
 		// auto-add column if missing
-		try {
-			await c.env.db.prepare(`ALTER TABLE email ADD COLUMN is_spam INTEGER NOT NULL DEFAULT 0;`).run();
-		} catch {}
+		await ensureIsSpam(c);
 		const spamShared = await getSharedAccountIds(c, userId)
 		const placeholders = emailIdList.map(() => '?').join(',');
 		const spamCond = spamShared.length > 0
@@ -422,15 +436,19 @@ const emailService = {
 			return;
 		}
 
-		try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN delete_time TEXT;`).run(); } catch {}
-		await orm(c).update(email).set({ isDel: isDel.DELETE }).where(
-			and(accessCond, inArray(email.emailId, emailIdList)))
-			.run();
-		try {
-			await c.env.db.prepare(
-				`UPDATE email SET delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${emailIdList.map(() => '?').join(',')})`
-			).bind(...emailIdList).run();
-		} catch {}
+		await ensureDeleteTime(c);
+		// One scoped UPDATE: the trash timestamp is written only on rows the caller may access
+		// (it used to be a second, unscoped UPDATE by email_id alone).
+		const delIds = emailIdList.filter(Number.isInteger);
+		if (delIds.length === 0) return;
+		const delShared = sharedIds;
+		const delCond = delShared.length > 0
+			? `(user_id = ? OR account_id IN (${delShared.map(() => '?').join(',')}))`
+			: 'user_id = ?';
+		await c.env.db.prepare(
+			`UPDATE email SET is_del = ?, delete_time = CASE WHEN is_del = ? THEN delete_time ELSE CURRENT_TIMESTAMP END
+			 WHERE email_id IN (${delIds.map(() => '?').join(',')}) AND ${delCond}`
+		).bind(isDel.DELETE, isDel.DELETE, ...delIds, userId, ...delShared).run();
 	},
 
 	async restore(c, params, userId) {
@@ -486,22 +504,31 @@ const emailService = {
 		).bind(...idsToDelete).run();
 	},
 
+	// D1 allows 100 bound parameters per statement, so ids are handled in chunks of 90. Each run
+	// is capped (MAX_PURGE_PER_RUN) to stay inside the cron's time budget; whatever is left is
+	// picked up by the next daily run. Uses physicsDelete so stars/attachments/labels go with the mail.
 	async purgeExpiredTrash(c) {
 		const setting = await settingService.query(c);
 		const days = Number(setting.autoDeleteDays) || 30;
 		const cutoff = dayjs().subtract(days, 'day').format('YYYY-MM-DD HH:mm:ss');
-		let idsToDelete;
+		const CHUNK = 90;
+		const MAX_PURGE_PER_RUN = 5000;
+		let purged = 0;
 		try {
-			const { results } = await c.env.db.prepare(
-				`SELECT email_id FROM email WHERE is_del = 1 AND delete_time IS NOT NULL AND delete_time < ?`
-			).bind(cutoff).all();
-			idsToDelete = results.map(r => r.email_id);
-		} catch { return; }
-		if (!idsToDelete.length) return;
-		await attService.removeByEmailIds(c, idsToDelete);
-		await c.env.db.prepare(
-			`DELETE FROM email WHERE email_id IN (${idsToDelete.map(() => '?').join(',')})`
-		).bind(...idsToDelete).run();
+			await ensureDeleteTime(c);
+			while (purged < MAX_PURGE_PER_RUN) {
+				const { results } = await c.env.db.prepare(
+					`SELECT email_id FROM email WHERE is_del = 1 AND delete_time IS NOT NULL AND delete_time < ? ORDER BY email_id LIMIT ${CHUNK}`
+				).bind(cutoff).all();
+				if (!results.length) break;
+				await this.physicsDelete(c, { emailIds: results.map(r => r.email_id).join(',') });
+				purged += results.length;
+				if (results.length < CHUNK) break;
+			}
+		} catch (e) {
+			console.error('purgeExpiredTrash failed after', purged, 'mails:', e.message);
+		}
+		return { purged };
 	},
 
 	// Ownership-scoped single-row fetch (includes trashed rows) — shared by the
@@ -1394,9 +1421,11 @@ const emailService = {
 		}
 
 		const sharedLatestIds = await getSharedAccountIds(c, userId)
-		const latestAccessCond = sharedLatestIds.length > 0
-			? or(eq(email.userId, userId), inArray(email.accountId, sharedLatestIds))
-			: eq(email.userId, userId);
+		const latestAccessCond = allReceive
+			? (sharedLatestIds.length > 0
+				? or(eq(email.userId, userId), inArray(email.accountId, sharedLatestIds))
+				: eq(email.userId, userId))
+			: accountAccessCond(userId, accountId, sharedLatestIds);
 
 		// Mail the AI screening (or the user) moved to Spam must not reach
 		// clients that sync by polling (Electron, background tabs).
@@ -1428,10 +1457,17 @@ const emailService = {
 
 	async physicsDelete(c, params) {
 		let { emailIds } = params;
-		emailIds = emailIds.split(',').map(Number);
-		await attService.removeByEmailIds(c, emailIds);
-		await starService.removeByEmailIds(c, emailIds);
-		await orm(c).delete(email).where(inArray(email.emailId, emailIds)).run();
+		emailIds = emailIds.split(',').map(Number).filter(Number.isInteger);
+		// D1: max 100 bound parameters per statement.
+		for (let i = 0; i < emailIds.length; i += 90) {
+			const ids = emailIds.slice(i, i + 90);
+			await attService.removeByEmailIds(c, ids);
+			await starService.removeByEmailIds(c, ids);
+			try {
+				await c.env.db.prepare(`DELETE FROM mail_label_email WHERE email_id IN (${ids.map(() => '?').join(',')})`).bind(...ids).run();
+			} catch {} // labels table may not exist on deployments that skipped migration 0002
+			await orm(c).delete(email).where(inArray(email.emailId, ids)).run();
+		}
 	},
 
 	async allEmailDelete(c, params) {
@@ -1445,11 +1481,10 @@ const emailService = {
 		const toTrashIds = rows.filter(row => row.isDel !== isDel.DELETE).map(row => row.emailId);
 
 		if (toTrashIds.length > 0) {
-			try { await c.env.db.prepare(`ALTER TABLE email ADD COLUMN delete_time TEXT;`).run(); } catch {}
-			await orm(c).update(email).set({ isDel: isDel.DELETE }).where(inArray(email.emailId, toTrashIds)).run();
+			await ensureDeleteTime(c);
 			await c.env.db.prepare(
-				`UPDATE email SET delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${toTrashIds.map(() => '?').join(',')})`
-			).bind(...toTrashIds).run();
+				`UPDATE email SET is_del = ?, delete_time = CURRENT_TIMESTAMP WHERE email_id IN (${toTrashIds.map(() => '?').join(',')})`
+			).bind(isDel.DELETE, ...toTrashIds).run();
 		}
 
 		if (alreadyTrashedIds.length > 0) {

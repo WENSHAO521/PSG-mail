@@ -95,6 +95,7 @@
                   <div class="data-val">
                     <span class="val-str">••••••••</span>
                     <button class="link-btn" @click="pwdShow = true">{{ $t('changePwdBtn') }}</button>
+                    <button class="link-btn" :disabled="signOutLoading" @click="signOutOthers">{{ $t('signOutOtherDevices') }}</button>
                   </div>
                 </div>
                 <div class="data-row">
@@ -452,6 +453,10 @@
     <el-dialog class="password-settings-dialog" v-model="pwdShow" :title="$t('changePassword')" width="380">
       <div class="pwd-form">
         <div class="pwd-field">
+          <label class="pwd-label">{{ $t('currentPassword') }}</label>
+          <el-input class="pwd-input" type="password" v-model="form.currentPassword" autocomplete="current-password" show-password/>
+        </div>
+        <div class="pwd-field">
           <label class="pwd-label">{{ $t('newPassword') }}</label>
           <el-input class="pwd-input" type="password" v-model="form.password" autocomplete="off" show-password/>
         </div>
@@ -470,7 +475,7 @@
 <script setup>
 import { reactive, ref, computed, defineOptions, onMounted, onActivated, watch } from 'vue'
 import Account from '@/layout/account/index.vue'
-import { resetPassword, userDelete } from "@/request/my.js"
+import { resetPassword, userDelete, signOutOtherSessions } from "@/request/my.js"
 import { trackerAllowList, trackerDisallow } from '@/request/tracker.js'
 import { useUserStore } from "@/store/user.js"
 import router from "@/router/index.js"
@@ -555,7 +560,8 @@ const setNameShow = ref(false)
 const accountName = ref(null)
 const fileInputRef = ref(null)
 const pwdShow = ref(false)
-const form = reactive({ password: '', newPwd: '' })
+const form = reactive({ currentPassword: '', password: '', newPwd: '' })
+const signOutLoading = ref(false)
 const signatureManagerRef = ref(null)
 const autoReplyEnabled = ref(false)
 const autoReplyMessage = ref('')
@@ -1241,12 +1247,23 @@ const deleteConfirm = () => {
   })
 }
 
+function signOutOthers() {
+  signOutLoading.value = true
+  signOutOtherSessions().then(() => {
+    ElMessage({ message: t('signOutOtherDevicesDone'), type: 'success', plain: true })
+  }).catch(() => {}).finally(() => { signOutLoading.value = false })
+}
+
 function submitPwd() {
+  if (!form.currentPassword) {
+    ElMessage({ message: t('emptyPwdMsg'), type: 'error', plain: true })
+    return
+  }
   if (!form.password) {
     ElMessage({ message: t('emptyPwdMsg'), type: 'error', plain: true })
     return
   }
-  if (form.password.length < 6) {
+  if (form.password.length < 8) {
     ElMessage({ message: t('pwdLengthMsg'), type: 'error', plain: true })
     return
   }
@@ -1255,9 +1272,10 @@ function submitPwd() {
     return
   }
   setPwdLoading.value = true
-  resetPassword(form.password).then(() => {
+  resetPassword(form.currentPassword, form.password).then(() => {
     ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
     pwdShow.value = false
+    form.currentPassword = ''
     form.password = ''
     form.newPwd = ''
   }).catch(() => {}).finally(() => { setPwdLoading.value = false })
