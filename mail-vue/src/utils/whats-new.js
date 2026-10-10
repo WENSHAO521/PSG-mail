@@ -37,12 +37,11 @@ export function markWhatsNewSeen() {
   try { localStorage.setItem(SEEN_KEY, __APP_VERSION__) } catch {}
 }
 
-// Opens once after an update. A first-ever launch has nothing stored: record
-// the version without showing a "what's new" for a product they just met.
+// Opens once per version that has notes. Installs that predate this feature
+// have no stored version, so a missing key counts as "not seen yet" rather
+// than a first install: they are the ones this dialog is for.
 export function showWhatsNewIfUpdated() {
-  const seen = readSeen()
-  if (!seen) return markWhatsNewSeen()
-  if (seen !== __APP_VERSION__ && currentNotes()) whatsNewVisible.value = true
+  if (readSeen() !== __APP_VERSION__ && currentNotes()) whatsNewVisible.value = true
   else markWhatsNewSeen()
 }
 

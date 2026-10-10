@@ -130,8 +130,8 @@
         <h1 class="email-title">{{ email.subject || $t('noSubject') }}</h1>
 
         <div class="detail-label-chips" v-if="email.labels && email.labels.length">
-          <span v-for="l in email.labels" :key="l.labelId" class="detail-label-chip" :style="{ '--chip-color': l.color }">
-            {{ l.name }}
+          <span v-for="l in email.labels" :key="l.labelId" class="detail-label-chip" :style="{ '--chip-color': labelStore.resolve(l).color }">
+            {{ labelStore.resolve(l).name }}
           </span>
         </div>
 

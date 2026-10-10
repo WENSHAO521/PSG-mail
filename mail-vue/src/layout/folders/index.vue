@@ -22,29 +22,27 @@
       </span>
     </button>
 
-    <template v-if="hasPerm('email:send')">
-      <div class="folders-title">
-        <span>{{ $t('labels') }}</span>
-        <button type="button" class="folders-add" :title="$t('newLabel')" :aria-label="$t('newLabel')" @click="labelEditorRef.open()">
-          <Icon icon="psg:add-circle" width="15" height="15" />
-        </button>
-      </div>
-      <div v-for="l in labelStore.labels" :key="l.labelId" class="folder-row">
-        <button type="button" class="folder"
-                :class="{ active: route.name === 'label' && Number(route.params.id) === l.labelId }"
-                @click="go({ name: 'label', params: { id: l.labelId } })">
-          <span class="folder-swatch" :style="{ background: l.color }"></span>
-          <span class="folder-label">{{ l.name }}</span>
-          <span v-if="l.emailCount" class="folder-count folder-count--quiet">{{ l.emailCount }}</span>
-        </button>
-        <button type="button" class="folder-more" :title="$t('labelEdit')" :aria-label="$t('labelEdit')"
-                @click="labelEditorRef.open(l)">
-          <Icon icon="solar:menu-dots-bold" width="16" height="16" />
-        </button>
-      </div>
-      <LabelEditor ref="labelEditorRef" @created="l => go({ name: 'label', params: { id: l.labelId } })"
-                   @deleted="onLabelDeleted" />
-    </template>
+    <div class="folders-title">
+      <span>{{ $t('labels') }}</span>
+      <button type="button" class="folders-add" :title="$t('newLabel')" :aria-label="$t('newLabel')" @click="labelEditorRef.open()">
+        <Icon icon="psg:add-circle" width="15" height="15" />
+      </button>
+    </div>
+    <div v-for="l in labelStore.labels" :key="l.labelId" class="folder-row">
+      <button type="button" class="folder"
+              :class="{ active: route.name === 'label' && Number(route.params.id) === l.labelId }"
+              @click="go({ name: 'label', params: { id: l.labelId } })">
+        <span class="folder-swatch" :style="{ background: l.color }"></span>
+        <span class="folder-label">{{ l.name }}</span>
+        <span v-if="l.emailCount" class="folder-count folder-count--quiet">{{ l.emailCount }}</span>
+      </button>
+      <button type="button" class="folder-more" :title="$t('labelEdit')" :aria-label="$t('labelEdit')"
+              @click="labelEditorRef.open(l)">
+        <Icon icon="psg:more" width="16" height="16" />
+      </button>
+    </div>
+    <LabelEditor ref="labelEditorRef" @created="l => go({ name: 'label', params: { id: l.labelId } })"
+                 @deleted="onLabelDeleted" />
   </nav>
   </div>
 </template>
@@ -87,7 +85,7 @@ const sheetDx = ref(0)
 let unbindSheet = null
 
 onMounted(() => {
-  if (hasPerm('email:send')) labelStore.load()
+  labelStore.load()
   if (sheetRef.value) {
     unbindSheet = bindHorizontalDrag(sheetRef.value, {
       enabled: () => isTouchLayout() && uiStore.asideShow,
@@ -173,6 +171,8 @@ function onLabelDeleted(label) {
 
   .folder { flex: 1; }
 
+  @media (hover: none) { .folder { padding-right: 40px; } }
+
   &:hover .folder-more, .folder-more:focus-visible { opacity: 1; }
 }
 
@@ -193,7 +193,7 @@ function onLabelDeleted(label) {
   cursor: pointer;
   transition: opacity .12s ease;
 
-  /* No hover on touch screens: keep the menu reachable. */
+  /* No hover on touch screens: keep the menu reachable, and clear of the count. */
   @media (hover: none) { opacity: 1; background: transparent; }
   @media (hover: hover) { &:hover { color: var(--psg-text); } }
 }

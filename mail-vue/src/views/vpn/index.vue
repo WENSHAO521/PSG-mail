@@ -5,7 +5,7 @@
 
         <!-- ── Hero: product, latest version, one-click download for this device ── -->
         <header class="vpn-hero">
-          <img class="vpn-hero-icon" src="/image/psg-connect-logo.png" alt="PSG Connect" width="60" height="60">
+          <img class="vpn-hero-icon" :src="logoUrl" alt="PSG Connect" width="60" height="60">
           <div class="vpn-hero-copy">
             <h1>PSG Connect</h1>
             <p>{{ $t('vpnHeroSub') }}</p>
@@ -111,6 +111,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 
+const logoUrl = `${import.meta.env.BASE_URL}image/psg-connect-logo.png`
 const RELEASES_URL = 'https://github.com/WENSHAO521/FlClash-/releases'
 const GITHUB_API   = 'https://api.github.com/repos/WENSHAO521/FlClash-/releases/latest'
 

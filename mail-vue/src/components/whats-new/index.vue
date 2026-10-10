@@ -1,11 +1,11 @@
 <template>
   <el-dialog v-model="whatsNewVisible" width="440" align-center class="whats-new" :show-close="false"
              @closed="markWhatsNewSeen">
-    <template #header>
+    <template #header="{ titleId }">
       <div class="wn-head">
         <BrandLogo class="wn-logo" />
         <div>
-          <div class="wn-title">{{ $t('whatsNewTitle') }}</div>
+          <div :id="titleId" class="wn-title">{{ $t('whatsNewTitle') }}</div>
           <div class="wn-sub">v{{ notes?.version }} · {{ notes?.date }}</div>
         </div>
       </div>

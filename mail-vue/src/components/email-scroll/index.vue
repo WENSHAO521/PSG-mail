@@ -200,7 +200,7 @@
                   <span v-if="item.code" class="code-tag" @click.stop="copyCode(item.code)">[{{ t('codeLabel') }}{{ item.code }}]</span>
                   <span class="mrow-subject-text"><slot name="subject" :email="item">{{ item.subject || $t('noSubject') }}</slot></span>
                   <span class="mrow-labels" v-if="item.labels && item.labels.length">
-                    <span v-for="l in item.labels" :key="l.labelId" class="mrow-label" :style="{ background: l.color }" :title="l.name"></span>
+                    <span v-for="l in item.labels" :key="l.labelId" class="mrow-label" :style="{ background: labelStore.resolve(l).color }" :title="labelStore.resolve(l).name"></span>
                   </span>
                 </div>
                 <div class="mrow-line mrow-line--meta">
@@ -313,6 +313,7 @@ import skeletonBlock from "@/components/email-scroll/skeleton/index.vue"
 import MailboxChips from "@/components/mailbox-chips/index.vue"
 import {computed, onActivated, onDeactivated, reactive, ref, watch, nextTick, onMounted, onUnmounted, markRaw, toRaw } from "vue";
 import {useEmailStore} from "@/store/email.js";
+import {useLabelStore} from "@/store/label.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {sleep} from "@/utils/time-utils.js"
@@ -366,6 +367,7 @@ const {t} = useI18n()
 const settingStore = useSettingStore()
 const uiStore = useUiStore();
 const emailStore = useEmailStore();
+const labelStore = useLabelStore();
 const loading = ref(false);
 const followLoading = ref(false);
 const noLoading = ref(false);
