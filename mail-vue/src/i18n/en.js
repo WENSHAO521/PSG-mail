@@ -1051,7 +1051,7 @@ const en = {
     vpnWindowsDesc: 'PSG Connect desktop client for Windows',
     vpnMacDesc: 'PSG Connect desktop client for macOS — Apple Silicon and Intel',
     vpnAndroidDesc: 'PSG Connect mobile client for Android',
-    vpnLinuxDesc: 'PSG Connect desktop client for Linux — .deb and .AppImage',
+    vpnLinuxDesc: 'PSG Connect desktop client for Linux — AppImage, DEB and RPM',
     personalForwarding: 'Mail forwarding',
     personalForwardingDesc: 'Verify an external address before forwarding new-mail notifications to it.',
     personalForwardingRetainNote: 'Forwarding only copies or notifies mail; the original always stays in PSG Mail.',

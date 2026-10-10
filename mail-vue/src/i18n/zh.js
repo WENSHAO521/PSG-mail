@@ -1051,7 +1051,7 @@ const zh = {
     vpnWindowsDesc: 'PSG Connect Windows 客户端',
     vpnMacDesc: 'PSG Connect macOS 客户端，支持 Apple Silicon 与 Intel',
     vpnAndroidDesc: 'PSG Connect Android 移动客户端',
-    vpnLinuxDesc: 'PSG Connect Linux 客户端，提供 .deb 与 .AppImage',
+    vpnLinuxDesc: 'PSG Connect Linux 客户端，提供 AppImage、DEB 与 RPM',
     personalForwarding: '邮件转发',
     personalForwardingDesc: '验证外部邮箱后，将新邮件安全地通知到该地址。',
     personalForwardingRetainNote: '转发只会复制或通知邮件，原邮件始终保留在 PSG Mail。',
