@@ -18,6 +18,10 @@
             <span class="about-label">{{ $t('currentVersion') }}</span>
             <span class="about-value mono">v{{ appVersion }}</span>
           </div>
+          <div v-if="hasNotes" class="about-row">
+            <span class="about-label">{{ $t('whatsNewTitle') }}</span>
+            <el-button class="about-btn" @click="openWhatsNew">{{ $t('whatsNewView') }}</el-button>
+          </div>
 
           <template v-if="isElectron">
             <div class="about-row">
@@ -137,12 +141,14 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { Capacitor } from '@capacitor/core'
 import { checkAndDownloadAndroidUpdate } from '@/utils/android-update-service.js'
+import { currentNotes, openWhatsNew } from '@/utils/whats-new.js'
 
 defineOptions({ name: 'about' })
 
 const { t } = useI18n()
 
 const appVersion = __APP_VERSION__
+const hasNotes = !!currentNotes()
 const isElectron = !!window.electronAPI
 const isAndroid  = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
 
