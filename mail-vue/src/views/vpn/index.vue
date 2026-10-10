@@ -5,7 +5,7 @@
 
         <!-- ── Hero: product, latest version, one-click download for this device ── -->
         <header class="vpn-hero">
-          <div class="vpn-hero-icon"><Icon icon="psg:shield" width="28" height="28" /></div>
+          <img class="vpn-hero-icon" src="/image/psg-connect-logo.png" alt="PSG Connect" width="60" height="60">
           <div class="vpn-hero-copy">
             <h1>PSG Connect</h1>
             <p>{{ $t('vpnHeroSub') }}</p>
@@ -76,7 +76,17 @@
                 </div>
                 <div class="vpn-row-desc">{{ $t(p.descKey) }} · {{ p.req }}</div>
               </div>
-              <div class="vpn-row-actions">
+              <div v-if="p.groups" class="vpn-row-groups">
+                <div v-for="g in p.groups" :key="g.arch" class="vpn-group">
+                  <span class="vpn-group-arch">{{ g.arch }}</span>
+                  <a v-for="a in g.items" :key="a.name" class="vpn-pill" :class="{ 'vpn-pill--accent': p.key === detected }"
+                     :href="a.browser_download_url" target="_blank" rel="noopener" :title="a.name">
+                    <Icon icon="psg:download" width="14" height="14" />
+                    {{ a.fmt }}
+                  </a>
+                </div>
+              </div>
+              <div v-else class="vpn-row-actions">
                 <a v-for="a in p.assets" :key="a.name" class="vpn-pill" :class="{ 'vpn-pill--accent': p.key === detected }"
                    :href="a.browser_download_url" target="_blank" rel="noopener" :title="a.name">
                   <Icon icon="psg:download" width="14" height="14" />
@@ -142,7 +152,10 @@ const PLATFORMS = [
 
 // Platforms that have a build in the latest release, this device first.
 const platforms = computed(() => PLATFORMS
-  .map(p => ({ ...p, assets: labelled(assets(p.key)) }))
+  .map(p => {
+    const list = labelled(assets(p.key))
+    return { ...p, assets: list, groups: p.key === 'linux' ? groupByArch(list) : null }
+  })
   .filter(p => p.assets.length)
   .sort((a, b) => (b.key === detected) - (a.key === detected)))
 
@@ -220,8 +233,24 @@ function labelled(list) {
     const dup = labels.filter(l => l === labels[i]).length > 1
     const ext = (a.name.match(/\.([a-zA-Z0-9]+)$/)?.[1] || '').toLowerCase()
     const fmt = ext === 'appimage' ? 'AppImage' : ext.toUpperCase()
-    return { ...a, label: dup && fmt ? `${labels[i]} · ${fmt}` : labels[i] }
+    return { ...a, fmt: fmt || labels[i], label: dup && fmt ? `${labels[i]} · ${fmt}` : labels[i] }
   })
+}
+
+// Linux ships up to three formats per architecture; one line per architecture
+// reads better than a flat run of six pills.
+const FORMAT_ORDER = ['AppImage', 'DEB', 'RPM']
+function groupByArch(list) {
+  const groups = new Map()
+  for (const a of list) {
+    const arch = archLabel(a.name)
+    if (!groups.has(arch)) groups.set(arch, [])
+    groups.get(arch).push(a)
+  }
+  const rank = a => { const i = FORMAT_ORDER.indexOf(a.fmt); return i < 0 ? FORMAT_ORDER.length : i }
+  return [...groups]
+    .map(([arch, items]) => ({ arch, items: items.sort((a, b) => rank(a) - rank(b)) }))
+    .sort((a, b) => (a.arch === 'ARM64') - (b.arch === 'ARM64'))
 }
 
 // Extract a human-readable architecture / variant label from filename
@@ -292,8 +321,7 @@ h2 {
   height: 60px;
   flex-shrink: 0;
   border-radius: var(--psg-radius-lg);
-  background: var(--psg-primary-muted);
-  color: var(--psg-primary);
+  object-fit: cover;
 }
 
 .vpn-hero-copy {
@@ -464,6 +492,32 @@ h2 {
 
   /* Not enough room beside the info: drop under it, aligned with the text. */
   @media (max-width: 900px) { flex: 1 1 100%; justify-content: flex-start; padding-left: 58px; }
+}
+
+.vpn-row-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+
+  @media (max-width: 900px) { flex: 1 1 100%; padding-left: 58px; }
+  @media (max-width: 640px) { padding-left: 0; }
+}
+
+.vpn-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vpn-group-arch {
+  width: 64px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--psg-text-muted);
 }
 
 .vpn-pill {

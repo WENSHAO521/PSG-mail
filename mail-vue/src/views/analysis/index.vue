@@ -332,13 +332,13 @@ const topic = computed(() => ({
   crossColor: uiStore.dark ? '#8E8E93' : '#AEAEB2',
   axisColor: uiStore.dark ? '#8E8E93' : '#636366',
   splitLineColor: uiStore.dark ? '#3A3A3F' : '#E5E5EA',
-  accentGreen: uiStore.dark ? '#FF8A50' : '#C2410C',
-  accentGreenRgb: uiStore.dark ? '255, 138, 80' : '194, 65, 12',
+  accentGreen: uiStore.dark ? '#F4B6C6' : '#B04A6A',
+  accentGreenRgb: uiStore.dark ? '244, 182, 198' : '176, 74, 106',
   // Secondary series — quiet ink, so the accent stays the one loud colour
   accentSecondary: uiStore.dark ? '#8E8E93' : '#8E8E93',
   categoryPalette: uiStore.dark
-    ? ['#FF8A50', '#FFB38A', '#E5E5EA', '#AEAEB2', '#8E8E93', '#636366']
-    : ['#C2410C', '#E8885A', '#3C3C43', '#636366', '#AEAEB2', '#D1D1D6'],
+    ? ['#F4B6C6', '#FADAE3', '#E5E5EA', '#AEAEB2', '#8E8E93', '#636366']
+    : ['#B04A6A', '#D98BA1', '#3C3C43', '#636366', '#AEAEB2', '#D1D1D6'],
 }))
 
 let leaveWidth = 0

@@ -2,6 +2,7 @@
   <CommandPalette ref="cmdPaletteRef"/>
   <SendQuotaWidget/>
   <AiAssistantDrawer/>
+  <WhatsNew/>
 
   <!-- Keyboard shortcuts dialog -->
   <el-dialog v-model="showShortcuts" :title="$t('shortcutsTitle')" width="460" align-center>
@@ -109,6 +110,7 @@ import ContentPane from '@/views/content/index.vue'
 import CommandPalette from '@/components/command-palette/index.vue'
 import SendQuotaWidget from '@/components/send-quota-widget/index.vue'
 import AiAssistantDrawer from '@/components/ai-assistant-drawer/index.vue'
+import WhatsNew from '@/components/whats-new/index.vue'
 import MobileHeader from '@/layout/mobile-header/index.vue'
 import MobileTabbar from '@/layout/mobile-tabbar/index.vue'
 import writer from '@/layout/write/index.vue'

@@ -160,7 +160,7 @@ function initEditor(initialContent = null) {
          take its static position lines the two up. */
       .mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before { left: auto !important; right: auto !important; }
       body { padding: 12px 16px !important; font-size: 15px; line-height: 1.7; color: ${uiStore.dark ? '#F2F2F7' : '#1C1C1E'}; }
-      a { color: ${uiStore.dark ? '#FF8A50' : '#C2410C'}; }
+      a { color: ${uiStore.dark ? '#F4B6C6' : '#B04A6A'}; }
       blockquote, .mceNonEditable {
         color: ${uiStore.dark ? '#D1D1D6' : '#3C3C43'} !important;
         background: ${uiStore.dark ? '#2A2A2E' : '#F2F2F7'} !important;

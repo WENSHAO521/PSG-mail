@@ -11,7 +11,7 @@
 
 :root {
   --el-color-primary: var(--psg-primary);
-  --el-color-primary-rgb: 194, 65, 12;
+  --el-color-primary-rgb: 176, 74, 106;
   --el-color-primary-light-3: var(--psg-primary-light-3);
   --el-color-primary-light-5: var(--psg-primary-light-5);
   --el-color-primary-light-7: var(--psg-primary-light-7);
@@ -119,7 +119,7 @@
    selector so ours is the one left standing. */
 html.dark {
   --el-color-primary: var(--psg-primary);
-  --el-color-primary-rgb: 255, 138, 80;
+  --el-color-primary-rgb: 244, 182, 198;
   --el-color-primary-light-3: var(--psg-primary-light-3);
   --el-color-primary-light-5: var(--psg-primary-light-5);
   --el-color-primary-light-7: var(--psg-primary-light-7);
