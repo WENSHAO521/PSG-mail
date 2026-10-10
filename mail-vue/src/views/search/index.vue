@@ -46,7 +46,7 @@
           <div class="result-row-top">
             <span class="result-sender" :class="{ unread: item.unread === 0 }">{{ item.name || item.sendEmail }}</span>
             <span class="row-label-dots" v-if="item.labels && item.labels.length">
-              <span v-for="l in item.labels" :key="l.labelId" class="row-label-dot" :style="{ background: l.color }" :title="l.name"></span>
+              <span v-for="l in item.labels" :key="l.labelId" class="row-label-dot" :style="{ background: labelStore.resolve(l).color }" :title="labelStore.resolve(l).name"></span>
             </span>
             <Icon v-if="hasAttachment(item)" icon="psg:paperclip" width="12" height="12" class="result-att-icon"/>
             <span class="result-time">{{ formatTime(item.createTime) }}</span>
@@ -71,6 +71,7 @@ import { emailSearch } from '@/request/email.js'
 import { useSearchStore } from '@/store/search.js'
 import { useAccountStore } from '@/store/account.js'
 import { useEmailStore } from '@/store/email.js'
+import { useLabelStore } from '@/store/label.js'
 import { useUiStore } from '@/store/ui.js'
 import { fromNow } from '@/utils/day.js'
 
@@ -79,6 +80,7 @@ defineOptions({ name: 'search' })
 const searchStore = useSearchStore()
 const accountStore = useAccountStore()
 const emailStore = useEmailStore()
+const labelStore = useLabelStore()
 const uiStore = useUiStore()
 
 const inputRef = ref(null)

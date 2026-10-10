@@ -1,7 +1,7 @@
 <template>
   <el-dialog v-model="visible" :title="editing ? $t('labelEdit') : $t('newLabel')" width="400" align-center>
     <div class="le-body">
-      <el-input v-model="name" :placeholder="$t('newLabelPrompt')" maxlength="40" @keyup.enter="save" />
+      <el-input v-model="name" :placeholder="$t('newLabelPrompt')" maxlength="60" @keyup.enter="save" />
       <div class="le-swatches" role="radiogroup" :aria-label="$t('labelColor')">
         <button v-for="c in LABEL_COLORS" :key="c" type="button" role="radio" class="le-swatch"
                 :class="{ active: color === c }" :style="{ background: c }" :aria-checked="color === c"
@@ -44,6 +44,7 @@ function open(label = null) {
 }
 
 async function save() {
+  if (saving.value) return
   const trimmed = name.value.trim()
   if (!trimmed) { ElMessage({ message: t('labelNameRequired'), type: 'error', plain: true }); return }
   saving.value = true
