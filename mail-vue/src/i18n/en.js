@@ -919,6 +919,8 @@ const en = {
     labelManage: 'Labels',
     labelManageDesc: 'Personal labels for organizing mail — apply any number to an email, independent of the Inbox/Archive/Spam/Trash folders',
     labelRename: 'Rename',
+    labelEdit: 'Edit label',
+    labelColor: 'Label color',
     labelDelete: 'Delete',
     labelDeleteConfirm: 'Delete this label? The emails themselves are not affected.',
     labelDeleted: 'Label deleted',

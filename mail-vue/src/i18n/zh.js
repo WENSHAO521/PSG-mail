@@ -919,6 +919,8 @@ const zh = {
     labelManage: '标签管理',
     labelManageDesc: '个人邮件标签，可为一封邮件添加多个，与收件箱/归档/垃圾/回收站等系统文件夹相互独立',
     labelRename: '重命名',
+    labelEdit: '编辑标签',
+    labelColor: '标签颜色',
     labelDelete: '删除',
     labelDeleteConfirm: '删除该标签？邮件本身不会被删除。',
     labelDeleted: '标签已删除',
