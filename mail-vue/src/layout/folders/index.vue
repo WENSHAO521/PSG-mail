@@ -25,17 +25,25 @@
     <template v-if="hasPerm('email:send')">
       <div class="folders-title">
         <span>{{ $t('labels') }}</span>
-        <button type="button" class="folders-add" :title="$t('newLabel')" :aria-label="$t('newLabel')" @click="promptCreateLabel">
+        <button type="button" class="folders-add" :title="$t('newLabel')" :aria-label="$t('newLabel')" @click="labelEditorRef.open()">
           <Icon icon="psg:add-circle" width="15" height="15" />
         </button>
       </div>
-      <button v-for="l in labelStore.labels" :key="l.labelId" type="button" class="folder"
-              :class="{ active: route.name === 'label' && Number(route.params.id) === l.labelId }"
-              @click="go({ name: 'label', params: { id: l.labelId } })">
-        <span class="folder-swatch" :style="{ background: l.color }"></span>
-        <span class="folder-label">{{ l.name }}</span>
-        <span v-if="l.emailCount" class="folder-count folder-count--quiet">{{ l.emailCount }}</span>
-      </button>
+      <div v-for="l in labelStore.labels" :key="l.labelId" class="folder-row">
+        <button type="button" class="folder"
+                :class="{ active: route.name === 'label' && Number(route.params.id) === l.labelId }"
+                @click="go({ name: 'label', params: { id: l.labelId } })">
+          <span class="folder-swatch" :style="{ background: l.color }"></span>
+          <span class="folder-label">{{ l.name }}</span>
+          <span v-if="l.emailCount" class="folder-count folder-count--quiet">{{ l.emailCount }}</span>
+        </button>
+        <button type="button" class="folder-more" :title="$t('labelEdit')" :aria-label="$t('labelEdit')"
+                @click="labelEditorRef.open(l)">
+          <Icon icon="solar:menu-dots-bold" width="16" height="16" />
+        </button>
+      </div>
+      <LabelEditor ref="labelEditorRef" @created="l => go({ name: 'label', params: { id: l.labelId } })"
+                   @deleted="onLabelDeleted" />
     </template>
   </nav>
   </div>
@@ -52,8 +60,7 @@ import { useUiStore } from '@/store/ui.js'
 import { useEmailStore } from '@/store/email.js'
 import { useLabelStore } from '@/store/label.js'
 import { hasPerm } from '@/perm/perm.js'
-import { labelCreate } from '@/request/label.js'
-import { LABEL_COLORS } from '@/utils/label-colors.js'
+import LabelEditor from '@/components/label-editor/index.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -100,21 +107,10 @@ function go(to) {
   router.push(to)
 }
 
-async function promptCreateLabel() {
-  try {
-    const { value } = await ElMessageBox.prompt(t('newLabelPrompt'), t('newLabel'), {
-      confirmButtonText: t('confirm'),
-      cancelButtonText: t('cancel'),
-      inputValidator: v => !!v?.trim() || t('labelNameRequired'),
-    })
-    const color = LABEL_COLORS[labelStore.labels.length % LABEL_COLORS.length]
-    const created = await labelCreate(value.trim(), color)
-    labelStore.upsertLocal(created)
-    go({ name: 'label', params: { id: created.labelId } })
-  } catch (e) {
-    if (e === 'cancel') return
-    ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true })
-  }
+const labelEditorRef = ref(null)
+
+function onLabelDeleted(label) {
+  if (route.name === 'label' && Number(route.params.id) === label.labelId) go({ name: 'email' })
 }
 </script>
 
@@ -168,6 +164,38 @@ async function promptCreateLabel() {
 
     .folder-icon { color: var(--psg-primary); }
   }
+}
+
+.folder-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  .folder { flex: 1; }
+
+  &:hover .folder-more, .folder-more:focus-visible { opacity: 1; }
+}
+
+.folder-more {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--psg-radius-xs);
+  background: var(--psg-surface);
+  color: var(--psg-text-muted);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity .12s ease;
+
+  /* No hover on touch screens: keep the menu reachable. */
+  @media (hover: none) { opacity: 1; background: transparent; }
+  @media (hover: hover) { &:hover { color: var(--psg-text); } }
 }
 
 .folder-icon { color: var(--psg-text-muted); flex-shrink: 0; }
