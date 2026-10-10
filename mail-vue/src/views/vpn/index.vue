@@ -284,7 +284,20 @@ function formatDate(iso) {
 </script>
 
 <style lang="scss" scoped>
-.vpn-view { height: 100%; }
+.vpn-view {
+  height: 100%;
+  --psg-primary: #3B3A9E;
+  --psg-primary-hover: #2E2D82;
+  --psg-on-primary: #FFFFFF;
+  --psg-primary-muted: rgba(59, 58, 158, .09);
+}
+
+html.dark .vpn-view {
+  --psg-primary: #8F8CFF;
+  --psg-primary-hover: #A5A3FF;
+  --psg-on-primary: #14133A;
+  --psg-primary-muted: rgba(143, 140, 255, .16);
+}
 
 .vpn-body {
   max-width: 820px;
