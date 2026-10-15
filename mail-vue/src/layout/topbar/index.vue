@@ -75,16 +75,6 @@
             <div class="tb-menu-item"><Icon icon="solar:info-circle-linear" width="16" height="16" /><span>{{ $t('aboutApp') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item divided disabled>
-            <div class="tb-menu-heading">{{ $t('theme') }}</div>
-          </el-dropdown-item>
-          <el-dropdown-item v-for="option in themeOptions" :key="option.value"
-                            @click="uiStore.setThemeMode(option.value)">
-            <div class="tb-menu-item" role="menuitemradio" :aria-checked="activeThemeMode === option.value">
-              <span>{{ $t(option.labelKey) }}</span>
-              <Icon v-if="activeThemeMode === option.value" icon="psg:check-circle" width="15" height="15" class="tb-check" />
-            </div>
-          </el-dropdown-item>
-          <el-dropdown-item disabled>
             <div class="tb-menu-heading">{{ $t('language') }}</div>
           </el-dropdown-item>
           <el-dropdown-item v-for="option in languageOptions" :key="option.value"
@@ -100,6 +90,11 @@
         </el-dropdown-menu>
       </template>
     </el-dropdown>
+
+    <button type="button" class="tb-theme" :aria-label="$t('theme')" :title="$t('theme')"
+            @click="uiStore.toggleDark()">
+      <Icon :icon="uiStore.dark ? 'solar:moon-linear' : 'mingcute:sun-fill'" width="20" height="20" />
+    </button>
   </header>
 </template>
 
@@ -164,13 +159,6 @@ onUnmounted(() => window.removeEventListener('keydown', onSlash))
 function openCompose() {
   uiStore.writerRef?.open?.()
 }
-
-const themeOptions = [
-  { value: 'light', labelKey: 'themeLight' },
-  { value: 'dark', labelKey: 'themeDark' },
-  { value: 'system', labelKey: 'themeSystem' },
-]
-const activeThemeMode = computed(() => uiStore.themeMode || (uiStore.dark ? 'dark' : 'light'))
 
 const languageOptions = [
   { value: 'zh', label: '中文' },
@@ -340,6 +328,7 @@ function clickLogout() {
 }
 
 .tb-icon-wrap :deep(.icon-btn),
+.tb-theme,
 .tb-avatar {
   width: 44px !important;
   height: 44px !important;
