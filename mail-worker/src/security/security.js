@@ -23,7 +23,6 @@ const exclude = [
 	'/reset-admin',
 	'/public/genToken',
 	'/telegram',
-	'/test',
 	'/oauth',
 	'/backup/oauth',
 	'/csp-report',
@@ -110,11 +109,10 @@ app.use('*', async (c, next) => {
 
 	const path = c.req.path;
 
-	const index = exclude.findIndex(item => {
-		return path.startsWith(item);
-	});
+	// Match on a path-segment boundary: a bare startsWith would also exempt e.g. /testing or /login-admin.
+	const isExcluded = exclude.some(item => path === item || path.startsWith(item + '/'));
 
-	if (index > -1) {
+	if (isExcluded) {
 		return await next();
 	}
 
