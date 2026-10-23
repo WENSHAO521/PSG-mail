@@ -13,6 +13,10 @@ import emailTextTemplate from '../template/email-text';
 import emailHtmlTemplate from '../template/email-html';
 import verifyUtils from '../utils/verify-utils';
 import domainUtils from "../utils/domain-uitls";
+import { isDel } from '../const/entity-const';
+
+// The View link in a Telegram message is a bearer token for the mail body, so it must not live forever.
+export const TG_LINK_EXPIRE = 60 * 60 * 24 * 30;
 
 const telegramService = {
 
@@ -22,13 +26,14 @@ const telegramService = {
 
 		const result = await jwtUtils.verifyToken(c, token);
 
-		if (!result) {
+		// Only tokens minted for this link carry emailId; a session JWT must not open it.
+		if (!result || !Number.isInteger(result.emailId)) {
 			return emailTextTemplate('Access denied')
 		}
 
 		const emailRow = await orm(c).select().from(email).where(eq(email.emailId, result.emailId)).get();
 
-		if (emailRow) {
+		if (emailRow && emailRow.isDel !== isDel.DELETE) {
 
 			if (emailRow.content) {
 				const { r2Domain } = await settingService.query(c);
@@ -49,7 +54,7 @@ const telegramService = {
 
 		const tgChatIds = tgChatId.split(',');
 
-		const jwtToken = await jwtUtils.generateToken(c, { emailId: email.emailId })
+		const jwtToken = await jwtUtils.generateToken(c, { emailId: email.emailId }, TG_LINK_EXPIRE)
 
 		const webAppUrl = customDomain ? `${domainUtils.toOssDomain(customDomain)}/api/telegram/getEmail/${jwtToken}` : 'https://www.cloudflare.com/404'
 		const inlineKeyboard = [

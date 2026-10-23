@@ -1,6 +1,6 @@
 import orm from '../entity/orm';
 import regKey from '../entity/reg-key';
-import { inArray, like, eq, desc, sql, or } from 'drizzle-orm';
+import { inArray, like, eq, desc, sql, or, and, gte } from 'drizzle-orm';
 import roleService from './role-service';
 import BizError from '../error/biz-error';
 import { formatDetailDate, toUtc } from '../utils/date-uitil';
@@ -85,11 +85,18 @@ const regKeyService = {
 		return regKeyList;
 	},
 
+	// Atomic check-and-decrement: concurrent registrations can't overdraw a key.
+	// Returns false when the key has no uses left.
 	async reduceCount(c, code, count) {
+		const res = await orm(c).update(regKey).set({
+			count: sql`${regKey.count} - ${count}`
+		}).where(and(eq(regKey.code, code), gte(regKey.count, count))).run();
+		return (res?.meta?.changes ?? 0) > 0;
+	},
+
+	async restoreCount(c, code, count) {
 		await orm(c).update(regKey).set({
-			count: sql`${regKey.count}
-	  -
-	  ${count}`
+			count: sql`${regKey.count} + ${count}`
 		}).where(eq(regKey.code, code)).run();
 	},
 

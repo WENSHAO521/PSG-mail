@@ -138,17 +138,25 @@ const loginService = {
 
 		const { salt, hash } = await saltHashUtils.hashPassword(password);
 
-		const userId = await userService.insert(c, { email, regKeyId,password: hash, salt, type: type || defType });
+		// Claim a use of the key before creating the user, so two concurrent
+		// sign-ups can't both pass the count check above on its last use.
+		const claimRegKey = regKey !== settingConst.regKey.CLOSE && type;
+		if (claimRegKey && !(await regKeyService.reduceCount(c, code, 1))) {
+			throw new BizError(t('noRegKeyCount'));
+		}
 
-		await accountService.insert(c, { userId: userId, email, name: (name && name.trim()) || emailUtils.getName(email) });
+		let userId;
+		try {
+			userId = await userService.insert(c, { email, regKeyId,password: hash, salt, type: type || defType });
+			await accountService.insert(c, { userId: userId, email, name: (name && name.trim()) || emailUtils.getName(email) });
+		} catch (e) {
+			if (claimRegKey) await regKeyService.restoreCount(c, code, 1);
+			throw e;
+		}
 
 		await userService.updateUserInfo(c, userId, true);
 
 		telegramService.sendUserRegisteredToBot(c, { email, userId }).catch(() => {});
-
-		if (regKey !== settingConst.regKey.CLOSE && type) {
-			await regKeyService.reduceCount(c, code, 1);
-		}
 
 		if (registerVerify === settingConst.registerVerify.COUNT && !regVerifyOpen) {
 			const row = await verifyRecordService.increaseRegCount(c);

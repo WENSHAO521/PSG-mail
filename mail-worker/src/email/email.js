@@ -17,6 +17,10 @@ import notificationService from '../service/notification-service';
 import forwardingService from '../service/forwarding-service';
 import notificationEventService from '../service/notification-event-service';
 import webhookService from '../service/webhook-service';
+import { readRaw, splitAddressList, shouldAutoReply, escapeHtml } from '../utils/inbound-mail';
+
+// One auto-reply per sender per day, the RFC 3834 recommendation.
+const AUTO_REPLY_WINDOW = 60 * 60 * 24;
 
 export async function email(message, env, ctx) {
 
@@ -50,17 +54,12 @@ export async function email(message, env, ctx) {
 			return;
 		}
 
-		const reader = message.raw.getReader();
-		let content = '';
+		const email = await PostalMime.parse(await readRaw(message.raw));
 
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			content += new TextDecoder().decode(value);
+		// A message without a parsable From header still has an envelope sender.
+		if (!email.from?.address) {
+			email.from = { address: message.from || '', name: email.from?.name || '' };
 		}
-
-		const email = await PostalMime.parse(content);
-
 
 		const blockFlag = checkBlock(blackSubject, blackContent, blackFrom, email);
 
@@ -112,7 +111,7 @@ export async function email(message, env, ctx) {
 			email.to = [{ address: message.to, name: emailUtils.getName(message.to)}]
 		}
 
-		const toName = email.to.find(item => item.address === message.to)?.name || '';
+		const toName = email.to.find(item => item.address?.toLowerCase() === message.to.toLowerCase())?.name || '';
 
 		const params = {
 			toEmail: message.to,
@@ -226,17 +225,18 @@ export async function email(message, env, ctx) {
 			}
 		})());
 
-		if (ruleType === settingConst.ruleType.RULE) {
-
-			const emails = ruleEmail.split(',');
-
-			if (!emails.includes(message.to)) {
-				return;
-			}
-
+		if (await spamCheck) {
+			return;
 		}
 
-		if (await spamCheck) {
+		// 自动回复 (per user, so it is not limited by the global forwarding rule below)
+		if (account && account.isDel !== isDel.DELETE) {
+			await autoReply(env, account, message.to, email);
+		}
+
+		// The rule only scopes the global forwarding targets: Telegram, email and webhook.
+		if (ruleType === settingConst.ruleType.RULE
+			&& !splitAddressList(ruleEmail).includes(message.to.toLowerCase())) {
 			return;
 		}
 
@@ -248,7 +248,7 @@ export async function email(message, env, ctx) {
 		//转发到其他邮箱
 		if (forwardStatus === settingConst.forwardStatus.OPEN && forwardEmail) {
 
-			const emails = forwardEmail.split(',');
+			const emails = splitAddressList(forwardEmail);
 
 			await Promise.all(emails.map(async email => {
 
@@ -267,36 +267,45 @@ export async function email(message, env, ctx) {
 			await webhookService.sendEmail({ env }, emailRow, webhookUrl, webhookRetry, webhookSecret);
 		}
 
-		// 自动回复
-		if (account) {
-			try {
-				const arRow = await env.db.prepare(
-					'SELECT enabled, message FROM auto_reply WHERE user_id = ?'
-				).bind(account.userId).first();
-				if (arRow?.enabled && arRow.message && email.from?.address) {
-					await emailService.send({ env }, {
-						sendEmail: message.to,
-						receiveEmail: [email.from.address],
-						subject: 'Re: ' + (email.subject || ''),
-						content: `<p>${arRow.message.replace(/\n/g, '<br>')}</p>`,
-						text: arRow.message,
-						accountId: account.accountId,
-					}, account.userId).catch(() => {});
-				}
-			} catch {}
-		}
-
 	} catch (e) {
 		console.error('邮件接收异常: ', e);
 		throw e
 	}
 }
 
-function checkBlock(blackSubjectStr, blackContentStr, blackFromStr, email) {
+async function autoReply(env, account, recipient, email) {
+	try {
+		if (!shouldAutoReply(email, recipient)) return;
+		const arRow = await env.db.prepare(
+			'SELECT enabled, message FROM auto_reply WHERE user_id = ?'
+		).bind(account.userId).first();
+		if (!arRow?.enabled || !arRow.message) return;
 
-	const blackFromList = blackFromStr ? blackFromStr.split(',') : []
-	const blackContentList = blackContentStr ? blackContentStr.split(',') : []
-	const blackSubjectList = blackSubjectStr ? blackSubjectStr.split(',') : []
+		const sender = email.from.address.toLowerCase();
+		const onceKey = `auto-reply:${account.accountId}:${sender}`;
+		if (await env.kv.get(onceKey)) return;
+		await env.kv.put(onceKey, '1', { expirationTtl: AUTO_REPLY_WINDOW });
+
+		await emailService.send({ env }, {
+			sendEmail: recipient,
+			receiveEmail: [email.from.address],
+			subject: 'Re: ' + (email.subject || ''),
+			content: `<p>${escapeHtml(arRow.message).replace(/\n/g, '<br>')}</p>`,
+			text: arRow.message,
+			accountId: account.accountId,
+		}, account.userId).catch(() => {});
+	} catch (e) {
+		console.error('auto reply failed', e);
+	}
+}
+
+export function checkBlock(blackSubjectStr, blackContentStr, blackFromStr, email) {
+
+	// Drop empty entries: a trailing comma would otherwise add '' and ''.includes() matches every mail.
+	const toList = str => str ? str.split(',').map(item => item.trim()).filter(Boolean) : []
+	const blackFromList = toList(blackFromStr)
+	const blackContentList = toList(blackContentStr)
+	const blackSubjectList = toList(blackSubjectStr)
 
 	for (const blackSubject of blackSubjectList) {
 		if (email.subject?.includes(blackSubject)) {
@@ -310,8 +319,10 @@ function checkBlock(blackSubjectStr, blackContentStr, blackFromStr, email) {
 		}
 	}
 
+	const from = String(email.from?.address || '').toLowerCase();
 	for (const blackFrom of blackFromList) {
-		if (email.from.address === blackFrom || emailUtils.getDomain(email.from.address) === blackFrom) {
+		const entry = blackFrom.toLowerCase();
+		if (from === entry || emailUtils.getDomain(from) === entry) {
 			return true
 		}
 	}
