@@ -1815,13 +1815,21 @@ const emailService = {
 	},
 
 	async read(c, params, userId) {
+		await this.setUnread(c, params, userId, emailConst.unread.READ);
+	},
+
+	async unread(c, params, userId) {
+		await this.setUnread(c, params, userId, emailConst.unread.UNREAD);
+	},
+
+	async setUnread(c, params, userId, unread) {
 		const { emailIds } = params;
 		const sharedReadIds = await getSharedAccountIds(c, userId)
 		const readAccessCond = sharedReadIds.length > 0
 			? or(eq(email.userId, userId), inArray(email.accountId, sharedReadIds))
 			: eq(email.userId, userId);
 		await orm(c).update(email)
-			.set({ unread: emailConst.unread.READ })
+			.set({ unread })
 			.where(and(readAccessCond, inArray(email.emailId, emailIds)))
 			.run();
 	},

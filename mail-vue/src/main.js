@@ -32,11 +32,37 @@ import perm from "@/perm/perm.js";
 const pinia = createPinia().use(piniaPersistedState)
 import i18n from "@/i18n/index.js";
 const app = createApp(App).use(pinia)
-await init()
-app.use(router).use(i18n).directive('perm',perm)
-app.config.devtools = true;
+let booted = false
+try {
+    await init()
+    booted = true
+} catch (e) {
+    console.error('App init failed', e)
+    showBootError()
+}
 
-app.mount('#app');
+if (booted) {
+    app.use(router).use(i18n).directive('perm',perm)
+    app.config.devtools = true;
+    app.mount('#app');
+}
+
+// init() needs the API (site config + current user). If it fails, the boot
+// splash would otherwise spin forever with no way out but a manual reload.
+function showBootError() {
+    const host = document.querySelector('#loading-first .loading-icon')
+    if (!host) return
+    host.querySelector('.loading-progress')?.remove()
+    const msg = document.createElement('p')
+    msg.className = 'loading-error'
+    msg.textContent = i18n.global.t('bootFailed')
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'loading-retry'
+    btn.textContent = i18n.global.t('retry')
+    btn.addEventListener('click', () => location.reload())
+    host.append(msg, btn)
+}
 
 // Belt-and-suspenders: force the font past Element Plus's own vendor
 // chunk regardless of build-specific chunk/cascade ordering. An inline
