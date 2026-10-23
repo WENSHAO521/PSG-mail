@@ -9,7 +9,11 @@
         <h1 id="rules-title">{{ $t('emailRules') }}</h1>
         <p>{{ $t('subjectKeywordsDesc') }}</p>
       </div>
-
+      <!-- The empty state has its own button; once a rule exists this is the only way to add another. -->
+      <el-button v-if="rulesStore.rules.length" type="primary" class="primary-action" @click="openAdd">
+        <Icon icon="psg:add-circle" width="15" height="15" />
+        {{ $t('addRule') }}
+      </el-button>
     </section>
 
     <section class="scope-note" role="note">

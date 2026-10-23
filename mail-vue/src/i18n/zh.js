@@ -307,6 +307,8 @@ const zh = {
     newEmailFrom: '来自 {name} 的新邮件',
     noMoreData: '没有更多数据了',
     noMessagesFound: '没有任何邮件',
+    bootFailed: '无法连接服务器，请检查网络后重试',
+    listLoadFailed: '邮件列表加载失败',
     searchPlaceholder: '搜索发件人、主题…',
     noSearchResults: '没有匹配的邮件',
     searchResultCount: '找到 {count} 封',

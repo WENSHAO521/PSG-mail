@@ -72,12 +72,16 @@ http.interceptors.response.use((res) => {
     },
     (error) => {
 
-        if (error.status === 403) {
+        // An HTTP 403 (not the JSON code 403 above) usually means an edge
+        // challenge/session in front of the worker expired; a reload lets it
+        // re-run. Only once a minute, though: if the 403 persists, reloading
+        // on every response turns the page into an endless reload loop.
+        if (error.status === 403 && reloadAllowed()) {
             location.reload();
-            return;
+            return new Promise(() => {});
         }
 
-        const noMsg = error.config.noMsg;
+        const noMsg = error.config?.noMsg;
 
         if (noMsg) {
             return Promise.reject(error)
@@ -115,6 +119,19 @@ http.interceptors.response.use((res) => {
         }
         return Promise.reject(error)
     })
+
+const RELOAD_KEY = 'psg-403-reload-at'
+
+function reloadAllowed() {
+    try {
+        const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0)
+        if (Date.now() - last < 60_000) return false
+        sessionStorage.setItem(RELOAD_KEY, String(Date.now()))
+        return true
+    } catch {
+        return false
+    }
+}
 
 export default http
 

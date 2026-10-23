@@ -12,6 +12,11 @@
           <h1 id="groups-title">{{ $t('contactGroups') }}</h1>
           <p>{{ $t('groupsDesc') }}</p>
         </div>
+        <!-- The empty state has its own button; once one exists this is the only way to add another. -->
+        <el-button v-if="groupList.length" type="primary" class="workspace-primary-action" @click="openAdd">
+          <Icon icon="psg:add-circle" width="14" height="14"/>
+          {{ $t('addGroup') }}
+        </el-button>
       </section>
 
       <section class="workspace-stats" aria-label="Group summary">

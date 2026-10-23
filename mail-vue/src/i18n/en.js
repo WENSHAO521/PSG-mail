@@ -307,6 +307,8 @@ const en = {
     newEmailFrom: 'New email from {name}',
     noMoreData: 'No more data',
     noMessagesFound: 'No messages found',
+    bootFailed: 'Couldn\'t reach the server. Check your connection and try again.',
+    listLoadFailed: 'Couldn\'t load messages',
     searchPlaceholder: 'Search sender, subject…',
     noSearchResults: 'No matching emails',
     searchResultCount: '{count} found',

@@ -14,6 +14,11 @@
           <h1 id="templates-title">{{ $t('templates') }}</h1>
           <p>{{ $t('templatesDesc') }}</p>
         </div>
+        <!-- The empty state has its own button; once one exists this is the only way to add another. -->
+        <el-button v-if="tplList.length" type="primary" class="workspace-primary-action" @click="openAdd">
+          <Icon icon="psg:add-circle" width="14" height="14"/>
+          {{ $t('addTemplate') }}
+        </el-button>
       </section>
 
       <section class="workspace-stats" aria-label="Template summary">

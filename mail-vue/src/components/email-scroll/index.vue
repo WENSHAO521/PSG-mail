@@ -228,6 +228,13 @@
       <skeletonBlock v-if="loading"
                      :rows="skeletonRows" :showStar="showStar" :accountShow="accountShow"
                      :showStatus="showStatus" :showUserInfo="showUserInfo" :type="type" />
+      <div class="empty empty--compact" v-if="loadError && emailList.length === 0 && !loading">
+        <div class="empty-icon" aria-hidden="true">
+          <Icon icon="psg:warning" width="20" height="20" />
+        </div>
+        <span class="empty-title">{{ $t('listLoadFailed') }}</span>
+        <el-button size="small" @click="refreshList">{{ $t('retry') }}</el-button>
+      </div>
       <div class="empty empty--compact" v-if="noLoading && emailList.length === 0 && !loading">
         <div class="empty-icon" aria-hidden="true">
           <Icon icon="psg:mail" width="20" height="20" />
@@ -371,6 +378,9 @@ const labelStore = useLabelStore();
 const loading = ref(false);
 const followLoading = ref(false);
 const noLoading = ref(false);
+// Set when the last page request failed; with nothing loaded the list would
+// otherwise sit blank, since a fully-empty list never re-fires the bottom-reached watch.
+const loadError = ref(false);
 const emailList = reactive([])
 const expandList = reactive([])
 const total = ref(0);
@@ -754,6 +764,9 @@ function getEmailList(refresh = false) {
     noLoading.value = data.list.length < queryParam.size;
     followLoading.value = data.list.length >= queryParam.size;
     if (data.total != null) total.value = data.total;
+    loadError.value = false
+  }).catch(() => {
+    loadError.value = true
   }).finally(() => {
     loading.value = false; firstLoad.value = false; followLoading.value = false; reqLock = false;
   })

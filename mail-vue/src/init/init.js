@@ -36,9 +36,13 @@ export async function init() {
     let setting = null;
 
     if (token) {
+        // A rejected 401 has already cleared the token, so booting without a
+        // user just lands on the login page. Any other failure must surface:
+        // rendering the shell with an empty user crashes on permKeys and
+        // leaves a blank page.
         const userPromise = loginUserInfo().catch(e => {
-            console.error(e);
-            return null;
+            if (!localStorage.getItem('token')) return null;
+            throw e;
         });
 
         const [s, user] = await Promise.all([websiteConfig(), userPromise]);

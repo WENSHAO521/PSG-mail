@@ -53,7 +53,8 @@ export function clearAvatar() {
 }
 
 export function getAvatarByEmail(email) {
-    return http.get('/my/avatar', { params: { email } })
+    // Cosmetic, one per sender row: a failure must not raise an error toast.
+    return http.get('/my/avatar', { params: { email }, noMsg: true })
 }
 
 // provider: '' (system default) | 'google' | 'ai'; key omitted keeps it, '' removes it.
