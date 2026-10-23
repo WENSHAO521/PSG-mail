@@ -17,6 +17,7 @@ import notificationService from '../service/notification-service';
 import forwardingService from '../service/forwarding-service';
 import notificationEventService from '../service/notification-event-service';
 import webhookService from '../service/webhook-service';
+import mailRuleService from '../service/mail-rule-service';
 import { readRaw, splitAddressList, shouldAutoReply, escapeHtml } from '../utils/inbound-mail';
 
 // One auto-reply per sender per day, the RFC 3834 recommendation.
@@ -178,6 +179,12 @@ export async function email(message, env, ctx) {
 		}
 
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
+
+		// The user's Subject keywords rules (star / archive / mark read), applied
+		// before any push so every client sees the mail in its final state.
+		if (account) {
+			await mailRuleService.applyIncoming({ env }, account.userId, emailRow);
+		}
 
 		// With AI spam screening on, the verdict comes first (capped at a
 		// few seconds) so spam neither pings the user nor reaches any

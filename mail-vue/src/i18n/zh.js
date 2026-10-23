@@ -29,7 +29,7 @@ const zh = {
     workspace: '工作区',
     subjectKeywords: '主题词',
     subjectKeywordsDesc: '根据邮件主题中的关键词，自动处理新收到的邮件。',
-    rulesScopeNote: '规则只对同步到当前浏览器后的新邮件生效；历史邮件不会被批量改动。',
+    rulesScopeNote: '规则在服务器上对新到的邮件生效，所有设备通用，不开网页也会执行；已有邮件不会被改动。',
     rulesTotalCount: '全部规则',
     rulesActiveCount: '已启用',
     rulesActionSummary: '命中主题词后，可自动加星标、归档或标为已读。',

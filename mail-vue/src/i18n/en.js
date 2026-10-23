@@ -29,7 +29,7 @@ const en = {
     workspace: 'Workspace',
     subjectKeywords: 'Subject keywords',
     subjectKeywordsDesc: 'Automatically process new mail when its subject contains a keyword.',
-    rulesScopeNote: 'Rules apply only to new mail synced after this browser is signed in; existing mail is not changed in bulk.',
+    rulesScopeNote: 'Rules run on the server as new mail arrives, on every device, even when PSG Mail is closed. Existing mail is not changed.',
     rulesTotalCount: 'All rules',
     rulesActiveCount: 'Enabled',
     rulesActionSummary: 'When a condition matches, star, archive, or mark the new message as read.',

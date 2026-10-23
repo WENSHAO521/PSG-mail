@@ -16,15 +16,12 @@
 //   - catch up immediately on visibility/focus/online transitions instead
 //     of waiting for the next poll tick
 import router from '@/router'
-import { emailLatest, emailDetail, emailList, emailArchive, emailRead } from '@/request/email.js'
-import { starAdd } from '@/request/star.js'
+import { emailLatest, emailDetail, emailList } from '@/request/email.js'
 import { useEmailStore } from '@/store/email.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { useAccountStore } from '@/store/account.js'
 import { useSettingStore } from '@/store/setting.js'
-import { useRulesStore } from '@/store/rules.js'
 import { useUiStore } from '@/store/ui.js'
-import { EmailUnreadEnum } from '@/enums/email-enum.js'
 import { sleep } from '@/utils/time-utils.js'
 
 const MAX_RECENT = 500
@@ -126,28 +123,6 @@ function isVisibleInCurrentScope(email) {
   return Number(email.accountId) === Number(accountStore.currentAccountId)
 }
 
-function archiveAndRemove(emailId) {
-  return emailArchive([emailId]).then(() => {
-    useEmailStore().emailScroll?.deleteEmail?.([emailId])
-  })
-}
-
-function starIncomingEmail(emailId, email) {
-  return starAdd(emailId).then(() => {
-    email.isStar = 1
-    useEmailStore().starScroll?.addItem?.(email)
-  })
-}
-
-function markIncomingEmailRead(emailIds, email) {
-  return emailRead(emailIds).then(() => {
-    if (emailIds.some(id => String(id) === String(email.emailId))) {
-      email.unread = EmailUnreadEnum.READ
-      email.checked = false
-    }
-  })
-}
-
 // Inserts into the mounted Inbox list (if visible right now) or marks the
 // Inbox dirty for the next time it's opened. Returns true if inserted.
 function insertIntoInboxIfVisible(email) {
@@ -167,15 +142,9 @@ function insertIntoInboxIfVisible(email) {
 
 async function processIncomingEmail(email, source, { notify = true } = {}) {
   if (!email || isDuplicate(email.emailId)) return
-  insertIntoInboxIfVisible(email)
-  // Rules belong to the incoming-mail pipeline, not to the Inbox view. They
-  // must also run when the user is on another route or the Inbox is not
-  // mounted, otherwise a configured subject keyword silently does nothing.
-  useRulesStore().applyRules(email, {
-    starAdd: (emailId) => starIncomingEmail(emailId, email),
-    archiveEmail: archiveAndRemove,
-    emailRead: (emailIds) => markIncomingEmailRead(emailIds, email),
-  })
+  // Subject keywords rules already ran in the worker when the mail arrived;
+  // an archived message no longer belongs in the Inbox.
+  if (!email.isArchive) insertIntoInboxIfVisible(email)
   await useNotificationStore().notifyEmail(email, { deliver: notify })
   if (Number(email.emailId) > cursor) cursor = Number(email.emailId)
 }
