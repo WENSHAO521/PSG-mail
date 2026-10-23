@@ -13,7 +13,7 @@
         <Icon v-if="queryText" icon="psg:close-circle" width="17" height="17"
               class="search-clear" @click="queryText = ''; results = []; searched = false"/>
       </div>
-      <el-button type="primary" class="search-go-btn" @click="runSearch()">{{ $t('search') }}</el-button>
+      <el-button type="primary" class="search-go-btn" :disabled="!queryText.trim()" @click="runSearch()">{{ $t('search') }}</el-button>
     </div>
 
     <div class="search-operator-hint">
