@@ -65,9 +65,6 @@
           <el-dropdown-item @click="uiStore.aiAssistantShow = true">
             <div class="tb-menu-item"><Icon icon="psg:sparkles" width="16" height="16" /><span>{{ $t('aiAssistant') }}</span></div>
           </el-dropdown-item>
-          <el-dropdown-item @click="router.push({ name: 'download' })">
-            <div class="tb-menu-item"><Icon icon="psg:download" width="16" height="16" /><span>{{ $t('download') }}</span></div>
-          </el-dropdown-item>
           <el-dropdown-item @click="router.push({ name: 'vpn' })">
             <div class="tb-menu-item"><Icon icon="psg:shield" width="16" height="16" /><span>{{ $t('vpn') }}</span></div>
           </el-dropdown-item>
