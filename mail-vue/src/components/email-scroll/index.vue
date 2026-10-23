@@ -241,6 +241,12 @@
         </div>
         <span class="empty-title">{{ $t('noMessagesFound') }}</span>
       </div>
+      <div class="empty empty--compact" v-if="unreadOnly && !searchQuery.trim() && unreadCount === 0 && emailList.length > 0 && !loading">
+        <div class="empty-icon" aria-hidden="true">
+          <Icon icon="psg:check-circle" width="20" height="20" />
+        </div>
+        <span class="empty-title">{{ $t('noUnreadMail') }}</span>
+      </div>
       <div class="empty empty--compact" v-if="searchQuery.trim() && searchResultCount === 0 && emailList.length > 0 && !loading">
         <div class="empty-icon" aria-hidden="true">
           <Icon icon="psg:search" width="20" height="20" />
