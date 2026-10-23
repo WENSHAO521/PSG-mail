@@ -3,7 +3,11 @@
 // their onerror handlers before any cleanup can run, which is script
 // execution in the app's origin.
 
-const DROP_TAGS = 'script, noscript, iframe, frame, frameset, object, embed, applet, base, meta[http-equiv]'
+// SVG animation elements can rewrite another element's href (for example
+// <animate attributeName="href" values="javascript:...">), which the attribute
+// check below never sees, so they are dropped outright. <link> would load
+// sender-controlled stylesheets.
+const DROP_TAGS = 'script, noscript, iframe, frame, frameset, object, embed, applet, base, meta[http-equiv], link, animate, set, animateMotion, animateTransform, discard'
 const URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'srcdoc', 'background'])
 
 function isDangerousUrl(value) {
@@ -59,11 +63,14 @@ export function parseMailHtml(html, { keepHeadStyles = false } = {}) {
   if (keepHeadStyles) {
     const headStyles = Array.from(doc.head.querySelectorAll('style'))
     for (const style of headStyles.reverse()) {
-      style.textContent = safeCss(style.textContent || '')
       body.insertBefore(style, body.firstChild)
     }
   }
   body.querySelectorAll(DROP_TAGS).forEach(el => el.remove())
+  // A <style> in the body can fetch just like one in <head>.
+  body.querySelectorAll('style').forEach(style => {
+    style.textContent = safeCss(style.textContent || '')
+  })
   body.querySelectorAll('*').forEach(el => {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase()

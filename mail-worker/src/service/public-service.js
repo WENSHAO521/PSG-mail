@@ -16,6 +16,8 @@ import email from '../entity/email';
 import userService from './user-service';
 import KvConst from '../const/kv-const';
 
+const MAX_PAGE_SIZE = 500;
+
 const publicService = {
 
 	async emailList(c, params) {
@@ -44,8 +46,9 @@ const publicService = {
 			num = 1
 		}
 
-		size = Number(size);
-		num = Number(num);
+		// Bound the page so a single call can't pull the whole table.
+		size = Math.min(Math.max(Math.trunc(Number(size)) || 20, 1), MAX_PAGE_SIZE);
+		num = Math.max(Math.trunc(Number(num)) || 1, 1);
 
 		num = (num - 1) * size;
 
