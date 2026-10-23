@@ -52,9 +52,9 @@ export function clearAvatar() {
     return http.delete('/my/avatar', { noMsg: true })
 }
 
-export function getAvatarByEmail(email) {
-    // Cosmetic, one per sender row: a failure must not raise an error toast.
-    return http.get('/my/avatar', { params: { email }, noMsg: true })
+// Up to 50 addresses per call; returns { email: avatar | '' }.
+export function getAvatarsByEmails(emails) {
+    return http.post('/my/avatars', { emails }, { noMsg: true })
 }
 
 // provider: '' (system default) | 'google' | 'ai'; key omitted keeps it, '' removes it.

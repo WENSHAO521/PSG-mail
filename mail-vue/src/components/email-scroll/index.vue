@@ -398,6 +398,7 @@ let scrollTop = 0
 const latestEmail = ref(null)
 const scrollbarRef = ref(null)
 let reqLock = false
+let pendingRefresh = false
 let viewportWidth = ref(innerWidth)
 let isMobile = ref(innerWidth < 1367)
 let skeletonRows = 0
@@ -747,7 +748,12 @@ function jumpDetails(email) {
 }
 
 function getEmailList(refresh = false) {
-  if (reqLock) return;
+  if (reqLock) {
+    // A refresh asked for while a page is still loading runs once it lands,
+    // instead of being dropped.
+    if (refresh) pendingRefresh = true
+    return;
+  }
   let emailId = emailList.length > 0 ? emailList.at(-1).emailId : 0;
   reqLock = true
   if (!refresh) {
@@ -775,6 +781,7 @@ function getEmailList(refresh = false) {
     loadError.value = true
   }).finally(() => {
     loading.value = false; firstLoad.value = false; followLoading.value = false; reqLock = false;
+    if (pendingRefresh) { pendingRefresh = false; getEmailList(true) }
   })
 }
 

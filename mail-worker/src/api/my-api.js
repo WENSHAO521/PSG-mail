@@ -80,6 +80,11 @@ app.delete('/my/avatar', async (c) => {
 });
 
 // Any authenticated user can fetch another user's avatar by email
+app.post('/my/avatars', async (c) => {
+	const { emails } = await c.req.json();
+	return c.json(result.ok(await userService.getAvatarsByEmails(c, emails)));
+});
+
 app.get('/my/avatar', async (c) => {
 	const email = c.req.query('email');
 	const avatar = await userService.getAvatarByEmail(c, email);

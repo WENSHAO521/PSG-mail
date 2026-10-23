@@ -567,6 +567,12 @@ const emailService = {
 
 		if (!row) return null;
 		row.isStar = row.starId != null ? 1 : 0;
+		// is_archive isn't in the drizzle entity (older databases lack it); the
+		// client uses it to keep rule-archived mail out of the Inbox.
+		try {
+			const flags = await c.env.db.prepare('SELECT is_archive FROM email WHERE email_id = ?').bind(emailId).first();
+			row.isArchive = flags?.is_archive || 0;
+		} catch { row.isArchive = 0; }
 		const list = [row];
 		await this.emailAddAtt(c, list);
 		await labelService.attachLabels(c, list);
@@ -1430,6 +1436,9 @@ const emailService = {
 		// Mail the AI screening (or the user) moved to Spam must not reach
 		// clients that sync by polling (Electron, background tabs).
 		const latestSpamFilter = await columnExists(c, 'email', 'is_spam') ? sql`COALESCE(email.is_spam, 0) = 0` : undefined
+		// Same for mail a Subject keywords rule archived on arrival: it belongs
+		// in Archive, not in the Inbox list.
+		const latestArchiveFilter = await columnExists(c, 'email', 'is_archive') ? sql`COALESCE(email.is_archive, 0) = 0` : undefined
 
 		let list = await orm(c).select({...email}).from(email)
 			.leftJoin(
@@ -1441,6 +1450,7 @@ const emailService = {
 					gt(email.emailId, emailId),
 					latestAccessCond,
 					latestSpamFilter,
+					latestArchiveFilter,
 					eq(email.isDel, isDel.NORMAL),
 					eq(account.isDel, isDel.NORMAL),
 					allReceive ? eq(1,1) : eq(email.accountId, accountId),

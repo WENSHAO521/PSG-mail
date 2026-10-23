@@ -87,10 +87,6 @@
           >{{ $t('loginBtn') }}
           </el-button>
 
-          <button class="twofactor-entry" @click="twoFactor">
-            <Icon icon="solar:fingerprint-bold-duotone" width="17" height="17"/>
-            <span>{{ $t('twoFactorEntry') }}</span>
-          </button>
 
           <el-button class="btn btn-oauth" v-if="settingStore.settings.linuxdoSwitch" @click="linuxDoLogin">
             <el-avatar src="/image/linuxdo.webp" :size="18" style="margin-right: 10px" />LinuxDo
@@ -428,13 +424,6 @@ function submitChangePassword() {
     })
     .catch(() => {})
     .finally(() => { changePasswordLoading.value = false })
-}
-
-function twoFactor() {
-  ElMessageBox.alert(t('twoFactorMsg'), t('twoFactorEntry'), {
-    confirmButtonText: t('confirm'),
-    type: 'info',
-  }).catch(() => {})
 }
 
 const bindForm = reactive({
@@ -1287,31 +1276,6 @@ function submitRegister() {
     box-shadow: var(--psg-shadow-xs) !important;
   }
   &.is-loading { opacity: 0.75; }
-}
-
-/* ── Two-factor entry ───────────────────────────────────────── */
-.twofactor-entry {
-  margin-top: 14px;
-  width: 100%;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: var(--psg-surface-muted);
-  border: 1px solid var(--psg-border);
-  border-radius: var(--psg-radius-md);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: var(--psg-text);
-  transition: border-color 0.15s, background 0.15s;
-
-  svg { color: var(--psg-primary); }
-
-  &:hover { border-color: var(--psg-primary); background: var(--psg-primary-muted); }
 }
 
 /* ── Switch + note ──────────────────────────────────────────── */

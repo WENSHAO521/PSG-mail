@@ -375,7 +375,7 @@
           </el-dropdown-item>
           <el-dropdown-item @click="openSetPwd(rightClickUser)">
             <div class="right-dropdown-item">
-              <icon icon="solar:fingerprint-bold-duotone" width="22" height="22" />
+              <icon icon="solar:key-minimalistic-bold-duotone" width="22" height="22" />
               <span>{{t('changePassword')}}</span>
             </div>
           </el-dropdown-item>

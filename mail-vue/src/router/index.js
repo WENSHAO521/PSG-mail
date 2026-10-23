@@ -120,12 +120,6 @@ const routes = [
                 meta: { title: 'search', name: 'search', menu: true }
             },
             {
-                path: '/download',
-                name: 'download',
-                component: () => import('@/views/download/index.vue'),
-                meta: { title: 'download', name: 'download', menu: true }
-            },
-            {
                 path: '/vpn',
                 name: 'vpn',
                 component: () => import('@/views/vpn/index.vue'),
@@ -145,6 +139,8 @@ const routes = [
         name: 'login',
         component: () => import('@/views/login/index.vue')
     },
+    // The client downloads page was retired with the desktop/Android apps.
+    { path: '/download', redirect: '/inbox' },
     {
         path: '/:pathMatch(.*)*',
         name: '404',

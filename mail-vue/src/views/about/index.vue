@@ -101,13 +101,6 @@
             </div>
           </template>
 
-          <!-- Web/other: GitHub link -->
-          <div v-else class="about-row">
-            <span class="about-label">{{ $t('updateStatus') }}</span>
-            <a class="about-link" href="https://github.com/WENSHAO521/PSG-mail/releases" target="_blank">
-              {{ $t('checkOnGitHub') }}
-            </a>
-          </div>
         </div>
 
         <!-- ── Info card ── -->

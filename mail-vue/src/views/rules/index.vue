@@ -191,7 +191,7 @@
 
         <footer class="editor-footer">
           <button type="button" class="text-action" @click="cancelEdit">{{ $t('cancel') }}</button>
-          <el-button type="primary" native-type="submit" class="save-action">
+          <el-button type="primary" native-type="submit" class="save-action" :loading="saving">
             {{ $t('save') }}
           </el-button>
         </footer>
@@ -201,7 +201,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -214,6 +214,7 @@ const { t } = useI18n()
 const rulesStore = useRulesStore()
 const mobileNavigation = useMobileNavigationStore()
 const editorOpen = ref(false)
+const saving = ref(false)
 const editorSection = ref(null)
 const keywordInput = ref(null)
 const ruleForm = reactive(createEmptyRule())
@@ -272,7 +273,9 @@ function cancelEdit() {
   resetForm()
 }
 
-function saveRule() {
+onMounted(() => { rulesStore.load().catch(() => {}) })
+
+async function saveRule() {
   const name = ruleForm.name.trim()
   const conditionValue = ruleForm.conditionValue.trim()
 
@@ -291,10 +294,18 @@ function saveRule() {
     conditionValue,
   }
 
-  if (isEditing.value) {
-    rulesStore.updateRule(payload)
-  } else {
-    rulesStore.addRule(payload)
+  saving.value = true
+  try {
+    if (isEditing.value) {
+      await rulesStore.updateRule(payload)
+    } else {
+      await rulesStore.addRule(payload)
+    }
+  } catch {
+    // The request layer already showed the error; keep the editor open.
+    return
+  } finally {
+    saving.value = false
   }
 
   ElMessage({ message: t('ruleSaved'), type: 'success', plain: true })
@@ -302,7 +313,7 @@ function saveRule() {
 }
 
 function toggleRule(id, enabled) {
-  rulesStore.setEnabled(id, enabled)
+  rulesStore.setEnabled(id, enabled).catch(() => {})
 }
 
 async function deleteRule(id) {
@@ -316,7 +327,7 @@ async function deleteRule(id) {
         type: 'warning',
       },
     )
-    rulesStore.removeRule(id)
+    await rulesStore.removeRule(id)
     if (ruleForm.id === id) cancelEdit()
     ElMessage({ message: t('ruleDeleted'), type: 'success', plain: true })
   } catch {

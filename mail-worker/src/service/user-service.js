@@ -66,6 +66,8 @@ async function ensureAvatarColumn(c) {
 	await ensureUserAvatar(c);
 }
 
+export const AVATAR_BATCH_MAX = 50;
+
 const userService = {
 
 	async loginUserInfo(c, userId) {
@@ -197,6 +199,33 @@ const userService = {
 		}
 	},
 
+	// Batch form of getAvatarByEmail for the mail list: one request for a
+	// page of senders instead of one per row. Unknown addresses map to ''.
+	async getAvatarsByEmails(c, emails) {
+		const list = [...new Set((Array.isArray(emails) ? emails : [])
+			.map(e => String(e || '').trim().toLowerCase()).filter(Boolean))].slice(0, AVATAR_BATCH_MAX);
+		const out = Object.fromEntries(list.map(e => [e, '']));
+		if (!list.length) return out;
+		const marks = list.map(() => '?').join(',');
+		try {
+			const { results: linked } = await c.env.db.prepare(`
+				SELECT LOWER(TRIM(a.email)) AS email, u.avatar
+				FROM account a
+				INNER JOIN user u ON u.user_id = a.user_id
+				WHERE LOWER(TRIM(a.email)) IN (${marks}) AND a.is_del = 0 AND u.is_del = 0 AND u.avatar IS NOT NULL AND u.avatar != ''
+			`).bind(...list).all();
+			for (const row of linked) out[row.email] = row.avatar;
+			// A user's own login address wins over a linked mailbox, as in getAvatarByEmail.
+			const { results: primary } = await c.env.db.prepare(`
+				SELECT LOWER(TRIM(email)) AS email, avatar FROM user
+				WHERE LOWER(TRIM(email)) IN (${marks}) AND is_del = 0 AND avatar IS NOT NULL AND avatar != ''
+			`).bind(...list).all();
+			for (const row of primary) out[row.email] = row.avatar;
+		} catch {
+			// Missing avatar column on an old schema: everyone falls back to initials.
+		}
+		return out;
+	},
 
 	async updateSignature(c, params, userId) {
 		const { signature } = params;

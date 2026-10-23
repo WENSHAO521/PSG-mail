@@ -1,75 +1,55 @@
 import { defineStore } from 'pinia'
+import { ruleList, ruleAdd, ruleUpdate, ruleDelete, ruleImport } from '@/request/rule.js'
+
+// Rules live on the server and run in the worker when mail arrives (see
+// mail-worker/src/service/mail-rule-service.js). Older versions kept them in
+// this browser's localStorage under 'rules'; load() moves those up once.
+const LEGACY_KEY = 'rules'
+
+function takeLegacyRules() {
+    try {
+        const raw = localStorage.getItem(LEGACY_KEY)
+        if (!raw) return []
+        const rules = JSON.parse(raw)?.rules
+        return Array.isArray(rules) ? rules : []
+    } catch {
+        return []
+    }
+}
 
 export const useRulesStore = defineStore('rules', {
     state: () => ({
         rules: [],
+        loaded: false,
     }),
     getters: {
         enabledRules: (s) => s.rules.filter(r => r.enabled),
     },
     actions: {
-        addRule(rule) {
-            const nextRule = {
-                id: rule.id || globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                name: String(rule.name || '').trim(),
-                conditionType: rule.conditionType || 'subject',
-                conditionValue: String(rule.conditionValue || '').trim(),
-                action: rule.action || 'star',
-                enabled: rule.enabled !== false,
-            }
-            this.rules.push(nextRule)
-            return nextRule
+        async load() {
+            const legacy = takeLegacyRules()
+            this.rules = legacy.length ? await ruleImport(legacy) : await ruleList()
+            if (legacy.length) localStorage.removeItem(LEGACY_KEY)
+            this.loaded = true
         },
-        updateRule(rule) {
-            const index = this.rules.findIndex(item => item.id === rule.id)
-            if (index === -1) return null
-            const updatedRule = {
-                ...this.rules[index],
-                ...rule,
-                name: String(rule.name || '').trim(),
-                conditionValue: String(rule.conditionValue || '').trim(),
-                enabled: rule.enabled !== false,
-            }
-            this.rules.splice(index, 1, updatedRule)
-            return updatedRule
+        async addRule(rule) {
+            const saved = await ruleAdd(rule)
+            this.rules.push(saved)
+            return saved
         },
-        removeRule(id) {
+        async updateRule(rule) {
+            const saved = await ruleUpdate(rule)
+            const index = this.rules.findIndex(item => item.id === saved.id)
+            if (index !== -1) this.rules.splice(index, 1, saved)
+            return saved
+        },
+        async removeRule(id) {
+            await ruleDelete(id)
             this.rules = this.rules.filter(rule => rule.id !== id)
         },
-        setEnabled(id, enabled) {
+        async setEnabled(id, enabled) {
             const rule = this.rules.find(item => item.id === id)
-            if (rule) rule.enabled = Boolean(enabled)
-        },
-        applyRules(email, { starAdd, archiveEmail, emailRead }) {
-            const runAction = (callback, ...args) => {
-                if (!callback) return
-                try {
-                    Promise.resolve(callback(...args)).catch(() => {})
-                } catch {
-                    // A failed background rule must not interrupt mail sync.
-                }
-            }
-
-            for (const rule of this.enabledRules) {
-                let match = false
-                if (rule.conditionType === 'all') {
-                    match = true
-                } else if (rule.conditionType === 'sender') {
-                    const value = String(rule.conditionValue || '').toLowerCase()
-                    match = value.length > 0 && (
-                        (email.sendEmail || '').toLowerCase().includes(value) ||
-                        (email.name || '').toLowerCase().includes(value)
-                    )
-                } else if (rule.conditionType === 'subject') {
-                    const value = String(rule.conditionValue || '').toLowerCase()
-                    match = value.length > 0 && (email.subject || '').toLowerCase().includes(value)
-                }
-                if (!match) continue
-                if (rule.action === 'star')      runAction(starAdd, email.emailId)
-                if (rule.action === 'archive')   runAction(archiveEmail, email.emailId)
-                if (rule.action === 'markRead')  runAction(emailRead, [email.emailId])
-            }
+            if (rule) await this.updateRule({ ...rule, enabled: Boolean(enabled) })
         },
     },
-    persist: true,
 })
