@@ -328,7 +328,7 @@ import { useSettingStore } from '@/store/setting.js'
 import { formatDetailDate } from '@/utils/day.js'
 import { starAdd, starCancel } from '@/request/star.js'
 import { getExtName, formatBytes } from '@/utils/file-utils.js'
-import { cvtR2Url, toOssDomain } from '@/utils/convert.js'
+import { cvtR2Url, fillImageDomain } from '@/utils/convert.js'
 import { getIconByName } from '@/utils/icon-utils.js'
 import { allEmailDelete } from '@/request/all-email.js'
 import { useI18n } from 'vue-i18n'
@@ -690,9 +690,7 @@ function toMessage(message) {
 }
 
 function formatImage(content) {
-  content = content || ''
-  const domain = settingStore.settings.r2Domain
-  return content.replace(/{{domain}}/g, toOssDomain(domain) + '/')
+  return fillImageDomain(content, settingStore.settings.r2Domain)
 }
 
 function showImage(key) {
