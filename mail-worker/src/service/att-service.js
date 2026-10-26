@@ -205,7 +205,7 @@ const attService = {
 			attData.key = att.key;
 			attData.size = att.buff.length;
 			attData.filename = att.filename;
-			attData.mimeType = att.type;
+			attData.mimeType = att.type || att.contentType;
 			attData.type = attConst.type.ATT;
 			attDataList.push(attData);
 		}
@@ -213,7 +213,7 @@ const attService = {
 		const items = attList.map(a => ({
 			key: a.key,
 			content: a.buff,
-			metadata: { contentType: a.type, contentDisposition: `attachment;filename=${a.filename}` }
+			metadata: { contentType: a.type || a.contentType, contentDisposition: `attachment;filename=${a.filename}` }
 		}));
 
 		await this.storeObjectsAndRows(c, items, () => orm(c).insert(att).values(attDataList).run());

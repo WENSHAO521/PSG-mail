@@ -1,11 +1,12 @@
 import http from '@/axios/index.js';
+import { withUnreadRefresh } from '@/utils/unread-counts.js';
 
-export function emailList(accountId, allReceive, emailId, timeSort, size, type) {
-    return http.get('/email/list', {params: {accountId, allReceive, emailId, timeSort, size, type}})
+export function emailList(accountId, allReceive, emailId, timeSort, size, type, unread = 0) {
+    return http.get('/email/list', {params: {accountId, allReceive, emailId, timeSort, size, type, unread}})
 }
 
 export function emailDelete(emailIds) {
-    return http.delete('/email/delete?emailIds=' + emailIds)
+    return withUnreadRefresh(http.delete('/email/delete?emailIds=' + emailIds))
 }
 
 export function emailLatest(emailId, accountId, allReceive) {
@@ -19,20 +20,24 @@ export function emailDetail(emailId) {
     return http.get('/email/detail', {params: {emailId}, noMsg: true})
 }
 
+export function emailThread(emailId) {
+    return http.get('/email/thread', {params: {emailId}, noMsg: true})
+}
+
 export function emailSearch(query, accountId, allReceive, cursor, size) {
     return http.post('/email/search', {query, accountId, allReceive, cursor, size}, {noMsg: true})
 }
 
 export function emailRead(emailIds) {
-    return http.put('/email/read', {emailIds})
+    return withUnreadRefresh(http.put('/email/read', {emailIds}))
 }
 
 export function emailMarkSpam(emailIds) {
-    return http.put('/email/spam', {emailIds: emailIds.join(',')})
+    return withUnreadRefresh(http.put('/email/spam', {emailIds: emailIds.join(',')}))
 }
 
 export function emailUnmarkSpam(emailIds) {
-    return http.put('/email/unspam', {emailIds: emailIds.join(',')})
+    return withUnreadRefresh(http.put('/email/unspam', {emailIds: emailIds.join(',')}))
 }
 
 export function emailSpamVerdict(emailId) {
@@ -44,27 +49,35 @@ export function emailSpamList(accountId, allReceive, emailId, size) {
 }
 
 export function emailArchive(emailIds) {
-    return http.put('/email/archive', {emailIds: emailIds.join(',')})
+    return withUnreadRefresh(http.put('/email/archive', {emailIds: emailIds.join(',')}))
 }
 
 export function emailUnarchive(emailIds) {
-    return http.put('/email/unarchive', {emailIds: emailIds.join(',')})
+    return withUnreadRefresh(http.put('/email/unarchive', {emailIds: emailIds.join(',')}))
 }
 
 export function emailArchiveList(accountId, allReceive, emailId, size) {
     return http.get('/email/archive/list', {params: {accountId, allReceive, emailId, size}})
 }
 
+export function emailReadAll(accountId, allReceive) {
+    return withUnreadRefresh(http.put('/email/read-all', {accountId, allReceive}))
+}
+
 export function emailUnread(emailIds) {
-    return http.put('/email/unread', {emailIds})
+    return withUnreadRefresh(http.put('/email/unread', {emailIds}))
 }
 
 export function emailRestore(emailIds) {
-    return http.put('/email/restore', {emailIds: emailIds.join(',')})
+    return withUnreadRefresh(http.put('/email/restore', {emailIds: emailIds.join(',')}))
 }
 
 export function emailTrashList(accountId, allReceive, emailId, size) {
     return http.get('/email/trash/list', {params: {accountId, allReceive, emailId, size}})
+}
+
+export function emailEmptyFolder(folder, accountId, allReceive) {
+    return http.delete('/email/empty-folder', {params: {folder, accountId, allReceive}, noMsg: true})
 }
 
 export function emailPermanentDelete(emailIds) {

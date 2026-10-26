@@ -83,7 +83,9 @@ const scheduledEmailService = {
 			text: params.text,
 			content: params.content,
 			subject: params.subject,
-			attachments: params.attachments || [],
+			// Referenced attachments (forwarded, or kept with a draft) are loaded
+			// now: the draft they came from is deleted once this is scheduled.
+			attachments: await emailService.resolveForwardedAttachments(c, params.attachments || [], userId),
 		};
 
 		const row = await orm(c).insert(scheduledEmail).values({

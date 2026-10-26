@@ -548,7 +548,9 @@ const settingService = {
 			linuxdoSwitch: settingRow.linuxdoSwitch,
 			minEmailPrefix: settingRow.minEmailPrefix,
 			projectLink: settingRow.projectLink,
-			autoDeleteDays: settingRow.autoDeleteDays
+			autoDeleteDays: settingRow.autoDeleteDays,
+			// Tells the client whether Delete moves mail to Deleted (undoable) or erases it.
+			syncDelete: settingRow.syncDelete
 		};
 	},
 

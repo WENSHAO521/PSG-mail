@@ -20,6 +20,13 @@
       {{ $t('searchOperatorsHint') }}
     </div>
 
+    <div v-if="multiAccount" class="search-scope" role="group" :aria-label="$t('mailboxes')">
+      <button type="button" class="scope-chip" :class="{ active: allAccounts }" :aria-pressed="allAccounts"
+              @click="changeAccountScope(true)">{{ $t('allAccounts') }}</button>
+      <button type="button" class="scope-chip" :class="{ active: !allAccounts }" :aria-pressed="!allAccounts"
+              @click="changeAccountScope(false)">{{ $t('currentAccount') }}</button>
+    </div>
+
     <!-- Recent searches -->
     <div v-if="!searched && searchStore.recent.length" class="recent-block">
       <div class="recent-head">
@@ -49,6 +56,7 @@
               <span v-for="l in item.labels" :key="l.labelId" class="row-label-dot" :style="{ background: labelStore.resolve(l).color }" :title="labelStore.resolve(l).name"></span>
             </span>
             <Icon v-if="hasAttachment(item)" icon="psg:paperclip" width="12" height="12" class="result-att-icon"/>
+            <span v-if="multiAccount && allAccounts && mailboxOf(item)" class="result-mailbox">{{ mailboxOf(item) }}</span>
             <span class="result-time">{{ formatTime(item.createTime) }}</span>
           </div>
           <span class="result-subject" :class="{ unread: item.unread === 0 }">{{ item.subject || $t('noSubject') }}</span>
@@ -74,6 +82,7 @@ import { useEmailStore } from '@/store/email.js'
 import { useLabelStore } from '@/store/label.js'
 import { useUiStore } from '@/store/ui.js'
 import { fromNow } from '@/utils/day.js'
+import { useAccountScope } from '@/utils/account-scope.js'
 
 defineOptions({ name: 'search' })
 
@@ -89,6 +98,15 @@ const results = ref([])
 const searched = ref(false)
 const loading = ref(false)
 const noMore = ref(false)
+
+// The top bar promises "Search all mailboxes", so search spans every address
+// by default; "This account" narrows it to the open one.
+const { multiAccount, allAccounts, changeAccountScope, allReceive: scopeAllReceive } =
+  useAccountScope('searchAllAccounts', () => { if (searched.value) runSearch() })
+
+function mailboxOf(item) {
+  return item.type === 1 ? item.sendEmail : item.toEmail
+}
 
 // The top bar's global search lands here with ?q= — run it straight away.
 const route = useRoute()
@@ -125,7 +143,7 @@ async function runSearch(loadMore = false) {
   loading.value = true
   try {
     const accountId = accountStore.currentAccountId
-    const allReceive = accountStore.currentAccount?.allReceive
+    const allReceive = scopeAllReceive()
     const cursor = loadMore && results.value.length ? results.value.at(-1).emailId : 0
     const data = await emailSearch(q, accountId, allReceive, cursor, 30)
     if (!loadMore) {
@@ -267,6 +285,35 @@ function openResult(item) {
 }
 
 .result-time { font-size: 11px; color: var(--psg-text-secondary); flex-shrink: 0; }
+.result-mailbox {
+  font-size: 11px;
+  color: var(--psg-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+
+.search-scope { display: flex; gap: 6px; }
+.scope-chip {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--psg-border);
+  border-radius: 14px;
+  background: var(--psg-surface);
+  color: var(--psg-text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--psg-font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &.active {
+    background: var(--psg-text);
+    border-color: var(--psg-text);
+    color: var(--psg-surface);
+  }
+}
 
 .result-subject {
   display: block;

@@ -11,7 +11,8 @@ export const useEmailStore = defineStore('email', {
         inboxDirty: false,
         cancelStarEmailId: 0,
         addStarEmailId: 0,
-        inboxUnreadCount: 0,
+        // Server-side unread Inbox counts: { total, accounts: { [accountId]: n } }.
+        unreadCounts: { total: 0, accounts: {} },
         contentData: {
             email: null,
             delType: null,

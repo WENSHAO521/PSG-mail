@@ -7,11 +7,13 @@
     <button type="button" role="tab" class="mb-chip" :class="{ active: allActive }"
             :aria-selected="allActive" @click="router.push({ name: 'all-inbox' })">
       {{ $t('allInbox') }}
+      <span v-if="unread.total > 0" class="mb-count">{{ fmt(unread.total) }}</span>
     </button>
     <button v-for="acc in shown" :key="acc.accountId" type="button" role="tab" class="mb-chip"
             :class="{ active: isActive(acc) }" :aria-selected="isActive(acc)" :title="acc.email" @click="open(acc)">
       <span class="mb-dot" :style="{ background: mailboxColor(acc.email) }"></span>
       {{ shortName(acc) }}
+      <span v-if="unread.accounts[acc.accountId] > 0" class="mb-count">{{ fmt(unread.accounts[acc.accountId]) }}</span>
     </button>
     <el-dropdown v-if="folded.length" trigger="click" placement="bottom-end" @command="open">
       <button type="button" class="mb-chip mb-more" :aria-label="$t('mailboxes')">+{{ folded.length }}</button>
@@ -19,6 +21,7 @@
         <el-dropdown-menu>
           <el-dropdown-item v-for="acc in folded" :key="acc.accountId" :command="acc">
             <span class="mb-dot mb-dot--menu" :style="{ background: mailboxColor(acc.email) }"></span>{{ acc.email }}
+            <span v-if="unread.accounts[acc.accountId] > 0" class="mb-count">{{ fmt(unread.accounts[acc.accountId]) }}</span>
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
@@ -26,9 +29,9 @@
 
     <!-- Off-screen copy of every chip, used only to measure widths. -->
     <div ref="measureRef" class="mailbox-chips mailbox-chips--measure" aria-hidden="true">
-      <span class="mb-chip">{{ $t('allInbox') }}</span>
+      <span class="mb-chip">{{ $t('allInbox') }}<span v-if="unread.total > 0" class="mb-count">{{ fmt(unread.total) }}</span></span>
       <span v-for="acc in mailboxes" :key="acc.accountId" class="mb-chip">
-        <span class="mb-dot"></span>{{ shortName(acc) }}
+        <span class="mb-dot"></span>{{ shortName(acc) }}<span v-if="unread.accounts[acc.accountId] > 0" class="mb-count">{{ fmt(unread.accounts[acc.accountId]) }}</span>
       </span>
       <span class="mb-chip mb-more">+{{ mailboxes.length }}</span>
     </div>
@@ -41,6 +44,7 @@ import { useRoute } from 'vue-router'
 import router from '@/router/index.js'
 import { accountListAll } from '@/request/account.js'
 import { useAccountStore } from '@/store/account.js'
+import { useEmailStore } from '@/store/email.js'
 import { mailboxColor } from '@/utils/avatar.js'
 
 const GAP = 6
@@ -49,6 +53,12 @@ const accountStore = useAccountStore()
 const mailboxes = ref([])
 const rowRef = ref(null)
 const measureRef = ref(null)
+
+// Unread Inbox mail per address, so mail arriving at another address shows
+// without switching to it.
+const emailStore = useEmailStore()
+const unread = computed(() => emailStore.unreadCounts)
+function fmt(n) { return n > 99 ? '99+' : n }
 
 const allActive = computed(() => route.meta?.name === 'all-inbox')
 
@@ -123,7 +133,7 @@ watch(rowRef, el => {
   ro.observe(el)
   nextTick(measure)
 })
-watch(mailboxes, () => nextTick(measure))
+watch([mailboxes, unread], () => nextTick(measure))
 onBeforeUnmount(() => ro?.disconnect())
 </script>
 
@@ -144,6 +154,14 @@ onBeforeUnmount(() => ro?.disconnect())
   visibility: hidden;
   pointer-events: none;
   white-space: nowrap;
+}
+
+.mb-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--psg-primary);
+  font-variant-numeric: tabular-nums;
+  margin-left: 2px;
 }
 
 .mb-chip {

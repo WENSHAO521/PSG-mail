@@ -26,7 +26,30 @@ import telegramService from './telegram-service';
 import kvCache from '../cache/kv-cache';
 import r2Service from './r2-service';
 import labelService from './label-service';
-import { ensureDeleteTime, ensureIsArchive, ensureIsSpam } from '../utils/schema-guard';
+import { draftAttPrefix } from './draft-service';
+import { ensureDeleteTime, ensureIsArchive, ensureIsSpam, ensureReplyTo } from '../utils/schema-guard';
+
+// References header for a reply: the original's own References chain plus
+// its Message-ID, so every client threads the whole conversation (it used to
+// carry only the parent's id). Long chains keep the first and the latest ids.
+function referencesFor(row) {
+	const ids = String(row?.relation || '').match(/<[^<>\s]+>/g) || [];
+	if (row?.messageId) ids.push(row.messageId.startsWith('<') ? row.messageId : `<${row.messageId}>`);
+	const unique = [...new Set(ids)];
+	const kept = unique.length > 20 ? [unique[0], ...unique.slice(-19)] : unique;
+	return kept.join(' ');
+}
+
+// Message-IDs in a References / In-Reply-To value.
+function messageIdsIn(value) {
+	return String(value || '').match(/<[^<>\s]+>/g) || [];
+}
+
+// Mail count for an Archive/Spam/Trash folder; `where` is over `email e`.
+async function folderCount(c, where, binds) {
+	const row = await c.env.db.prepare(`SELECT COUNT(*) AS total FROM email e WHERE ${where}`).bind(...binds).first();
+	return row ? row.total : 0;
+}
 
 // ── Per-request helpers ────────────────────────────────────────────────────
 
@@ -131,6 +154,7 @@ function mapRawEmailRow(row) {
 		recipient: row.recipient,
 		toEmail: row.to_email,
 		toName: row.to_name,
+		replyTo: row.reply_to,
 		inReplyTo: row.in_reply_to,
 		relation: row.relation,
 		messageId: row.message_id,
@@ -152,9 +176,11 @@ const emailService = {
 
 	async list(c, params, userId) {
 
-		let { emailId, type, accountId, size, timeSort, allReceive } = params;
+		let { emailId, type, accountId, size, timeSort, allReceive, unread } = params;
 
 		size = Number(size);
+		// "Unread" filter: only mail not yet read, counted the same way.
+		const unreadFilter = Number(unread) === 1 ? eq(email.unread, emailConst.unread.UNREAD) : sql`1=1`;
 		emailId = Number(emailId);
 		// Follow-up pages (cursor given) skip the COUNT: it reads one index row per mail in the
 		// mailbox (measured: 2316 rows read for a 2316-mail inbox vs 21 for the page itself) and
@@ -218,7 +244,8 @@ const emailService = {
 					eq(email.isDel, isDel.NORMAL),
 					eq(account.isDel, isDel.NORMAL),
 					spamFilter ?? sql`1=1`,
-					archiveFilter ?? sql`1=1`
+					archiveFilter ?? sql`1=1`,
+					unreadFilter
 				)
 			);
 
@@ -243,7 +270,10 @@ const emailService = {
 					accessCond,
 					eq(email.type, type),
 					eq(email.isDel, isDel.NORMAL),
-					eq(account.isDel, isDel.NORMAL)
+					eq(account.isDel, isDel.NORMAL),
+					spamFilter ?? sql`1=1`,
+					archiveFilter ?? sql`1=1`,
+					unreadFilter
 				)
 		).get() : Promise.resolve(null);
 
@@ -299,6 +329,7 @@ const emailService = {
 
 	async archiveList(c, params, userId) {
 		let { emailId, accountId, size, allReceive } = params;
+		const isFirstPage = !Number(emailId);
 		emailId   = Number(emailId) || 9999999999;
 		accountId = Number(accountId);
 		size      = Math.min(Number(size) || 20, 50);
@@ -318,7 +349,11 @@ const emailService = {
 			const list = results.map(mapRawEmailRow);
 			await this.emailAddAtt(c, list);
 			await labelService.attachLabels(c, list);
-			return { list, total: list.length, latestEmail: list[0] || { emailId: 0, accountId, userId } };
+			// Whole-folder count on the first page only; later pages keep it.
+			const total = isFirstPage ? await folderCount(c,
+				`${accessCond} AND e.is_del = 0 AND COALESCE(e.is_archive,0) = 1 ${accountCond}`,
+				[...accessBinds, ...(allReceive ? [] : [accountId])]) : null;
+			return { list, total, latestEmail: list[0] || { emailId: 0, accountId, userId } };
 		} catch { return { list: [], total: 0, latestEmail: { emailId: 0, accountId, userId } }; }
 	},
 
@@ -375,6 +410,7 @@ const emailService = {
 
 	async spamList(c, params, userId) {
 		let { emailId, accountId, size, allReceive } = params;
+		const isFirstPage = !Number(emailId);
 		emailId   = Number(emailId) || 9999999999;
 		accountId = Number(accountId);
 		size      = Math.min(Number(size) || 20, 50);
@@ -410,7 +446,10 @@ const emailService = {
 			await labelService.attachLabels(c, list);
 
 			const latestEmail = list[0] || { emailId: 0, accountId, userId };
-			return { list, total: list.length, latestEmail };
+			const total = isFirstPage ? await folderCount(c,
+				`${spamAccountCond} AND e.is_del = 0 AND COALESCE(e.is_spam, 0) = 1 ${accountCond}`,
+				[...spamAccessBinds, ...(allReceive ? [] : [accountId])]) : null;
+			return { list, total, latestEmail };
 		} catch {
 			return { list: [], total: 0, latestEmail: { emailId: 0, accountId, userId } };
 		}
@@ -464,6 +503,7 @@ const emailService = {
 
 	async trashList(c, params, userId) {
 		let { emailId, accountId, size, allReceive } = params;
+		const isFirstPage = !Number(emailId);
 		emailId   = Number(emailId) || 9999999999;
 		accountId = Number(accountId);
 		size      = Math.min(Number(size) || 20, 50);
@@ -483,7 +523,10 @@ const emailService = {
 			const list = results.map(mapRawEmailRow);
 			await this.emailAddAtt(c, list);
 			await labelService.attachLabels(c, list);
-			return { list, total: list.length, latestEmail: list[0] || { emailId: 0, accountId, userId } };
+			const total = isFirstPage ? await folderCount(c,
+				`${accessCond} AND e.is_del = 1 ${accountCond}`,
+				[...accessBinds, ...(allReceive ? [] : [accountId])]) : null;
+			return { list, total, latestEmail: list[0] || { emailId: 0, accountId, userId } };
 		} catch { return { list: [], total: 0, latestEmail: { emailId: 0, accountId, userId } }; }
 	},
 
@@ -498,10 +541,31 @@ const emailService = {
 		).bind(...emailIdList, userId, ...sharedIds).all();
 		const idsToDelete = results.map(r => r.email_id);
 		if (!idsToDelete.length) return;
-		await attService.removeByEmailIds(c, idsToDelete);
-		await c.env.db.prepare(
-			`DELETE FROM email WHERE email_id IN (${idsToDelete.map(() => '?').join(',')})`
-		).bind(...idsToDelete).run();
+		// physicsDelete also drops the mail's stars and label links.
+		await this.physicsDelete(c, { emailIds: idsToDelete.join(',') });
+	},
+
+	// "Empty Deleted" / "Empty Spam": erases every mail in the folder (all the
+	// caller's addresses, or one). Works in batches so one request stays within
+	// the Worker's limits; `more` tells the client to call again.
+	async emptyFolder(c, params, userId) {
+		const folder = params.folder;
+		if (folder !== 'trash' && folder !== 'spam') throw new BizError('Unknown folder', 400);
+		const accountId = Number(params.accountId);
+		const allReceive = Number(params.allReceive);
+		const BATCH = 500;
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const accessCond = sharedIds.length > 0
+			? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))`
+			: 'user_id = ?';
+		const folderCond = folder === 'trash' ? 'is_del = 1' : 'is_del = 0 AND COALESCE(is_spam, 0) = 1';
+		const accountCond = allReceive ? '' : 'AND account_id = ?';
+		const { results } = await c.env.db.prepare(
+			`SELECT email_id FROM email WHERE ${accessCond} AND ${folderCond} ${accountCond} LIMIT ?`
+		).bind(userId, ...sharedIds, ...(allReceive ? [] : [accountId]), BATCH + 1).all();
+		const ids = results.slice(0, BATCH).map(r => r.email_id);
+		if (ids.length) await this.physicsDelete(c, { emailIds: ids.join(',') });
+		return { deleted: ids.length, more: results.length > BATCH };
 	},
 
 	// D1 allows 100 bound parameters per statement, so ids are handled in chunks of 90. Each run
@@ -573,6 +637,10 @@ const emailService = {
 			const flags = await c.env.db.prepare('SELECT is_archive FROM email WHERE email_id = ?').bind(emailId).first();
 			row.isArchive = flags?.is_archive || 0;
 		} catch { row.isArchive = 0; }
+		try {
+			const r = await c.env.db.prepare('SELECT reply_to FROM email WHERE email_id = ?').bind(emailId).first();
+			row.replyTo = r?.reply_to || '';
+		} catch { row.replyTo = ''; }
 		const list = [row];
 		await this.emailAddAtt(c, list);
 		await labelService.attachLabels(c, list);
@@ -688,6 +756,19 @@ const emailService = {
 		return { filename, content: headerLines.concat(bodyLines).join('\r\n') };
 	},
 
+	// Reply-To of a received mail; skipped when it only repeats From.
+	async saveReplyTo(c, emailId, replyTo, fromAddress) {
+		const list = (Array.isArray(replyTo) ? replyTo : [])
+			.flatMap(r => Array.isArray(r?.group) ? r.group : [r])
+			.filter(r => r?.address)
+			.map(r => ({ address: String(r.address).trim(), name: r.name || '' }));
+		const from = String(fromAddress || '').toLowerCase();
+		if (!list.length || list.every(r => r.address.toLowerCase() === from)) return;
+		await ensureReplyTo(c);
+		await c.env.db.prepare('UPDATE email SET reply_to = ? WHERE email_id = ?')
+			.bind(JSON.stringify(list), emailId).run();
+	},
+
 	receive(c, params, cidAttList, r2domain) {
 		params.content = this.imgReplace(params.content, cidAttList, r2domain)
 		return orm(c).insert(email).values({ ...params }).returning().get();
@@ -709,6 +790,8 @@ const emailService = {
 			subject, //邮件标题
 			attachments = [] //附件
 		} = params;
+
+		attachments = await this.resolveForwardedAttachments(c, attachments, userId);
 
 		const { resendTokens, r2Domain, send, domainList, mailjetApiKey, mailjetSecretKey } = await settingService.query(c);
 
@@ -834,7 +917,8 @@ const emailService = {
 				html,
 				attachments: [...imageDataList, ...attachments],
 				sendType,
-				messageId: emailRow.messageId
+				messageId: emailRow.messageId,
+				references: referencesFor(emailRow)
 			};
 
 			if (useCloudflareEmail) {
@@ -892,7 +976,7 @@ const emailService = {
 
 		if (sendType === 'reply') {
 			emailData.inReplyTo = emailRow.messageId;
-			emailData.relation = emailRow.messageId;
+			emailData.relation = referencesFor(emailRow);
 		}
 
 		//如果权限有发送次数增加用户发送次数
@@ -948,6 +1032,55 @@ const emailService = {
 		return [ emailResult ];
 	},
 
+	// Attachments sent by reference instead of content: { attId } is an
+	// existing mail attachment being forwarded, { draftAttKey } one stored with
+	// a server-side draft. Each one the caller may read is loaded from storage
+	// and turned into a normal base64 attachment; the rest are dropped.
+	async resolveForwardedAttachments(c, attachments, userId) {
+		if (!Array.isArray(attachments) || !attachments.some(a => a && !a.content && (a.attId || a.draftAttKey))) {
+			return attachments || [];
+		}
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const result = [];
+		for (const item of attachments) {
+			if (!item) continue;
+			if (item.content || !(item.attId || item.draftAttKey)) {
+				result.push(item);
+				continue;
+			}
+			let key, filename, type;
+			if (item.draftAttKey) {
+				if (!String(item.draftAttKey).startsWith(draftAttPrefix(userId))) continue;
+				key = item.draftAttKey;
+				filename = item.filename;
+				type = item.contentType;
+			} else {
+				const row = await c.env.db.prepare(
+					`SELECT a.key, a.filename, a.mime_type FROM attachments a JOIN email e ON e.email_id = a.email_id
+					 WHERE a.att_id = ? AND (e.user_id = ?${sharedIds.length ? ` OR e.account_id IN (${sharedIds.map(() => '?').join(',')})` : ''})`
+				).bind(Number(item.attId), userId, ...sharedIds).first();
+				if (!row) continue;
+				key = row.key;
+				filename = row.filename;
+				type = row.mime_type;
+			}
+			try {
+				const obj = await r2Service.getObj(c, key);
+				if (!obj) continue;
+				type = type || 'application/octet-stream';
+				result.push({
+					filename: filename || 'attachment',
+					content: arrayBufferToBase64(await obj.arrayBuffer()),
+					type,
+					contentType: type,
+				});
+			} catch (e) {
+				console.error(`send: failed to read attachment ${key}`, e);
+			}
+		}
+		return result;
+	},
+
 	async sendByCloudflareEmail(c, params) {
 		// Cloudflare Email API requires { email, name? } objects, not plain strings
 		const toAddr = e => (typeof e === 'string' ? { email: e } : e);
@@ -977,7 +1110,7 @@ const emailService = {
 		if (params.sendType === 'reply' && params.messageId) {
 			sendForm.headers = {
 				'in-reply-to': params.messageId,
-				'references': params.messageId
+				'references': params.references || params.messageId
 			};
 		}
 
@@ -1008,7 +1141,7 @@ const emailService = {
 		if (params.sendType === 'reply') {
 			sendForm.headers = {
 				'in-reply-to': params.messageId,
-				'references': params.messageId
+				'references': params.references || params.messageId
 			};
 		}
 
@@ -1050,7 +1183,7 @@ const emailService = {
 		if (inline.length > 0) message.InlinedAttachments = inline;
 
 		if (params.sendType === 'reply' && params.messageId) {
-			message.Headers = { 'In-Reply-To': params.messageId, 'References': params.messageId };
+			message.Headers = { 'In-Reply-To': params.messageId, 'References': params.references || params.messageId };
 		}
 
 		const auth = btoa(`${mailjetCreds.apiKey}:${mailjetCreds.secretKey}`);
@@ -1830,6 +1963,92 @@ const emailService = {
 
 	async unread(c, params, userId) {
 		await this.setUnread(c, params, userId, emailConst.unread.UNREAD);
+	},
+
+	// The other mails of a conversation, oldest first: linked through
+	// Message-ID, In-Reply-To and References, two hops out from the open mail.
+	// Only mail the caller can read and that isn't in Deleted; capped at 50.
+	async thread(c, emailId, userId) {
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const accessCond = sharedIds.length > 0
+			? `(e.user_id = ? OR e.account_id IN (${sharedIds.map(() => '?').join(',')}))`
+			: 'e.user_id = ?';
+		const accessBinds = [userId, ...sharedIds];
+		const root = await c.env.db.prepare(
+			`SELECT e.* FROM email e WHERE e.email_id = ? AND ${accessCond}`
+		).bind(Number(emailId), ...accessBinds).first();
+		if (!root) return [];
+
+		const ids = new Set([...messageIdsIn(root.message_id), ...messageIdsIn(root.in_reply_to), ...messageIdsIn(root.relation)]);
+		const found = new Map();
+		for (let hop = 0; hop < 2 && ids.size; hop++) {
+			const list = [...ids].slice(0, 20);
+			const likes = list.map(() => 'e.relation LIKE ?').join(' OR ');
+			const { results } = await c.env.db.prepare(
+				`SELECT e.* FROM email e WHERE ${accessCond} AND e.is_del = 0 AND e.email_id != ?
+				 AND (e.message_id IN (${list.map(() => '?').join(',')}) OR e.in_reply_to IN (${list.map(() => '?').join(',')}) OR ${likes})
+				 ORDER BY e.email_id LIMIT 50`
+			).bind(...accessBinds, root.email_id, ...list, ...list, ...list.map(id => `%${id}%`)).all();
+			let grew = false;
+			for (const row of results || []) {
+				if (found.has(row.email_id)) continue;
+				found.set(row.email_id, row);
+				for (const id of [...messageIdsIn(row.message_id), ...messageIdsIn(row.in_reply_to)]) {
+					if (!ids.has(id)) { ids.add(id); grew = true; }
+				}
+			}
+			if (!grew) break;
+		}
+		// Mail the user sent to one of their own addresses exists twice (the
+		// Sent copy and the received copy); show it once, as sent.
+		const rows = [...found.values()];
+		const sentKeys = new Set(rows.filter(r => r.type === emailConst.type.SEND)
+			.map(r => `${String(r.send_email).toLowerCase()}|${r.subject}`));
+		const list = rows
+			.filter(r => r.type === emailConst.type.SEND || !sentKeys.has(`${String(r.send_email).toLowerCase()}|${r.subject}`))
+			.sort((a, b) => a.email_id - b.email_id).slice(0, 50).map(mapRawEmailRow);
+		await this.emailAddAtt(c, list);
+		return list;
+	},
+
+	// Unread Inbox mail per account the caller can read (own + shared), for
+	// the sidebar badge and the mailbox switcher. Spam, archived, deleted mail
+	// and mail of deleted accounts don't count.
+	async unreadCounts(c, userId) {
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const accessCond = sharedIds.length > 0
+			? `(e.user_id = ? OR e.account_id IN (${sharedIds.map(() => '?').join(',')}))`
+			: 'e.user_id = ?';
+		const spam = await columnExists(c, 'email', 'is_spam') ? 'AND COALESCE(e.is_spam, 0) = 0' : '';
+		const archive = await columnExists(c, 'email', 'is_archive') ? 'AND COALESCE(e.is_archive, 0) = 0' : '';
+		const { results } = await c.env.db.prepare(`
+			SELECT e.account_id AS accountId, COUNT(*) AS count FROM email e
+			JOIN account a ON a.account_id = e.account_id AND a.is_del = 0
+			WHERE ${accessCond} AND e.type = 0 AND e.is_del = 0 AND e.unread = ? ${spam} ${archive}
+			GROUP BY e.account_id
+		`).bind(userId, ...sharedIds, emailConst.unread.UNREAD).all();
+		const accounts = {};
+		let total = 0;
+		for (const row of results || []) {
+			accounts[row.accountId] = row.count;
+			total += row.count;
+		}
+		return { total, accounts };
+	},
+
+	// "Mark all as read" for a whole Inbox (one account, or all of them), not
+	// only the rows loaded on screen.
+	async readAll(c, params, userId) {
+		const accountId = Number(params.accountId);
+		const allReceive = Number(params.allReceive);
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const accessCond = sharedIds.length > 0
+			? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))`
+			: 'user_id = ?';
+		const accountCond = allReceive ? '' : 'AND account_id = ?';
+		await c.env.db.prepare(
+			`UPDATE email SET unread = ? WHERE ${accessCond} AND type = 0 AND is_del = 0 AND unread = ? ${accountCond}`
+		).bind(emailConst.unread.READ, userId, ...sharedIds, emailConst.unread.UNREAD, ...(allReceive ? [] : [accountId])).run();
 	},
 
 	async setUnread(c, params, userId, unread) {

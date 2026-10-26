@@ -96,7 +96,7 @@
                 :aria-label="$t('markAsRead')" :title="$t('markAsRead')" @click="handleRead">
           <Icon icon="psg:mail" width="19" height="19" />
         </button>
-        <el-tooltip v-if="getSelectedMailsIds().length === 0 && unreadCount > 0 && showUnread"
+        <el-tooltip v-if="getSelectedMailsIds().length === 0 && (props.unreadTotal ?? unreadCount) > 0 && showUnread"
                     :content="$t('markAllRead')" placement="bottom">
           <button type="button" class="icon-btn" :aria-label="$t('markAllRead')" @click="handleMarkAllRead">
             <Icon icon="psg:mail" width="19" height="19" />
@@ -345,6 +345,7 @@ import { UseVirtualList } from '@vueuse/components'
 import { useScroll } from '@vueuse/core'
 import { downloadEml } from '@/utils/download-eml.js'
 import { htmlToPlainText } from '@/utils/html-sanitize.js'
+import { deleteIsUndoable, trashUndoToast } from '@/utils/trash-undo.js'
 
 const props = defineProps({
   // Tag each row with its mailbox (the address a received mail arrived on, or
@@ -357,6 +358,11 @@ const props = defineProps({
   showAccountScope: { type: Boolean, default: false },
   allAccounts: { type: Boolean, default: false },
   getEmailList: Function,
+  // Server-side "mark every mail in this folder read" (Inbox views). Without
+  // it only the loaded rows are marked.
+  markAllRead: Function,
+  // Unread total from the server, when the parent knows it.
+  unreadTotal: { type: Number, default: undefined },
   emailDelete: Function,
   emailRead: Function,
   starAdd: Function,
@@ -547,6 +553,7 @@ watch(() => emailList.map(item => item.checked), () => {
   if (emailList.length > 0) updateCheckStatus();
 }, { deep: true });
 
+watch(unreadOnly, () => { if (props.showUnread) getEmailList(true) })
 watch(() => emailStore.deleteIds, () => { if (emailStore.deleteIds) deleteEmail(emailStore.deleteIds) })
 watch(() => emailStore.cancelStarEmailId, () => {
   emailList.forEach(email => { if (email.emailId === emailStore.cancelStarEmailId) email.isStar = 0 })
@@ -624,6 +631,11 @@ const handleRead = () => { const ids = getSelectedMailsIds(); props.emailRead(id
 
 function handleMarkAllRead() {
   const ids = emailList.filter(e => e.unread === EmailUnreadEnum.UNREAD).map(e => e.emailId)
+  if (props.markAllRead) {
+    props.markAllRead().then(() => localRead(ids))
+      .catch(() => ElMessage({ message: t('operationFailMsg'), type: 'error', plain: true }))
+    return
+  }
   if (!ids.length) return
   props.emailRead(ids)
   localRead(ids)
@@ -647,22 +659,30 @@ function rightDeleteItem(item) {
   rightDelete(item.emailId)
 }
 
+// Folders whose delete only moves mail to Deleted (restorable).
+function softDeletes() {
+  return !['trash', 'draft', 'all-email'].includes(props.type) && deleteIsUndoable()
+}
+
+function removeEmails(emailIds) {
+  return props.emailDelete(emailIds).then(() => {
+    if (softDeletes()) trashUndoToast(t, emailIds)
+    else ElMessage({ message: t('delSuccessMsg'), type: 'success', plain: true })
+    deleteEmail(emailIds)
+    emailStore.deleteIds = emailIds
+  }).catch(() => {
+    ElMessage({ message: t('delFailMsg') || 'Delete failed', type: 'error', plain: true })
+  })
+}
+
 function rightDelete(emailId) {
-  const doDelete = () => {
-    props.emailDelete([emailId]).then(() => {
-      ElMessage({ message: t('delSuccessMsg'), type: 'success', plain: true })
-      deleteEmail([emailId])
-      emailStore.deleteIds = [emailId]
-    }).catch(() => {
-      ElMessage({ message: t('delFailMsg') || 'Delete failed', type: 'error', plain: true })
-    })
-  }
+  if (softDeletes()) { removeEmails([emailId]); return }
   const confirmText = props.type === 'trash' ? t('permanentDeleteConfirm') : t('delOneEmailConfirm')
   ElMessageBox.confirm(confirmText, {
     confirmButtonText: t('confirm'),
     cancelButtonText: t('cancel'),
     type: 'warning',
-  }).then(doDelete).catch(() => {})
+  }).then(() => removeEmails([emailId])).catch(() => {})
 }
 
 function archiveAction(emailId) { if (props.archiveEmail) props.archiveEmail(emailId) }
@@ -682,26 +702,22 @@ async function copyCode(code) {
 }
 
 function handleDelete() {
+  if (softDeletes()) { removeEmails(getSelectedMailsIds()); return }
   const confirmText = props.type === 'trash' ? t('permanentDeleteConfirm') : t('delEmailsConfirm')
   ElMessageBox.confirm(confirmText, { confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), type: 'warning' })
     .then(() => {
       if (props.type === 'draft') { emit('delete-draft', getSelectedDraftsIds()); return; }
-      const emailIds = getSelectedMailsIds()
-      props.emailDelete(emailIds).then(() => {
-        ElMessage({ message: t('delSuccessMsg'), type: 'success', plain: true })
-        deleteEmail(emailIds)
-        emailStore.deleteIds = emailIds
-      }).catch(() => {
-        ElMessage({ message: t('delFailMsg') || 'Delete failed', type: 'error', plain: true })
-      })
-    })
+      removeEmails(getSelectedMailsIds())
+    }).catch(() => {})
 }
 
 function deleteEmail(emailIds) {
   const idSet = new Set(emailIds)
+  let removed = 0
   for (let i = emailList.length - 1; i >= 0; i--) {
-    if (idSet.has(emailList[i].emailId)) emailList.splice(i, 1)
+    if (idSet.has(emailList[i].emailId)) { emailList.splice(i, 1); removed++ }
   }
+  total.value = Math.max(0, total.value - removed)
   if (emailList.length < queryParam.size && !noLoading.value) getEmailList()
 }
 
@@ -777,7 +793,9 @@ function getEmailList(refresh = false) {
   if (emailList.length === 0) loading.value = true;
   else followLoading.value = !refresh;
   let start = Date.now();
-  props.getEmailList(emailId, queryParam.size).then(async data => {
+  // The Unread filter is applied by the server, so older unread mail shows too.
+  // `more`: a follow-up page, not a fresh load.
+  props.getEmailList(emailId, queryParam.size, { unread: unreadOnly.value ? 1 : 0, more: !refresh && emailList.length > 0 }).then(async data => {
     let duration = Date.now() - start;
     if (duration < 300 && !emailId) await sleep(300 - duration)
     firstLoad.value = false

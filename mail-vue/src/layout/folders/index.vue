@@ -17,8 +17,8 @@
             :class="{ active: route.meta?.name === f.name }" @click="go({ name: f.name })">
       <Icon :icon="f.icon" width="18" height="18" class="folder-icon" />
       <span class="folder-label">{{ $t(f.labelKey) }}</span>
-      <span v-if="f.name === 'email' && emailStore.inboxUnreadCount > 0" class="folder-count">
-        {{ emailStore.inboxUnreadCount > 99 ? '99+' : emailStore.inboxUnreadCount }}
+      <span v-if="f.name === 'email' && inboxUnread > 0" class="folder-count">
+        {{ inboxUnread > 99 ? '99+' : inboxUnread }}
       </span>
     </button>
 
@@ -56,6 +56,8 @@ import { useI18n } from 'vue-i18n'
 import router from '@/router/index.js'
 import { useUiStore } from '@/store/ui.js'
 import { useEmailStore } from '@/store/email.js'
+import { useAccountStore } from '@/store/account.js'
+import { refreshUnreadCounts } from '@/utils/unread-counts.js'
 import { useLabelStore } from '@/store/label.js'
 import { hasPerm } from '@/perm/perm.js'
 import LabelEditor from '@/components/label-editor/index.vue'
@@ -65,6 +67,16 @@ const route = useRoute()
 const uiStore = useUiStore()
 const emailStore = useEmailStore()
 const labelStore = useLabelStore()
+const accountStore = useAccountStore()
+
+// Unread Inbox mail from the server (not just the rows loaded on screen):
+// every address when the open one receives for all, else the open one.
+const inboxUnread = computed(() => {
+  const counts = emailStore.unreadCounts
+  if (accountStore.currentAccount?.allReceive) return counts.total
+  return counts.accounts[accountStore.currentAccountId] || 0
+})
+onMounted(() => refreshUnreadCounts(0))
 
 const FOLDERS = [
   { name: 'email',     labelKey: 'inbox',         icon: 'psg:inbox' },

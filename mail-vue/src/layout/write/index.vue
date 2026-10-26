@@ -404,7 +404,7 @@ import tinyEditor from '@/components/tiny-editor/index.vue'
 import {h, markRaw, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, watch} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
-import {emailSend, emailSchedule, emailScheduleCancel} from "@/request/email.js";
+import {emailSend, emailSchedule, emailScheduleCancel, emailDetail} from "@/request/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
@@ -416,6 +416,7 @@ import undoSendRing from "@/components/undo-send-ring/index.vue"
 import {toOssDomain} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
+import {parseMailHtml} from "@/utils/html-sanitize.js";
 import {storedAvatar, mailboxColor} from "@/utils/avatar.js";
 
 // Sender menu: the mailbox's own colour (same as its dot on the inbox
@@ -431,9 +432,8 @@ function senderTitle(acc) {
   return local.split(/[._-]+/).filter(Boolean)
     .map(w => w[0].toUpperCase() + w.slice(1)).join(' ') || local
 }
-import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
-import db from "@/db/db.js";
+import {saveDraft, deleteDrafts} from "@/utils/draft-sync.js";
 import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
@@ -461,7 +461,6 @@ defineExpose({
 
 const {t} = useI18n()
 const writerStore = useWriterStore();
-const draftStore = userDraftStore()
 const settingStore = useSettingStore()
 const uiStore = useUiStore()
 const mobileNavigation = useMobileNavigationStore()
@@ -1108,6 +1107,7 @@ async function sendScheduled() {
       scheduledAt: scheduledAt.value,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     })
+    if (form.draftId) deleteDrafts([form.draftId]).catch(() => {})
     ElNotification({
       title: t('scheduleSuccessMsg'),
       type: 'success',
@@ -1163,6 +1163,8 @@ async function sendWithUndo() {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     })
     scheduleId = created.id
+    // Undo reopens the mail in Compose, where it can be saved again.
+    if (snapshot.draftId) deleteDrafts([snapshot.draftId]).catch(() => {})
   } catch (e) {
     ElNotification({
       title: t('sendFailMsg'),
@@ -1259,12 +1261,8 @@ async function sendEmail() {
 
     addRecipientRecord();
 
-    if (form.draftId) {
-      form.subject = ''
-      form.content = ''
-      form.receiveEmail = []
-      draftStore.setDraft = {...toRaw(form)}
-    }
+    // The draft this mail came from is done with.
+    if (form.draftId) deleteDrafts([form.draftId]).catch(() => {})
 
     show.value = false
     resetForm();
@@ -1368,8 +1366,11 @@ function openForward(email) {
 
   email.subject = email.subject || ''
 
-  form.subject = email.subject
+  form.subject = /^(fwd?|转发)\s*[:：]/i.test(email.subject) ? email.subject : 'Fwd: ' + email.subject
   form.sendType = 'forward'
+  // The original's attachments go along, as any mail client does; they can
+  // be removed from the list before sending.
+  form.attachments = forwardAttachments(email)
 
   defValue.value = ''
 
@@ -1377,9 +1378,18 @@ function openForward(email) {
     defValue.value = `
       ${sigBlock()}
       <p><br></p>
-      ${formatImage(email.content) || `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text}</pre>`}
+      <div>---------- ${t('forwardedMessage')} ----------<br>
+        ${t('from')}: ${escapeHtml(email.name)} &lt;${escapeHtml(email.sendEmail)}&gt;<br>
+        ${t('date')}: ${formatDetailDate(email.createTime)}<br>
+        ${t('subject')}: ${escapeHtml(email.subject)}<br>
+        ${t('recipient')}: ${escapeHtml(addressList(email.recipient) || email.toEmail)}<br>
+        ${addressList(email.cc) ? `${t('cc')}: ${escapeHtml(addressList(email.cc))}<br>` : ''}
+      </div>
+      <p><br></p>
+      ${quotedBody(email)}
     `
     _showWindow()
+    replyFromReceivingAccount(email)
 
     nextTick(() => {
       backReply.content = editor.value.getContent()
@@ -1389,6 +1399,42 @@ function openForward(email) {
     })
 
   });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+// The original mail for a reply quote or a forward. HTML goes through the
+// same sanitizer as the reader; plain text is escaped, otherwise a bare
+// "Name <addr>" in it is parsed as a tag and swallows the rest of the text.
+function quotedBody(email) {
+  const html = formatImage(email.content)
+  if (html) return parseMailHtml(html).innerHTML
+  return `<pre style="font-family:inherit;word-break:break-word;white-space:pre-wrap;margin:0">${escapeHtml(email.text)}</pre>`
+}
+
+function quoteHeader(email) {
+  return `${formatDetailDate(email.createTime)} ${escapeHtml(email.name)} &lt;${escapeHtml(email.sendEmail)}&gt; ${t('wrote')}:`
+}
+
+// "a@x, Name <b@y>" from a stored recipient/cc JSON list.
+function addressList(json) {
+  try {
+    return JSON.parse(json || '[]')
+      .filter(r => r?.address)
+      .map(r => r.name ? `${r.name} <${r.address}>` : r.address)
+      .join(', ')
+  } catch { return '' }
+}
+
+// The original's stored attachments, sent by id: the server loads the file
+// itself, so nothing is downloaded and uploaded again. Inline images are
+// already part of the quoted body.
+function forwardAttachments(email) {
+  return (email.attList || [])
+    .filter(att => att.attId && att.type !== 1)
+    .map(att => ({ attId: att.attId, filename: att.filename, contentType: att.mimeType, size: att.size }))
 }
 
 function openReplyAll(email) {
@@ -1434,13 +1480,14 @@ function openReplyAll(email) {
     ${sigBlock()}
     <div></div>
     <div><br>
-        ${formatDetailDate(email.createTime)} ${email.name} &lt${email.sendEmail}&gt ${t('wrote')}:
+        ${quoteHeader(email)}
     </div>
     <blockquote class="mceNonEditable" style="margin:0 0 0 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex;">
-      <article>${formatImage(email.content) || `<pre style="font-family:inherit;word-break:break-word;white-space:pre-wrap;margin:0">${email.text}</pre>`}</article>
+      <article>${quotedBody(email)}</article>
     </blockquote>`
     _showWindow()
-    replyFromReceivingAccount(email)
+    replyFromReceivingAccount(email).then(() => dropOwnAddresses(email))
+    applyReplyTo(email)
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
@@ -1473,15 +1520,16 @@ function openReply(email) {
     <div></div>
     <div>
     <br>
-        ${formatDetailDate(email.createTime)} ${email.name} &lt${email.sendEmail}&gt ${t('wrote')}:
+        ${quoteHeader(email)}
     </div>
     <blockquote class="mceNonEditable" style="margin: 0 0 0 0.8ex;border-left: 1px solid rgb(204,204,204);padding-left: 1ex;">
       <article>
-          ${formatImage(email.content) || `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text}</pre>`}
+          ${quotedBody(email)}
       </article>
     </blockquote>`
     _showWindow()
     replyFromReceivingAccount(email)
+    applyReplyTo(email)
 
     nextTick(() => {
       backReply.content = editor.value.getContent()
@@ -1546,6 +1594,43 @@ async function replyFromReceivingAccount(email) {
       if (addr === self && addr !== original) list.splice(i, 1)
     }
   }
+}
+
+// A mail with Reply-To (forms, lists, help desks) is answered at that
+// address instead of From. List rows may not carry the field, so it is
+// fetched with the mail's detail when missing.
+async function applyReplyTo(email) {
+  if (email.type !== 0) return
+  let raw = email.replyTo
+  if (raw === undefined) {
+    try { raw = (await emailDetail(email.emailId))?.replyTo } catch { return }
+  }
+  let addrs = []
+  try { addrs = JSON.parse(raw || '[]').map(r => r?.address).filter(Boolean) } catch {}
+  if (!addrs.length || !show.value || form.emailId !== email.emailId) return
+  const from = (email.sendEmail || '').toLowerCase()
+  const i = form.receiveEmail.findIndex(a => (a || '').toLowerCase() === from)
+  if (i < 0) return // the user already changed the recipients
+  const lower = new Set(form.receiveEmail.filter((_, k) => k !== i).map(a => (a || '').toLowerCase()))
+  form.receiveEmail.splice(i, 1, ...addrs.filter(a => !lower.has(a.toLowerCase())))
+}
+
+// Reply-all must not copy the user's other addresses (a mail that went to
+// two of their mailboxes, or one they sent themselves) back onto the list.
+// The original sender stays: replying to your own sent mail is legitimate.
+async function dropOwnAddresses(email) {
+  await loadSenderAccounts()
+  if (!show.value || form.emailId !== email.emailId) return
+  const own = new Set(senderAccounts.value.map(a => (a.email || '').toLowerCase()))
+  own.add((userStore.user.email || '').toLowerCase())
+  const original = (email.sendEmail || '').toLowerCase()
+  for (const list of [form.receiveEmail, form.cc]) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const addr = (list[i] || '').toLowerCase()
+      if (own.has(addr) && addr !== original) list.splice(i, 1)
+    }
+  }
+  if (!form.cc.length) showCc.value = false
 }
 
 // True only while the sender shown is the one Reply picked from the original
@@ -1661,20 +1746,27 @@ async function autoSaveDraft() {
 
   form.content = content
 
-  if (form.draftId) {
-    draftStore.setDraft = { ...toRaw(form) }
-  } else {
-    const formData = { ...toRaw(form) }
-    delete formData.draftId
-    delete formData.attachments
-    formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss')
-    const draftId = await db.value.draft.add({ ...formData })
-    db.value.att.add({ draftId, attachments: toRaw(form.attachments) })
-    form.draftId = draftId
-    draftStore.refreshList++
+  try {
+    await persistDraft()
+  } catch {
+    return // tried again on the next tick
   }
 
   ElMessage({ message: t('autoSavedDraft'), type: 'success', plain: true, duration: 1500 })
+}
+
+// Saves the open form as a server draft and keeps the returned id and
+// attachment references, so the next save doesn't upload files again.
+async function persistDraft() {
+  const sentAttachments = form.attachments.slice()
+  const saved = await saveDraft(form)
+  if (!saved) { form.draftId = null; return }
+  form.draftId = saved.draftId
+  // Swap uploaded files for their references, unless the list changed meanwhile.
+  if (form.attachments.length === sentAttachments.length
+      && form.attachments.every((a, i) => a === sentAttachments[i])) {
+    form.attachments.splice(0, form.attachments.length, ...(saved.attachments || []))
+  }
 }
 
 onMounted(() => {
@@ -1698,7 +1790,7 @@ function close() {
   }
 
   if (form.draftId) {
-    draftStore.setDraft = {...toRaw(form)}
+    saveDraft(form).catch(() => ElMessage({ message: t('draftSaveFail'), type: 'error', plain: true }))
     show.value = false
     resetForm()
     return true;
@@ -1730,13 +1822,12 @@ function close() {
     type: 'warning',
     distinguishCancelAndClose: true
   }).then(async () => {
-    const formData = {...toRaw(form)};
-    delete formData.draftId
-    delete formData.attachments
-    formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
-    const draftId = await db.value.draft.add({...formData})
-    await db.value.att.add({draftId, attachments: toRaw(form.attachments)})
-    draftStore.refreshList++
+    try {
+      await saveDraft(form)
+    } catch {
+      ElMessage({ message: t('draftSaveFail'), type: 'error', plain: true })
+      return
+    }
     show.value = false
     await nextTick(() => {
       resetForm()

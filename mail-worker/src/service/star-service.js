@@ -6,6 +6,7 @@ import { and, desc, eq, lt, sql, inArray } from 'drizzle-orm';
 import email from '../entity/email';
 import { isDel } from '../const/entity-const';
 import attService from "./att-service";
+import labelService from "./label-service";
 import { t } from '../i18n/i18n'
 const starService = {
 
@@ -72,6 +73,7 @@ const starService = {
 			const atts = attsList.filter(attsRow => attsRow.emailId === emailRow.emailId);
 			emailRow.attList = atts;
 		});
+		await labelService.attachLabels(c, list);
 
 		return { list };
 	},

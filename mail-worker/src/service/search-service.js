@@ -211,7 +211,7 @@ function mapRawRow(row) {
 	return {
 		emailId: row.email_id, sendEmail: row.send_email, name: row.name, accountId: row.account_id,
 		userId: row.user_id, subject: row.subject, code: row.code, text: row.text, content: row.content,
-		cc: row.cc, bcc: row.bcc, recipient: row.recipient, toEmail: row.to_email, toName: row.to_name,
+		cc: row.cc, bcc: row.bcc, recipient: row.recipient, toEmail: row.to_email, toName: row.to_name, replyTo: row.reply_to,
 		inReplyTo: row.in_reply_to, relation: row.relation, messageId: row.message_id, type: row.type,
 		status: row.status, resendEmailId: row.resend_email_id, message: row.message, unread: row.unread,
 		createTime: row.create_time, isDel: row.is_del, isArchive: row.is_archive, isSpam: row.is_spam,

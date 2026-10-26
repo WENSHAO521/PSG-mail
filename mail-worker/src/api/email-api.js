@@ -45,6 +45,21 @@ app.put('/email/read', async (c) => {
 	return c.json(result.ok());
 })
 
+app.get('/email/thread', async (c) => {
+	const data = await emailService.thread(c, c.req.query('emailId'), userContext.getUserId(c));
+	return c.json(result.ok(data));
+})
+
+app.get('/email/unread-counts', async (c) => {
+	const data = await emailService.unreadCounts(c, userContext.getUserId(c));
+	return c.json(result.ok(data));
+})
+
+app.put('/email/read-all', async (c) => {
+	await emailService.readAll(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+})
+
 app.put('/email/unread', async (c) => {
 	await emailService.unread(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());
@@ -98,6 +113,11 @@ app.get('/email/trash/list', async (c) => {
 app.delete('/email/permanent-delete', async (c) => {
 	await emailService.permanentDelete(c, c.req.query(), userContext.getUserId(c));
 	return c.json(result.ok());
+})
+
+app.delete('/email/empty-folder', async (c) => {
+	const data = await emailService.emptyFolder(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok(data));
 })
 
 app.get('/email/export-eml/:emailId', async (c) => {

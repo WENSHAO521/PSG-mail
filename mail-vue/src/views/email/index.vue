@@ -9,6 +9,8 @@
                :time-sort="params.timeSort"
                :email-read="emailRead"
                :show-unread="true"
+               :mark-all-read="markAllRead"
+               :unread-total="unreadTotal"
                :show-mailbox-switch="true"
                :show-mailbox="!!accountStore.currentAccount?.allReceive"
                :explorer-title="$t('inbox')"
@@ -30,7 +32,7 @@ import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js"
 import {useUiStore} from "@/store/ui.js";
 import emailScroll from "@/components/email-scroll/index.vue"
-import {emailList, emailDelete, emailRead, emailMarkSpam, emailArchive, emailUnarchive} from "@/request/email.js";
+import {emailList, emailDelete, emailRead, emailReadAll, emailMarkSpam, emailArchive, emailUnarchive} from "@/request/email.js";
 import { undoToast } from "@/utils/undo-toast.js";
 import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, h, onMounted, onActivated, reactive, ref, watch, computed} from "vue";
@@ -65,11 +67,6 @@ onActivated(() => {
   syncNow('activated')
 })
 
-const inboxUnread = computed(() => scroll.value?.unreadCount ?? 0)
-watch(inboxUnread, v => {
-  emailStore.inboxUnreadCount = v
-  window.electronAPI?.setBadgeCount?.(v)
-})
 
 
 watch(() => accountStore.currentAccountId, () => {
@@ -116,13 +113,20 @@ function cancelStar(email) {
   emailStore.starScroll?.deleteEmail([email.emailId])
 }
 
-function getEmailList(emailId, size) {
+function getEmailList(emailId, size, opts = {}) {
   const accountId =  accountStore.currentAccountId;
   const allReceive = accountStore.currentAccount.allReceive;
-  return emailList(accountId, allReceive, emailId, params.timeSort, size, 0).then(data => {
+  return emailList(accountId, allReceive, emailId, params.timeSort, size, 0, opts.unread).then(data => {
     if (data.latestEmail) { data.latestEmail.reqAccountId = accountId; data.latestEmail.allReceive = allReceive; }
     return data;
   })
 }
 
+function markAllRead() {
+  return emailReadAll(accountStore.currentAccountId, accountStore.currentAccount.allReceive ? 1 : 0)
+}
+
+const unreadTotal = computed(() => accountStore.currentAccount?.allReceive
+  ? emailStore.unreadCounts.total
+  : (emailStore.unreadCounts.accounts[accountStore.currentAccountId] || 0))
 </script>
