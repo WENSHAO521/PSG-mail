@@ -7,7 +7,7 @@ import { email } from './email/email';
 import userService from './service/user-service';
 import verifyRecordService from './service/verify-record-service';
 import emailService from './service/email-service';
-import kvObjService from './service/kv-obj-service';
+import r2Service from './service/r2-service';
 import oauthService from "./service/oauth-service";
 import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
@@ -29,8 +29,11 @@ export default {
 			return app.fetch(req, env, ctx);
 		}
 
+		 // Mail bodies point inline images here when no public bucket domain is
+		 // set, so read from whichever store the objects were written to (KV,
+		 // R2 or S3), not KV only.
 		 if (['/static/','/attachments/'].some(p => url.pathname.startsWith(p))) {
-			 const obj = await kvObjService.toObjResp( { env }, url.pathname.substring(1));
+			 const obj = await r2Service.getObj({ env }, url.pathname.substring(1));
 			 return obj ? safeObjectResponse(obj) : new Response('Not Found', { status: 404 });
 		 }
 

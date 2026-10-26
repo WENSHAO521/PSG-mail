@@ -30,6 +30,14 @@ export function cvtR2Url(key) {
     return domain + '/' + key
 }
 
+// Replaces the {{domain}} placeholder the worker leaves in stored mail HTML
+// for inline (cid:) images. Without a public bucket domain the images go
+// through the worker's /oss/ route, like cvtR2Url does for attachments.
+export function fillImageDomain(content, domain) {
+    const base = domain ? toOssDomain(domain) + '/' : `${import.meta.env.VITE_BASE_URL}/oss/`
+    return (content || '').replace(/{{domain}}/g, base)
+}
+
 export function toOssDomain(domain) {
 
     if (!domain) {

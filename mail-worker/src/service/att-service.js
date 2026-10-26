@@ -129,8 +129,12 @@ const attService = {
 				imageDataList.push(attData);
 			}
 
+			// A quoted inline image shown without a public bucket domain points
+			// at the worker itself (/api/oss/attachments/… or /attachments/…).
+			const localKey = src && /^\/(?:api\/oss\/)?(attachments\/[^?#]+)$/.exec(src)?.[1];
+
 			//邮件正文站内图片转cid附件
-			if (src && (src.startsWith(domainUtils.toOssDomain(r2Domain)) || src.startsWith('attachments/'))) {
+			if (src && (src.startsWith(domainUtils.toOssDomain(r2Domain)) || src.startsWith('attachments/') || localKey)) {
 
 				const cid = uuidv4().replace(/-/g, '')
 				img.setAttribute('src', 'cid:' + cid);
@@ -143,6 +147,10 @@ const attService = {
 
 				if (src.startsWith('attachments/')) {
 					attData.key = src;
+				}
+
+				if (localKey) {
+					attData.key = localKey;
 				}
 
 				attData.contentId = cid;

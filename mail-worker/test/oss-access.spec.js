@@ -30,4 +30,19 @@ describe('/oss allowlist', () => {
 		expect(res.status).toBe(200);
 		expect(await res.text()).toBe('png-bytes');
 	});
+
+	// Mail bodies link inline images to /attachments/<key> when no public
+	// bucket domain is set; with R2 bound the object is not in KV.
+	it('serves /attachments/ from R2 when R2 is the object store', async () => {
+		const r2 = {
+			get: async key => key === 'attachments/r2only.png'
+				? { body: 'r2-bytes', httpMetadata: { contentType: 'image/png' } }
+				: null,
+		};
+		const ctx = createExecutionContext();
+		const res = await worker.fetch(new Request('http://example.com/attachments/r2only.png'), { ...env, r2 }, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(res.status).toBe(200);
+		expect(await res.text()).toBe('r2-bytes');
+	});
 });
