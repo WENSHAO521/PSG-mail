@@ -64,6 +64,12 @@
           <button type="button" class="filter-chip" :class="{ active: unreadOnly }"
                   :aria-pressed="unreadOnly" @click="unreadOnly = true">{{ $t('unreadOnly') }}</button>
         </div>
+        <div class="filter-chips" v-if="props.showAccountScope">
+          <button type="button" class="filter-chip" :class="{ active: props.allAccounts }"
+                  :aria-pressed="props.allAccounts" @click="emit('account-scope', true)">{{ $t('allAccounts') }}</button>
+          <button type="button" class="filter-chip" :class="{ active: !props.allAccounts }"
+                  :aria-pressed="!props.allAccounts" @click="emit('account-scope', false)">{{ $t('currentAccount') }}</button>
+        </div>
         <slot name="first"></slot>
         <button v-if="props.showSort" type="button" class="sort-btn folder-sort-btn"
                 :aria-label="props.timeSort !== 0 ? $t('sortOldest') : $t('sortNewest')"
@@ -341,11 +347,15 @@ import { downloadEml } from '@/utils/download-eml.js'
 import { htmlToPlainText } from '@/utils/html-sanitize.js'
 
 const props = defineProps({
-  // Tag each received row with the address it arrived on — for views that
-  // mix several mailboxes (All inboxes, or a catch-all account).
+  // Tag each row with its mailbox (the address a received mail arrived on, or
+  // the address a sent mail went out from) — for views that mix several
+  // mailboxes (All inboxes, a catch-all account, Sent across all accounts).
   showMailbox: { type: Boolean, default: false },
   // Address switcher chips above the list (inbox views).
   showMailboxSwitch: { type: Boolean, default: false },
+  // "All accounts / This account" chips (Sent); the parent owns the state.
+  showAccountScope: { type: Boolean, default: false },
+  allAccounts: { type: Boolean, default: false },
   getEmailList: Function,
   emailDelete: Function,
   emailRead: Function,
@@ -375,7 +385,7 @@ const props = defineProps({
   showSort: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['jump', 'refresh-before', 'delete-draft', 'right-search', 'sort'])
+const emit = defineEmits(['jump', 'refresh-before', 'delete-draft', 'right-search', 'sort', 'account-scope'])
 const {t} = useI18n()
 const settingStore = useSettingStore()
 const uiStore = useUiStore();
@@ -510,7 +520,10 @@ const list = computed(() => {
 })
 
 function mailboxChip(item) {
-  return props.showMailbox && item.type === 0 && item.toEmail ? item.toEmail : ''
+  if (!props.showMailbox) return ''
+  if (item.type === 0) return item.toEmail || ''
+  if (item.type === 1) return item.sendEmail || ''
+  return ''
 }
 
 // .mrow: three text lines (name/time, subject, chip + preview) + 4px gap.
