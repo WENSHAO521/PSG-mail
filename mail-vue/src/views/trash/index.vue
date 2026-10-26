@@ -9,6 +9,10 @@
     :restore-email="restoreAction"
     actionLeft="6px"
     :show-account-icon="false"
+    :show-account-scope="multiAccount"
+    :all-accounts="allAccounts"
+    :show-mailbox="multiAccount && allAccounts"
+    @account-scope="changeAccountScope"
     :explorer-title="$t('deletedMail')"
     :explorer-subtitle="$t('trashSubtitle')"
     :explorer-search-placeholder="$t('searchPlaceholder')"
@@ -20,6 +24,8 @@
         <Icon icon="psg:warning" width="13" height="13" />
         <span>{{ $t('trashRetentionHint', { n: retentionDays }) }}</span>
       </div>
+      <EmptyFolderBtn v-if="scroll?.total > 0" folder="trash" :account-id="accountStore.currentAccountId"
+                      :all-receive="scopeAllReceive()" @done="scroll.refreshList()" />
     </template>
   </emailScroll>
 </template>
@@ -27,13 +33,15 @@
 <script setup>
 import emailScroll from "@/components/email-scroll/index.vue"
 import { Icon } from "@iconify/vue"
+import EmptyFolderBtn from "@/components/empty-folder-btn/index.vue"
 import { emailPermanentDelete, emailTrashList, emailRestore } from "@/request/email.js"
 import { starAdd, starCancel } from "@/request/star.js"
 import { useEmailStore } from "@/store/email.js"
 import { useAccountStore } from "@/store/account.js"
+import { useAccountScope } from "@/utils/account-scope.js"
 import { useUiStore } from "@/store/ui.js"
 import { useSettingStore } from "@/store/setting.js"
-import { defineOptions, computed, ref, watch } from "vue"
+import { defineOptions, computed, ref } from "vue"
 
 defineOptions({ name: 'trash' })
 
@@ -45,7 +53,9 @@ const settingStore = useSettingStore()
 
 const retentionDays = computed(() => settingStore.settings.autoDeleteDays > 0 ? settingStore.settings.autoDeleteDays : 30)
 
-watch(() => accountStore.currentAccountId, () => scroll.value.refreshList())
+// Every address the user owns, or just the open one.
+const { multiAccount, allAccounts, changeAccountScope, allReceive: scopeAllReceive } =
+  useAccountScope('trashAllAccounts', () => scroll.value.refreshList())
 
 function jumpContent(email) {
   emailStore.contentData.email = email
@@ -57,7 +67,7 @@ function jumpContent(email) {
 
 function getTrashList(emailId, size) {
   const accountId  = accountStore.currentAccountId
-  const allReceive = accountStore.currentAccount.allReceive
+  const allReceive = scopeAllReceive()
   return emailTrashList(accountId, allReceive, emailId, size)
 }
 

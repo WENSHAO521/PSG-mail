@@ -164,6 +164,12 @@ export async function email(message, env, ctx) {
 
 		let emailRow = await emailService.receive({ env }, params, cidAttachments, r2Domain);
 
+		try {
+			await emailService.saveReplyTo({ env }, emailRow.emailId, email.replyTo, email.from?.address);
+		} catch (e) {
+			console.error('save reply-to failed', e);
+		}
+
 		attachments.forEach(attachment => {
 			attachment.emailId = emailRow.emailId;
 			attachment.userId = emailRow.userId;

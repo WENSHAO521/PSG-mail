@@ -23,6 +23,7 @@ import { useAccountStore } from '@/store/account.js'
 import { useSettingStore } from '@/store/setting.js'
 import { useUiStore } from '@/store/ui.js'
 import { sleep } from '@/utils/time-utils.js'
+import { refreshUnreadCounts } from '@/utils/unread-counts.js'
 
 const MAX_RECENT = 500
 // There is deliberately one safe floor for every client. Push is the fast
@@ -145,6 +146,7 @@ async function processIncomingEmail(email, source, { notify = true } = {}) {
   // Subject keywords rules already ran in the worker when the mail arrived;
   // an archived message no longer belongs in the Inbox.
   if (!email.isArchive) insertIntoInboxIfVisible(email)
+  refreshUnreadCounts()
   await useNotificationStore().notifyEmail(email, { deliver: notify })
   if (Number(email.emailId) > cursor) cursor = Number(email.emailId)
 }
@@ -212,6 +214,9 @@ export async function syncNow(reason = 'manual') {
       }
     } finally {
       syncInFlight = null
+      // Mail for the other addresses isn't polled row by row; their unread
+      // counts (mailbox switcher, badge) catch up here.
+      refreshUnreadCounts(0)
     }
   })()
 

@@ -33,10 +33,10 @@
 import emailScroll from "@/components/email-scroll/index.vue"
 import {emailDelete} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, reactive, ref, watch, toRaw} from "vue";
+import {defineOptions, reactive, ref, watch} from "vue";
 import {useUiStore} from "@/store/ui.js";
 import {userDraftStore} from "@/store/draft.js";
-import db from "@/db/db.js"
+import {listDrafts, deleteDrafts} from "@/utils/draft-sync.js";
 
 defineOptions({
   name: 'draft'
@@ -47,34 +47,11 @@ const uiStore = useUiStore();
 const scroll = ref({})
 const params = reactive({ timeSort: 0 })
 
-watch(() => draftStore.setDraft, async () => {
-
-  const draft = toRaw(draftStore.setDraft)
-  const draftId = draft.draftId
-  const attachments = toRaw(draftStore.setDraft.attachments)
-
-  delete draft.draftId
-  delete draft.attachments
-
-  if (!draft.content && !draft.subject && !(draft.receiveEmail.length > 0)) {
-    await db.value.draft.delete(draftId);
-    await db.value.att.delete(draftId);
-    draftStore.refreshList++
-    return;
-  }
-
-  await db.value.draft.update(draftId, draft);
-  await db.value.att.update(draftId, {attachments: attachments});
-  draftStore.refreshList++
-}, {
-  deep: true
-})
-
 watch(() => draftStore.refreshList, async () => {
   const {list} = await getEmailList();
-    scroll.value.emailList.length = 0
-    scroll.value.handleList(list);
-    scroll.value.emailList.push(...list)
+  scroll.value.emailList.length = 0
+  scroll.value.handleList(list);
+  scroll.value.emailList.push(...list)
 })
 
 function changeTimeSort() {
@@ -82,25 +59,18 @@ function changeTimeSort() {
   scroll.value.refreshList()
 }
 
-function getEmailList() {
-  return new Promise((resolve, reject) => {
-    const query = db.value.draft.orderBy('createTime')
-    if (params.timeSort === 0) query.reverse()
-    query.toArray().then(list => {
-      resolve({list})
-    })
-  })
+// The server returns every draft at once, so there is never a second page.
+async function getEmailList(emailId, size, opts = {}) {
+  if (opts.more) return {list: []}
+  return {list: await listDrafts(params.timeSort)}
 }
 
 async function deleteDraft(draftIds) {
-  await db.value.draft.bulkDelete(draftIds);
-  draftStore.refreshList++
+  await deleteDrafts(draftIds);
 }
 
-async function jumpContent(email) {
-  const att = await db.value.att.get(email.draftId)
-  email.attachments = att?.attachments ?? []
-  uiStore.writerRef?.openDraft(email);
+function jumpContent(email) {
+  uiStore.writerRef?.openDraft({...email, attachments: email.attachments ?? []});
 }
 
 </script>

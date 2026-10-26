@@ -224,7 +224,7 @@
           <div class="email-zoom" :style="bodyZoom !== 1 ? { zoom: bodyZoom } : null">
             <ShadowHtml class="shadow-html" :html="bodyHtml" :show-trackers="showTrackers"
                         @trackers="trackerInfo = $event" v-if="email.content" />
-            <pre v-else class="email-text">{{ bodyText }}</pre>
+            <pre v-else class="email-text"><template v-for="(part, i) in bodyTextParts" :key="i"><a v-if="part.href" :href="part.href" target="_blank" rel="noopener noreferrer nofollow" class="email-text-link">{{ part.text }}</a><template v-else>{{ part.text }}</template></template></pre>
           </div>
         </div>
 
@@ -260,6 +260,18 @@
             </div>
           </div>
         </div>
+
+        <!-- The rest of the conversation (earlier and later mails linked by
+             Message-ID / References), oldest first; click one to read it. -->
+        <section v-if="threadList.length" class="thread-box" :aria-label="$t('conversation')">
+          <div class="thread-head">{{ $t('conversationCount', { n: threadList.length + 1 }) }}</div>
+          <button v-for="item in threadList" :key="item.emailId" type="button" class="thread-row"
+                  @click="openThreadMail(item)">
+            <span class="thread-from">{{ item.type === 1 ? $t('threadMe') : (item.name || item.sendEmail) }}</span>
+            <span class="thread-snippet">{{ threadSnippet(item) }}</span>
+            <span class="thread-time">{{ formatDetailDate(item.createTime) }}</span>
+          </button>
+        </section>
 
       </div>
     </el-scrollbar>
@@ -300,10 +312,11 @@
 </template>
 
 <script setup>
+import { deleteIsUndoable, trashUndoToast } from '@/utils/trash-undo.js'
 import ShadowHtml from '@/components/shadow-html/index.vue'
 import { reactive, ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { emailDelete, emailRead, emailUnread, emailSpamVerdict, emailUnmarkSpam } from '@/request/email.js'
+import { emailDelete, emailRead, emailUnread, emailSpamVerdict, emailUnmarkSpam, emailThread } from '@/request/email.js'
 import { translateSegments } from '@/request/translate.js'
 import { trackerAllow } from '@/request/tracker.js'
 import { aiEmailSummary, aiReplySuggestion } from '@/request/ai-mail.js'
@@ -327,7 +340,7 @@ import { useLabelStore } from '@/store/label.js'
 import { labelApply, labelRemove } from '@/request/label.js'
 import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 import { hasPerm } from '@/perm/perm.js'
-import { parseMailHtml } from '@/utils/html-sanitize.js'
+import { parseMailHtml, htmlToPlainText } from '@/utils/html-sanitize.js'
 
 const emit = defineEmits(['back'])
 
@@ -453,6 +466,48 @@ const bodyHtml = computed(() => (showTranslation.value && translatedHtml.value)
 const bodyText = computed(() => (showTranslation.value && translatedText.value)
   ? translatedText.value
   : email.value?.text)
+
+// Conversation: the other mails of this thread, loaded per opened mail.
+const threadList = ref([])
+let threadReq = 0
+watch(() => email.value?.emailId, async id => {
+  threadList.value = []
+  if (!id) return
+  const req = ++threadReq
+  try {
+    const list = await emailThread(id)
+    if (req === threadReq) threadList.value = list || []
+  } catch {}
+}, { immediate: true })
+
+function threadSnippet(item) {
+  const text = item.text || htmlToPlainText(item.content || '')
+  return text.replace(/\s+/g, ' ').trim().slice(0, 120) || item.subject || ''
+}
+
+function openThreadMail(item) {
+  emailStore.contentData.email = item
+  emailStore.contentData.emailIndex = 0
+}
+
+// Plain-text mail: web addresses become links (http/https only), the rest
+// stays text. Trailing punctuation is kept out of the link.
+const URL_RE = /\bhttps?:\/\/[^\s<>"']+/gi
+const bodyTextParts = computed(() => {
+  const text = String(bodyText.value || '')
+  const parts = []
+  let last = 0
+  for (const m of text.matchAll(URL_RE)) {
+    let url = m[0]
+    const trail = url.match(/[).,;:!?\]]+$/)
+    if (trail) url = url.slice(0, -trail[0].length)
+    if (m.index > last) parts.push({ text: text.slice(last, m.index) })
+    parts.push({ text: url, href: url })
+    last = m.index + url.length
+  }
+  if (last < text.length) parts.push({ text: text.slice(last) })
+  return parts
+})
 
 const aiPanelTitle = computed(() => aiPanel.value === 'summary' ? t('aiSummaryTitle') : t('aiReplySuggestionTitle'))
 
@@ -769,22 +824,27 @@ function handleDownloadEml() {
 function handleDelete() {
   const e = email.value
   if (!e) return
-  ElMessageBox.confirm(t('delEmailConfirm'), {
-    confirmButtonText: t('confirm'),
-    cancelButtonText: t('cancel'),
-    type: 'warning'
-  }).then(() => {
+  // Moving to Deleted is undone from the toast; erasing still asks first.
+  const undoable = emailStore.contentData.delType === 'logic' && !e.isDel && deleteIsUndoable()
+  const run = () => {
     const doDelete = emailStore.contentData.delType === 'logic'
       ? emailDelete([e.emailId])
       : allEmailDelete([e.emailId])
     doDelete.then(() => {
-      ElMessage({ message: t('delSuccessMsg'), type: 'success', plain: true })
+      if (undoable) trashUndoToast(t, [e.emailId])
+      else ElMessage({ message: t('delSuccessMsg'), type: 'success', plain: true })
       emailStore.deleteIds = [e.emailId]
       emailStore.contentData.email = null
     }).catch(() => {
       ElMessage({ message: t('delFailMsg'), type: 'error', plain: true })
     })
-  })
+  }
+  if (undoable) { run(); return }
+  ElMessageBox.confirm(t('delEmailConfirm'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(run).catch(() => {})
 }
 </script>
 
@@ -1141,6 +1201,27 @@ function handleDelete() {
   white-space: pre-wrap; word-break: break-word;
   margin: 0; font-size: 14px; line-height: 1.8; color: var(--psg-text-secondary);
 }
+
+.thread-box {
+  margin-top: 32px; max-width: min(100%, 720px);
+  border-top: 1px solid var(--psg-border); padding-top: 12px;
+}
+.thread-head { font-size: 12px; font-weight: 600; color: var(--psg-text-muted); margin-bottom: 6px; }
+.thread-row {
+  display: grid; grid-template-columns: minmax(80px, 160px) 1fr auto; gap: 12px; align-items: center;
+  width: 100%; padding: 8px 10px; border: 0; border-radius: var(--psg-radius-md);
+  background: transparent; color: var(--psg-text); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+@media (hover: hover) { .thread-row:hover { background: var(--psg-surface-muted); } }
+.thread-from { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thread-snippet { color: var(--psg-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thread-time { color: var(--psg-text-muted); font-size: 12px; white-space: nowrap; }
+@media (max-width: 640px) {
+  .thread-row { grid-template-columns: 1fr auto; }
+  .thread-snippet { grid-column: 1 / -1; grid-row: 2; }
+}
+
+.email-text-link { color: var(--psg-primary); text-decoration: underline; word-break: break-all; }
 
 /* ── Attachments ─────────────────────────────────────────── */
 .att-container {

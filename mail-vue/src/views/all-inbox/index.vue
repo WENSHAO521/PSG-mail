@@ -9,6 +9,8 @@
                :time-sort="params.timeSort"
                :email-read="emailRead"
                :show-unread="true"
+               :mark-all-read="markAllRead"
+               :unread-total="unreadTotal"
                :show-mailbox-switch="true"
                :show-mailbox="true"
                :explorer-title="$t('allInbox')"
@@ -30,10 +32,10 @@ import { useAccountStore } from "@/store/account.js";
 import { useEmailStore } from "@/store/email.js";
 import { useUiStore } from "@/store/ui.js";
 import emailScroll from "@/components/email-scroll/index.vue";
-import { emailList, emailDelete, emailRead, emailMarkSpam, emailArchive, emailUnarchive } from "@/request/email.js";
+import { emailList, emailDelete, emailRead, emailReadAll, emailMarkSpam, emailArchive, emailUnarchive } from "@/request/email.js";
 import { undoToast } from "@/utils/undo-toast.js";
 import { starAdd, starCancel } from "@/request/star.js";
-import { defineOptions, reactive, ref, watch } from "vue";
+import { defineOptions, reactive, ref, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
 
 defineOptions({ name: 'all-inbox' })
@@ -82,9 +84,9 @@ function spamEmailAction(emailId) {
 function addStar(email) { emailStore.starScroll?.addItem(email); }
 function cancelStar(email) { emailStore.starScroll?.deleteEmail([email.emailId]); }
 
-function getEmailList(emailId, size) {
+function getEmailList(emailId, size, opts = {}) {
   const accountId = accountStore.currentAccountId;
-  return emailList(accountId, ALL_RECEIVE, emailId, params.timeSort, size, 0).then(data => {
+  return emailList(accountId, ALL_RECEIVE, emailId, params.timeSort, size, 0, opts.unread).then(data => {
     if (data.latestEmail) {
       data.latestEmail.reqAccountId = accountId;
       data.latestEmail.allReceive = ALL_RECEIVE;
@@ -92,4 +94,9 @@ function getEmailList(emailId, size) {
     return data;
   });
 }
+function markAllRead() {
+  return emailReadAll(accountStore.currentAccountId, ALL_RECEIVE)
+}
+
+const unreadTotal = computed(() => emailStore.unreadCounts.total)
 </script>

@@ -9,6 +9,10 @@
     :unarchive-email="unarchiveAction"
     actionLeft="6px"
     :show-account-icon="false"
+    :show-account-scope="multiAccount"
+    :all-accounts="allAccounts"
+    :show-mailbox="multiAccount && allAccounts"
+    @account-scope="changeAccountScope"
     :explorer-title="$t('archiveFolder')"
     :explorer-subtitle="$t('archiveSubtitle')"
     :explorer-search-placeholder="$t('searchPlaceholder')"
@@ -23,8 +27,9 @@ import { emailDelete, emailArchiveList, emailUnarchive } from "@/request/email.j
 import { starAdd, starCancel } from "@/request/star.js"
 import { useEmailStore } from "@/store/email.js"
 import { useAccountStore } from "@/store/account.js"
+import { useAccountScope } from "@/utils/account-scope.js"
 import { useUiStore } from "@/store/ui.js"
-import { defineOptions, ref, watch } from "vue"
+import { defineOptions, ref } from "vue"
 import { useI18n } from "vue-i18n"
 import router from "@/router/index.js"
 
@@ -36,7 +41,9 @@ const emailStore = useEmailStore()
 const accountStore = useAccountStore()
 const uiStore = useUiStore()
 
-watch(() => accountStore.currentAccountId, () => scroll.value.refreshList())
+// Every address the user owns, or just the open one.
+const { multiAccount, allAccounts, changeAccountScope, allReceive: scopeAllReceive } =
+  useAccountScope('archiveAllAccounts', () => scroll.value.refreshList())
 
 function jumpContent(email) {
   emailStore.contentData.email = email
@@ -48,7 +55,7 @@ function jumpContent(email) {
 
 function getArchiveList(emailId, size) {
   const accountId  = accountStore.currentAccountId
-  const allReceive = accountStore.currentAccount.allReceive
+  const allReceive = scopeAllReceive()
   return emailArchiveList(accountId, allReceive, emailId, size)
 }
 

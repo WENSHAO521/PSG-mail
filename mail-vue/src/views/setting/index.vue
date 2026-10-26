@@ -116,6 +116,14 @@
                   </div>
                 </div>
                 <div class="data-row">
+                  <span class="data-key">{{ $t('gravatarSetting') }}</span>
+                  <div class="data-val">
+                    <el-tooltip :content="$t('gravatarSettingDesc')" placement="top">
+                      <el-switch :model-value="gravatarEnabled" @change="setGravatarEnabled"/>
+                    </el-tooltip>
+                  </div>
+                </div>
+                <div class="data-row">
                   <span class="data-key">{{ $t('translateEngine') }}</span>
                   <div class="data-val">
                     <el-select :model-value="userStore.user.translateProvider || ''" size="small" style="width:150px"
@@ -432,6 +440,7 @@
 </template>
 
 <script setup>
+import { gravatarEnabled, setGravatarEnabled } from '@/utils/avatar.js'
 import { reactive, ref, computed, defineOptions, onMounted, onActivated, watch } from 'vue'
 import Account from '@/layout/account/index.vue'
 import { resetPassword, userDelete, signOutOtherSessions } from "@/request/my.js"

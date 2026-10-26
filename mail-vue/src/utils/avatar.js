@@ -1,3 +1,4 @@
+import { ref } from 'vue'
 // Deterministic muted palette — tells senders apart at a glance while
 // staying quiet next to the green brand accent. Every tone carries white
 // initials at >= 4.5:1 and still reads against the dark theme's surfaces.
@@ -109,6 +110,21 @@ function md5(str) {
   ).join('')
 }
 
+// Gravatar lookups send a hash of every sender's address to gravatar.com,
+// which tells a third party who you correspond with. Off unless the user
+// turns it on in Settings (remembered in this browser).
+const GRAVATAR_KEY = 'psg_gravatar'
+export const gravatarEnabled = ref(readGravatarPref())
+
+function readGravatarPref() {
+  try { return localStorage.getItem(GRAVATAR_KEY) === '1' } catch { return false }
+}
+
+export function setGravatarEnabled(on) {
+  gravatarEnabled.value = !!on
+  try { localStorage.setItem(GRAVATAR_KEY, on ? '1' : '0') } catch {}
+}
+
 // In-memory cache: email → 'hit'|'miss' (avoids repeated network probes)
 const gravatarCache = new Map()
 
@@ -121,7 +137,7 @@ export function gravatarUrl(email) {
 // Returns '' immediately if already known to be a miss; otherwise returns the URL.
 // Call this to get a candidate URL, then handle onError on the <img>.
 export function gravatarCandidate(email) {
-  if (!email) return ''
+  if (!email || !gravatarEnabled.value) return ''
   if (gravatarCache.get(email) === 'miss') return ''
   return gravatarUrl(email)
 }
