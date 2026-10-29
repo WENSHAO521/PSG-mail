@@ -243,16 +243,16 @@
             <span class="att-count">{{ $t('attCount', { total: email.attList.length }) }}</span>
           </div>
           <div class="att-list">
-            <div class="att-item" v-for="att in email.attList" :key="att.attId" @click="showImage(att.key)">
+            <div class="att-item" v-for="att in email.attList" :key="att.attId" @click="previewAtt(att)">
               <Icon v-bind="getIconByName(att.filename)" class="att-icon-file" />
               <span class="att-name">{{ att.filename }}</span>
               <span class="att-size">{{ formatBytes(att.size) }}</span>
               <div class="att-actions">
-                <button v-if="isImage(att.filename)" type="button" class="icon-btn-sm"
-                        :aria-label="$t('preview')" :title="$t('preview')" @click.stop="showImage(att.key)">
+                <button v-if="previewKind(att.filename)" type="button" class="icon-btn-sm"
+                        :aria-label="$t('preview')" :title="$t('preview')" @click.stop="previewAtt(att)">
                   <Icon icon="psg:eye" width="18" height="18" />
                 </button>
-                <a class="icon-btn-sm" :aria-label="$t('download')" :title="$t('download')"
+                <a class="icon-btn-sm" :aria-label="$t('attDownload')" :title="$t('attDownload')"
                    :href="cvtR2Url(att.key)" download @click.stop>
                   <Icon icon="psg:download" width="18" height="18" />
                 </a>
@@ -309,6 +309,7 @@
   </article>
 
   <el-image-viewer v-if="showPreview" :url-list="srcList" show-progress @close="showPreview = false" />
+  <AttPreview ref="attPreviewRef" />
 </template>
 
 <script setup>
@@ -327,7 +328,8 @@ import { useUiStore } from '@/store/ui.js'
 import { useSettingStore } from '@/store/setting.js'
 import { formatDetailDate } from '@/utils/day.js'
 import { starAdd, starCancel } from '@/request/star.js'
-import { getExtName, formatBytes } from '@/utils/file-utils.js'
+import { getExtName, formatBytes, previewKind } from '@/utils/file-utils.js'
+import AttPreview from '@/components/att-preview/index.vue'
 import { cvtR2Url, fillImageDomain } from '@/utils/convert.js'
 import { getIconByName } from '@/utils/icon-utils.js'
 import { allEmailDelete } from '@/request/all-email.js'
@@ -691,6 +693,20 @@ function toMessage(message) {
 
 function formatImage(content) {
   return fillImageDomain(content, settingStore.settings.r2Domain)
+}
+
+const attPreviewRef = ref(null)
+
+// Images open in the image viewer; PDF, audio, video and text files in the
+// preview dialog; anything else downloads, as the download button does.
+function previewAtt(att) {
+  const kind = previewKind(att.filename)
+  if (kind === 'image') return showImage(att.key)
+  if (kind) return attPreviewRef.value?.open(att, cvtR2Url(att.key))
+  const link = document.createElement('a')
+  link.href = cvtR2Url(att.key)
+  link.download = att.filename
+  link.click()
 }
 
 function showImage(key) {

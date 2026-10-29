@@ -5,6 +5,20 @@ export function getExtName(fileName) {
     return index !== -1 ? fileName.slice(index + 1).toLowerCase() : ''
 }
 
+// What the attachment preview can show for a file name, or null.
+const PREVIEW_KINDS = {
+    image: ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'jfif', 'webp'],
+    pdf: ['pdf'],
+    video: ['mp4', 'webm'],
+    audio: ['mp3', 'ogg', 'wav', 'm4a'],
+    text: ['txt', 'csv', 'log', 'md', 'json', 'xml', 'ics', 'vcf'],
+}
+
+export function previewKind(fileName) {
+    const ext = getExtName(fileName || '')
+    return Object.keys(PREVIEW_KINDS).find(kind => PREVIEW_KINDS[kind].includes(ext)) || null
+}
+
 export function formatBytes(bytes) {
     if (bytes === 0) return '0 B';
     const k = 1024;
