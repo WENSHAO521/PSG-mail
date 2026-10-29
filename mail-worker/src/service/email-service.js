@@ -28,6 +28,7 @@ import r2Service from './r2-service';
 import labelService from './label-service';
 import { draftAttPrefix } from './draft-service';
 import { ensureDeleteTime, ensureIsArchive, ensureIsSpam, ensureReplyTo } from '../utils/schema-guard';
+import { afterReceive } from '../email/after-receive';
 
 // References header for a reply: the original's own References chain plus
 // its Message-ID, so every client threads the whole conversation (it used to
@@ -788,7 +789,8 @@ const emailService = {
 			text, //邮件纯文本
 			content, //邮件内容
 			subject, //邮件标题
-			attachments = [] //附件
+			attachments = [], //附件
+			autoSubmitted = false //自动回复
 		} = params;
 
 		attachments = await this.resolveForwardedAttachments(c, attachments, userId);
@@ -918,7 +920,8 @@ const emailService = {
 				attachments: [...imageDataList, ...attachments],
 				sendType,
 				messageId: emailRow.messageId,
-				references: referencesFor(emailRow)
+				references: referencesFor(emailRow),
+				autoSubmitted
 			};
 
 			if (useCloudflareEmail) {
@@ -1015,7 +1018,7 @@ const emailService = {
 			...bcc.filter(isInternalEmail)
 		])];
 		if (internalRecipients.length > 0) {
-			await this.HandleOnSiteEmail(c, internalRecipients, emailResult, attList);
+			await this.HandleOnSiteEmail(c, internalRecipients, emailResult, attList, { autoSubmitted });
 		}
 
 		const dateStr = dayjs().format('YYYY-MM-DD');
@@ -1143,6 +1146,10 @@ const emailService = {
 				'in-reply-to': params.messageId,
 				'references': params.references || params.messageId
 			};
+		}
+
+		if (params.autoSubmitted) {
+			sendForm.headers = { ...sendForm.headers, 'Auto-Submitted': 'auto-replied' };
 		}
 
 		return await resend.emails.send(sendForm);
@@ -1360,9 +1367,10 @@ const emailService = {
 	},
 
 	//处理站内邮件发送
-	async HandleOnSiteEmail(c, receiveEmail, sendEmailData, attList) {
+	async HandleOnSiteEmail(c, receiveEmail, sendEmailData, attList, { autoSubmitted = false } = {}) {
 
-		const { noRecipient  } = await settingService.query(c);
+		const setting = await settingService.query(c);
+		const { noRecipient } = setting;
 
 		//查询所有收件人账号信息
 		let accountList = await orm(c).select().from(account).where(inArray(account.email, receiveEmail)).all();
@@ -1460,10 +1468,12 @@ const emailService = {
 
 		//保存邮件
 		const receiveEmailList = emailDataList.filter(emailRow => emailRow.status === emailConst.status.RECEIVE || emailRow.status === emailConst.status.NOONE);
+		const deliveredRows = [];
 
 		for (const emailData of receiveEmailList) {
 
 			const emailRow = await orm(c).insert(email).values(emailData).returning().get();
+			deliveredRows.push(emailRow);
 
 			//设置附件保存
 			for (const attRow of attList) {
@@ -1491,6 +1501,87 @@ const emailService = {
 
 		await orm(c).update(email).set({ status, message: message }).where(eq(email.emailId, sendEmailData.emailId)).run();
 
+		await this.dispatchOnSite(c, deliveredRows, allAccounts, setting, { autoSubmitted });
+
+	},
+
+	// On-site mail is written straight into the recipient's mailbox and never
+	// passes through the inbound email() handler, so run the same follow-up
+	// here: rules, notifications, forwarding, auto-reply, Telegram, webhook.
+	// It runs after the response when the request can wait for it, and never
+	// fails the send.
+	async dispatchOnSite(c, emailRows, accountList, setting, { autoSubmitted = false } = {}) {
+		if (emailRows.length === 0) return;
+
+		const pending = [];
+		let executionCtx = null;
+		try {
+			executionCtx = c.executionCtx;
+		} catch {
+			// Hono throws when there is no ExecutionContext (cron, auto-reply).
+		}
+		const waitUntil = executionCtx?.waitUntil
+			? p => executionCtx.waitUntil(p.catch(e => console.error('on-site dispatch failed', e)))
+			: p => pending.push(p);
+
+		const ctx = { env: c.env };
+		for (const emailRow of emailRows) {
+			const accountRow = accountList.find(row => row.accountId === emailRow.accountId) || null;
+			const mail = {
+				from: { address: emailRow.sendEmail, name: emailRow.name },
+				subject: emailRow.subject,
+				html: emailRow.content,
+				text: emailRow.text,
+				headers: autoSubmitted ? [{ key: 'auto-submitted', value: 'auto-replied' }] : [],
+			};
+			waitUntil(afterReceive(ctx, {
+				account: accountRow,
+				emailRow,
+				mail,
+				recipient: emailRow.toEmail,
+				setting,
+				waitUntil,
+				forwardTo: address => this.forwardCopy(ctx, emailRow, address, setting),
+			}));
+		}
+
+		// Without an ExecutionContext, wait here; afterReceive queues more work
+		// while it runs, so drain until nothing is left.
+		while (pending.length) {
+			const results = await Promise.allSettled(pending.splice(0));
+			results.filter(r => r.status === 'rejected').forEach(r => console.error('on-site dispatch failed', r.reason));
+		}
+	},
+
+	// A copy of an on-site mail for the admin's "forward to other mailboxes"
+	// setting. There is no raw message to forward(), so it is sent again as
+	// the original sender through the configured provider. Attachments stay
+	// on site.
+	async forwardCopy(c, emailRow, address, setting) {
+		const domain = emailUtils.getDomain(emailRow.sendEmail);
+		const resendToken = setting.resendTokens?.[domain];
+		const mailjetConfigured = !!(setting.mailjetApiKey && setting.mailjetSecretKey);
+		if (!c.env.email && !resendToken && !mailjetConfigured) {
+			console.warn('on-site forward skipped: no send provider configured');
+			return;
+		}
+		const params = {
+			name: emailRow.name || emailUtils.getName(emailRow.sendEmail),
+			accountEmail: emailRow.sendEmail,
+			receiveEmail: [address],
+			subject: emailRow.subject || '',
+			text: emailRow.text || '',
+			html: emailRow.content || '',
+			attachments: [],
+		};
+		const result = c.env.email
+			? await this.sendByCloudflareEmail(c, params)
+			: resendToken
+				? await this.sendByResend(resendToken, params)
+				: await this.sendByMailjet({ apiKey: setting.mailjetApiKey, secretKey: setting.mailjetSecretKey }, params);
+		if (result?.error) {
+			console.error(`转发邮箱 ${address} 失败：`, result.error);
+		}
 	},
 
 	imgReplace(content, cidAttList, r2domain) {

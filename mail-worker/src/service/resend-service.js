@@ -1,14 +1,18 @@
 import emailService from './email-service';
 import { emailConst } from '../const/entity-const';
-import BizError from '../error/biz-error';
 
 const resendService = {
 
 	async webhooks(c, body) {
 
 		const params = {
-			resendEmailId: body.data.email_id,
-			status: emailConst.status.SENT
+			resendEmailId: body?.data?.email_id,
+			status: null
+		}
+
+		if (body.type === 'email.sent') {
+			params.status = emailConst.status.SENT
+			params.message = null
 		}
 
 		if (body.type === 'email.delivered') {
@@ -38,10 +42,19 @@ const resendService = {
 			params.message = body.data.failed.reason
 		}
 
+		// Events that carry no delivery state (opened, clicked, scheduled…)
+		// must not overwrite one: an "opened" used to reset Delivered to Sent.
+		if (params.status === null || !params.resendEmailId) {
+			return
+		}
+
 		const emailRow = await emailService.updateEmailStatus(c, params)
 
+		// A mail this deployment never sent (another service on the same
+		// Resend account, a test event, old data). Answering 500 here makes
+		// Resend disable the webhook after repeated failures.
 		if (!emailRow) {
-			throw new BizError('更新邮件状态记录失败');
+			console.warn(`resend webhook: unknown email_id ${params.resendEmailId}, type ${body.type}`);
 		}
 
 	}
