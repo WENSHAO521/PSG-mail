@@ -29,7 +29,6 @@
        :data-collapsed="String(sidebarCollapsed)"
        :data-mobile-detail="String(uiStore.mobileDetailOpen)"
        :data-reader-peek="readerDrag.mode === 'back' ? 'true' : null"
-       :data-platform="platform"
        :style="{ '--mail-list-w': listPaneWidth + 'px' }">
 
     <!-- Desktop top bar (brand, sections, search, compose, account) -->
@@ -81,25 +80,6 @@
 
   <writer ref="writerRef"/>
 
-  <!-- ── Auto-update banner (Electron only) ── -->
-  <Transition name="update-bar">
-    <div v-if="updateState.show" class="update-bar">
-      <Icon icon="psg:download" width="16" height="16" class="update-icon"/>
-      <span v-if="updateState.stage === 'downloading'" class="update-text">
-        {{ $t('updateDownloading', { version: updateState.version, pct: updateState.progress }) }}
-      </span>
-      <span v-else class="update-text update-ready">
-        {{ $t('updateReady', { version: updateState.version }) }}
-      </span>
-      <el-progress v-if="updateState.stage === 'downloading'"
-                   :percentage="updateState.progress" :show-text="false"
-                   class="update-progress" />
-      <el-button v-else size="small" type="primary" class="update-btn" @click="installUpdate">
-        {{ $t('updateInstall') }}
-      </el-button>
-      <button class="update-close" @click="updateState.show = false">×</button>
-    </div>
-  </Transition>
 </template>
 
 <script setup>
@@ -124,11 +104,9 @@ import { useAccountStore } from '@/store/account.js'
 import { emailArchive, emailUnarchive } from '@/request/email.js'
 import { undoToast } from '@/utils/undo-toast.js'
 import { bindHorizontalDrag, committed, resist, haptic, reducedMotion, isTouchLayout } from '@/utils/gestures.js'
-import { checkAndDownloadAndroidUpdate } from '@/utils/android-update-service.js'
 import {
   resetSyncState, startFallbackPolling, stopFallbackPolling, installLifecycleSync,
 } from '@/utils/mail-sync-service.js'
-import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -142,7 +120,6 @@ const accountStore = useAccountStore()
 const writerRef = ref({})
 const cmdPaletteRef = ref(null)
 const showShortcuts = ref(false)
-const platform = window.electronAPI?.platform ?? 'web'
 const isMobile = ref(window.innerWidth < 1025)
 
 // ── Draggable list/detail pane divider ──────────────────────────────────
@@ -488,50 +465,6 @@ function handleResize() {
   }
 }
 
-// ── Auto-update (Electron only) ──────────────────────────────
-const updateState = reactive({ show: false, stage: '', version: '', progress: 0 })
-
-if (window.electronAPI?.onUpdateAvailable) {
-  window.electronAPI.onUpdateAvailable((info) => {
-    updateState.version = info.version
-    updateState.stage = 'downloading'
-    updateState.show = true
-  })
-  window.electronAPI.onUpdateProgress((pct) => {
-    updateState.progress = pct
-  })
-  window.electronAPI.onUpdateDownloaded(() => {
-    updateState.stage = 'ready'
-    updateState.progress = 100
-  })
-  // Both fire on the silent 8-second-after-launch check too — only surface
-  // a toast when `manual` says this was a "Check for Updates" button click
-  // (sys-setting's footer), so launching the app doesn't pop a message
-  // every single time there's nothing new.
-  window.electronAPI.onUpdateNotAvailable((data) => {
-    if (data?.manual) {
-      ElMessage({ message: t('updateUpToDate'), type: 'success', plain: true })
-    }
-  })
-  window.electronAPI.onUpdateError((data) => {
-    if (data?.manual) {
-      ElMessage({ message: `${t('updateCheckFailed')}: ${data.message}`, type: 'error', plain: true })
-    }
-  })
-}
-
-function installUpdate() {
-  window.electronAPI?.installUpdate()
-}
-
-async function checkAndroidUpdates() {
-  try {
-    await checkAndDownloadAndroidUpdate()
-  } catch (error) {
-    console.warn('Android update check failed', error)
-  }
-}
-
 // Account switch must not let a new account's poll reuse the previous
 // account's cursor (see mail-sync-service.resetSyncState).
 watch([
@@ -557,7 +490,6 @@ onMounted(async () => {
   // loops that used to race on the same rate-limited endpoint.
   installLifecycleSync()
   startFallbackPolling()
-  setTimeout(checkAndroidUpdates, 8000)
 })
 
 // ── Mobile surface history ─────────────────────────────────────────────────
@@ -616,40 +548,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss">
-/* ── Auto-update banner ─────────────────────────────────────── */
-.update-bar {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--psg-primary);
-  color: var(--psg-on-primary);
-  border-radius: var(--psg-radius-sm);
-  padding: 10px 14px;
-  box-shadow: var(--psg-shadow-sm);
-  font-size: 13px;
-  white-space: nowrap;
-  max-width: calc(100vw - 40px);
-
-  .update-icon { opacity: .75; flex-shrink: 0; }
-  .update-text { opacity: .9; }
-  .update-ready { font-weight: 600; }
-  .update-progress { width: 100px; flex-shrink: 0; }
-  .update-btn { flex-shrink: 0; border-radius: var(--psg-radius-sm); }
-  .update-close {
-    background: none; border: none; color: var(--psg-on-primary);
-    opacity: .55;
-    cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px;
-    &:hover { opacity: 1; }
-  }
-}
-
-.update-bar-enter-active, .update-bar-leave-active { transition: all .25s ease; }
-.update-bar-enter-from, .update-bar-leave-to { opacity: 0; transform: translateX(-50%) translateY(12px); }
 
 .shortcuts-body { display: flex; flex-direction: column; gap: 0; }
 .sc-section-title {

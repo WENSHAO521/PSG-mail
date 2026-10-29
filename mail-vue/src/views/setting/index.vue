@@ -218,9 +218,8 @@
             <div v-show="activeSection === 'notification'" class="settings-card">
               <div class="card-body list-body notif-body">
 
-                <!-- 桌面通知 permission — web/PWA only; Electron and Android have their
-                     own OS-level permission flows surfaced by the rows below instead. -->
-                <div class="autoreply-toggle" v-if="!isElectronPlatform && !isAndroidPlatform">
+                <!-- 桌面通知 permission -->
+                <div class="autoreply-toggle">
                   <div>
                     <div class="toggle-label">{{ $t('notifDesktopPermission') }}</div>
                     <div class="card-desc" style="margin:0">
@@ -235,7 +234,7 @@
                 </div>
 
                 <!-- Web 后台通知 — standards Web Push connection status. -->
-                <div class="autoreply-toggle" v-if="!isElectronPlatform && !isAndroidPlatform">
+                <div class="autoreply-toggle">
                   <div>
                     <div class="toggle-label">{{ $t('notifWebBackground') }}</div>
                     <div class="card-desc" style="margin:0">{{ notifStatusText }}</div>
@@ -248,35 +247,19 @@
                   >{{ $t('notifReconnect') }}</el-button>
                 </div>
 
-                <!-- Android — FCM stays Android's transport, unchanged. -->
-                <div class="autoreply-toggle" v-if="isAndroidPlatform">
-                  <div>
-                    <div class="toggle-label">{{ $t('notifAndroidPush') }}</div>
-                    <div class="card-desc" style="margin:0">{{ androidPushConnected ? $t('notifConnected') : $t('notifNotConnected') }}</div>
-                  </div>
-                </div>
-
-                <!-- Electron — native OS notifications, no Firebase/Web Push concept. -->
-                <div class="autoreply-toggle" v-if="isElectronPlatform">
-                  <div>
-                    <div class="toggle-label">{{ $t('notifSystemNotifications') }}</div>
-                    <div class="card-desc" style="margin:0">{{ $t('notifElectronOn') }}</div>
-                  </div>
-                </div>
-
                 <!-- Test actions -->
-                <div class="notif-test-actions" v-if="isElectronPlatform || isAndroidPlatform || notifPermission === 'granted'">
+                <div class="notif-test-actions" v-if="notifPermission === 'granted'">
                   <el-button size="small" :loading="notifTestSending" @click="sendTestNotif">
-                    {{ isElectronPlatform ? $t('notifTestNative') : $t('notifSendTest') }}
+                    {{ $t('notifSendTest') }}
                   </el-button>
-                  <el-button v-if="!isElectronPlatform && !isAndroidPlatform" size="small" @click="sendLocalTestNotif">
+                  <el-button size="small" @click="sendLocalTestNotif">
                     {{ $t('notifLocalTest') }}
                   </el-button>
                 </div>
 
-                <!-- Registered devices — web push subscriptions + Android FCM devices,
-                     merged. Electron has no server-side device concept at all. -->
-                <div class="notif-devices" v-if="!isElectronPlatform">
+                <!-- Registered devices — web push subscriptions, plus any FCM devices
+                     the old Android app registered, so they can still be removed. -->
+                <div class="notif-devices">
                   <div class="toggle-label">{{ $t('notifDevices') }}</div>
                   <div v-if="!allNotifDevices.length" class="card-desc" style="margin:0">{{ $t('notifNoDevices') }}</div>
                   <div v-for="d in allNotifDevices" :key="d.key" class="notif-device-row">
@@ -407,12 +390,6 @@
 
           </main>
         </div>
-        <div v-if="showUpdateCheck" class="settings-footer">
-          <el-button link type="primary" size="small"
-                     :loading="checkingUpdate" @click="checkForUpdatesManually">
-            {{ checkingUpdate ? $t('checkingForUpdates') : $t('checkForUpdates') }}
-          </el-button>
-        </div>
       </div>
     </el-scrollbar>
 
@@ -458,68 +435,17 @@ import http from "@/axios/index.js"
 import { hasPerm } from "@/perm/perm.js"
 import { backupProviders, backupConnectUrl, backupStatus, backupDisconnect, backupStart } from "@/request/backup.js"
 import { apikeyList as fetchApiKeyList, apikeyCreate, apikeyRevoke } from "@/request/apikey.js"
-import { listDevices, removeDevice, sendTestNotification } from "@/request/notification.js"
+import { listDevices, removeDevice } from "@/request/notification.js"
 import { listWebPushSubscriptions, removeWebPushSubscription, sendWebPushTest } from "@/request/web-push.js"
 import { useNotificationStore } from "@/store/notification.js"
-import { Capacitor } from "@capacitor/core"
 import dayjs from "dayjs"
 import PersonalForwarding from '@/components/personal-forwarding/index.vue'
-import { checkAndDownloadAndroidUpdate, isAndroidApp } from '@/utils/android-update-service.js'
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
 const settingStore = useSettingStore()
 const mobileNavigation = useMobileNavigationStore()
 const userStore = useUserStore()
-// Manual update check — every user can reach their own personal settings
-// regardless of role, unlike sys-setting (admin-only), so this is where a
-// non-admin actually has a way to trigger one. Not shown on web: there's
-// nothing to "update" there, a page refresh always serves the latest
-// deployed build.
-//
-// Desktop: fires the IPC check; the real check/download/install flow
-// lives in layout/index.vue, which already listens for every update-*
-// event for the app's whole lifetime, so the result (found → the
-// persistent update bar, not found/error → a toast) surfaces from those
-// existing global listeners regardless of which page is open here.
-//
-// Android: no silent auto-download-and-install exists (or is possible)
-// like desktop's — checkAndDownloadAndroidUpdate() hits GitHub's releases
-// API directly and opens the browser to the APK download when a newer
-// version exists, same as the automatic 8-second-after-launch check in
-// layout/index.vue already does; `force: true` here additionally
-// re-opens that download even if the automatic check already tried it
-// once for this version, since the user explicitly asked again.
-const hasElectronUpdater = !!window.electronAPI?.checkForUpdates
-const isAndroid = isAndroidApp()
-const showUpdateCheck = hasElectronUpdater || isAndroid
-const checkingUpdate = ref(false)
-
-async function checkForUpdatesManually() {
-  if (checkingUpdate.value) return
-  checkingUpdate.value = true
-
-  if (hasElectronUpdater) {
-    window.electronAPI.checkForUpdates()
-    setTimeout(() => { checkingUpdate.value = false }, 3000)
-    return
-  }
-
-  try {
-    const result = await checkAndDownloadAndroidUpdate(true)
-    if (result?.status === 'current') {
-      ElMessage({ message: t('updateUpToDate'), type: 'success', plain: true })
-    } else if (result?.status === 'download-started' || result?.status === 'already-started') {
-      ElMessage({ message: t('updateDownloadStarted', { version: result.remoteVersion }), type: 'success', plain: true })
-    } else if (result?.status === 'missing-apk') {
-      ElMessage({ message: t('updateCheckFailed'), type: 'error', plain: true })
-    }
-  } catch (error) {
-    ElMessage({ message: `${t('updateCheckFailed')}: ${error.message}`, type: 'error', plain: true })
-  } finally {
-    checkingUpdate.value = false
-  }
-}
 const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
@@ -545,8 +471,6 @@ const webPushSubscriptions = ref([])   // standards Web Push subscriptions (/web
 const notifDevicesLoaded = ref(false)
 const notifTestSending = ref(false)
 const notifReconnecting = ref(false)
-const isElectronPlatform = !!window.electronAPI?.sendNotification
-const isAndroidPlatform = !isElectronPlatform && Capacitor?.isNativePlatform?.() === true && Capacitor.getPlatform?.() === 'android'
 // Split from a single pushRegisterError so the Settings UI can show both the
 // failure stage AND the safe error identifier (e.name/WEB_PUSH_NOT_CONFIGURED
 // — never e.message, see web-push.js#errorId) — stage alone ("subscribe")
@@ -557,7 +481,6 @@ const pushRegisterErrorCode = ref('')
 const pushRepairNeeded = ref(false)
 
 const pushConnected = computed(() => webPushSubscriptions.value.some(d => d.enabled))
-const androidPushConnected = computed(() => notifDevices.value.some(d => d.platform === 'android' && d.enabled))
 
 // permission granted, subscription list has actually loaded (not just its
 // initial empty [] before the first fetch resolves), and it came back with
@@ -566,8 +489,6 @@ const androidPushConnected = computed(() => notifDevices.value.some(d => d.platf
 // notifDevicesLoaded on success, so a network error leaves this false rather
 // than showing a misleading "disconnected" state).
 const pushGrantedButDisconnected = computed(() =>
-  !isElectronPlatform &&
-  !isAndroidPlatform &&
   notifPermission.value === 'granted' &&
   notifDevicesLoaded.value &&
   webPushSubscriptions.value.length === 0
@@ -667,11 +588,8 @@ function loadNotifDevices() {
 // already active, and the backend UPSERTs on endpoint), so calling it again
 // never creates a duplicate row.
 async function registerPushDevices({ forceRenew = false } = {}) {
-  const [{ initNativePush }, { registerWebPush }] = await Promise.all([
-    import('@/utils/push-service.js'),
-    import('@/web-push.js'),
-  ])
-  const [, webResult] = await Promise.allSettled([initNativePush(), registerWebPush({ forceRenew })])
+  const { registerWebPush } = await import('@/web-push.js')
+  const [webResult] = await Promise.allSettled([registerWebPush({ forceRenew })])
   if (webResult.status === 'fulfilled') {
     const webStatus = webResult.value
     const failed = webStatus && !webStatus.ok
@@ -729,38 +647,16 @@ async function sendLocalTestNotif() {
   ElMessage({ message: shown ? t('notifTestSent') : t('notifTestFailed'), type: shown ? 'success' : 'error', plain: true })
 }
 
-// Electron has no server-side device registration — its "test" must exercise
-// the real native-notification IPC path directly instead of calling a server
-// test endpoint, which would always report "no registered device" for
-// Electron. Android keeps calling the existing FCM /notification/test.
-// Web/PWA calls the standards Web Push /web-push/test, scoped to its own
-// subscription pool so a web test click never fires an Android device's push.
+// Calls the standards Web Push /web-push/test, scoped to this user's web
+// subscriptions.
 async function sendTestNotif() {
   notifTestSending.value = true
   try {
-    if (isElectronPlatform) {
-      const result = await window.electronAPI.sendNotification('PSG Mail', t('notifTestSent'))
-      if (!result?.supported) {
-        ElMessage({ message: t('notifTestNativeUnsupported'), type: 'error', plain: true })
-      } else if (!result.shown) {
-        ElMessage({ message: t('notifTestNativeFailed'), type: 'error', plain: true })
-      } else {
-        ElMessage({ message: t('notifTestSent'), type: 'success', plain: true })
-      }
-      return
-    }
-
-    if (isAndroidPlatform) {
-      await sendTestNotification()
-    } else {
-      await sendWebPushTest()
-    }
+    await sendWebPushTest()
     ElMessage({ message: t('notifTestSent'), type: 'success', plain: true })
   } catch (e) {
     const reason = e?.message || ''
-    const isWebPush = !isElectronPlatform && !isAndroidPlatform
-
-    if (isWebPush && !['WEB_PUSH_NOT_CONFIGURED', 'WEB_PUSH_CONFIG_MISMATCH', 'WEB_PUSH_RATE_LIMITED'].includes(reason)) {
+    if (!['WEB_PUSH_NOT_CONFIGURED', 'WEB_PUSH_CONFIG_MISMATCH', 'WEB_PUSH_RATE_LIMITED'].includes(reason)) {
       pushRepairNeeded.value = true
     }
 
@@ -768,7 +664,7 @@ async function sendTestNotif() {
     // not that the server's VAPID configuration is wrong. Renew it in-place
     // so the next test uses a live subscription. The backend has already
     // disabled the dead row, so refresh the device list before showing status.
-    if (isWebPush && reason === 'WEB_PUSH_SUBSCRIPTION_EXPIRED') {
+    if (reason === 'WEB_PUSH_SUBSCRIPTION_EXPIRED') {
       try {
         const { renewWebPushSubscription } = await import('@/web-push.js')
         const repaired = await renewWebPushSubscription()
@@ -783,7 +679,7 @@ async function sendTestNotif() {
       } catch (repairError) {
         console.warn('[web-push] automatic subscription renewal failed', repairError)
       }
-    } else if (isWebPush) {
+    } else {
       // Keep the device list honest after a failed test. In particular, an
       // expired endpoint may have just been disabled by the Worker.
       await loadNotifDevices().catch(() => {})
@@ -1309,12 +1205,6 @@ function submitPwd() {
 }
 
 /* ── Panel ── */
-.settings-footer {
-  margin-top: 14px;
-  padding: 4px 4px 0;
-  text-align: center;
-}
-
 .settings-panel-header {
   padding: 0 0 20px;
   display: flex;

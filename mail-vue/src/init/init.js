@@ -102,12 +102,6 @@ function watchSystemTheme(uiStore) {
 // granted browser permission. The Settings page calls registerWebPush()
 // after the user explicitly clicks Enable/Reconnect.
 export function initPushNotifications() {
-    if (window.electronAPI?.sendNotification) return;
-
-    import('@/utils/push-service.js')
-        .then(({ initNativePush }) => initNativePush({ requestPermission: false }))
-        .catch(e => console.error('Native push init failed', e));
-
     import('@/web-push.js')
         .then(({ registerWebPush }) => registerWebPush({ requestPermission: false }))
         .catch(e => console.error('Web push init failed', e));

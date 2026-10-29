@@ -1,7 +1,7 @@
 <template>
   <!-- Mist top bar (desktop): brand · section nav · global search · compose,
        notifications and the account menu. Replaces the old sidebar. -->
-  <header class="topbar" :class="{ 'topbar--mac': isMac }">
+  <header class="topbar">
     <div class="tb-brand" @click="router.push({ name: 'email' })">
       <BrandLogo class="tb-mark" />
       <span class="tb-name">PSG Mail</span>
@@ -115,7 +115,6 @@ const userStore = useUserStore()
 const settingStore = useSettingStore()
 const notificationStore = useNotificationStore()
 
-const isMac = !!window.electronAPI?.isMac
 const canSend = computed(() => hasPerm('email:send'))
 const initial = computed(() => ((userStore.user?.name || userStore.user?.email || '?')[0] || '?').toUpperCase())
 
@@ -188,12 +187,6 @@ function clickLogout() {
   gap: 16px;
   height: 72px;
   padding: 0 4px;
-  -webkit-app-region: drag;
-
-  > * { -webkit-app-region: no-drag; }
-
-  /* macOS hiddenInset traffic lights sit top-left. */
-  &.topbar--mac { padding-left: 76px; }
 }
 
 .tb-brand {
