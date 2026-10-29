@@ -34,6 +34,7 @@ export function ensureColumn(c, table, column, ddl) {
 export const ensureDeleteTime = c => ensureColumn(c, 'email', 'delete_time', 'TEXT');
 export const ensureIsArchive = c => ensureColumn(c, 'email', 'is_archive', 'INTEGER NOT NULL DEFAULT 0');
 export const ensureReplyTo = c => ensureColumn(c, 'email', 'reply_to', "TEXT NOT NULL DEFAULT ''");
+export const ensureSenderEmail = c => ensureColumn(c, 'email', 'sender_email', "TEXT NOT NULL DEFAULT ''");
 export const ensureIsSpam = c => ensureColumn(c, 'email', 'is_spam', 'INTEGER NOT NULL DEFAULT 0');
 export const ensureUserAvatar = c => ensureColumn(c, 'user', 'avatar', "TEXT NOT NULL DEFAULT ''");
 export const ensureUserSignature = c => ensureColumn(c, 'user', 'signature', "TEXT NOT NULL DEFAULT ''");

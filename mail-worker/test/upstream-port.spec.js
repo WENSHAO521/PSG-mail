@@ -4,7 +4,7 @@
 import { env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { setupFullSchema, makeCtx } from './helpers/full-schema';
-import emailService from '../src/service/email-service';
+import emailService, { sameOrgDomain } from '../src/service/email-service';
 import mailRuleService from '../src/service/mail-rule-service';
 import loginService from '../src/service/login-service';
 import resendService from '../src/service/resend-service';
@@ -88,5 +88,23 @@ describe('registration keys', () => {
 		const c = makeCtx();
 		await expect(regKeyService.add(c, { code: 'NOROLE1', roleId: 987654, count: 1, expireTime: '2099-01-01' }, SENDER))
 			.rejects.toThrow();
+	});
+});
+
+describe('sent via', () => {
+	it('compares organisational domains', () => {
+		expect(sameOrgDomain('bounce@mail.example.com', 'news@example.com')).toBe(true);
+		expect(sameOrgDomain('a@x.co.uk', 'b@mail.x.co.uk')).toBe(true);
+		expect(sameOrgDomain('b@mcsv.net', 'news@example.com')).toBe(false);
+	});
+
+	it('stores the real sender only when its domain differs from From', async () => {
+		const row = await sentRow('via');
+		await emailService.saveSenderEmail(makeCtx(), row.emailId, { envelopeFrom: 'bounce@mail.psg.test', fromAddress: 'a@psg.test' });
+		let got = await env.db.prepare('SELECT sender_email FROM email WHERE email_id = ?').bind(row.emailId).first();
+		expect(got.sender_email).toBe('');
+		await emailService.saveSenderEmail(makeCtx(), row.emailId, { sender: { address: 'agent@other.test' }, envelopeFrom: 'x@psg.test', fromAddress: 'a@psg.test' });
+		got = await env.db.prepare('SELECT sender_email FROM email WHERE email_id = ?').bind(row.emailId).first();
+		expect(got.sender_email).toBe('agent@other.test');
 	});
 });

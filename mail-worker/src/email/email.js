@@ -150,6 +150,16 @@ export async function email(message, env, ctx) {
 			console.error('save reply-to failed', e);
 		}
 
+		try {
+			await emailService.saveSenderEmail({ env }, emailRow.emailId, {
+				sender: email.sender,
+				envelopeFrom: message.from,
+				fromAddress: email.from?.address,
+			});
+		} catch (e) {
+			console.error('save sender failed', e);
+		}
+
 		attachments.forEach(attachment => {
 			attachment.emailId = emailRow.emailId;
 			attachment.userId = emailRow.userId;

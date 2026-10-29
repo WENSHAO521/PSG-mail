@@ -146,6 +146,9 @@
             <div class="meta-sender-row">
               <span class="meta-sender-name">{{ email.name || email.sendEmail }}</span>
               <span class="meta-sender-email" v-if="email.name">{{ email.sendEmail }}</span>
+              <span class="meta-sender-via" v-if="sentViaDomain" :title="$t('sentVia', { email: email.senderEmail })">
+                {{ $t('sentViaTag', { domain: sentViaDomain }) }}
+              </span>
             </div>
             <div class="meta-field" v-if="formateReceive(email.recipient)">
               <span class="meta-field-label">{{ $t('sentTo') }}</span>
@@ -364,6 +367,11 @@ const metaAvatarImg = computed(() =>
   || storedAvatar(email.value?.sendEmail)
   || gravatarCandidate(email.value?.sendEmail)
 )
+// Set by the worker only when the actual sender's domain differs from From's.
+const sentViaDomain = computed(() => {
+  const addr = String(email.value?.senderEmail || '')
+  return addr.includes('@') ? addr.split('@').pop() : ''
+})
 const metaAvatarBg = computed(() => avatarBg(email.value?.sendEmail || email.value?.name || ''))
 
 const showPreview = ref(false)
@@ -1140,6 +1148,12 @@ function handleDelete() {
   padding-top: 2px;
 }
 
+.meta-sender-via {
+  font-size: 12px;
+  color: var(--psg-text-muted);
+  white-space: nowrap;
+  cursor: help;
+}
 .meta-sender-email {
   font-family: var(--psg-font-sans);
   font-size: 13px;

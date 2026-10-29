@@ -753,6 +753,8 @@ const en = {
     noRecipientTitle: 'No Recipient',
     noRecipientDesc: 'Emails can be received even without a registered email address',
     preview: 'Preview',
+    sentVia: 'Actually sent by {email}',
+    sentViaTag: 'via {domain}',
     attDownload: 'Download',
     attPreviewFailed: 'This attachment cannot be previewed. Download it to open.',
     attPreviewTruncated: 'Large file: showing the first 512 KB only.',

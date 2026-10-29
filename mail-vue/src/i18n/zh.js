@@ -753,6 +753,8 @@ const zh = {
     noRecipientTitle: '无人收件',
     noRecipientDesc: '即使没有注册的邮箱也能收到邮件',
     preview: '预览',
+    sentVia: '实际由 {email} 代发',
+    sentViaTag: '由 {domain} 代发',
     attDownload: '下载',
     attPreviewFailed: '无法预览这个附件，请下载后查看',
     attPreviewTruncated: '文件较大，只显示了前 512 KB',
