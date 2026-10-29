@@ -139,7 +139,9 @@
                data-after-interactive-callback="loadAfter"
                data-before-interactive-callback="loadBefore"
           >
-            <span style="font-size: 12px;color: var(--psg-danger)" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
+            <span style="font-size: 12px;color: var(--psg-danger)" v-if="botJsError">{{ $t('verifyModuleFailed') }}
+              <el-button link type="primary" size="small" :loading="turnstileRetrying" @click="retryTurnstile">{{ $t('verifyRetry') }}</el-button>
+            </span>
           </div>
           <el-button class="btn" style="margin: 0" type="primary" @click="submitRegister" :loading="registerLoading"
           >{{ $t('regBtn') }}
@@ -301,6 +303,7 @@
 </template>
 
 <script setup>
+import { loadTurnstile } from '@/utils/turnstile-script.js'
 import BrandLogo from "@/components/brand-logo/index.vue"
 import { avatarTint } from '@/utils/avatar.js'
 // Decorative sample rows for the sign-in brand card (not real mail).
@@ -463,6 +466,29 @@ const verifyShow = ref(false)
 let verifyToken = ''
 let turnstileId = null
 let botJsError = ref(false)
+const turnstileRetrying = ref(false)
+
+// The error message's retry: fetch the Turnstile script again if it never
+// loaded, then render a fresh widget, without reloading the page.
+async function retryTurnstile() {
+  turnstileRetrying.value = true
+  botJsError.value = false
+  try {
+    if (turnstileId && window.turnstile) {
+      try { window.turnstile.remove(turnstileId) } catch (e) { /* already gone */ }
+    }
+    turnstileId = null
+    const turnstile = await loadTurnstile({ force: !window.turnstile })
+    await nextTick()
+    turnstileId = turnstile.render('.register-turnstile')
+    verifyErrorCount = 0
+    startTurnstileWatchdog()
+  } catch (e) {
+    botJsError.value = true
+  } finally {
+    turnstileRetrying.value = false
+  }
+}
 let verifyErrorCount = 0
 // Cloudflare's hosted Turnstile script can fail internally (seen in the
 // wild as an uncaught "DOMParser is not defined" from within its own code)

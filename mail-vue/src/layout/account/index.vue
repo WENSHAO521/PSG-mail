@@ -132,7 +132,9 @@
               data-callback="onTurnstileSuccess"
               data-error-callback="onTurnstileError"
           >
-            <span style="font-size: 12px;color: var(--psg-danger)" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
+            <span style="font-size: 12px;color: var(--psg-danger)" v-if="botJsError">{{ $t('verifyModuleFailed') }}
+              <el-button link type="primary" size="small" :loading="turnstileRetrying" @click="retryTurnstile">{{ $t('verifyRetry') }}</el-button>
+            </span>
           </div>
         </el-tab-pane>
 
@@ -162,6 +164,7 @@
   </div>
 </template>
 <script setup>
+import { loadTurnstile } from '@/utils/turnstile-script.js'
 import {Icon} from "@iconify/vue";
 import {computed, nextTick, reactive, ref, watch} from "vue";
 import {
@@ -219,6 +222,27 @@ const scrollbarRef = ref({})
 let account = null
 let turnstileId = null
 const botJsError = ref(false)
+const turnstileRetrying = ref(false)
+
+// The error message's retry: fetch the Turnstile script again if it never
+// loaded, then render a fresh widget, without reloading the page.
+async function retryTurnstile() {
+  turnstileRetrying.value = true
+  botJsError.value = false
+  try {
+    if (turnstileId && window.turnstile) {
+      try { window.turnstile.remove(turnstileId) } catch (e) { /* already gone */ }
+    }
+    turnstileId = null
+    const turnstile = await loadTurnstile({ force: !window.turnstile })
+    await nextTick()
+    turnstileId = turnstile.render('.add-email-turnstile')
+  } catch (e) {
+    botJsError.value = true
+  } finally {
+    turnstileRetrying.value = false
+  }
+}
 let verifyToken = ''
 let verifyErrorCount = 0
 let first = true
