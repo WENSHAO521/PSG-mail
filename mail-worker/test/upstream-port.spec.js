@@ -108,3 +108,25 @@ describe('sent via', () => {
 		expect(got.sender_email).toBe('agent@other.test');
 	});
 });
+
+describe('send separately', () => {
+	it('sends one mail per To recipient, keeps going past a failure and refuses Cc', async () => {
+		await expect(emailService.send(makeCtx(), { separate: true, receiveEmail: ['x@psg.test', 'y@psg.test'], cc: ['z@psg.test'] }, SENDER))
+			.rejects.toThrow();
+
+		const real = emailService.send;
+		emailService.send = async function (c, params, userId) {
+			if (params.separate) return real.call(this, c, params, userId);
+			if (params.receiveEmail[0] === 'bad@psg.test') throw new Error('nope');
+			return [{ to: params.receiveEmail[0] }];
+		};
+		try {
+			const out = await emailService.send(makeCtx(), { separate: true, receiveEmail: ['x@psg.test', 'bad@psg.test', 'y@psg.test'] }, SENDER);
+			expect(out.map(o => o.to)).toEqual(['x@psg.test', 'y@psg.test']);
+			expect(out[0].separateFailed).toBe(1);
+			await expect(emailService.send(makeCtx(), { separate: true, receiveEmail: ['bad@psg.test', 'bad@psg.test'] }, SENDER)).rejects.toThrow('nope');
+		} finally {
+			emailService.send = real;
+		}
+	});
+});

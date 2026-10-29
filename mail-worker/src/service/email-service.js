@@ -36,6 +36,8 @@ import { afterReceive } from '../email/after-receive';
 // Compares the last two labels of each address's domain (three under a
 // two-part suffix like co.uk / com.cn), which is close enough to tell
 // bounce.example.com from example.com apart from a third party.
+const SEPARATE_SEND_LIMIT = 50;
+
 const SECOND_LEVEL = new Set(['co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'or', 'ne', 'go']);
 export function sameOrgDomain(a, b) {
 	const org = addr => {
@@ -806,6 +808,33 @@ const emailService = {
 
 	//邮件发送
 	async send(c, params, userId) {
+
+		// Send separately: one mail per To recipient, so nobody sees the
+		// others. Each copy goes through the normal path (limits, providers,
+		// Sent folder). A failed copy does not stop the rest; if every copy
+		// fails the first error is thrown.
+		if (params.separate && Array.isArray(params.receiveEmail) && params.receiveEmail.length > 1) {
+			if (params.receiveEmail.length > SEPARATE_SEND_LIMIT) {
+				throw new BizError(t('separateSendLimit', { count: SEPARATE_SEND_LIMIT }));
+			}
+			if (params.cc?.length || params.bcc?.length) {
+				throw new BizError(t('separateNoCc'));
+			}
+			const sent = [];
+			let firstError = null;
+			let failed = 0;
+			for (const address of [...new Set(params.receiveEmail)]) {
+				try {
+					sent.push(...await this.send(c, { ...params, separate: false, receiveEmail: [address] }, userId));
+				} catch (e) {
+					firstError = firstError || e;
+					failed++;
+				}
+			}
+			if (!sent.length) throw firstError;
+			if (failed) sent[0].separateFailed = failed;
+			return sent;
+		}
 
 		let {
 			accountId, //发送账号id
