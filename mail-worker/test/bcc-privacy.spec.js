@@ -55,19 +55,28 @@ describe('bcc-only mail', () => {
 			.rejects.toThrow();
 	});
 
-	it('addresses the provider To to the sender and keeps the Bcc out of To', async () => {
+	it('sends each Bcc-only recipient their own copy, never To the sender', async () => {
 		const real = await settingService.query(makeCtx());
 		const setting = vi.spyOn(settingService, 'query').mockResolvedValue({ ...real, send: 0, domainList: ['@psg.test'], resendTokens: { 'psg.test': 're_test' } });
 		const role = vi.spyOn(roleService, 'selectById').mockResolvedValue({ sendType: 'count', sendCount: 0, availDomain: '' });
-		// Stop right after the provider call: only its arguments matter here.
+		// Fail every provider call: only the arguments matter here.
 		const resend = vi.spyOn(emailService, 'sendByResend').mockResolvedValue({ error: { message: 'stop' } });
 		try {
 			await expect(emailService.send(makeCtx(), {
-				accountId: SENDER_ACC, receiveEmail: [], bcc: ['someone@outside.test'], subject: 'Bcc only', content: '<p>hi</p>',
+				accountId: SENDER_ACC, receiveEmail: [], bcc: ['one@outside.test', 'two@outside.test'], subject: 'Bcc only', content: '<p>hi</p>',
 			}, SENDER)).rejects.toThrow('stop');
-			const params = resend.mock.calls[0][1];
-			expect(params.receiveEmail).toEqual(['boss@psg.test']);
-			expect(params.bcc).toEqual(['someone@outside.test']);
+			const calls = resend.mock.calls.map(call => call[1]);
+			expect(calls.map(p => p.receiveEmail)).toEqual([['one@outside.test'], ['two@outside.test']]);
+			for (const p of calls) expect(p.bcc).toEqual([]);
+
+			resend.mockClear();
+			await expect(emailService.send(makeCtx(), {
+				accountId: SENDER_ACC, receiveEmail: [], cc: ['c@outside.test'], bcc: ['b@outside.test'], subject: 'Cc and Bcc', content: '<p>hi</p>',
+			}, SENDER)).rejects.toThrow('stop');
+			const [params] = resend.mock.calls.map(call => call[1]);
+			expect(params.receiveEmail).toEqual(['c@outside.test']);
+			expect(params.cc).toEqual([]);
+			expect(params.bcc).toEqual(['b@outside.test']);
 		} finally {
 			setting.mockRestore();
 			role.mockRestore();

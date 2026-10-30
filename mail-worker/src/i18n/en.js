@@ -30,6 +30,7 @@ const en = {
 	senderAccountNotExist: 'Sender email does not exist',
 	noResendToken: 'Resend API token not configured',
 	noSendProvider: 'Email sending service is not configured',
+	bccOnlyLimit: 'A Bcc-only mail supports up to {{count}} Bcc recipients',
 	separateSendLimit: 'Send separately supports up to {{count}} recipients',
 	separateNoCc: 'Cc and Bcc cannot be used when sending separately',
 	sendEmailNotCurUser: 'Sender email does not belong to current user',
