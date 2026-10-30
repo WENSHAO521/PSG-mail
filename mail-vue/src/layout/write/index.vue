@@ -87,7 +87,7 @@
         <!-- To -->
         <div class="field-row">
           <span class="field-label">{{ $t('recipient') }}</span>
-          <el-input-tag class="field-tag" @add-tag="addTagChange" tag-type="primary"
+          <el-input-tag ref="toTagRef" class="field-tag" @add-tag="addTagChange" tag-type="primary"
                         @input="inputChange" size="default" v-model="form.receiveEmail">
             <template #prefix>
               <el-select ref="mySelect" class="write-select" popper-class="write-select"
@@ -118,14 +118,32 @@
         <div class="field-row" v-show="showCc">
           <span class="field-label">{{ $t('cc') }}</span>
           <el-input-tag ref="ccTagRef" class="field-tag" v-model="form.cc" tag-type="primary"
-                        @add-tag="addCcTag" @input="v => ccPending = v" size="default"/>
+                        @add-tag="addCcTag" @input="v => fieldInput('cc', v)" size="default">
+            <template #prefix>
+              <el-select ref="ccSelect" class="write-select" popper-class="write-select"
+                         :show-arrow="false" :no-match-text="' '" :no-data-text="' '"
+                         @visible-change="v => fieldSuggest.cc.open = v" @change="v => pickSuggestion('cc', v)">
+                <el-option v-for="item in fieldSuggest.cc.list" :key="item.email"
+                           :label="item.label" :value="item.email" style="color:var(--psg-text-muted)"/>
+              </el-select>
+            </template>
+          </el-input-tag>
         </div>
 
         <!-- Bcc -->
         <div class="field-row" v-show="showBcc">
           <span class="field-label">{{ $t('bcc') }}</span>
           <el-input-tag ref="bccTagRef" class="field-tag" v-model="form.bcc" tag-type="primary"
-                        @add-tag="addBccTag" @input="v => bccPending = v" size="default"/>
+                        @add-tag="addBccTag" @input="v => fieldInput('bcc', v)" size="default">
+            <template #prefix>
+              <el-select ref="bccSelect" class="write-select" popper-class="write-select"
+                         :show-arrow="false" :no-match-text="' '" :no-data-text="' '"
+                         @visible-change="v => fieldSuggest.bcc.open = v" @change="v => pickSuggestion('bcc', v)">
+                <el-option v-for="item in fieldSuggest.bcc.list" :key="item.email"
+                           :label="item.label" :value="item.email" style="color:var(--psg-text-muted)"/>
+              </el-select>
+            </template>
+          </el-input-tag>
         </div>
 
         <!-- Subject -->
@@ -138,7 +156,7 @@
         <!-- Editor -->
         <div class="editor-wrap">
           <tinyEditor :def-value="defValue" ref="editor" radius="var(--compose-radius)"
-                      @change="change" @focus="focusChange" />
+                      @change="change" @focus="focusChange" @submit="sendEmail" />
         </div>
 
         <!-- Toolbar -->
@@ -798,26 +816,57 @@ const contactTarget = ref('to')
 // Who the mail being replied to came from, for the {{recipient_name}} variable.
 const replySender = ref({ email: '', name: '' })
 
-// Track unconfirmed text in CC / BCC input-tag fields
+// Track unconfirmed text in the To / CC / BCC input-tag fields
+const toPending  = ref('')
 const ccPending  = ref('')
 const bccPending = ref('')
+// Typed entries that are not an address; send is held until they are fixed.
+const invalidAddresses = ref([])
+
+// Splits pasted or typed text into addresses, as Gmail does: commas,
+// semicolons or spaces between them, and "Name <a@b.com>" taken as a@b.com.
+function parseAddressInput(text) {
+  const valid = [], invalid = []
+  for (const segment of String(text || '').split(/[,，;；]/)) {
+    const bracketed = [...segment.matchAll(/<([^>]*)>/g)].map(m => m[1])
+    const parts = bracketed.length ? bracketed : segment.split(/\s+/)
+    for (const part of parts) {
+      const address = part.trim().replace(/^mailto:/i, '')
+      if (!address) continue
+      if (isEmail(address)) valid.push(address)
+      else invalid.push(address)
+    }
+  }
+  return { valid, invalid }
+}
+
+// Adds what was typed to a field; returns whether anything was added.
+function addAddresses(list, text, { warn = true } = {}) {
+  const { valid, invalid } = parseAddressInput(text)
+  const taken = new Set(list.map(e => e.toLowerCase()))
+  let added = false
+  for (const address of valid) {
+    if (taken.has(address.toLowerCase())) continue
+    taken.add(address.toLowerCase())
+    list.push(address)
+    added = true
+  }
+  if (warn && invalid.length) {
+    ElMessage({ message: t('invalidAddressMsg', { list: invalid.join(', ') }), type: 'warning', plain: true })
+  }
+  return { added, invalid }
+}
 
 // Commit any pending (unconfirmed) text before sending
 function commitPendingInputs() {
-  if (ccPending.value.trim()) {
-    const emails = ccPending.value.split(/[,，\s]+/).map(e => e.trim()).filter(e => e)
-    emails.forEach(e => {
-      if (isEmail(e) && !form.cc.includes(e)) form.cc.push(e)
-    })
-    ccPending.value = ''
+  const invalid = []
+  for (const [pending, list] of [[toPending, form.receiveEmail], [ccPending, form.cc], [bccPending, form.bcc]]) {
+    if (!pending.value.trim()) continue
+    invalid.push(...parseAddressInput(pending.value).invalid)
+    addAddresses(list, pending.value, { warn: false })
+    pending.value = ''
   }
-  if (bccPending.value.trim()) {
-    const emails = bccPending.value.split(/[,，\s]+/).map(e => e.trim()).filter(e => e)
-    emails.forEach(e => {
-      if (isEmail(e) && !form.bcc.includes(e)) form.bcc.push(e)
-    })
-    bccPending.value = ''
-  }
+  invalidAddresses.value = invalid
 }
 
 const senderInitial = computed(() => {
@@ -975,6 +1024,45 @@ function clearSelectContact() {
 
 function selectChange(value) {
   form.receiveEmail.push(value)
+  toPending.value = ''
+  clearTyped(toTagRef)
+}
+
+const toTagRef = ref()
+const ccTagRef = ref()
+const bccTagRef = ref()
+
+// After a suggestion is picked, drop the partial text typed to find it.
+function clearTyped(tagRef) {
+  const input = tagRef.value?.$el?.querySelector('input.el-input-tag__input')
+  if (!input || !input.value) return
+  input.value = ''
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+// Cc / Bcc get the same suggestions as To.
+const ccSelect = ref()
+const bccSelect = ref()
+const fieldSelect = { cc: ccSelect, bcc: bccSelect }
+const fieldSuggest = reactive({ cc: { list: [], open: false }, bcc: { list: [], open: false } })
+const fieldPending = { cc: ccPending, bcc: bccPending }
+
+function fieldInput(field, value) {
+  fieldPending[field].value = value || ''
+  loadAutoContacts()
+  const state = fieldSuggest[field]
+  state.list = recipientSuggestions(value, form[field])
+  if (state.open !== state.list.length > 0) fieldSelect[field].value?.toggleMenu()
+}
+
+function closeFieldSuggest(field) {
+  if (fieldSuggest[field].open) fieldSelect[field].value?.toggleMenu()
+}
+
+function pickSuggestion(field, value) {
+  if (!form[field].some(e => e.toLowerCase() === value.toLowerCase())) form[field].push(value)
+  fieldPending[field].value = ''
+  clearTyped(field === 'cc' ? ccTagRef : bccTagRef)
 }
 
 function selectStatusChange(status) {
@@ -987,10 +1075,10 @@ const openSelect = () => {
 
 // Suggestions while typing a recipient: mail-history contacts (frequent
 // first, matched on address or name) plus locally remembered recipients.
-function recipientSuggestions(value) {
+function recipientSuggestions(value, exclude = form.receiveEmail) {
   const q = (value || '').trim().toLowerCase()
   if (!q) return []
-  const taken = new Set(form.receiveEmail.map(e => e.toLowerCase()))
+  const taken = new Set(exclude.map(e => e.toLowerCase()))
   const out = []
   const push = (email, label) => {
     if (taken.has(email.toLowerCase())) return
@@ -1008,6 +1096,7 @@ function recipientSuggestions(value) {
 
 function inputChange(value) {
 
+  toPending.value = value || ''
   loadAutoContacts()
   selectRecipientList.value = recipientSuggestions(value)
 
@@ -1023,20 +1112,11 @@ function inputChange(value) {
 
 function addTagChange(val) {
 
-  const emails = Array.from(new Set(
-      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
-  ));
-
   form.receiveEmail.splice(form.receiveEmail.length - 1, 1)
+  toPending.value = ''
 
-  let has = false
-  emails.forEach(email => {
-    if (isEmail(email) && !form.receiveEmail.includes(email)) {
-      form.receiveEmail.push(email)
-      has = true
-    }
-  })
-  if (selectStatus && has) openSelect()
+  const { added } = addAddresses(form.receiveEmail, val)
+  if (selectStatus && added) openSelect()
 }
 
 function clearContent() {
@@ -1094,18 +1174,13 @@ function validateBeforeSend() {
     return false
   }
 
-  if (!form.subject) {
-    ElMessage({ message: t('emptySubjectMsg'), type: 'error', plain: true })
+  if (invalidAddresses.value.length) {
+    ElMessage({ message: t('invalidAddressMsg', { list: invalidAddresses.value.join(', ') }), type: 'error', plain: true })
     return false
   }
 
   if (!form.content) {
     try { form.content = editor.value.getContent() } catch {}
-  }
-
-  if (!form.content) {
-    ElMessage({ message: t('emptyContentMsg'), type: 'error', plain: true })
-    return false
   }
 
   if (form.separate && form.receiveEmail.length > 1 && (form.cc.length > 0 || form.bcc.length > 0)) {
@@ -1127,7 +1202,7 @@ async function sendScheduled() {
     return
   }
   if (!validateBeforeSend()) return
-  if (!(await confirmUnfilledVariables())) return
+  if (!(await confirmBeforeSend())) return
 
   if (sending) {
     ElMessage({ message: t('sendingErrorMsg'), type: 'error', plain: true })
@@ -1249,7 +1324,7 @@ async function sendWithUndo() {
 async function sendEmail() {
 
   if (!validateBeforeSend()) return
-  if (!(await confirmUnfilledVariables())) return
+  if (!(await confirmBeforeSend())) return
 
   if (sending) {
     ElMessage({
@@ -1346,8 +1421,10 @@ function resetForm() {
   form.receiveEmail = []
   form.cc = []
   form.bcc = []
+  toPending.value = ''
   ccPending.value = ''
   bccPending.value = ''
+  invalidAddresses.value = []
   form.subject = ''
   form.content = ''
   form.separate = false
@@ -1368,19 +1445,17 @@ function resetForm() {
 }
 
 function addCcTag(val) {
-  const emails = val.split(/[,，]/).map(e => e.trim()).filter(e => e)
   form.cc.splice(form.cc.length - 1, 1)
-  emails.forEach(email => {
-    if (isEmail(email) && !form.cc.includes(email)) form.cc.push(email)
-  })
+  ccPending.value = ''
+  closeFieldSuggest('cc')
+  addAddresses(form.cc, val)
 }
 
 function addBccTag(val) {
-  const emails = val.split(/[,，]/).map(e => e.trim()).filter(e => e)
   form.bcc.splice(form.bcc.length - 1, 1)
-  emails.forEach(email => {
-    if (isEmail(email) && !form.bcc.includes(email)) form.bcc.push(email)
-  })
+  bccPending.value = ''
+  closeFieldSuggest('bcc')
+  addAddresses(form.bcc, val)
 }
 
 function change(content, text) {
@@ -1625,6 +1700,42 @@ async function templateVariableValues() {
 }
 
 // Template variables nobody filled in would go out as literal {{...}}.
+// Gmail-style checks that warn rather than block: no subject, nothing
+// written at all, or the text mentions an attachment and none is added.
+async function confirmBeforeSend() {
+  const ask = async (msg) => {
+    try {
+      await ElMessageBox.confirm(msg, t('sendAnywayTitle'), {
+        confirmButtonText: t('sendAnyway'), cancelButtonText: t('cancel'), type: 'warning',
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+  const ownText = writtenText(form.content)
+  if (!form.subject.trim() && !ownText.trim() && !form.attachments.length) {
+    if (!(await ask(t('emptySubjectBodyConfirm')))) return false
+  } else if (!form.subject.trim()) {
+    if (!(await ask(t('emptySubjectConfirm')))) return false
+  }
+  if (!form.attachments.length && ATTACHMENT_WORDS.test(form.subject + ' ' + ownText)) {
+    if (!(await ask(t('missingAttachmentConfirm')))) return false
+  }
+  return confirmUnfilledVariables()
+}
+
+const ATTACHMENT_WORDS = /附件|附檔|附上|附带|附帶|随信|隨信|attach(ed|ment|ing)?\b|enclosed/i
+
+// The text the user wrote, without the quoted mail of a reply or forward.
+function writtenText(html) {
+  const doc = new DOMParser().parseFromString(html || '', 'text/html')
+  doc.querySelectorAll('blockquote').forEach(el => el.remove())
+  const text = doc.body.textContent || ''
+  const cut = text.indexOf('---------- ' + t('forwardedMessage'))
+  return cut >= 0 ? text.slice(0, cut) : text
+}
+
 async function confirmUnfilledVariables() {
   const left = unfilledVariables(form.subject + ' ' + form.content)
   if (!left.length) return true
@@ -1813,6 +1924,9 @@ async function openScheduled(payload) {
 const handleKeyDown = (event) => {
   if (event.key === 'Escape') {
     close()
+  } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && show.value) {
+    event.preventDefault()
+    sendEmail()
   }
 };
 

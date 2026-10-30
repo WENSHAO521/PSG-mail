@@ -1067,7 +1067,9 @@ const emailService = {
 				cc,
 				bcc,
 				subject,
-				text,
+				// Providers refuse a mail with neither html nor text; an empty
+				// mail (allowed, as in Gmail) goes out with a blank text part.
+				text: text || (html ? text : ' '),
 				html,
 				attachments: [...imageDataList, ...attachments],
 				sendType,
