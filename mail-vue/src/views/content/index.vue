@@ -79,6 +79,9 @@
           </button>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item v-if="canSnooze" @click="snoozeShow = true">
+                <Icon icon="psg:clock" width="16" height="16" /> {{ $t('snoozeAction') }}
+              </el-dropdown-item>
               <el-dropdown-item @click="handlePrint">
                 <Icon icon="psg:printer" width="16" height="16" /> {{ $t('printEmail') }}
               </el-dropdown-item>
@@ -114,6 +117,9 @@
             </el-dropdown-item>
             <el-dropdown-item @click="runAiAction('reply')" v-if="emailStore.contentData.showReply">
               <Icon icon="psg:reply" width="16" height="16" /> {{ $t('aiReplySuggestion') }}
+            </el-dropdown-item>
+            <el-dropdown-item v-if="canSnooze" @click="snoozeShow = true">
+              <Icon icon="psg:clock" width="16" height="16" /> {{ $t('snoozeAction') }}
             </el-dropdown-item>
             <el-dropdown-item divided @click="handleDelete" v-perm="'email:delete'">
               <Icon icon="psg:trash" width="16" height="16" /> {{ $t('delete') }}
@@ -311,6 +317,8 @@
     </nav>
   </article>
 
+  <SnoozeDialog v-model="snoozeShow" @confirm="handleSnooze" />
+
   <el-image-viewer v-if="showPreview" :url-list="srcList" show-progress @close="showPreview = false" />
   <AttPreview ref="attPreviewRef" />
 </template>
@@ -320,7 +328,9 @@ import { deleteIsUndoable, trashUndoToast } from '@/utils/trash-undo.js'
 import ShadowHtml from '@/components/shadow-html/index.vue'
 import { reactive, ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { emailDelete, emailRead, emailUnread, emailSpamVerdict, emailUnmarkSpam, emailThread } from '@/request/email.js'
+import { emailDelete, emailRead, emailUnread, emailSpamVerdict, emailUnmarkSpam, emailThread, emailSnooze } from '@/request/email.js'
+import SnoozeDialog from '@/components/snooze-dialog/index.vue'
+import dayjs from 'dayjs'
 import { translateSegments } from '@/request/translate.js'
 import { trackerAllow } from '@/request/tracker.js'
 import { aiEmailSummary, aiReplySuggestion } from '@/request/ai-mail.js'
@@ -844,6 +854,24 @@ function handleDownloadEml() {
   const e = email.value
   if (!e) return
   downloadEml(e.emailId).catch(() => ElMessage({ message: t('exportEmlFail'), type: 'error', plain: true }))
+}
+
+// Snooze: received mail that is still in a folder (not trash, not the
+// admin's all-mail view) can be hidden until a chosen time.
+const snoozeShow = ref(false)
+const canSnooze = computed(() => {
+  const e = email.value
+  return !!e && e.type === 0 && !e.isDel && emailStore.contentData.delType === 'logic'
+})
+
+function handleSnooze(until) {
+  const e = email.value
+  if (!e) return
+  emailSnooze([e.emailId], until).then(() => {
+    ElMessage({ message: t('snoozeDone', { time: dayjs(until).format('MM-DD HH:mm') }), type: 'success', plain: true })
+    emailStore.deleteIds = [e.emailId]
+    emailStore.contentData.email = null
+  }).catch(() => {})
 }
 
 function handleDelete() {

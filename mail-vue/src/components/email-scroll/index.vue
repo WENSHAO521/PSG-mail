@@ -210,6 +210,9 @@
                   </span>
                 </div>
                 <div class="mrow-line mrow-line--meta">
+                  <span v-if="item.snoozeUntil" class="snooze-tag">
+                    <Icon icon="psg:clock" width="12" height="12" /> {{ t('snoozeUntilShort', { time: dayjs(item.snoozeUntil).format('MM-DD HH:mm') }) }}
+                  </span>
                   <span v-if="mailboxChip(item)" class="mailbox-chip" :style="{ '--chip': mailboxColor(mailboxChip(item)) }"
                         :title="mailboxChip(item)">{{ mailboxChip(item).split('@')[0] }}@</span>
                   <span v-if="showUserInfo" class="mrow-preview">{{ item.userEmail }} → {{ item.type === 0 ? item.toEmail : item.sendEmail }}</span>
@@ -304,8 +307,8 @@
           <el-dropdown-item v-if="props.type === 'email'" @click="archiveAction(rightClickEmail.emailId)">
             <div class="ctx-item"><Icon icon="psg:archive" width="18" height="18" /><span>{{ t('archive') }}</span></div>
           </el-dropdown-item>
-          <el-dropdown-item v-if="props.type === 'archive'" @click="unarchiveAction(rightClickEmail.emailId)">
-            <div class="ctx-item"><Icon icon="solar:inbox-out-linear" width="18" height="18" /><span>{{ t('unarchive') }}</span></div>
+          <el-dropdown-item v-if="['archive','snoozed'].includes(props.type)" @click="unarchiveAction(rightClickEmail.emailId)">
+            <div class="ctx-item"><Icon icon="solar:inbox-out-linear" width="18" height="18" /><span>{{ props.type === 'snoozed' ? t('unsnooze') : t('unarchive') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'trash'" @click="restoreAction(rightClickEmail.emailId)">
             <div class="ctx-item"><Icon icon="solar:inbox-out-linear" width="18" height="18" /><span>{{ t('restore') }}</span></div>
@@ -339,6 +342,7 @@ import {sleep} from "@/utils/time-utils.js"
 import { avatarLetter, avatarTint, mailboxColor, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import {fromNow} from "@/utils/day.js";
+import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
 import { UseVirtualList } from '@vueuse/components'
@@ -1760,6 +1764,20 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     white-space: nowrap;
     font-size: 13px;
     color: var(--psg-text-muted);
+  }
+
+  .snooze-tag {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    padding: 0 5px;
+    border-radius: 4px;
+    color: var(--psg-warning, #b26a00);
+    background: color-mix(in srgb, var(--psg-warning, #b26a00) 12%, transparent);
   }
 
   .mailbox-chip {

@@ -103,6 +103,9 @@ const en = {
 	backupTokenRefreshFailed: 'Authorization expired, please reconnect',
 	backupNotConnected: 'Backup provider not connected or authorization expired, please reconnect',
 	backupFolderFailed: 'Could not create the backup folder in your drive, please reconnect and try again',
+	snoozeTimeInvalid: 'The reminder time must be in the future',
+	importEmlInvalid: 'Not a valid .eml email file',
+	importEmlTooLarge: 'Each email file must be 20 MB or smaller',
 	perms: {
 		"邮件": "Emails",
 		"邮件发送": "Send Email",

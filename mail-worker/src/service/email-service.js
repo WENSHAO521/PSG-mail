@@ -341,6 +341,8 @@ const emailService = {
 		const placeholders = emailIdList.map(() => '?').join(',');
 		const cond = sharedIds.length > 0 ? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))` : 'user_id = ?';
 		try { await c.env.db.prepare(`UPDATE email SET is_archive = 0 WHERE email_id IN (${placeholders}) AND ${cond}`).bind(...emailIdList, userId, ...sharedIds).run(); } catch {}
+		// Moving a snoozed mail back by hand ends the snooze.
+		try { await c.env.db.prepare(`DELETE FROM psg_snooze WHERE email_id IN (${placeholders}) AND user_id = ?`).bind(...emailIdList, userId).run(); } catch {}
 	},
 
 	async archiveList(c, params, userId) {
@@ -371,6 +373,87 @@ const emailService = {
 				[...accessBinds, ...(allReceive ? [] : [accountId])]) : null;
 			return { list, total, latestEmail: list[0] || { emailId: 0, accountId, userId } };
 		} catch { return { list: [], total: 0, latestEmail: { emailId: 0, accountId, userId } }; }
+	},
+
+	// Snooze: archive now, back to the inbox (unread) at `until` (epoch ms).
+	// Table psg_snooze, migrations/0028_snooze.sql.
+	async snooze(c, params, userId) {
+		const emailIdList = String(params.emailIds).split(',').map(Number).filter(Boolean);
+		const until = Number(params.until);
+		if (!emailIdList.length) return;
+		if (!Number.isFinite(until) || until <= Date.now()) throw new BizError(t('snoozeTimeInvalid'), 400);
+		const sharedIds = await getSharedAccountIds(c, userId);
+		const placeholders = emailIdList.map(() => '?').join(',');
+		const cond = sharedIds.length > 0 ? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))` : 'user_id = ?';
+		const { results } = await c.env.db.prepare(
+			`SELECT email_id FROM email WHERE email_id IN (${placeholders}) AND is_del = 0 AND ${cond}`
+		).bind(...emailIdList, userId, ...sharedIds).all();
+		const ids = results.map(r => r.email_id);
+		if (!ids.length) return;
+		await ensureIsArchive(c);
+		await c.env.db.batch([
+			...ids.map(id => c.env.db.prepare('INSERT OR REPLACE INTO psg_snooze (email_id, user_id, until) VALUES (?, ?, ?)').bind(id, userId, until)),
+			c.env.db.prepare(`UPDATE email SET is_archive = 1 WHERE email_id IN (${ids.map(() => '?').join(',')})`).bind(...ids),
+		]);
+	},
+
+	async unsnooze(c, params, userId) {
+		const emailIdList = String(params.emailIds).split(',').map(Number).filter(Boolean);
+		if (!emailIdList.length) return;
+		const placeholders = emailIdList.map(() => '?').join(',');
+		const { results } = await c.env.db.prepare(
+			`SELECT email_id FROM psg_snooze WHERE email_id IN (${placeholders}) AND user_id = ?`
+		).bind(...emailIdList, userId).all();
+		const ids = results.map(r => r.email_id);
+		if (!ids.length) return;
+		const idList = ids.map(() => '?').join(',');
+		await c.env.db.batch([
+			c.env.db.prepare(`DELETE FROM psg_snooze WHERE email_id IN (${idList})`).bind(...ids),
+			c.env.db.prepare(`UPDATE email SET is_archive = 0 WHERE email_id IN (${idList})`).bind(...ids),
+		]);
+	},
+
+	async snoozeList(c, params, userId) {
+		let { emailId, size } = params;
+		emailId = Number(emailId) || 9999999999;
+		size = Math.min(Number(size) || 20, 50);
+		const isFirstPage = emailId === 9999999999;
+		try {
+			const { results } = await c.env.db.prepare(`
+				SELECT e.*, s.star_id, z.until AS snooze_until FROM psg_snooze z
+				JOIN email e ON e.email_id = z.email_id
+				LEFT JOIN star s ON s.email_id = e.email_id AND s.user_id = ?
+				WHERE z.user_id = ? AND e.is_del = 0 AND e.email_id < ?
+				ORDER BY e.email_id DESC LIMIT ?
+			`).bind(userId, userId, emailId, size).all();
+			const list = results.map(row => ({ ...mapRawEmailRow(row), snoozeUntil: row.snooze_until }));
+			await this.emailAddAtt(c, list);
+			await labelService.attachLabels(c, list);
+			const total = isFirstPage
+				? (await c.env.db.prepare('SELECT COUNT(*) AS n FROM psg_snooze z JOIN email e ON e.email_id = z.email_id WHERE z.user_id = ? AND e.is_del = 0').bind(userId).first())?.n || 0
+				: null;
+			return { list, total, latestEmail: list[0] || { emailId: 0, userId } };
+		} catch {
+			return { list: [], total: 0, latestEmail: { emailId: 0, userId } };
+		}
+	},
+
+	// Per-minute cron: snoozes that are due go back to the inbox as unread.
+	async processDueSnoozes(c) {
+		let due;
+		try {
+			({ results: due } = await c.env.db.prepare('SELECT email_id FROM psg_snooze WHERE until <= ? LIMIT 200').bind(Date.now()).all());
+		} catch {
+			return 0; // table not migrated yet
+		}
+		if (!due.length) return 0;
+		const ids = due.map(r => r.email_id);
+		const idList = ids.map(() => '?').join(',');
+		await c.env.db.batch([
+			c.env.db.prepare(`UPDATE email SET is_archive = 0, unread = ? WHERE email_id IN (${idList})`).bind(emailConst.unread.UNREAD, ...ids),
+			c.env.db.prepare(`DELETE FROM psg_snooze WHERE email_id IN (${idList})`).bind(...ids),
+		]);
+		return ids.length;
 	},
 
 	async markSpam(c, params, userId) {
@@ -848,7 +931,8 @@ const emailService = {
 			content, //邮件内容
 			subject, //邮件标题
 			attachments = [], //附件
-			autoSubmitted = false //自动回复
+			autoSubmitted = false, //自动回复
+			requestReceipt = false //请求已读回执
 		} = params;
 
 		attachments = await this.resolveForwardedAttachments(c, attachments, userId);
@@ -982,7 +1066,8 @@ const emailService = {
 				sendType,
 				messageId: emailRow.messageId,
 				references: referencesFor(emailRow),
-				autoSubmitted
+				autoSubmitted,
+				requestReceipt: !!requestReceipt
 			};
 
 			if (useCloudflareEmail) {
@@ -1178,7 +1263,20 @@ const emailService = {
 			};
 		}
 
-		const result = await c.env.email.send(sendForm);
+		let result;
+		if (params.requestReceipt) {
+			sendForm.headers = { ...sendForm.headers, 'Disposition-Notification-To': params.accountEmail };
+			try {
+				result = await c.env.email.send(sendForm);
+			} catch (e) {
+				// If the service refuses the extra header, send without the receipt request.
+				console.warn('cloudflare email: retry without Disposition-Notification-To', e?.message);
+				delete sendForm.headers['Disposition-Notification-To'];
+				result = await c.env.email.send(sendForm);
+			}
+		} else {
+			result = await c.env.email.send(sendForm);
+		}
 
 		return {
 			data: {
@@ -1211,6 +1309,10 @@ const emailService = {
 
 		if (params.autoSubmitted) {
 			sendForm.headers = { ...sendForm.headers, 'Auto-Submitted': 'auto-replied' };
+		}
+
+		if (params.requestReceipt) {
+			sendForm.headers = { ...sendForm.headers, 'Disposition-Notification-To': params.accountEmail };
 		}
 
 		return await resend.emails.send(sendForm);
@@ -1252,6 +1354,9 @@ const emailService = {
 
 		if (params.sendType === 'reply' && params.messageId) {
 			message.Headers = { 'In-Reply-To': params.messageId, 'References': params.references || params.messageId };
+		}
+		if (params.requestReceipt) {
+			message.Headers = { ...message.Headers, 'Disposition-Notification-To': params.accountEmail };
 		}
 
 		const auth = btoa(`${mailjetCreds.apiKey}:${mailjetCreds.secretKey}`);

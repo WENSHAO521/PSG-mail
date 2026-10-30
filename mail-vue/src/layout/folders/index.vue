@@ -85,6 +85,7 @@ const FOLDERS = [
   { name: 'draft',     labelKey: 'drafts',        icon: 'psg:draft', perm: 'email:send' },
   { name: 'scheduled', labelKey: 'scheduled',     icon: 'psg:clock', perm: 'email:send' },
   { name: 'archive',   labelKey: 'archiveFolder', icon: 'psg:archive' },
+  { name: 'snoozed',   labelKey: 'snoozedFolder', icon: 'psg:clock' },
   { name: 'spam',      labelKey: 'spam',          icon: 'psg:spam' },
   { name: 'trash',     labelKey: 'deletedMail',   icon: 'psg:trash' },
 ]

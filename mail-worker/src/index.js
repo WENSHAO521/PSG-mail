@@ -13,6 +13,7 @@ import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
 import { safeObjectResponse } from './utils/safe-object-response';
 import forwardingService from './service/forwarding-service';
+import backupService from './service/backup-service';
 import { bump, flushMetrics, purgeOldMetrics } from './service/ops-metrics';
 // Durable Object classes must be exported by name from the Worker's main
 // entry — this is that export, not a self-contained secondary Worker. See
@@ -54,10 +55,12 @@ async function runScheduled(c, env) {
 		// Per-minute fallback. Only outcomes worth looking at are recorded (never "ran, nothing due"),
 		// so monitoring adds no D1 writes to idle minutes.
 		const started = Date.now();
-		const [sched, fwd] = await Promise.allSettled([
+		const [sched, fwd, snooze] = await Promise.allSettled([
 			scheduledEmailService.processDue({ env }),
 			forwardingService.processDue({ env }),
+			emailService.processDueSnoozes({ env }),
 		]);
+		if (snooze.status === 'rejected') { bump('cron.minute.snooze_error'); console.error('minute cron snooze failed', snooze.reason?.message); }
 		if (sched.status === 'rejected') { bump('cron.minute.scheduled_error'); console.error('minute cron scheduled-mail failed', sched.reason?.message); }
 		if (fwd.status === 'rejected') { bump('cron.minute.forwarding_error'); console.error('minute cron forwarding failed', fwd.reason?.message); }
 		const processed = sched.status === 'fulfilled' ? Number(sched.value?.processed || 0) : 0;
@@ -70,6 +73,7 @@ async function runScheduled(c, env) {
 
 	if (c.cron === '*/30 * * * *') {
 		await timed('cron.stats_refresh', () => analysisService.refreshEchartsCache({ env }, { onlyIfChanged: true }));
+		await timed('cron.cloud_backup', () => backupService.runScheduled({ env }));
 		return;
 	}
 

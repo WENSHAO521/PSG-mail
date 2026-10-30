@@ -116,3 +116,18 @@ export function emailScheduleSendNow(id) {
 export function emailScheduleEdit(id) {
     return http.post(`/email/schedule/${id}/edit`, null, { noMsg: true })
 }
+export function emailSnooze(emailIds, until) {
+    return withUnreadRefresh(http.put('/email/snooze', {emailIds: emailIds.join(','), until}))
+}
+
+export function emailUnsnooze(emailIds) {
+    return withUnreadRefresh(http.put('/email/unsnooze', {emailIds: emailIds.join(',')}))
+}
+
+export function emailSnoozeList(emailId, size) {
+    return http.get('/email/snooze/list', {params: {emailId, size}})
+}
+
+export function emailImport(accountId, content) {
+    return http.post('/email/import', {accountId, content}, {noMsg: true, timeout: 120 * 1000})
+}

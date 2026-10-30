@@ -5,6 +5,7 @@ import userContext from '../security/user-context';
 import attService from '../service/att-service';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
+import importService from '../service/import-service';
 
 app.get('/email/list', async (c) => {
 	const data = await emailService.list(c, c.req.query(), userContext.getUserId(c));
@@ -83,6 +84,27 @@ app.put('/email/archive', async (c) => {
 app.put('/email/unarchive', async (c) => {
 	await emailService.unarchiveEmail(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());
+})
+
+// Import one .eml (base64) into one of the user's mailboxes.
+app.post('/email/import', async (c) => {
+	const data = await importService.importEml(c, userContext.getUserId(c), await c.req.json());
+	return c.json(result.ok(data));
+})
+
+app.put('/email/snooze', async (c) => {
+	await emailService.snooze(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+})
+
+app.put('/email/unsnooze', async (c) => {
+	await emailService.unsnooze(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+})
+
+app.get('/email/snooze/list', async (c) => {
+	const data = await emailService.snoozeList(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok(data));
 })
 
 app.get('/email/archive/list', async (c) => {

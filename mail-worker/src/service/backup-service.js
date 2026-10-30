@@ -244,7 +244,7 @@ const backupService = {
 	// subrequest limit. `remaining` tells the client to call again. The .eml
 	// is the one the reader's "Export .eml" builds (encoded headers, base64
 	// bodies, attachments).
-	async startBackup(c, userId, provider) {
+	async startBackup(c, userId, provider, limit = BACKUP_BATCH) {
 		const token = await this.getValidToken(c, userId, provider);
 		if (!token) throw new BizError(t('backupNotConnected'));
 
@@ -271,7 +271,7 @@ const backupService = {
 		const rows = await db.select({ emailId: email.emailId }).from(email)
 			.where(and(eq(email.userId, userId), eq(email.isDel, 0), gt(email.emailId, cursor)))
 			.orderBy(asc(email.emailId))
-			.limit(BACKUP_BATCH)
+			.limit(limit)
 			.all();
 
 		let count = 0;
@@ -306,6 +306,35 @@ const backupService = {
 			.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)));
 
 		return { count, failed, remaining };
+	},
+
+	// Cron (every 30 minutes): keeps every connected drive up to date without
+	// anyone pressing "Back up now". One shared budget of uploads per run so a
+	// single invocation stays under the subrequest limit; users are taken
+	// oldest-backup first, so everyone gets a turn.
+	async runScheduled(c) {
+		let rows;
+		try {
+			({ results: rows } = await c.env.db.prepare(
+				'SELECT user_id, provider FROM cloud_backup ORDER BY last_backup_at ASC LIMIT 20'
+			).all());
+		} catch {
+			return 0;
+		}
+		let budget = BACKUP_BATCH;
+		let uploaded = 0;
+		for (const row of rows) {
+			if (budget <= 0) break;
+			try {
+				const { count } = await this.startBackup(c, row.user_id, row.provider, budget);
+				budget -= Math.max(count, 1);
+				uploaded += count;
+			} catch (e) {
+				budget -= 1;
+				console.error(`scheduled backup failed for user ${row.user_id} (${row.provider})`, e?.message);
+			}
+		}
+		return uploaded;
 	},
 
 	_cursorKey(userId, provider) {

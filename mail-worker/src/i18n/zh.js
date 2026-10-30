@@ -103,6 +103,9 @@ const zh = {
 	backupTokenRefreshFailed: '授权已失效，请重新连接',
 	backupNotConnected: '尚未连接备份服务或授权已过期，请重新连接',
 	backupFolderFailed: '无法在云盘中创建备份文件夹，请重新连接后再试',
+	snoozeTimeInvalid: '提醒时间必须晚于现在',
+	importEmlInvalid: '不是有效的 .eml 邮件文件',
+	importEmlTooLarge: '单个邮件文件不能超过 20 MB',
 	perms: {
 		"邮件": "邮件",
 		"邮件发送": "邮件发送",
