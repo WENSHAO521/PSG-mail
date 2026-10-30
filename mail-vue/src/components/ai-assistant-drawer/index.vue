@@ -23,7 +23,7 @@
             <div class="ai-confirm-action">{{ confirmActionLabel }}</div>
             <div class="ai-confirm-args">
               <div v-for="(v, k) in pending.args" :key="k" class="ai-confirm-arg-row">
-                <span class="ai-confirm-arg-key">{{ k }}</span>
+                <span class="ai-confirm-arg-key">{{ argLabel(k) }}</span>
                 <span class="ai-confirm-arg-val">{{ v }}</span>
               </div>
             </div>
@@ -89,6 +89,15 @@ const confirmActionLabel = computed(() => {
   if (!pending.value) return ''
   return pending.value.tool === 'sendEmail' ? t('aiAssistantConfirmSendEmail') : t('aiAssistantConfirmDeleteEmail')
 })
+
+const ARG_LABEL_KEYS = {
+  from: 'aiArgFrom', to: 'aiArgTo', cc: 'aiArgCc', bcc: 'aiArgBcc',
+  subject: 'aiArgSubject', content: 'aiArgContent', emailId: 'aiArgEmailId',
+}
+
+function argLabel(key) {
+  return ARG_LABEL_KEYS[key] ? t(ARG_LABEL_KEYS[key]) : key
+}
 
 function scrollToBottom() {
   nextTick(() => {

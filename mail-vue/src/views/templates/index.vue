@@ -21,7 +21,7 @@
         </el-button>
       </section>
 
-      <section class="workspace-stats" aria-label="Template summary">
+      <section class="workspace-stats" :aria-label="$t('ariaTemplateSummary')">
         <div class="workspace-stat-card surface-card">
           <span class="workspace-stat-label">{{ $t('templateTotalCount') }}</span>
           <strong class="workspace-stat-value">{{ tplList.length }}</strong>
@@ -239,13 +239,14 @@
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-for="v in TEMPLATE_VARIABLES" :key="v" :command="v">
-                    {{ variableLabel(v) }}
+                  <el-dropdown-item v-for="v in TEMPLATE_VARIABLES" :key="v.key" :command="v.key">
+                    {{ $t(v.labelKey) }}<span class="var-token">{{ variableToken(v.key) }}</span>
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
           </div>
+          <p class="var-hint">{{ $t('tplVarHint') }}</p>
           <div class="editor-frame">
             <tinyEditor ref="tplEditorRef" :def-value="tplForm.content" editor-id="tpl-editor"
               toolbar="bold italic underline | forecolor backcolor | bullist numlist | link | code"
@@ -268,6 +269,7 @@ import { useUiStore } from '@/store/ui.js'
 import { templateList, templateAdd, templateUpdate, templateDelete } from '@/request/template.js'
 import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 import { htmlToPlainText } from '@/utils/html-sanitize.js'
+import { TEMPLATE_VARIABLES, variableToken } from '@/utils/template-vars.js'
 
 defineOptions({ name: 'templates' })
 
@@ -280,11 +282,6 @@ const tplEditorRef = ref(null)
 const editorMode = ref(false)
 const searchQuery = ref('')
 const tplForm = reactive({ templateId: null, name: '', subject: '', content: '', category: '' })
-
-const TEMPLATE_VARIABLES = [
-  'recipient_name', 'author_name', 'manuscript_title',
-  'journal_name', 'submission_id', 'editor_name', 'date'
-]
 
 // ── Category system (persisted in localStorage — the template model has
 // no server-side category field) ─────────────────────────────────────
@@ -364,12 +361,8 @@ function openEdit(tpl) {
 }
 function cancelEdit() { editorMode.value = false }
 
-function variableLabel(v) {
-  return `{{${v}}}`
-}
-
-function insertVariable(v) {
-  tplEditorRef.value?.insertContent?.(variableLabel(v))
+function insertVariable(key) {
+  tplEditorRef.value?.insertContent?.(variableToken(key))
 }
 
 async function saveTpl() {
@@ -834,6 +827,19 @@ function useTemplate(tpl) {
   color: var(--psg-text-secondary); padding: 4px 10px;
   transition: border-color 0.12s, color 0.12s; font-family: inherit;
   &:hover { border-color: var(--psg-border-strong); color: var(--psg-text); }
+}
+
+.var-hint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--psg-text-muted);
+}
+
+.var-token {
+  margin-left: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--psg-text-muted);
 }
 
 .cat-select {

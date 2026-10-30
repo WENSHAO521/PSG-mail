@@ -19,7 +19,7 @@
         </el-button>
       </section>
 
-      <section class="workspace-stats" aria-label="Group summary">
+      <section class="workspace-stats" :aria-label="$t('ariaGroupSummary')">
         <div class="workspace-stat-card surface-card">
           <span class="workspace-stat-label">{{ $t('groupsTotalCount') }}</span>
           <strong class="workspace-stat-value">{{ groupList.length }}</strong>

@@ -16,7 +16,7 @@
       <span>{{ $t('scheduledScopeNote') }}</span>
     </section>
 
-    <section class="workspace-stats" aria-label="Scheduled mail summary">
+    <section class="workspace-stats" :aria-label="$t('ariaScheduledSummary')">
       <div class="workspace-stat-card surface-card">
         <span class="workspace-stat-label">{{ $t('scheduledTotalCount') }}</span>
         <strong class="workspace-stat-value">{{ list.length }}</strong>

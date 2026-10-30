@@ -386,7 +386,7 @@ const settingService = {
 		if (params.webhookUrl !== undefined) {
 			params.webhookUrl = domainUtils.toOssDomain(params.webhookUrl) || '';
 			if (params.webhookUrl && !isSafeOutboundUrl(params.webhookUrl, { allowHttp: true })) {
-				throw new BizError('Webhook URL must be a public http(s) address without credentials', 400);
+				throw new BizError(t('webhookUrlInvalid'), 400);
 			}
 		}
 

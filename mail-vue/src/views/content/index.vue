@@ -821,6 +821,7 @@ function handlePrint() {
   const sender = escapePrintText(e.name || '')
   const address = escapePrintText(e.sendEmail || '')
   const received = escapePrintText(e.createTime || '')
+  const recipients = escapePrintText(formateReceive(e.recipient) || '')
   const body = e.content
     ? `<div style="font-family:Arial,sans-serif;max-width:760px;margin:0 auto;padding:24px">${sanitizePrintHtml(e.content)}</div>`
     : `<pre style="font-family:Arial,sans-serif;max-width:760px;margin:0 auto;padding:24px;white-space:pre-wrap">${escapePrintText(e.text || '')}</pre>`
@@ -828,7 +829,9 @@ function handlePrint() {
     <title>${subject}</title>
     <style>@media print{body{margin:0}}</style></head><body>
     <h2 style="font-size:18px;margin-bottom:8px">${subject}</h2>
-    <p style="color:#666;font-size:13px;margin-bottom:16px">From: ${sender} &lt;${address}&gt; — ${received}</p>
+    <p style="color:#666;font-size:13px;margin-bottom:4px">${escapePrintText(t('from'))}: ${sender} &lt;${address}&gt;</p>
+    ${recipients ? `<p style="color:#666;font-size:13px;margin-bottom:4px">${escapePrintText(t('printSentTo'))}: ${recipients}</p>` : ''}
+    <p style="color:#666;font-size:13px;margin-bottom:16px">${escapePrintText(t('printDate'))}: ${received}</p>
     <hr style="border:none;border-top:1px solid #ddd;margin-bottom:16px">
     ${body}
     </body></html>`)

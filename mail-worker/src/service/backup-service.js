@@ -2,10 +2,10 @@ import credentialService from './credential-service';
 import orm from '../entity/orm';
 import { cloudBackup } from '../entity/cloud-backup';
 import { email } from '../entity/email';
-import { and, eq, asc, gt } from 'drizzle-orm';
+import { and, eq, asc, gt, count as count_ } from 'drizzle-orm';
+import emailService from './email-service';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
-import dayjs from 'dayjs';
 
 const PROVIDERS = {
 	google: {
@@ -21,6 +21,11 @@ const PROVIDERS = {
 };
 
 const STATE_TTL = 300; // 5 minutes
+
+// Mails uploaded per request: one upload fetch each, well under the
+// Worker's per-request subrequest limit (50 on the free plan).
+const BACKUP_BATCH = 40;
+const BACKUP_FOLDER = 'Cloud Mail Backup';
 
 const backupService = {
 
@@ -43,9 +48,9 @@ const backupService = {
 
 	// ── OAuth: generate authorization URL ────────────────────────
 	async getAuthUrl(c, provider, userId) {
-		if (!PROVIDERS[provider]) throw new BizError('Unsupported provider');
+		if (!PROVIDERS[provider]) throw new BizError(t('backupUnsupportedProvider'));
 		const clientId = this._clientId(c, provider);
-		if (!clientId) throw new BizError(`${provider} OAuth is not configured`);
+		if (!clientId) throw new BizError(t('backupOauthNotConfigured', { provider }));
 
 		const state = crypto.randomUUID();
 		await c.env.kv.put(this._stateKey(userId, provider), state, { expirationTtl: STATE_TTL });
@@ -69,7 +74,7 @@ const backupService = {
 
 	// ── OAuth: handle callback, exchange code for tokens ─────────
 	async handleCallback(c, provider) {
-		if (!PROVIDERS[provider]) throw new BizError('Unsupported provider');
+		if (!PROVIDERS[provider]) throw new BizError(t('backupUnsupportedProvider'));
 
 		const url = new URL(c.req.url);
 		const code = url.searchParams.get('code');
@@ -113,7 +118,7 @@ const backupService = {
 		});
 
 		const data = await res.json();
-		if (data.error) throw new BizError(`OAuth token error: ${data.error_description || data.error}`);
+		if (data.error) throw new BizError(t('backupOauthTokenError', { msg: data.error_description || data.error }));
 
 		return {
 			accessToken: data.access_token,
@@ -181,7 +186,7 @@ const backupService = {
 		});
 
 		const data = await res.json();
-		if (data.error) throw new BizError('Token refresh failed — please reconnect');
+		if (data.error) throw new BizError(t('backupTokenRefreshFailed'));
 
 		const newTokens = {
 			accessToken: data.access_token,
@@ -228,15 +233,20 @@ const backupService = {
 	async disconnect(c, userId, provider) {
 		await orm(c).delete(cloudBackup)
 			.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)));
+		await c.env.kv.delete(this._cursorKey(userId, provider));
 	},
 
 	// ── Backup execution ─────────────────────────────────────────
-	// Pages through all of the user's emails via keyset pagination (emailId
-	// cursor) so accounts with more than one page of mail are fully backed
-	// up, instead of silently capping at the first PAGE_SIZE rows.
+	// Incremental and batched. Each call uploads at most BACKUP_BATCH mails
+	// after the per-provider cursor (the last emailId that made it to the
+	// drive), so a second "Back up now" only sends new mail instead of
+	// duplicating every file, and one request stays inside the Worker's
+	// subrequest limit. `remaining` tells the client to call again. The .eml
+	// is the one the reader's "Export .eml" builds (encoded headers, base64
+	// bodies, attachments).
 	async startBackup(c, userId, provider) {
 		const token = await this.getValidToken(c, userId, provider);
-		if (!token) throw new BizError('Provider not connected or token expired — please reconnect');
+		if (!token) throw new BizError(t('backupNotConnected'));
 
 		const db = orm(c);
 
@@ -248,86 +258,63 @@ const backupService = {
 		if (!folderId) {
 			folderId = provider === 'google'
 				? await this._getOrCreateGoogleFolder(token)
-				: 'Cloud Mail Backup';
+				: BACKUP_FOLDER;
+			if (!folderId) throw new BizError(t('backupFolderFailed'));
 			await db.update(cloudBackup)
 				.set({ folderId })
 				.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)));
 		}
 
-		const PAGE_SIZE = 500;
+		const cursorKey = this._cursorKey(userId, provider);
+		let cursor = Number(await c.env.kv.get(cursorKey)) || 0;
+
+		const rows = await db.select({ emailId: email.emailId }).from(email)
+			.where(and(eq(email.userId, userId), eq(email.isDel, 0), gt(email.emailId, cursor)))
+			.orderBy(asc(email.emailId))
+			.limit(BACKUP_BATCH)
+			.all();
+
 		let count = 0;
-		let total = 0;
-		let cursor = 0;
-
-		while (true) {
-			const emails = await db.select().from(email)
-				.where(and(eq(email.userId, userId), eq(email.isDel, 0), gt(email.emailId, cursor)))
-				.orderBy(asc(email.emailId))
-				.limit(PAGE_SIZE)
-				.all();
-
-			if (emails.length === 0) break;
-
-			for (const em of emails) {
-				try {
-					const filename = this._safeFilename(em);
-					const eml = this._toEml(em);
-					if (provider === 'google') {
-						await this._uploadToGoogle(token, folderId, filename, eml);
-					} else {
-						await this._uploadToMicrosoft(token, folderId, filename, eml);
-					}
-					count++;
-				} catch (e) {
-					console.error(`backup upload failed for email ${em.emailId}:`, e);
+		let failed = 0;
+		for (const { emailId } of rows) {
+			try {
+				const { filename, content } = await emailService.buildEml(c, emailId, userId);
+				if (provider === 'google') {
+					await this._uploadToGoogle(token, folderId, filename, content);
+				} else {
+					await this._uploadToMicrosoft(token, folderId, filename, content);
 				}
+				count++;
+				cursor = emailId;
+			} catch (e) {
+				// Stop at the first failure and keep the cursor before it, so
+				// the next run retries this mail instead of skipping it.
+				console.error(`backup upload failed for email ${emailId}:`, e);
+				failed++;
+				break;
 			}
-
-			total += emails.length;
-			cursor = emails[emails.length - 1].emailId;
-
-			if (emails.length < PAGE_SIZE) break;
 		}
 
+		if (count) await c.env.kv.put(cursorKey, String(cursor));
+
+		const { remaining } = await db.select({ remaining: count_() }).from(email)
+			.where(and(eq(email.userId, userId), eq(email.isDel, 0), gt(email.emailId, cursor)))
+			.get();
+
 		await db.update(cloudBackup)
-			.set({ lastBackupAt: Date.now(), backupCount: count })
+			.set({ lastBackupAt: Date.now(), backupCount: (record?.backupCount || 0) + count })
 			.where(and(eq(cloudBackup.userId, userId), eq(cloudBackup.provider, provider)));
 
-		return { count, total };
+		return { count, failed, remaining };
 	},
 
-	// ── .eml generation ─────────────────────────────────────────
-	_toEml(em) {
-		const from = em.name ? `${em.name} <${em.sendEmail}>` : (em.sendEmail || 'unknown@unknown');
-		const to = em.toEmail || em.sendEmail || '';
-		const subject = em.subject || '(no subject)';
-		const date = em.createTime ? new Date(em.createTime).toUTCString() : new Date().toUTCString();
-		const body = em.content || em.text || '';
-		const isHtml = !!em.content;
-
-		return [
-			`From: ${from}`,
-			`To: ${to}`,
-			`Subject: ${subject}`,
-			`Date: ${date}`,
-			`Message-ID: <${em.emailId}@cloudmail>`,
-			`MIME-Version: 1.0`,
-			`Content-Type: ${isHtml ? 'text/html' : 'text/plain'}; charset=UTF-8`,
-			`Content-Transfer-Encoding: quoted-printable`,
-			``,
-			body,
-		].join('\r\n');
-	},
-
-	_safeFilename(em) {
-		const date = em.createTime ? dayjs(em.createTime).format('YYYY-MM-DD') : 'unknown';
-		const subject = (em.subject || 'no-subject').replace(/[\\/:*?"<>|]/g, '_').slice(0, 60);
-		return `${date}_${subject}_${em.emailId}.eml`;
+	_cursorKey(userId, provider) {
+		return `backup_cursor:${userId}:${provider}`;
 	},
 
 	// ── Google Drive ─────────────────────────────────────────────
 	async _getOrCreateGoogleFolder(token) {
-		const q = encodeURIComponent(`name='Cloud Mail Backup' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+		const q = encodeURIComponent(`name='${BACKUP_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
 		const searchRes = await fetch(
 			`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`,
 			{ headers: { Authorization: `Bearer ${token}` } }
@@ -338,7 +325,7 @@ const backupService = {
 		const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
 			method: 'POST',
 			headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name: 'Cloud Mail Backup', mimeType: 'application/vnd.google-apps.folder' }),
+			body: JSON.stringify({ name: BACKUP_FOLDER, mimeType: 'application/vnd.google-apps.folder' }),
 		});
 		const folder = await createRes.json();
 		return folder.id;

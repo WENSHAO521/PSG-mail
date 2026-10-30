@@ -5,7 +5,7 @@
         <div class="settings-shell" :class="{ 'mobile-detail-active': mobileSettingsDetail }">
 
           <!-- ── Left sidebar nav ── -->
-          <nav class="settings-sidebar" aria-label="Personal settings sections">
+          <nav class="settings-sidebar" :aria-label="$t('ariaSettingSections')">
             <button
               v-for="item in navItems"
               :key="item.key"
@@ -316,7 +316,7 @@
                         </template>
                         <template v-else>
                           <span class="backup-disconnected-dot"/>
-                          {{ $t('backupDisconnect') }}
+                          {{ $t('backupNotConnected') }}
                         </template>
                       </div>
                     </div>
@@ -752,16 +752,36 @@ function disconnectProvider(provider) {
   }).catch(() => {})
 }
 
+// The server uploads a small batch per call and reports what is left, so
+// keep calling until it is done or a batch fails.
 async function triggerBackup(provider) {
   backupLoading.value[provider] = true
+  let total = 0
+  let progress = null
   try {
-    const { count } = await backupStart(provider)
-    ElMessage({ message: t('backupDone', { count }), type: 'success', plain: true })
-    loadBackupStatus()
+    while (true) {
+      const { count, failed, remaining } = await backupStart(provider)
+      total += count
+      if (failed) {
+        ElMessage({ message: t('backupPartial', { count: total, failed }), type: 'warning', plain: true })
+        break
+      }
+      if (!remaining || !count) {
+        ElMessage({
+          message: total ? t('backupDoneIncremental', { count: total }) : t('backupUpToDate'),
+          type: 'success', plain: true,
+        })
+        break
+      }
+      progress?.close()
+      progress = ElMessage({ message: t('backupProgress', { count: total, remaining }), type: 'info', plain: true, duration: 0 })
+    }
   } catch {
-    ElMessage({ message: t('backupFailed'), type: 'error', plain: true })
+    ElMessage({ message: total ? t('backupPartial', { count: total, failed: 1 }) : t('backupFailed'), type: 'error', plain: true })
   } finally {
+    progress?.close()
     backupLoading.value[provider] = false
+    loadBackupStatus()
   }
 }
 

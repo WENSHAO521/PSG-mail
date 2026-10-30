@@ -566,7 +566,7 @@ const emailService = {
 	// the Worker's limits; `more` tells the client to call again.
 	async emptyFolder(c, params, userId) {
 		const folder = params.folder;
-		if (folder !== 'trash' && folder !== 'spam') throw new BizError('Unknown folder', 400);
+		if (folder !== 'trash' && folder !== 'spam') throw new BizError(t('unknownFolder'), 400);
 		const accountId = Number(params.accountId);
 		const allReceive = Number(params.allReceive);
 		const BATCH = 500;
@@ -868,6 +868,9 @@ const emailService = {
 		// CC / BCC must be included — if any external recipient exists in ANY field,
 		// the email must go through SMTP/Resend, not just on-site DB delivery.
 		const allRecipients = [...receiveEmail, ...cc, ...bcc];
+		// Quotas count every address the mail goes to, Cc and Bcc included,
+		// so blind-copying a list can't get round the send limit.
+		const recipientCount = new Set(allRecipients.map(e => String(e).toLowerCase())).size;
 		const allInternal = allRecipients.every(email => {
 			const domain = '@' + emailUtils.getDomain(email);
 			return domainList.includes(domain);
@@ -895,7 +898,7 @@ const emailService = {
 				if (roleRow.sendType === 'count') throw new BizError(t('totalSendLimit'), 403);
 			}
 
-			if (userRow.sendCount + receiveEmail.length > roleRow.sendCount) {
+			if (userRow.sendCount + recipientCount > roleRow.sendCount) {
 				if (roleRow.sendType === 'day') throw new BizError(t('daySendLack'), 403);
 				if (roleRow.sendType === 'count') throw new BizError(t('totalSendLack'), 403);
 			}
@@ -1042,7 +1045,7 @@ const emailService = {
 
 		//如果权限有发送次数增加用户发送次数
 		if (roleRow.sendCount && roleRow.sendType !== 'internal') {
-			await userService.incrUserSendCount(c, receiveEmail.length, userId);
+			await userService.incrUserSendCount(c, recipientCount, userId);
 		}
 
 		//保存到数据库并返回结果
@@ -1084,9 +1087,9 @@ const emailService = {
 
 		//记录每天发件次数统计
 		if (!daySendTotal) {
-			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(receiveEmail.length), { expirationTtl: 60 * 60 * 24 });
+			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(recipientCount), { expirationTtl: 60 * 60 * 24 });
 		} else  {
-			daySendTotal = Number(daySendTotal) + receiveEmail.length
+			daySendTotal = Number(daySendTotal) + recipientCount
 			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(daySendTotal), { expirationTtl: 60 * 60 * 24 });
 		}
 
@@ -1467,6 +1470,10 @@ const emailService = {
 			emailValues.toEmail = email;
 			emailValues.toName = emailUtils.getName(email);
 			emailValues.emailId = null;
+			// Bcc is for the sender's copy only: a recipient's copy never lists
+			// the blind-copied addresses, or every To/Cc/Bcc recipient on this
+			// site would see who else was blind-copied.
+			emailValues.bcc = '[]';
 
 			let accountRow = allAccounts.find(accountRow => accountRow.email === email);
 

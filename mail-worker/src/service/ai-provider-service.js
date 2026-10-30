@@ -2,6 +2,7 @@ import { bump } from './ops-metrics';
 import dayjs from 'dayjs';
 import BizError from '../error/biz-error';
 import settingService from './setting-service';
+import { t } from '../i18n/i18n';
 
 const DEFAULT_CHAT_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
 
@@ -60,7 +61,7 @@ const aiProviderService = {
 	},
 
 	async run(c, userId, task, input, options = {}) {
-		if (!c.env.ai) throw new BizError('AI binding not configured', 503);
+		if (!c.env.ai) throw new BizError(t('aiNotConfigured'), 503);
 		const { model, fallbackModel, quota } = await this.models(c, task);
 		// options.perTask counts only this task's usage against the quota;
 		// options.defaultQuota applies when the admin set none.

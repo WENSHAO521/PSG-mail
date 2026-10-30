@@ -445,6 +445,7 @@ import {ElMessage} from "element-plus";
 import {getDirectory} from "@/request/my.js";
 import {contactList} from "@/request/contact.js";
 import {templateList} from "@/request/template.js";
+import {fillTemplateVariables, unfilledVariables} from "@/utils/template-vars.js";
 import {contactGroupList} from "@/request/contact-group.js";
 import {accountList, accountListAll} from "@/request/account.js";
 import {aiComposeTransform} from "@/request/ai-mail.js";
@@ -462,7 +463,7 @@ defineExpose({
   isOpen: () => show.value && windowState.value !== 'minimized',
 })
 
-const {t} = useI18n()
+const {t, locale} = useI18n()
 const writerStore = useWriterStore();
 const settingStore = useSettingStore()
 const uiStore = useUiStore()
@@ -780,6 +781,8 @@ const form = reactive({
 })
 
 const selectRecipientList = ref([])
+// Who the mail being replied to came from, for the {{recipient_name}} variable.
+const replySender = ref({ email: '', name: '' })
 
 // Track unconfirmed text in CC / BCC input-tag fields
 const ccPending  = ref('')
@@ -1099,6 +1102,7 @@ async function sendScheduled() {
     return
   }
   if (!validateBeforeSend()) return
+  if (!(await confirmUnfilledVariables())) return
 
   if (sending) {
     ElMessage({ message: t('sendingErrorMsg'), type: 'error', plain: true })
@@ -1220,6 +1224,7 @@ async function sendWithUndo() {
 async function sendEmail() {
 
   if (!validateBeforeSend()) return
+  if (!(await confirmUnfilledVariables())) return
 
   if (sending) {
     ElMessage({
@@ -1310,6 +1315,7 @@ function addRecipientRecord() {
 
 function resetForm() {
   senderAutoPicked.value = false
+  replySender.value = { email: '', name: '' }
   form.receiveEmail = []
   form.cc = []
   form.bcc = []
@@ -1456,6 +1462,7 @@ function openReplyAll(email) {
 
   // reply to original sender
   form.receiveEmail.push(email.sendEmail)
+  replySender.value = { email: email.sendEmail || '', name: email.name || '' }
 
   // also add all original recipients except our own send address
   const selfEmail = (accountStore.currentAccount.email || userStore.user.email || '').toLowerCase()
@@ -1517,6 +1524,7 @@ function openReply(email) {
   email.subject = email.subject || ''
 
   form.receiveEmail.push(email.sendEmail)
+  replySender.value = { email: email.sendEmail || '', name: email.name || '' }
   form.subject = (
       email.subject.startsWith('Re:') ||
       email.subject.startsWith('Re：') ||
@@ -1558,13 +1566,50 @@ function formatImage(content) {
   return fillImageDomain(content, settingStore.settings.r2Domain);
 }
 
-function insertTemplate(tpl) {
-  if (tpl.subject && !form.subject) form.subject = tpl.subject
+async function insertTemplate(tpl) {
+  const values = await templateVariableValues()
+  if (tpl.subject && !form.subject) form.subject = fillTemplateVariables(tpl.subject, values)
   const current = editor.value.getContent()
   editor.value.clearEditor()
   setTimeout(() => {
-    defValue.value = tpl.content + (current ? '<br>' + current : '')
+    defValue.value = fillTemplateVariables(tpl.content, values, { html: true }) + (current ? '<br>' + current : '')
   })
+}
+
+// Values for the template variables the compose window can know: the
+// recipient's name (from the mail being answered or the contact list, only
+// when there is a single recipient), the sender's name and today's date.
+async function templateVariableValues() {
+  let recipientName = ''
+  if (form.receiveEmail.length === 1) {
+    const address = form.receiveEmail[0].toLowerCase()
+    if (replySender.value.email.toLowerCase() === address) recipientName = replySender.value.name
+    if (!recipientName) {
+      await loadAutoContacts()
+      recipientName = autoContacts.value.find(c => c.email.toLowerCase() === address)?.name || ''
+    }
+  }
+  return {
+    recipient_name: recipientName,
+    editor_name: form.name,
+    date: dayjs().format(locale.value === 'zh' ? 'YYYY年M月D日' : 'MMMM D, YYYY'),
+  }
+}
+
+// Template variables nobody filled in would go out as literal {{...}}.
+async function confirmUnfilledVariables() {
+  const left = unfilledVariables(form.subject + ' ' + form.content)
+  if (!left.length) return true
+  try {
+    await ElMessageBox.confirm(
+      t('tplVarUnfilledMsg', { vars: left.map(v => t(v.labelKey)).join('、') }),
+      t('tplVarUnfilledTitle'),
+      { confirmButtonText: t('tplVarSendAnyway'), cancelButtonText: t('cancel'), type: 'warning' },
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 
 async function loadTemplates() {

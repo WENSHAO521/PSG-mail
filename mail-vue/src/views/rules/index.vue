@@ -21,7 +21,7 @@
       <span>{{ $t('rulesScopeNote') }}</span>
     </section>
 
-    <section class="stats-grid" aria-label="Rule summary">
+    <section class="stats-grid" :aria-label="$t('ariaRuleSummary')">
       <div class="stat-card surface-card">
         <span class="stat-label">{{ $t('rulesTotalCount') }}</span>
         <strong class="stat-value">{{ rulesStore.rules.length }}</strong>

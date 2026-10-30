@@ -12,7 +12,7 @@
         <button type="button" class="pill" :class="{ active: statusFilter === 'exhausted' }" @click="statusFilter = 'exhausted'">{{ $t('exhausted') }}</button>
         <button type="button" class="pill" :class="{ active: statusFilter === 'expired' }" @click="statusFilter = 'expired'">{{ $t('expired') }}</button>
       </div>
-      <MoreMenu aria-label="More">
+      <MoreMenu :aria-label="$t('ariaMore')">
         <el-dropdown-item @click="clearNotUse">{{ $t('clearUnusedKeys') }}</el-dropdown-item>
       </MoreMenu>
     </div>
@@ -32,7 +32,7 @@
         <div class="code-item" v-for="item in filteredKeys" :key="item.regKeyId">
           <div class="code-item-head">
             <span class="code" @click="copyCode(item.code)">{{ item.code }}</span>
-            <MoreMenu aria-label="Key actions">
+            <MoreMenu :aria-label="$t('ariaKeyActions')">
               <el-dropdown-item @click="copyCode(item.code)">{{ $t('copy') }}</el-dropdown-item>
               <el-dropdown-item @click="openHistory(item)">{{ $t('history') }}</el-dropdown-item>
               <el-dropdown-item class="danger" divided @click="deleteRegKey(item)">{{ $t('delete') }}</el-dropdown-item>

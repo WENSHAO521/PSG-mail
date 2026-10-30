@@ -6,7 +6,7 @@
     <el-scrollbar class="scroll" v-if="!firstLoading">
       <div class="scroll-body">
         <div class="settings-shell" :class="{ 'mobile-detail-active': mobileSettingsDetail }">
-          <nav class="settings-sidebar" aria-label="System settings sections">
+          <nav class="settings-sidebar" :aria-label="$t('ariaSysSettingSections')">
             <button
                 v-for="item in systemSettingNav"
                 :key="item.key"
@@ -69,7 +69,7 @@
                       @change="change"
                       :style="`width: ${ locale === 'en' ?  100 : 80 }px;`"
                       v-model="setting.regKey"
-                      placeholder="Select"
+                      :placeholder="$t('select')"
                   >
                     <el-option
                         v-for="item in regKeyOptions"
@@ -287,7 +287,7 @@
                       @change="change"
                       :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
                       v-model="setting.autoRefresh"
-                      placeholder="Select"
+                      :placeholder="$t('select')"
                   >
                     <el-option
                         v-for="item in authRefreshOptions"
@@ -484,7 +484,7 @@
                       @change="change"
                       :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
                       v-model="setting.registerVerify"
-                      placeholder="Select"
+                      :placeholder="$t('select')"
                       class="bot-verify-select"
                   >
                     <el-option key="1" :value="0" :label="$t('enable')"/>
@@ -503,7 +503,7 @@
                       @change="change"
                       :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
                       v-model="setting.addEmailVerify"
-                      placeholder="Select"
+                      :placeholder="$t('select')"
                       class="bot-verify-select"
                   >
                     <el-option key="1" :value="0" :label="$t('enable')"/>
@@ -513,7 +513,7 @@
                 </div>
               </div>
               <div class="setting-item">
-                <div><span>Site Key</span></div>
+                <div><span>{{ $t('turnstileSiteKey') }}</span></div>
                 <div class="bot-verify">
                   <span>{{ setting.siteKey }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
@@ -522,7 +522,7 @@
                 </div>
               </div>
               <div class="setting-item">
-                <div><span>Secret Key</span></div>
+                <div><span>{{ $t('turnstileSecretKey') }}</span></div>
                 <div class="bot-verify">
                   <span> {{ setting.secretKey }} </span>
                   <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
@@ -643,7 +643,7 @@
       <!-- Dialogs remain the same -->
       <el-dialog v-model="resendTokenFormShow" :title="$t('resendToken')" width="340" @closed="cleanResendTokenForm">
         <form>
-          <el-select style="margin-bottom: 15px" v-model="resendTokenForm.domain" placeholder="Select">
+          <el-select style="margin-bottom: 15px" v-model="resendTokenForm.domain" :placeholder="$t('select')">
             <el-option
                 v-for="item in settingStore.domainList"
                 :key="item"
@@ -665,8 +665,8 @@
       <el-dialog v-model="turnstileShow" :title="$t('addTurnstileSecret')" width="340"
                  @closed="turnstileForm.secretKey = '';turnstileForm.siteKey = ''">
         <form>
-          <el-input type="text" placeholder="Site Key" v-model="turnstileForm.siteKey"/>
-          <el-input type="text" style="margin-top: 15px" placeholder="Secret Key" v-model="turnstileForm.secretKey"/>
+          <el-input type="text" :placeholder="$t('turnstileSiteKey')" v-model="turnstileForm.siteKey"/>
+          <el-input type="text" style="margin-top: 15px" :placeholder="$t('turnstileSecretKey')" v-model="turnstileForm.secretKey"/>
           <el-button type="primary" :loading="settingLoading" @click="saveTurnstileKey">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
@@ -857,14 +857,14 @@
         <el-table :data="resendList">
           <el-table-column :min-width="emailColumnWidth" property="key" :label="$t('domain')"
                            :show-overflow-tooltip="true"/>
-          <el-table-column :width="tokenColumnWidth" property="value" label="Token" fixed="right"
+          <el-table-column :width="tokenColumnWidth" property="value" :label="$t('tokenLabel')" fixed="right"
                            :show-overflow-tooltip="true"/>
         </el-table>
       </el-dialog>
       <el-dialog v-model="resendQuotaFormShow" class="provider-config-dialog" width="500"
                  :title="$t('providerConfigTitle', { name: 'Resend' })">
         <div class="provider-config-section">
-          <div class="provider-config-label">API Key</div>
+          <div class="provider-config-label">{{ $t('apiKeyLabel') }}</div>
           <p class="provider-config-hint">
             {{ resendConfigured ? $t('resendTokenList') + `: ${resendList.length}` : $t('providerNotConfiguredDesc', { name: 'Resend' }) }}
             — {{ $t('resendToken') }} ({{ $t('emailSetting') }})
@@ -897,11 +897,11 @@
       <el-dialog v-model="mailjetFormShow" class="provider-config-dialog" width="500"
                  :title="$t('providerConfigTitle', { name: 'Mailjet' })" @closed="cleanMailjetForm">
         <div class="provider-config-section">
-          <div class="provider-config-label">API Key</div>
+          <div class="provider-config-label">{{ $t('apiKeyLabel') }}</div>
           <el-input v-model="mailjetForm.apiKey" :placeholder="setting.mailjetApiKey || $t('mailjetApiKeyPlaceholder')"/>
         </div>
         <div class="provider-config-section">
-          <div class="provider-config-label">Secret Key</div>
+          <div class="provider-config-label">{{ $t('secretKeyLabel') }}</div>
           <el-input v-model="mailjetForm.secretKey" type="password" show-password
                     :placeholder="setting.mailjetSecretKey || $t('mailjetSecretKeyPlaceholder')"/>
         </div>
@@ -1021,11 +1021,11 @@
               <template #prefix>
                 <span style="margin-right: 10px">{{ $t('icon') }}</span>
               </template>
-              <el-option key="none" label="None" value="none"/>
-              <el-option key="primary" label="Primary" value="primary"/>
-              <el-option key="success" label="Success" value="success"/>
-              <el-option key="warning" label="Warning" value="warning"/>
-              <el-option key="info" label="Info" value="info"/>
+              <el-option key="none" :label="$t('noticeTypeNone')" value="none"/>
+              <el-option key="primary" :label="$t('noticeTypePrimary')" value="primary"/>
+              <el-option key="success" :label="$t('noticeTypeSuccess')" value="success"/>
+              <el-option key="warning" :label="$t('noticeTypeWarning')" value="warning"/>
+              <el-option key="info" :label="$t('noticeTypeInfo')" value="info"/>
             </el-select>
             <el-select v-model="noticeForm.noticePosition">
               <template #prefix>
@@ -1087,15 +1087,15 @@
       </el-dialog>
       <el-dialog v-model="addS3Show" :title="t('s3Configuration')" width="340" @closed="resetAddS3Form">
         <form>
-          <el-input class="dialog-input" type="text" placeholder="Bucket" v-model="s3.bucket"/>
-          <el-input class="dialog-input" type="text" placeholder="Endpoint" v-model="s3.endpoint"/>
-          <el-input class="dialog-input" type="text" placeholder="Region" v-model="s3.region"/>
-          <el-input class="dialog-input" type="text" :placeholder="setting.s3AccessKey || 'Access Key'"
+          <el-input class="dialog-input" type="text" :placeholder="$t('s3Bucket')" v-model="s3.bucket"/>
+          <el-input class="dialog-input" type="text" :placeholder="$t('s3Endpoint')" v-model="s3.endpoint"/>
+          <el-input class="dialog-input" type="text" :placeholder="$t('s3Region')" v-model="s3.region"/>
+          <el-input class="dialog-input" type="text" :placeholder="setting.s3AccessKey || $t('s3AccessKey')"
                     v-model="s3.s3AccessKey"/>
-          <el-input style="margin-bottom: 10px" type="text" :placeholder="setting.s3SecretKey || 'Secret Key'" v-model="s3.s3SecretKey"/>
+          <el-input style="margin-bottom: 10px" type="text" :placeholder="setting.s3SecretKey || $t('s3SecretKey')" v-model="s3.s3SecretKey"/>
           <div class="force-path-style">
             <div class="force-path-style-left">
-              <span>ForcePathStyle</span>
+              <span>{{ $t('s3ForcePathStyle') }}</span>
               <el-tooltip effect="dark" :content="$t('forcePathStyleDesc')">
                 <Icon class="warning" icon="psg:warning" width="18" height="18"/>
               </el-tooltip>
