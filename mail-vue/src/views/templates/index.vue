@@ -21,7 +21,7 @@
         </el-button>
       </section>
 
-      <section class="workspace-stats" aria-label="Template summary">
+      <section class="workspace-stats" :aria-label="$t('ariaTemplateSummary')">
         <div class="workspace-stat-card surface-card">
           <span class="workspace-stat-label">{{ $t('templateTotalCount') }}</span>
           <strong class="workspace-stat-value">{{ tplList.length }}</strong>
@@ -239,13 +239,14 @@
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-for="v in TEMPLATE_VARIABLES" :key="v" :command="v">
-                    {{ variableLabel(v) }}
+                  <el-dropdown-item v-for="v in TEMPLATE_VARIABLES" :key="v.key" :command="v.key">
+                    {{ $t(v.labelKey) }}<span class="var-token">{{ variableToken(v.key) }}</span>
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
           </div>
+          <p class="var-hint">{{ $t('tplVarHint') }}</p>
           <div class="editor-frame">
             <tinyEditor ref="tplEditorRef" :def-value="tplForm.content" editor-id="tpl-editor"
               toolbar="bold italic underline | forecolor backcolor | bullist numlist | link | code"
@@ -265,9 +266,10 @@ import { Icon } from '@iconify/vue'
 import tinyEditor from '@/components/tiny-editor/index.vue'
 import shadowHtml from '@/components/shadow-html/index.vue'
 import { useUiStore } from '@/store/ui.js'
-import { templateList, templateAdd, templateUpdate, templateDelete } from '@/request/template.js'
+import { templateList, templateAdd, templateUpdate, templateDelete, templateMeta } from '@/request/template.js'
 import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 import { htmlToPlainText } from '@/utils/html-sanitize.js'
+import { TEMPLATE_VARIABLES, variableToken } from '@/utils/template-vars.js'
 
 defineOptions({ name: 'templates' })
 
@@ -281,34 +283,62 @@ const editorMode = ref(false)
 const searchQuery = ref('')
 const tplForm = reactive({ templateId: null, name: '', subject: '', content: '', category: '' })
 
-const TEMPLATE_VARIABLES = [
-  'recipient_name', 'author_name', 'manuscript_title',
-  'journal_name', 'submission_id', 'editor_name', 'date'
-]
-
-// ── Category system (persisted in localStorage — the template model has
-// no server-side category field) ─────────────────────────────────────
-const CATS_KEY = 'psg-tpl-cats'
-const tplCats = ref(JSON.parse(localStorage.getItem(CATS_KEY) || '{}'))
+// ── Category and favorites — stored on the server with each template
+// (they used to live only in this browser's localStorage; see
+// importLocalMeta for the one-time move) ─────────────────────────────
+const LEGACY_CATS_KEY = 'psg-tpl-cats'
+const LEGACY_FAVS_KEY = 'psg-tpl-favs'
+const tplCats = ref({})
 const activeCategory = ref('__all__')
+const tplFavs = ref(new Set())
 
-function saveCats() {
-  localStorage.setItem(CATS_KEY, JSON.stringify(tplCats.value))
+function setCategory(id, category) {
+  if (category) tplCats.value[id] = category
+  else delete tplCats.value[id]
+  return templateMeta(id, { category: category || '' })
 }
 
-// ── Favorites (persisted in localStorage, same pattern as categories) ──
-const FAVS_KEY = 'psg-tpl-favs'
-const tplFavs = ref(new Set(JSON.parse(localStorage.getItem(FAVS_KEY) || '[]')))
-
-function saveFavs() {
-  localStorage.setItem(FAVS_KEY, JSON.stringify([...tplFavs.value]))
-}
 function isFav(id) { return tplFavs.value.has(id) }
 function toggleFav(id) {
-  if (tplFavs.value.has(id)) tplFavs.value.delete(id)
-  else tplFavs.value.add(id)
+  const on = !tplFavs.value.has(id)
+  if (on) tplFavs.value.add(id)
+  else tplFavs.value.delete(id)
   tplFavs.value = new Set(tplFavs.value)
-  saveFavs()
+  templateMeta(id, { favorite: on }).catch(() => {})
+}
+
+function applyServerMeta(list) {
+  tplCats.value = Object.fromEntries(list.filter(t => t.category).map(t => [t.templateId, t.category]))
+  tplFavs.value = new Set(list.filter(t => t.favorite).map(t => t.templateId))
+}
+
+// Moves categories / favorites this browser still keeps locally up to the
+// server once, for templates that have none there yet, then forgets them.
+async function importLocalMeta(list) {
+  let cats = {}, favs = []
+  try {
+    cats = JSON.parse(localStorage.getItem(LEGACY_CATS_KEY) || '{}')
+    favs = JSON.parse(localStorage.getItem(LEGACY_FAVS_KEY) || '[]')
+  } catch {}
+  if (!Object.keys(cats).length && !favs.length) return
+  const ids = new Set(list.map(t => t.templateId))
+  const jobs = []
+  for (const [id, cat] of Object.entries(cats)) {
+    const tid = Number(id)
+    if (ids.has(tid) && cat && !tplCats.value[tid]) jobs.push(setCategory(tid, cat))
+  }
+  for (const tid of favs) {
+    if (ids.has(tid) && !tplFavs.value.has(tid)) toggleFav(tid)
+  }
+  try {
+    await Promise.all(jobs)
+  } catch {
+    return  // server not ready (e.g. migration pending): keep the local copy
+  }
+  try {
+    localStorage.removeItem(LEGACY_CATS_KEY)
+    localStorage.removeItem(LEGACY_FAVS_KEY)
+  } catch {}
 }
 
 const allCategories = computed(() =>
@@ -348,7 +378,11 @@ const filteredList = computed(() => {
 // ────────────────────────────────────────────────────────────────
 
 onMounted(() => {
-  templateList().then(list => tplList.value = list).catch(() => {})
+  templateList().then(list => {
+    tplList.value = list
+    applyServerMeta(list)
+    importLocalMeta(list)
+  }).catch(() => {})
 })
 
 function openAdd() {
@@ -364,12 +398,8 @@ function openEdit(tpl) {
 }
 function cancelEdit() { editorMode.value = false }
 
-function variableLabel(v) {
-  return `{{${v}}}`
-}
-
-function insertVariable(v) {
-  tplEditorRef.value?.insertContent?.(variableLabel(v))
+function insertVariable(key) {
+  tplEditorRef.value?.insertContent?.(variableToken(key))
 }
 
 async function saveTpl() {
@@ -384,15 +414,13 @@ async function saveTpl() {
       await templateUpdate(tplForm.templateId, tplForm.name, tplForm.subject, html)
       const idx = tplList.value.findIndex(t => t.templateId === tplForm.templateId)
       if (idx > -1) tplList.value[idx] = { ...tplList.value[idx], name: tplForm.name, subject: tplForm.subject, content: html }
-      // Save category
-      if (tplForm.category.trim()) tplCats.value[tplForm.templateId] = tplForm.category.trim()
-      else delete tplCats.value[tplForm.templateId]
-      saveCats()
+      if ((tplCats.value[tplForm.templateId] || '') !== tplForm.category.trim()) {
+        await setCategory(tplForm.templateId, tplForm.category.trim())
+      }
     } else {
-      const newTpl = await templateAdd(tplForm.name, tplForm.subject, html)
+      const newTpl = await templateAdd(tplForm.name, tplForm.subject, html, tplForm.category.trim())
       tplList.value.unshift(newTpl)
-      // Save category for new template
-      if (tplForm.category.trim()) { tplCats.value[newTpl.templateId] = tplForm.category.trim(); saveCats() }
+      if (newTpl.category) tplCats.value[newTpl.templateId] = newTpl.category
     }
     editorMode.value = false
     ElMessage({ message: t('templateSaved'), type: 'success', plain: true })
@@ -409,9 +437,8 @@ function deleteTpl(tpl) {
       await templateDelete(tpl.templateId)
       tplList.value = tplList.value.filter(t => t.templateId !== tpl.templateId)
       delete tplCats.value[tpl.templateId]
-      saveCats()
       tplFavs.value.delete(tpl.templateId)
-      saveFavs()
+      tplFavs.value = new Set(tplFavs.value)
       ElMessage({ message: t('templateDeleted'), type: 'success', plain: true })
     } catch {}
   })
@@ -419,10 +446,9 @@ function deleteTpl(tpl) {
 
 async function duplicateTpl(tpl) {
   try {
-    const copy = await templateAdd(tpl.name + t('duplicateSuffix'), tpl.subject, tpl.content)
+    const copy = await templateAdd(tpl.name + t('duplicateSuffix'), tpl.subject, tpl.content, tplCats.value[tpl.templateId] || '')
     tplList.value.unshift(copy)
-    const cat = tplCats.value[tpl.templateId]
-    if (cat) { tplCats.value[copy.templateId] = cat; saveCats() }
+    if (copy.category) tplCats.value[copy.templateId] = copy.category
     ElMessage({ message: t('templateDuplicated'), type: 'success', plain: true })
   } catch {}
 }
@@ -834,6 +860,19 @@ function useTemplate(tpl) {
   color: var(--psg-text-secondary); padding: 4px 10px;
   transition: border-color 0.12s, color 0.12s; font-family: inherit;
   &:hover { border-color: var(--psg-border-strong); color: var(--psg-text); }
+}
+
+.var-hint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--psg-text-muted);
+}
+
+.var-token {
+  margin-left: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--psg-text-muted);
 }
 
 .cat-select {

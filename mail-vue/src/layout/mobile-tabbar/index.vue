@@ -26,7 +26,7 @@ const route = useRoute()
 const uiStore = useUiStore()
 const canSend = computed(() => hasPerm('email:send'))
 
-const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'archive', 'spam', 'trash', 'label', 'scheduled'])
+const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'archive', 'snoozed', 'spam', 'trash', 'label', 'scheduled'])
 // Compose floats over the everyday mail lists only. Scheduled, Archive, Spam
 // and Deleted are review screens where it would just cover content.
 const COMPOSE_ROUTES = new Set(['email', 'all-inbox', 'star', 'send', 'draft', 'label'])

@@ -248,11 +248,11 @@ function showNotice(data) {
   })
 }
 
-const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'star', 'archive', 'spam', 'trash', 'all-email', 'label', 'search'])
+const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'star', 'archive', 'snoozed', 'spam', 'trash', 'all-email', 'label', 'search'])
 const isMailRoute = computed(() => MAIL_ROUTES.has(route.meta?.name))
 const sidebarCollapsed = computed(() => uiStore.asideCollapsed && window.innerWidth >= 1025)
 
-const keepAliveList = ['email', 'all-inbox', 'all-email', 'send', 'star', 'draft', 'archive', 'spam', 'trash', 'label', 'search']
+const keepAliveList = ['email', 'all-inbox', 'all-email', 'send', 'star', 'draft', 'archive', 'snoozed', 'spam', 'trash', 'label', 'search']
 const keepAliveWorkspace = ['sys-setting', 'analysis', 'access-mgmt', 'setting', 'templates', 'groups', 'scheduled']
 
 // Workspace pages share one scroll container. Keep navigation deterministic on

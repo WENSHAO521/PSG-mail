@@ -121,6 +121,7 @@ const TOOLS = [
 					from: { type: 'string', description: 'The user\'s own mailbox address to send from' },
 					to: { type: 'string', description: 'Recipient address(es), comma-separated' },
 					cc: { type: 'string', description: 'CC address(es), comma-separated' },
+					bcc: { type: 'string', description: 'BCC address(es), comma-separated; other recipients will not see them' },
 					subject: { type: 'string' },
 					content: { type: 'string', description: 'The email body (plain text or simple HTML)' }
 				},
@@ -219,7 +220,7 @@ const TOOL_IMPL = {
 			accountId: accountRow.accountId,
 			receiveEmail: toArray(args.to),
 			cc: toArray(args.cc),
-			bcc: [],
+			bcc: toArray(args.bcc),
 			subject: args.subject || '',
 			text: args.content || '',
 			content: args.content || '',
@@ -275,7 +276,7 @@ const aiAssistantService = {
 			throw new BizError(t('aiAssistantDisabled'), 403);
 		}
 		if (!c.env.ai) {
-			throw new BizError('AI binding not configured', 503);
+			throw new BizError(t('aiNotConfigured'), 503);
 		}
 	},
 

@@ -50,6 +50,12 @@ const routes = [
                 meta: { title: 'archiveFolder', name: 'archive', menu: true }
             },
             {
+                path: '/snoozed',
+                name: 'snoozed',
+                component: () => import('@/views/snoozed/index.vue'),
+                meta: { title: 'snoozedFolder', name: 'snoozed', menu: true }
+            },
+            {
                 path: '/spam',
                 name: 'spam',
                 component: () => import('@/views/spam/index.vue'),

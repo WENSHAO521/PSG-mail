@@ -2,6 +2,7 @@ import { parseHTML } from 'linkedom';
 import BizError from '../error/biz-error';
 import { settingConst } from '../const/entity-const';
 import aiProviderService from './ai-provider-service';
+import { t } from '../i18n/i18n';
 
 // Mail tracker blocking for incoming mail (admin switch: setting.aiTrackerBlock).
 //
@@ -410,7 +411,7 @@ const trackerService = {
 			await c.env.db.prepare('INSERT OR IGNORE INTO psg_tracker_allow (user_id, sender) VALUES (?, ?)').bind(userId, address).run();
 		} catch (e) {
 			console.error('trackerService.allow failed', e?.message || e);
-			throw new BizError('Tracker allow list is temporarily unavailable', 503);
+			throw new BizError(t('trackerAllowUnavailable'), 503);
 		}
 	},
 

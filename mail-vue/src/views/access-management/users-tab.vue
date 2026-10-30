@@ -10,7 +10,7 @@
         >
         </el-input>
       </div>
-      <el-select v-model="params.status" placeholder="Select" class="status-select"
+      <el-select v-model="params.status" :placeholder="$t('select')" class="status-select"
                  :style="`width: ${locale === 'en' ? 95 : 80 }px`" @change="search">
         <el-option :key="-1" :label="$t('all')" :value="-1"/>
         <el-option :key="0" :label="$t('active')" :value="0"/>
@@ -127,7 +127,7 @@
             <div class="user-cell-name">{{ row.accountName || row.oauthName || row.email }}</div>
             <div class="user-cell-email">{{ row.email }}</div>
           </div>
-          <MoreMenu v-if="!(row.type === 0 && userStore.user.type !== 0)" aria-label="User actions">
+          <MoreMenu v-if="!(row.type === 0 && userStore.user.type !== 0)" :aria-label="$t('ariaUserActions')">
             <el-dropdown-item @click="openDetails(row)">{{ $t('details') }}</el-dropdown-item>
             <el-dropdown-item @click="openSetName(row)">{{ $t('setUsername') }}</el-dropdown-item>
             <el-dropdown-item @click="openSetPwd(row)">{{ $t('chgPwd') }}</el-dropdown-item>
@@ -201,7 +201,7 @@
     <el-dialog class="dialog" v-model="setTypeShow" :title="$t('changePerm')" width="min(400px, calc(100vw - 32px))" @closed="resetUserForm">
       <div class="dialog-box">
         <el-input disabled :model-value="$t('admin')" v-if="userForm.type === 0"/>
-        <el-select v-else v-model="userForm.type" placeholder="Select">
+        <el-select v-else v-model="userForm.type" :placeholder="$t('select')">
           <el-option v-for="item in roleList" :label="item.name" :value="item.roleId" :key="item.roleId"/>
         </el-select>
         <el-button :disabled="userForm.type === 0" class="btn" :loading="settingLoading" type="primary" @click="setType"

@@ -32,15 +32,15 @@ export async function afterReceive(c, { account, emailRow, mail, recipient, sett
 
 	// The user's Subject keywords rules (star / archive / mark read), applied
 	// before any push so every client sees the mail in its final state.
-	if (account) {
-		await mailRuleService.applyIncoming(c, account.userId, emailRow);
-	}
+	const ruleResult = account ? await mailRuleService.applyIncoming(c, account.userId, emailRow) : {};
 
 	// With AI spam screening on, the verdict comes first (capped at a
 	// few seconds) so spam neither pings the user nor reaches any
 	// downstream action: notifications, forwarding, Telegram, webhooks
 	// and auto-replies. The mail itself is already stored either way.
-	const spamCheck = account && screenSpam ? screenSpam() : Promise.resolve(false);
+	// A rule that sent the mail to spam or trash counts the same way.
+	const spamCheck = ruleResult?.silent ? Promise.resolve(true)
+		: account && screenSpam ? screenSpam() : Promise.resolve(false);
 
 	if (account) {
 		const notifyAndForward = () => Promise.all([

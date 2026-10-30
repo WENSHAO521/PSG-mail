@@ -21,7 +21,7 @@
       <span>{{ $t('rulesScopeNote') }}</span>
     </section>
 
-    <section class="stats-grid" aria-label="Rule summary">
+    <section class="stats-grid" :aria-label="$t('ariaRuleSummary')">
       <div class="stat-card surface-card">
         <span class="stat-label">{{ $t('rulesTotalCount') }}</span>
         <strong class="stat-value">{{ rulesStore.rules.length }}</strong>
@@ -86,7 +86,7 @@
               <span class="detail-arrow" aria-hidden="true">→</span>
               <span class="rule-detail-group">
                 <span class="detail-label">{{ $t('ruleActionType') }}</span>
-                <span class="detail-value">{{ actionLabel(rule.action) }}</span>
+                <span class="detail-value">{{ actionLabel(rule.action, rule.actionValue) }}</span>
               </span>
             </div>
           </div>
@@ -177,6 +177,17 @@
               <el-option value="star" :label="$t('actionStar')" />
               <el-option value="archive" :label="$t('actionArchive')" />
               <el-option value="markRead" :label="$t('actionMarkRead')" />
+              <el-option value="label" :label="$t('actionLabel')" />
+              <el-option value="spam" :label="$t('actionSpam')" />
+              <el-option value="trash" :label="$t('actionTrash')" />
+            </el-select>
+          </div>
+
+          <div class="field-block" v-if="ruleForm.action === 'label'">
+            <label class="field-label" for="rule-action-label">{{ $t('ruleLabelPick') }}</label>
+            <el-select id="rule-action-label" v-model="ruleForm.actionValue" class="field-control"
+                       :placeholder="$t('ruleLabelPick')" :no-data-text="$t('labelEmpty')">
+              <el-option v-for="l in labelStore.labels" :key="l.labelId" :value="String(l.labelId)" :label="l.name" />
             </el-select>
           </div>
 
@@ -206,12 +217,14 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRulesStore } from '@/store/rules.js'
+import { useLabelStore } from '@/store/label.js'
 import { useMobileNavigationStore } from '@/store/mobile-navigation.js'
 
 defineOptions({ name: 'rules' })
 
 const { t } = useI18n()
 const rulesStore = useRulesStore()
+const labelStore = useLabelStore()
 const mobileNavigation = useMobileNavigationStore()
 const editorOpen = ref(false)
 const saving = ref(false)
@@ -244,6 +257,7 @@ function createEmptyRule() {
     conditionType: 'subject',
     conditionValue: '',
     action: 'star',
+    actionValue: '',
     enabled: true,
   }
 }
@@ -273,7 +287,10 @@ function cancelEdit() {
   resetForm()
 }
 
-onMounted(() => { rulesStore.load().catch(() => {}) })
+onMounted(() => {
+  rulesStore.load().catch(() => {})
+  labelStore.load().catch(() => {})
+})
 
 async function saveRule() {
   const name = ruleForm.name.trim()
@@ -285,6 +302,10 @@ async function saveRule() {
   }
   if (ruleForm.conditionType !== 'all' && !conditionValue) {
     ElMessage({ message: t('ruleConditionRequired'), type: 'error', plain: true })
+    return
+  }
+  if (ruleForm.action === 'label' && !ruleForm.actionValue) {
+    ElMessage({ message: t('ruleLabelRequired'), type: 'error', plain: true })
     return
   }
 
@@ -340,8 +361,12 @@ function conditionLabel(type) {
   return key ? t(key) : type
 }
 
-function actionLabel(action) {
-  const key = { star: 'actionStar', archive: 'actionArchive', markRead: 'actionMarkRead' }[action]
+function actionLabel(action, actionValue) {
+  if (action === 'label') {
+    const label = labelStore.labels.find(l => String(l.labelId) === String(actionValue))
+    return label ? t('actionLabelNamed', { name: label.name }) : t('actionLabel')
+  }
+  const key = { star: 'actionStar', archive: 'actionArchive', markRead: 'actionMarkRead', spam: 'actionSpam', trash: 'actionTrash' }[action]
   return key ? t(key) : action
 }
 </script>

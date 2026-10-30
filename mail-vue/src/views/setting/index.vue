@@ -5,7 +5,7 @@
         <div class="settings-shell" :class="{ 'mobile-detail-active': mobileSettingsDetail }">
 
           <!-- ── Left sidebar nav ── -->
-          <nav class="settings-sidebar" aria-label="Personal settings sections">
+          <nav class="settings-sidebar" :aria-label="$t('ariaSettingSections')">
             <button
               v-for="item in navItems"
               :key="item.key"
@@ -316,7 +316,7 @@
                         </template>
                         <template v-else>
                           <span class="backup-disconnected-dot"/>
-                          {{ $t('backupDisconnect') }}
+                          {{ $t('backupNotConnected') }}
                         </template>
                       </div>
                     </div>
@@ -342,6 +342,25 @@
                       @click="connectProvider(p.key)"
                     >{{ p.key === 'google' ? $t('backupConnectGoogle') : $t('backupConnectMicrosoft') }}</el-button>
                   </div>
+                </div>
+                <p v-if="availableProviders.length" class="backup-auto-note">{{ $t('backupAutoNote') }}</p>
+              </div>
+              <!-- Import .eml files from another mail service -->
+              <div class="card-body import-body">
+                <div class="import-head">
+                  <strong>{{ $t('importEmlTitle') }}</strong>
+                  <span>{{ $t('importEmlDesc') }}</span>
+                </div>
+                <div class="import-row">
+                  <el-select id="import-account" v-model="importAccountId" :placeholder="$t('importEmlAccount')"
+                             class="import-account" @visible-change="v => v && loadImportAccounts()">
+                    <el-option v-for="a in importAccounts" :key="a.accountId" :value="a.accountId" :label="a.email"/>
+                  </el-select>
+                  <el-button type="primary" :loading="importing" :disabled="!importAccountId" @click="importInput?.click()">
+                    {{ importing ? $t('importEmlProgress', { done: importDone, total: importTotal }) : $t('importEmlChoose') }}
+                  </el-button>
+                  <input ref="importInput" id="import-eml-files" type="file" accept=".eml,message/rfc822" multiple hidden
+                         @change="importFiles"/>
                 </div>
               </div>
             </div>
@@ -424,7 +443,8 @@ import { resetPassword, userDelete, signOutOtherSessions } from "@/request/my.js
 import { trackerAllowList, trackerDisallow } from '@/request/tracker.js'
 import { useUserStore } from "@/store/user.js"
 import router from "@/router/index.js"
-import { accountSetName } from "@/request/account.js"
+import { accountSetName, accountListAll } from "@/request/account.js"
+import { emailImport } from "@/request/email.js"
 import { useAccountStore } from "@/store/account.js"
 import { useI18n } from "vue-i18n"
 import { useSettingStore } from "@/store/setting.js"
@@ -752,16 +772,87 @@ function disconnectProvider(provider) {
   }).catch(() => {})
 }
 
+// The server uploads a small batch per call and reports what is left, so
+// keep calling until it is done or a batch fails.
+// ── Import .eml ──
+const importAccounts = ref([])
+const importAccountId = ref(null)
+const importInput = ref(null)
+const importing = ref(false)
+const importDone = ref(0)
+const importTotal = ref(0)
+
+function loadImportAccounts() {
+  if (importAccounts.value.length) return
+  accountListAll().then(list => {
+    importAccounts.value = (list || []).filter(a => a.userId === userStore.user?.userId || !a.userId)
+  }).catch(() => {})
+}
+
+function fileToBase64Raw(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result).split(',')[1] || '')
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+async function importFiles(event) {
+  const files = [...(event.target.files || [])]
+  event.target.value = ''
+  if (!files.length || !importAccountId.value) return
+  importing.value = true
+  importDone.value = 0
+  importTotal.value = files.length
+  let ok = 0
+  const failed = []
+  for (const file of files) {
+    try {
+      if (file.size > 20 * 1024 * 1024) throw new Error(t('importEmlTooLarge'))
+      await emailImport(importAccountId.value, await fileToBase64Raw(file))
+      ok++
+    } catch (e) {
+      failed.push(file.name)
+    }
+    importDone.value++
+  }
+  importing.value = false
+  if (failed.length) {
+    ElMessage({ message: t('importEmlPartial', { ok, failed: failed.length, names: failed.slice(0, 3).join('、') }), type: 'warning', plain: true, duration: 6000 })
+  } else {
+    ElMessage({ message: t('importEmlDone', { n: ok }), type: 'success', plain: true })
+  }
+}
+
 async function triggerBackup(provider) {
   backupLoading.value[provider] = true
+  let total = 0
+  let progress = null
   try {
-    const { count } = await backupStart(provider)
-    ElMessage({ message: t('backupDone', { count }), type: 'success', plain: true })
-    loadBackupStatus()
+    while (true) {
+      const { count, failed, remaining } = await backupStart(provider)
+      total += count
+      if (failed) {
+        ElMessage({ message: t('backupPartial', { count: total, failed }), type: 'warning', plain: true })
+        break
+      }
+      if (!remaining || !count) {
+        ElMessage({
+          message: total ? t('backupDoneIncremental', { count: total }) : t('backupUpToDate'),
+          type: 'success', plain: true,
+        })
+        break
+      }
+      progress?.close()
+      progress = ElMessage({ message: t('backupProgress', { count: total, remaining }), type: 'info', plain: true, duration: 0 })
+    }
   } catch {
-    ElMessage({ message: t('backupFailed'), type: 'error', plain: true })
+    ElMessage({ message: total ? t('backupPartial', { count: total, failed: 1 }) : t('backupFailed'), type: 'error', plain: true })
   } finally {
+    progress?.close()
     backupLoading.value[provider] = false
+    loadBackupStatus()
   }
 }
 
@@ -1288,6 +1379,39 @@ function submitPwd() {
 .backup-body {
   gap: 0;
   padding: 0;
+}
+
+.backup-auto-note {
+  margin: 0;
+  padding: 10px 22px 14px;
+  font-size: 12px;
+  color: var(--psg-text-muted);
+}
+
+.import-body {
+  gap: 12px;
+  padding: 16px 22px;
+  border-top: 1px solid var(--psg-border);
+}
+
+.import-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  span { color: var(--psg-text-secondary); font-size: 12.5px; }
+}
+
+.import-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.import-account {
+  flex: 1 1 220px;
+  min-width: 0;
 }
 
 .backup-empty-state {

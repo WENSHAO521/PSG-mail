@@ -84,6 +84,7 @@ const scheduledEmailService = {
 			content: params.content,
 			subject: params.subject,
 			separate: !!params.separate,
+			requestReceipt: !!params.requestReceipt,
 			// Referenced attachments (forwarded, or kept with a draft) are loaded
 			// now: the draft they came from is deleted once this is scheduled.
 			attachments: await emailService.resolveForwardedAttachments(c, params.attachments || [], userId),
