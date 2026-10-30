@@ -58,7 +58,7 @@
           <div class="item-body">
             <div class="item-name">{{ row.subject || $t('noSubject') }}</div>
             <div class="item-meta">
-              <span class="item-sub">{{ (row.receiveEmail || []).join(', ') }}</span>
+              <span class="item-sub">{{ recipientSummary(row, t('bcc')) }}</span>
             </div>
             <div class="item-meta">
               <span class="status-badge" :class="'status-' + row.status">{{ $t('scheduledStatus' + statusKey(row.status)) }}</span>
@@ -95,6 +95,7 @@ import { Icon } from '@iconify/vue'
 import { ElMessageBox } from 'element-plus'
 import { useUiStore } from '@/store/ui.js'
 import dayjs from 'dayjs'
+import { recipientSummary } from '@/utils/text.js'
 import {
   emailScheduleList, emailScheduleCancel, emailScheduleSendNow, emailScheduleEdit,
 } from '@/request/email.js'

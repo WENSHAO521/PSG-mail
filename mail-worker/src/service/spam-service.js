@@ -90,14 +90,16 @@ const spamService = {
 			if (allowed) return true;
 		} catch {}
 		try {
-			// Someone this user has written to before. The LIKE matches the
-			// address as a whole JSON string value ("addr") and only narrows
-			// the rows; the parsed recipient list decides.
+			// Someone this user has written to before, in To, Cc or Bcc. The
+			// LIKE matches the address as a whole JSON string value ("addr")
+			// and only narrows the rows; the parsed address lists decide.
+			const like = `%"${escapeLike(address)}"%`;
 			const { results } = await c.env.db.prepare(
-				`SELECT recipient FROM email WHERE user_id = ? AND type = 1 AND LOWER(recipient) LIKE ? ESCAPE '\\' LIMIT 20`
-			).bind(userId, `%"${escapeLike(address)}"%`).all();
+				`SELECT recipient, cc, bcc FROM email WHERE user_id = ? AND type = 1
+				 AND (LOWER(recipient) LIKE ? ESCAPE '\\' OR LOWER(cc) LIKE ? ESCAPE '\\' OR LOWER(bcc) LIKE ? ESCAPE '\\') LIMIT 20`
+			).bind(userId, like, like, like).all();
 			for (const row of results || []) {
-				if (recipientAddresses(row.recipient).includes(address)) return true;
+				if ([row.recipient, row.cc, row.bcc].some(list => recipientAddresses(list).includes(address))) return true;
 			}
 		} catch {}
 		return false;

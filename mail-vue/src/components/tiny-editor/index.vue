@@ -56,7 +56,7 @@ const props = defineProps({
 
 
 const {locale, t} = useI18n()
-const emit = defineEmits(['change','focus']);
+const emit = defineEmits(['change','focus','submit']);
 const editor = shallowRef(null);
 const isInitialized = ref(false);
 const editorRef = ref(null);
@@ -311,6 +311,14 @@ function initEditor(initialContent = null) {
       });
       ed.on('focus', () => {
         emit('focus', focus);
+      })
+      // Keys typed in the editor stay inside its iframe, so Ctrl/Cmd+Enter
+      // is passed up here for the compose window to send.
+      ed.on('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          emit('submit');
+        }
       })
     },
     autofocus: true,

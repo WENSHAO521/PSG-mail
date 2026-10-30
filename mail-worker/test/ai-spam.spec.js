@@ -42,7 +42,7 @@ const incoming = (from = 'promo@shop.example') => ({
 beforeAll(async () => {
 	await env.db.prepare(`CREATE TABLE IF NOT EXISTS email (
 		email_id INTEGER PRIMARY KEY, send_email TEXT, account_id INTEGER, user_id INTEGER,
-		subject TEXT, type INTEGER DEFAULT 0, recipient TEXT, is_spam INTEGER NOT NULL DEFAULT 0
+		subject TEXT, type INTEGER DEFAULT 0, recipient TEXT, cc TEXT NOT NULL DEFAULT '[]', bcc TEXT NOT NULL DEFAULT '[]', is_spam INTEGER NOT NULL DEFAULT 0
 	)`).run();
 	await env.db.prepare(`CREATE TABLE IF NOT EXISTS psg_spam_verdict (
 		email_id INTEGER PRIMARY KEY, source TEXT NOT NULL DEFAULT 'ai',
@@ -138,6 +138,16 @@ describe('AI spam screening', () => {
 		expect(await spamService.isTrusted(ctx(), 1, 'bob@example.com')).toBe(false);
 		expect(await spamService.isTrusted(ctx(), 1, 'axb@example.com')).toBe(false);
 		expect(await spamService.isTrusted(ctx(), 1, 'A_B@example.com')).toBe(true);
+	});
+
+	it('trusts people the user only Cc\'d or Bcc\'d', async () => {
+		await env.db.prepare(
+			`INSERT INTO email (email_id, send_email, account_id, user_id, subject, type, recipient, cc, bcc, is_spam)
+			 VALUES (30, 'me@psg.test', 1, 1, 'Hello', 1, '[]', '[{"address":"carol@example.com"}]', '[{"address":"dave@example.com"}]', 0)`
+		).run();
+		expect(await spamService.isTrusted(ctx(), 1, 'carol@example.com')).toBe(true);
+		expect(await spamService.isTrusted(ctx(), 1, 'Dave@example.com')).toBe(true);
+		expect(await spamService.isTrusted(ctx(), 1, 'erin@example.com')).toBe(false);
 	});
 
 	it('"not spam" on a shared mailbox trusts the sender for the mailbox owner', async () => {

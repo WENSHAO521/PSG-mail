@@ -21,7 +21,7 @@
                :type="'draft'"
   >
     <template #name="props">
-      <span class="send-email">{{ props.email.receiveEmail?.join(',') || '(' + $t('noRecipient') + ')' }}</span>
+      <span class="send-email">{{ recipientSummary(props.email, $t('bcc')) || '(' + $t('noRecipient') + ')' }}</span>
     </template>
     <template #subject="props">
       {{ props.email.subject || '(' + $t('noSubject') + ')' }}
@@ -31,6 +31,7 @@
 
 <script setup>
 import emailScroll from "@/components/email-scroll/index.vue"
+import { recipientSummary } from "@/utils/text.js"
 import {emailDelete} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, reactive, ref, watch} from "vue";

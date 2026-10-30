@@ -2,9 +2,11 @@
 // used to carry the sender's bcc column, so the reader showed all blind-
 // copied addresses to everyone on this site.
 import { env } from 'cloudflare:test';
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { setupFullSchema, makeCtx } from './helpers/full-schema';
 import emailService from '../src/service/email-service';
+import settingService from '../src/service/setting-service';
+import roleService from '../src/service/role-service';
 import { emailConst } from '../src/const/entity-const';
 
 const SENDER = 9401, TO_USER = 9402, BCC_USER = 9403;
@@ -44,5 +46,41 @@ describe('bcc on on-site delivery', () => {
 		// The sender's own copy still lists who was blind-copied.
 		const own = await env.db.prepare('SELECT bcc FROM email WHERE email_id = ?').bind(row.email_id).first();
 		expect(JSON.parse(own.bcc)).toHaveLength(1);
+	});
+});
+
+describe('bcc-only mail', () => {
+	it('refuses a mail with no To, Cc or Bcc', async () => {
+		await expect(emailService.send(makeCtx(), { accountId: SENDER_ACC, receiveEmail: [], cc: [], bcc: [], subject: 's', content: '<p>x</p>' }, SENDER))
+			.rejects.toThrow();
+	});
+
+	it('sends each Bcc-only recipient their own copy, never To the sender', async () => {
+		const real = await settingService.query(makeCtx());
+		const setting = vi.spyOn(settingService, 'query').mockResolvedValue({ ...real, send: 0, domainList: ['@psg.test'], resendTokens: { 'psg.test': 're_test' } });
+		const role = vi.spyOn(roleService, 'selectById').mockResolvedValue({ sendType: 'count', sendCount: 0, availDomain: '' });
+		// Fail every provider call: only the arguments matter here.
+		const resend = vi.spyOn(emailService, 'sendByResend').mockResolvedValue({ error: { message: 'stop' } });
+		try {
+			await expect(emailService.send(makeCtx(), {
+				accountId: SENDER_ACC, receiveEmail: [], bcc: ['one@outside.test', 'two@outside.test'], subject: 'Bcc only', content: '<p>hi</p>',
+			}, SENDER)).rejects.toThrow('stop');
+			const calls = resend.mock.calls.map(call => call[1]);
+			expect(calls.map(p => p.receiveEmail)).toEqual([['one@outside.test'], ['two@outside.test']]);
+			for (const p of calls) expect(p.bcc).toEqual([]);
+
+			resend.mockClear();
+			await expect(emailService.send(makeCtx(), {
+				accountId: SENDER_ACC, receiveEmail: [], cc: ['c@outside.test'], bcc: ['b@outside.test'], subject: 'Cc and Bcc', content: '<p>hi</p>',
+			}, SENDER)).rejects.toThrow('stop');
+			const [params] = resend.mock.calls.map(call => call[1]);
+			expect(params.receiveEmail).toEqual(['c@outside.test']);
+			expect(params.cc).toEqual([]);
+			expect(params.bcc).toEqual(['b@outside.test']);
+		} finally {
+			setting.mockRestore();
+			role.mockRestore();
+			resend.mockRestore();
+		}
 	});
 });

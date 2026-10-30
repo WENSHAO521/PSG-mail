@@ -374,6 +374,7 @@ const scheduledEmailService = {
 			summary = {
 				receiveEmail: p.receiveEmail,
 				cc: p.cc,
+				bcc: p.bcc,
 				subject: p.subject,
 				attachmentCount: (p.attachments || []).length,
 				sendType: p.sendType,

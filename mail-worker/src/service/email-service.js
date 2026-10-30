@@ -935,6 +935,13 @@ const emailService = {
 			requestReceipt = false //请求已读回执
 		} = params;
 
+		// To may be empty when Cc or Bcc has someone (a Bcc-only mail), but
+		// there must be at least one address somewhere.
+		receiveEmail = Array.isArray(receiveEmail) ? receiveEmail : [];
+		if (receiveEmail.length + cc.length + bcc.length === 0) {
+			throw new BizError(t('emptyRecipient'), 400);
+		}
+
 		attachments = await this.resolveForwardedAttachments(c, attachments, userId);
 
 		const { resendTokens, r2Domain, send, domainList, mailjetApiKey, mailjetSecretKey } = await settingService.query(c);
@@ -1060,7 +1067,9 @@ const emailService = {
 				cc,
 				bcc,
 				subject,
-				text,
+				// Providers refuse a mail with neither html nor text; an empty
+				// mail (allowed, as in Gmail) goes out with a blank text part.
+				text: text || (html ? text : ' '),
 				html,
 				attachments: [...imageDataList, ...attachments],
 				sendType,
@@ -1070,15 +1079,45 @@ const emailService = {
 				requestReceipt: !!requestReceipt
 			};
 
-			if (useCloudflareEmail) {
-				provider = 'cloudflare';
-				sendResult = await this.sendByCloudflareEmail(c, sendParams);
-			} else if (resendToken) {
-				provider = 'resend';
-				sendResult = await this.sendByResend(resendToken, sendParams);
+			provider = useCloudflareEmail ? 'cloudflare' : resendToken ? 'resend' : 'mailjet';
+			const callProvider = params => {
+				if (useCloudflareEmail) return this.sendByCloudflareEmail(c, params);
+				if (resendToken) return this.sendByResend(resendToken, params);
+				return this.sendByMailjet({ apiKey: mailjetApiKey, secretKey: mailjetSecretKey }, params);
+			};
+
+			// Cloudflare, Resend and Mailjet all require a To address, but a mail
+			// may leave To empty (as Gmail allows). With Cc, the Cc addresses
+			// take the To slot. With only Bcc, each Bcc recipient gets their own
+			// copy addressed to them, so nobody sees another Bcc address and the
+			// sender is never put in To or sent a copy.
+			if (receiveEmail.length > 0) {
+				sendResult = await callProvider(sendParams);
+			} else if (cc.length > 0) {
+				sendResult = await callProvider({ ...sendParams, receiveEmail: cc, cc: [] });
 			} else {
-				provider = 'mailjet';
-				sendResult = await this.sendByMailjet({ apiKey: mailjetApiKey, secretKey: mailjetSecretKey }, sendParams);
+				const bccList = [...new Set(bcc)];
+				if (bccList.length > SEPARATE_SEND_LIMIT) {
+					throw new BizError(t('bccOnlyLimit', { count: SEPARATE_SEND_LIMIT }));
+				}
+				let firstError = null;
+				for (const address of bccList) {
+					let result;
+					try {
+						result = await callProvider({ ...sendParams, receiveEmail: [address], bcc: [] });
+					} catch (e) {
+						result = { error: { message: e?.message || String(e) } };
+					}
+					if (result?.error) {
+						console.error(`send: bcc copy to ${address} failed`, result.error.message);
+						firstError = firstError || result.error;
+					} else if (!sendResult.data) {
+						sendResult = result;
+					}
+				}
+				// Only a total failure fails the send; the copies already out
+				// can't be recalled, so a partial one is still recorded as sent.
+				if (!sendResult.data) sendResult = { error: firstError };
 			}
 
 		}
