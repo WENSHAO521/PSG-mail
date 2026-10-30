@@ -101,6 +101,9 @@
           <div class="field-actions">
             <span v-if="!showCc"  class="field-toggle" @click.stop="showCc = true">{{ $t('cc') }}</span>
             <span v-if="!showBcc" class="field-toggle" @click.stop="showBcc = true">{{ $t('bcc') }}</span>
+            <span v-if="form.receiveEmail.length > 1" class="field-toggle" :class="{ 'is-on': form.separate }"
+                  role="switch" :aria-checked="form.separate" :title="$t('separateSendTip')"
+                  @click.stop="form.separate = !form.separate">{{ $t('separateSend') }}</span>
             <button type="button" class="icon-btn-sm" :title="$t('recentContacts')"
                     :aria-label="$t('recentContacts')" @click.stop="openContacts">
               <Icon icon="psg:user-plus" width="14" height="14"/>
@@ -772,6 +775,8 @@ const form = reactive({
   emailId: 0,
   attachments: [],
   draftId: null,
+  // One mail per To recipient, so nobody sees the others.
+  separate: false,
 })
 
 const selectRecipientList = ref([])
@@ -1075,8 +1080,8 @@ function validateBeforeSend() {
     return false
   }
 
-  if (form.manyType === 'divide' && form.attachments.length > 0) {
-    ElMessage({ message: t('noSeparateSendMsg'), type: 'error', plain: true })
+  if (form.separate && form.receiveEmail.length > 1 && (form.cc.length > 0 || form.bcc.length > 0)) {
+    ElMessage({ message: t('separateNoCcMsg'), type: 'error', plain: true })
     return false
   }
 
@@ -1250,6 +1255,14 @@ async function sendEmail() {
       emailStore.sendScroll?.addItem(item)
     })
 
+    if (email?.separateFailed) {
+      ElMessage({
+        message: t('separatePartialMsg', { sent: emailList.length, failed: email.separateFailed }),
+        type: 'warning',
+        plain: true
+      })
+    }
+
     ElNotification({
       title: t('sendSuccessMsg'),
       type: "success",
@@ -1304,7 +1317,7 @@ function resetForm() {
   bccPending.value = ''
   form.subject = ''
   form.content = ''
-  form.manyType = null
+  form.separate = false
   form.attachments = []
   form.sendType = ''
   form.emailId = 0
@@ -2311,6 +2324,11 @@ function close() {
   gap: 8px;
   flex-shrink: 0;
   margin-left: 8px;
+}
+
+.field-toggle.is-on {
+  color: var(--psg-primary);
+  background: var(--psg-primary-muted);
 }
 
 .field-toggle {

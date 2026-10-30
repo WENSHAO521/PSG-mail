@@ -335,7 +335,7 @@ const loginService = {
 	},
 
 	async logout(c, userId) {
-		const token = userContext.getToken(c);
+		const token = await userContext.getToken(c);
 		const logoutKey = KvConst.AUTH_INFO + userId;
 		// Read from KV directly on logout to ensure accuracy
 		const authInfo = await c.env.kv.get(logoutKey, { type: 'json' });
@@ -343,7 +343,7 @@ const loginService = {
 		const index = authInfo.tokens.findIndex(item => item === token);
 		if (index > -1) authInfo.tokens.splice(index, 1);
 		if (authInfo.sessions) delete authInfo.sessions[token];
-		await c.env.kv.put(logoutKey, JSON.stringify(authInfo));
+		await c.env.kv.put(logoutKey, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
 		kvCache.set(logoutKey, authInfo, TTL.AUTH);  // update cache so revocation is immediate
 	}
 

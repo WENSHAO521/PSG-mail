@@ -51,7 +51,7 @@
       <div class="result-list">
         <div v-for="item in results" :key="item.emailId" class="result-row" @click="openResult(item)">
           <div class="result-row-top">
-            <span class="result-sender" :class="{ unread: item.unread === 0 }">{{ item.name || item.sendEmail }}</span>
+            <HighlightText class="result-sender" :class="{ unread: item.unread === 0 }" :text="item.name || item.sendEmail" :terms="highlightTerms"/>
             <span class="row-label-dots" v-if="item.labels && item.labels.length">
               <span v-for="l in item.labels" :key="l.labelId" class="row-label-dot" :style="{ background: labelStore.resolve(l).color }" :title="labelStore.resolve(l).name"></span>
             </span>
@@ -59,8 +59,8 @@
             <span v-if="multiAccount && allAccounts && mailboxOf(item)" class="result-mailbox">{{ mailboxOf(item) }}</span>
             <span class="result-time">{{ formatTime(item.createTime) }}</span>
           </div>
-          <span class="result-subject" :class="{ unread: item.unread === 0 }">{{ item.subject || $t('noSubject') }}</span>
-          <span class="result-snippet">{{ snippet(item) }}</span>
+          <HighlightText class="result-subject" :class="{ unread: item.unread === 0 }" :text="item.subject || $t('noSubject')" :terms="highlightTerms"/>
+          <HighlightText class="result-snippet" :text="snippet(item)" :terms="highlightTerms"/>
         </div>
       </div>
 
@@ -83,6 +83,7 @@ import { useLabelStore } from '@/store/label.js'
 import { useUiStore } from '@/store/ui.js'
 import { fromNow } from '@/utils/day.js'
 import { useAccountScope } from '@/utils/account-scope.js'
+import HighlightText from '@/components/highlight-text/index.vue'
 
 defineOptions({ name: 'search' })
 
@@ -124,9 +125,14 @@ function stripHtml(html) {
   return String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+// Starts a little before the first matched word, so the hit is visible.
 function snippet(item) {
-  const text = item.text || stripHtml(item.content)
-  return text.slice(0, 140)
+  const text = String(item.text || stripHtml(item.content)).replace(/\s+/g, ' ').trim()
+  const lower = text.toLowerCase()
+  const hits = highlightTerms.value.map(t => lower.indexOf(t.toLowerCase())).filter(i => i >= 0)
+  const first = hits.length ? Math.min(...hits) : 0
+  const start = first > 40 ? first - 30 : 0
+  return (start ? '…' : '') + text.slice(start, start + 140)
 }
 
 function hasAttachment(item) {
@@ -135,6 +141,22 @@ function hasAttachment(item) {
 
 function formatTime(t) {
   return t ? fromNow(t) : ''
+}
+
+// Words to mark in the results: free-text keywords plus the values of
+// from:, to:, cc: and subject: (the other operators filter, not match text).
+const highlightTerms = ref([])
+function termsOf(query) {
+  const terms = []
+  const re = /([a-zA-Z]+):"([^"]*)"|([a-zA-Z]+):(\S+)|"([^"]*)"|(\S+)/g
+  let m
+  while ((m = re.exec(query)) !== null) {
+    const op = (m[1] || m[3] || '').toLowerCase()
+    const value = m[2] ?? m[4] ?? m[5] ?? m[6] ?? ''
+    if (!op || ['from', 'to', 'cc', 'subject'].includes(op)) terms.push(value)
+    else if (!['after', 'before', 'has', 'is', 'in', 'label'].includes(op)) terms.push(`${op}:${value}`)
+  }
+  return terms.filter(t => t.length >= 2 || /[^\x00-\x7f]/.test(t))
 }
 
 async function runSearch(loadMore = false) {
@@ -148,6 +170,7 @@ async function runSearch(loadMore = false) {
     const data = await emailSearch(q, accountId, allReceive, cursor, 30)
     if (!loadMore) {
       results.value = data.list || []
+      highlightTerms.value = termsOf(q)
       searchStore.remember(q)
     } else {
       results.value.push(...(data.list || []))

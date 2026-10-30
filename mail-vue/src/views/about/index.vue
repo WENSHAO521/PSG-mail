@@ -11,7 +11,7 @@
           <div class="hero-version-chip">v{{ appVersion }}</div>
         </div>
 
-        <!-- ── Version / Update card ── -->
+        <!-- ── Version card ── -->
         <div class="about-card">
           <div class="about-card-title">{{ $t('version') }}</div>
           <div class="about-row">
@@ -22,85 +22,6 @@
             <span class="about-label">{{ $t('whatsNewTitle') }}</span>
             <el-button class="about-btn" @click="openWhatsNew">{{ $t('whatsNewView') }}</el-button>
           </div>
-
-          <template v-if="isElectron">
-            <div class="about-row">
-              <span class="about-label">{{ $t('updateStatus') }}</span>
-              <span class="about-status-badge" :class="stageCls">
-                <span class="status-dot" />
-                {{ stageLabel }}
-              </span>
-            </div>
-
-            <el-progress
-              v-if="stage === 'downloading'"
-              class="update-progress"
-              :percentage="progress"
-              :stroke-width="4"
-              :show-text="false"
-            />
-
-            <div v-if="stage === 'error' && errorMessage" class="update-error-detail">
-              {{ errorMessage }}
-            </div>
-
-            <div class="about-actions">
-              <el-button
-                v-if="stage !== 'ready'"
-                :loading="stage === 'checking'"
-                :disabled="stage === 'downloading'"
-                class="about-btn"
-                @click="checkUpdate"
-              >
-                <Icon v-if="stage !== 'checking'" icon="solar:refresh-linear" width="15" height="15" />
-                {{ stage === 'checking' ? $t('checking') : $t('checkForUpdates') }}
-              </el-button>
-
-              <el-button
-                v-if="stage === 'ready'"
-                class="about-btn about-btn--install"
-                @click="doInstall"
-              >
-                <Icon icon="solar:download-minimalistic-linear" width="15" height="15" />
-                {{ $t('installAndRestart') }}
-              </el-button>
-            </div>
-          </template>
-
-          <!-- Android: native update check -->
-          <template v-else-if="isAndroid">
-            <div class="about-row">
-              <span class="about-label">{{ $t('updateStatus') }}</span>
-              <span class="about-status-badge" :class="androidStageCls">
-                <span class="status-dot" />
-                {{ androidStageLabel }}
-              </span>
-            </div>
-            <div v-if="androidStage === 'error' && androidError" class="update-error-detail">
-              {{ androidError }}
-            </div>
-            <div class="about-actions">
-              <el-button
-                v-if="androidStage !== 'downloading'"
-                :loading="androidStage === 'checking'"
-                class="about-btn"
-                :class="{ 'about-btn--install': androidStage === 'available' }"
-                @click="androidStage === 'available' ? reDownloadAndroid() : checkAndroidUpdate()"
-              >
-                <Icon v-if="androidStage !== 'checking'"
-                      :icon="androidStage === 'available' ? 'solar:download-minimalistic-linear' : 'solar:refresh-linear'"
-                      width="15" height="15" />
-                {{ androidStage === 'available'
-                    ? `${$t('downloadUpdate')} (v${androidNewVersion})`
-                    : (androidStage === 'checking' ? $t('checking') : $t('checkForUpdates')) }}
-              </el-button>
-              <el-button v-else class="about-btn" disabled>
-                <Icon icon="solar:download-minimalistic-linear" width="15" height="15" />
-                {{ $t('downloadingUpdate') }} v{{ androidNewVersion }}
-              </el-button>
-            </div>
-          </template>
-
         </div>
 
         <!-- ── Info card ── -->
@@ -129,153 +50,13 @@
 
 <script setup>
 import BrandLogo from "@/components/brand-logo/index.vue"
-import { ref, computed, onMounted, onUnmounted, defineOptions } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { Icon } from '@iconify/vue'
-import { Capacitor } from '@capacitor/core'
-import { checkAndDownloadAndroidUpdate } from '@/utils/android-update-service.js'
+import { defineOptions } from 'vue'
 import { currentNotes, openWhatsNew } from '@/utils/whats-new.js'
 
 defineOptions({ name: 'about' })
 
-const { t } = useI18n()
-
 const appVersion = __APP_VERSION__
 const hasNotes = !!currentNotes()
-const isElectron = !!window.electronAPI
-const isAndroid  = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
-
-// stage: idle | checking | up-to-date | downloading | ready | error
-const stage    = ref('idle')
-const progress = ref(0)
-const newVersion = ref('')
-const errorMessage = ref('')
-let autoCheckTimer = null
-
-const stageCls = computed(() => ({
-  'status--idle':       stage.value === 'idle',
-  'status--checking':   stage.value === 'checking',
-  'status--ok':         stage.value === 'up-to-date',
-  'status--available':  stage.value === 'downloading',
-  'status--ready':      stage.value === 'ready',
-  'status--error':      stage.value === 'error',
-}))
-
-const stageLabel = computed(() => {
-  switch (stage.value) {
-    case 'idle':        return t('notChecked')
-    case 'checking':    return t('checking')
-    case 'up-to-date':  return t('upToDate')
-    case 'downloading': return `${t('downloading')} ${progress.value}%`
-    case 'ready':       return t('readyToInstall') + (newVersion.value ? ` (v${newVersion.value})` : '')
-    case 'error':       return t('updateError')
-    default:            return ''
-  }
-})
-
-function checkUpdate() {
-  stage.value = 'checking'
-  errorMessage.value = ''
-  window.electronAPI?.checkForUpdates()
-}
-
-function doInstall() {
-  window.electronAPI?.installUpdate()
-}
-
-// ── Android update ────────────────────────────────────────────
-const androidStage      = ref('idle')
-const androidNewVersion = ref('')
-const androidDownloadUrl = ref('')
-const androidError      = ref('')
-
-const androidStageCls = computed(() => ({
-  'status--idle':      androidStage.value === 'idle',
-  'status--checking':  androidStage.value === 'checking',
-  'status--ok':        androidStage.value === 'up-to-date',
-  'status--available': androidStage.value === 'available',
-  'status--available': androidStage.value === 'downloading',
-  'status--error':     androidStage.value === 'error',
-}))
-
-const androidStageLabel = computed(() => {
-  switch (androidStage.value) {
-    case 'idle':        return t('notChecked')
-    case 'checking':    return t('checking')
-    case 'up-to-date':  return t('upToDate')
-    case 'available':   return t('updateAvailable')
-    case 'downloading': return t('downloadingUpdate')
-    case 'error':       return t('updateError')
-    default:            return ''
-  }
-})
-
-async function checkAndroidUpdate() {
-  androidStage.value = 'checking'
-  androidError.value = ''
-  try {
-    const result = await checkAndDownloadAndroidUpdate()
-    if (!result) { androidStage.value = 'idle'; return }
-    androidNewVersion.value  = result.remoteVersion || ''
-    androidDownloadUrl.value = result.url || ''
-    if (result.status === 'current')           androidStage.value = 'up-to-date'
-    else if (result.status === 'download-started') androidStage.value = 'downloading'
-    else if (result.status === 'already-started')  androidStage.value = 'available'
-    else { androidStage.value = 'error'; androidError.value = t('updateErrorDetailFallback') }
-  } catch (e) {
-    androidStage.value = 'error'
-    androidError.value = e?.message || t('updateErrorDetailFallback')
-  }
-}
-
-async function reDownloadAndroid() {
-  if (!androidDownloadUrl.value) return
-  try {
-    const { Browser } = await import('@capacitor/browser')
-    await Browser.open({ url: androidDownloadUrl.value })
-  } catch {
-    window.location.href = androidDownloadUrl.value
-  }
-}
-
-onMounted(() => {
-  if (!isElectron) return
-
-  window.electronAPI.onUpdateAvailable((info) => {
-    newVersion.value = info.version
-    errorMessage.value = ''
-    stage.value = 'downloading'
-    progress.value = 0
-  })
-
-  window.electronAPI.onUpdateProgress((pct) => {
-    progress.value = pct
-    if (stage.value !== 'downloading') stage.value = 'downloading'
-  })
-
-  window.electronAPI.onUpdateDownloaded(() => {
-    stage.value = 'ready'
-    progress.value = 100
-  })
-
-  window.electronAPI.onUpdateNotAvailable?.(() => {
-    errorMessage.value = ''
-    stage.value = 'up-to-date'
-  })
-
-  window.electronAPI.onUpdateError?.((msg) => {
-    errorMessage.value = msg || t('updateErrorDetailFallback')
-    stage.value = 'error'
-  })
-
-  autoCheckTimer = setTimeout(() => {
-    if (stage.value === 'idle') checkUpdate()
-  }, 6000)
-})
-
-onUnmounted(() => {
-  clearTimeout(autoCheckTimer)
-})
 </script>
 
 <style lang="scss" scoped>

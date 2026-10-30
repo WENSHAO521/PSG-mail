@@ -276,20 +276,10 @@ function autoScale() {
 
 // ── Links inside the mail body ──
 // Mail HTML is rendered into the app's own document, so a plain <a href>
-// would navigate the whole app: away to the sender's site (in the desktop
-// app there is no way back), a relative link onto an app route, and a
-// "#section" link onto the router's hash (the desktop app's hash history
-// then shows the inbox / 404). Web links open outside the app instead and
+// would navigate the whole app: away to the sender's site, a relative link
+// onto an app route, and a "#section" link onto the router's hash. Web links open outside the app instead and
 // in-mail anchors just scroll.
-async function openExternal(url) {
-  try {
-    const { Capacitor } = await import('@capacitor/core')
-    if (Capacitor.isNativePlatform()) {
-      const { Browser } = await import('@capacitor/browser')
-      await Browser.open({ url })
-      return
-    }
-  } catch {}
+function openExternal(url) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 

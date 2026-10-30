@@ -27,11 +27,27 @@ import kvCache from '../cache/kv-cache';
 import r2Service from './r2-service';
 import labelService from './label-service';
 import { draftAttPrefix } from './draft-service';
-import { ensureDeleteTime, ensureIsArchive, ensureIsSpam, ensureReplyTo } from '../utils/schema-guard';
+import { ensureDeleteTime, ensureIsArchive, ensureIsSpam, ensureReplyTo, ensureSenderEmail } from '../utils/schema-guard';
+import { afterReceive } from '../email/after-receive';
 
 // References header for a reply: the original's own References chain plus
 // its Message-ID, so every client threads the whole conversation (it used to
 // carry only the parent's id). Long chains keep the first and the latest ids.
+// Compares the last two labels of each address's domain (three under a
+// two-part suffix like co.uk / com.cn), which is close enough to tell
+// bounce.example.com from example.com apart from a third party.
+const SEPARATE_SEND_LIMIT = 50;
+
+const SECOND_LEVEL = new Set(['co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'or', 'ne', 'go']);
+export function sameOrgDomain(a, b) {
+	const org = addr => {
+		const labels = String(addr || '').toLowerCase().split('@').pop().split('.').filter(Boolean);
+		const n = labels.length >= 3 && SECOND_LEVEL.has(labels[labels.length - 2]) ? 3 : 2;
+		return labels.slice(-n).join('.');
+	};
+	return org(a) !== '' && org(a) === org(b);
+}
+
 function referencesFor(row) {
 	const ids = String(row?.relation || '').match(/<[^<>\s]+>/g) || [];
 	if (row?.messageId) ids.push(row.messageId.startsWith('<') ? row.messageId : `<${row.messageId}>`);
@@ -641,6 +657,10 @@ const emailService = {
 			const r = await c.env.db.prepare('SELECT reply_to FROM email WHERE email_id = ?').bind(emailId).first();
 			row.replyTo = r?.reply_to || '';
 		} catch { row.replyTo = ''; }
+		try {
+			const r = await c.env.db.prepare('SELECT sender_email FROM email WHERE email_id = ?').bind(emailId).first();
+			row.senderEmail = r?.sender_email || '';
+		} catch { row.senderEmail = ''; }
 		const list = [row];
 		await this.emailAddAtt(c, list);
 		await labelService.attachLabels(c, list);
@@ -769,6 +789,18 @@ const emailService = {
 			.bind(JSON.stringify(list), emailId).run();
 	},
 
+	// Who actually sent a received mail when it is not the From domain: the
+	// Sender header (on behalf of), else the envelope sender. Stored only
+	// when its domain differs from From's, so mailing lists and bulk mail
+	// from the sender's own domain show nothing.
+	async saveSenderEmail(c, emailId, { sender, envelopeFrom, fromAddress }) {
+		const address = String(sender?.address || envelopeFrom || '').trim();
+		if (!address || sameOrgDomain(address, fromAddress)) return;
+		await ensureSenderEmail(c);
+		await c.env.db.prepare('UPDATE email SET sender_email = ? WHERE email_id = ?')
+			.bind(address, emailId).run();
+	},
+
 	receive(c, params, cidAttList, r2domain) {
 		params.content = this.imgReplace(params.content, cidAttList, r2domain)
 		return orm(c).insert(email).values({ ...params }).returning().get();
@@ -776,6 +808,33 @@ const emailService = {
 
 	//邮件发送
 	async send(c, params, userId) {
+
+		// Send separately: one mail per To recipient, so nobody sees the
+		// others. Each copy goes through the normal path (limits, providers,
+		// Sent folder). A failed copy does not stop the rest; if every copy
+		// fails the first error is thrown.
+		if (params.separate && Array.isArray(params.receiveEmail) && params.receiveEmail.length > 1) {
+			if (params.receiveEmail.length > SEPARATE_SEND_LIMIT) {
+				throw new BizError(t('separateSendLimit', { count: SEPARATE_SEND_LIMIT }));
+			}
+			if (params.cc?.length || params.bcc?.length) {
+				throw new BizError(t('separateNoCc'));
+			}
+			const sent = [];
+			let firstError = null;
+			let failed = 0;
+			for (const address of [...new Set(params.receiveEmail)]) {
+				try {
+					sent.push(...await this.send(c, { ...params, separate: false, receiveEmail: [address] }, userId));
+				} catch (e) {
+					firstError = firstError || e;
+					failed++;
+				}
+			}
+			if (!sent.length) throw firstError;
+			if (failed) sent[0].separateFailed = failed;
+			return sent;
+		}
 
 		let {
 			accountId, //发送账号id
@@ -788,7 +847,8 @@ const emailService = {
 			text, //邮件纯文本
 			content, //邮件内容
 			subject, //邮件标题
-			attachments = [] //附件
+			attachments = [], //附件
+			autoSubmitted = false //自动回复
 		} = params;
 
 		attachments = await this.resolveForwardedAttachments(c, attachments, userId);
@@ -918,7 +978,8 @@ const emailService = {
 				attachments: [...imageDataList, ...attachments],
 				sendType,
 				messageId: emailRow.messageId,
-				references: referencesFor(emailRow)
+				references: referencesFor(emailRow),
+				autoSubmitted
 			};
 
 			if (useCloudflareEmail) {
@@ -1015,7 +1076,7 @@ const emailService = {
 			...bcc.filter(isInternalEmail)
 		])];
 		if (internalRecipients.length > 0) {
-			await this.HandleOnSiteEmail(c, internalRecipients, emailResult, attList);
+			await this.HandleOnSiteEmail(c, internalRecipients, emailResult, attList, { autoSubmitted });
 		}
 
 		const dateStr = dayjs().format('YYYY-MM-DD');
@@ -1143,6 +1204,10 @@ const emailService = {
 				'in-reply-to': params.messageId,
 				'references': params.references || params.messageId
 			};
+		}
+
+		if (params.autoSubmitted) {
+			sendForm.headers = { ...sendForm.headers, 'Auto-Submitted': 'auto-replied' };
 		}
 
 		return await resend.emails.send(sendForm);
@@ -1360,9 +1425,10 @@ const emailService = {
 	},
 
 	//处理站内邮件发送
-	async HandleOnSiteEmail(c, receiveEmail, sendEmailData, attList) {
+	async HandleOnSiteEmail(c, receiveEmail, sendEmailData, attList, { autoSubmitted = false } = {}) {
 
-		const { noRecipient  } = await settingService.query(c);
+		const setting = await settingService.query(c);
+		const { noRecipient } = setting;
 
 		//查询所有收件人账号信息
 		let accountList = await orm(c).select().from(account).where(inArray(account.email, receiveEmail)).all();
@@ -1460,10 +1526,12 @@ const emailService = {
 
 		//保存邮件
 		const receiveEmailList = emailDataList.filter(emailRow => emailRow.status === emailConst.status.RECEIVE || emailRow.status === emailConst.status.NOONE);
+		const deliveredRows = [];
 
 		for (const emailData of receiveEmailList) {
 
 			const emailRow = await orm(c).insert(email).values(emailData).returning().get();
+			deliveredRows.push(emailRow);
 
 			//设置附件保存
 			for (const attRow of attList) {
@@ -1491,6 +1559,87 @@ const emailService = {
 
 		await orm(c).update(email).set({ status, message: message }).where(eq(email.emailId, sendEmailData.emailId)).run();
 
+		await this.dispatchOnSite(c, deliveredRows, allAccounts, setting, { autoSubmitted });
+
+	},
+
+	// On-site mail is written straight into the recipient's mailbox and never
+	// passes through the inbound email() handler, so run the same follow-up
+	// here: rules, notifications, forwarding, auto-reply, Telegram, webhook.
+	// It runs after the response when the request can wait for it, and never
+	// fails the send.
+	async dispatchOnSite(c, emailRows, accountList, setting, { autoSubmitted = false } = {}) {
+		if (emailRows.length === 0) return;
+
+		const pending = [];
+		let executionCtx = null;
+		try {
+			executionCtx = c.executionCtx;
+		} catch {
+			// Hono throws when there is no ExecutionContext (cron, auto-reply).
+		}
+		const waitUntil = executionCtx?.waitUntil
+			? p => executionCtx.waitUntil(p.catch(e => console.error('on-site dispatch failed', e)))
+			: p => pending.push(p);
+
+		const ctx = { env: c.env };
+		for (const emailRow of emailRows) {
+			const accountRow = accountList.find(row => row.accountId === emailRow.accountId) || null;
+			const mail = {
+				from: { address: emailRow.sendEmail, name: emailRow.name },
+				subject: emailRow.subject,
+				html: emailRow.content,
+				text: emailRow.text,
+				headers: autoSubmitted ? [{ key: 'auto-submitted', value: 'auto-replied' }] : [],
+			};
+			waitUntil(afterReceive(ctx, {
+				account: accountRow,
+				emailRow,
+				mail,
+				recipient: emailRow.toEmail,
+				setting,
+				waitUntil,
+				forwardTo: address => this.forwardCopy(ctx, emailRow, address, setting),
+			}));
+		}
+
+		// Without an ExecutionContext, wait here; afterReceive queues more work
+		// while it runs, so drain until nothing is left.
+		while (pending.length) {
+			const results = await Promise.allSettled(pending.splice(0));
+			results.filter(r => r.status === 'rejected').forEach(r => console.error('on-site dispatch failed', r.reason));
+		}
+	},
+
+	// A copy of an on-site mail for the admin's "forward to other mailboxes"
+	// setting. There is no raw message to forward(), so it is sent again as
+	// the original sender through the configured provider. Attachments stay
+	// on site.
+	async forwardCopy(c, emailRow, address, setting) {
+		const domain = emailUtils.getDomain(emailRow.sendEmail);
+		const resendToken = setting.resendTokens?.[domain];
+		const mailjetConfigured = !!(setting.mailjetApiKey && setting.mailjetSecretKey);
+		if (!c.env.email && !resendToken && !mailjetConfigured) {
+			console.warn('on-site forward skipped: no send provider configured');
+			return;
+		}
+		const params = {
+			name: emailRow.name || emailUtils.getName(emailRow.sendEmail),
+			accountEmail: emailRow.sendEmail,
+			receiveEmail: [address],
+			subject: emailRow.subject || '',
+			text: emailRow.text || '',
+			html: emailRow.content || '',
+			attachments: [],
+		};
+		const result = c.env.email
+			? await this.sendByCloudflareEmail(c, params)
+			: resendToken
+				? await this.sendByResend(resendToken, params)
+				: await this.sendByMailjet({ apiKey: setting.mailjetApiKey, secretKey: setting.mailjetSecretKey }, params);
+		if (result?.error) {
+			console.error(`转发邮箱 ${address} 失败：`, result.error);
+		}
 	},
 
 	imgReplace(content, cidAttList, r2domain) {

@@ -1,6 +1,6 @@
 // Single owner of "a new email exists, get it into the Inbox" for the whole
 // app. Every entry point that can learn about a new email — Firebase push
-// (web foreground + background click), Capacitor/Android push, and the
+// (web foreground + background click) and the
 // fallback poller — funnels through here instead of each independently
 // calling addItem()/notifyEmail(), which used to race against each other
 // (see mail-sync incident writeup: two independent /email/latest pollers +
@@ -27,7 +27,7 @@ import { refreshUnreadCounts } from '@/utils/unread-counts.js'
 
 const MAX_RECENT = 500
 // There is deliberately one safe floor for every client. Push is the fast
-// path; this is the recovery path for missed push signals and Electron.
+// path; this is the recovery path for missed push signals.
 export const MAIL_SYNC_INTERVAL_MS = 30_000
 const MAIL_SYNC_LEASE_KEY = 'psg-mail-sync-lease'
 const MAIL_SYNC_MIN_GAP_MS = MAIL_SYNC_INTERVAL_MS
@@ -151,7 +151,7 @@ async function processIncomingEmail(email, source, { notify = true } = {}) {
   if (Number(email.emailId) > cursor) cursor = Number(email.emailId)
 }
 
-// Entry point for push signals (Firebase web/Android) — payloads only carry
+// Entry point for push signals (web push) — payloads only carry
 // { emailId, accountId }, so fetch the full row before inserting it.
 export async function handleNewMailSignal({ emailId, accountId, source, notify = true }) {
   // Do not claim the id before the detail request succeeds. If the request
@@ -232,9 +232,9 @@ export function flushInboxIfDirty() {
   emailStore.emailScroll?.refreshList?.()
 }
 
-// The one fallback polling loop for the whole app. Firebase/native push is
-// the primary real-time signal; this fills gaps (push blocked/missing token,
-// network blip, or Electron which has no push transport). The interval is
+// The one fallback polling loop for the whole app. Web push is
+// the primary real-time signal; this fills gaps (push blocked/missing token
+// or a network blip). The interval is
 // never allowed below 30 seconds and every same-origin tab shares a lease.
 async function pollLoop() {
   while (pollRunning) {
@@ -243,9 +243,7 @@ async function pollLoop() {
     if (!localStorage.getItem('token')) continue
     // A hidden tab catches up through the visibilitychange handler when it
     // comes back, so background tabs don't spend worker/D1 reads on polling.
-    // Electron has no push transport: polling is its only new-mail path, and a
-    // minimized window counts as hidden, so it keeps polling.
-    if (!window.electronAPI && typeof document !== 'undefined' && document.visibilityState === 'hidden') continue
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') continue
     await syncNow('poll')
   }
 }
@@ -268,7 +266,7 @@ export function stopFallbackPolling() {
 }
 
 // Opens a specific email from a notification click (Web SW postMessage,
-// Electron native click, Android pushNotificationActionPerformed).
+// or a boot-time deep link).
 export async function openEmailById(emailId) {
   if (!emailId) return
   router.push({ name: 'email' }).catch(() => {})
@@ -318,11 +316,6 @@ export function installLifecycleSync() {
         })
       }
     })
-  }
-
-  // Electron: native notification click.
-  if (window.electronAPI?.onNotificationOpenEmail) {
-    window.electronAPI.onNotificationOpenEmail(({ emailId }) => openEmailById(emailId))
   }
 
   // Web: boot-time deep link from a notification click that had to open a
