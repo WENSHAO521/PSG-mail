@@ -935,6 +935,13 @@ const emailService = {
 			requestReceipt = false //请求已读回执
 		} = params;
 
+		// To may be empty when Cc or Bcc has someone (a Bcc-only mail), but
+		// there must be at least one address somewhere.
+		receiveEmail = Array.isArray(receiveEmail) ? receiveEmail : [];
+		if (receiveEmail.length + cc.length + bcc.length === 0) {
+			throw new BizError(t('emptyRecipient'), 400);
+		}
+
 		attachments = await this.resolveForwardedAttachments(c, attachments, userId);
 
 		const { resendTokens, r2Domain, send, domainList, mailjetApiKey, mailjetSecretKey } = await settingService.query(c);
@@ -1056,7 +1063,11 @@ const emailService = {
 			const sendParams = {
 				name,
 				accountEmail: accountRow.email,
-				receiveEmail,
+				// Cloudflare, Resend and Mailjet all require a To address. For a
+				// mail sent only to Cc/Bcc, address it to the sender, the usual
+				// way clients send Bcc-only mail; the Bcc list is never in the
+				// headers, so no recipient sees the others.
+				receiveEmail: receiveEmail.length > 0 ? receiveEmail : [accountRow.email],
 				cc,
 				bcc,
 				subject,

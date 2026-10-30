@@ -26,6 +26,7 @@ const zh = {
 	totalSendLimit: '发送次数已到达限制',
 	daySendLack: '当日剩余发送次数不足',
 	totalSendLack: '剩余发送次数不足',
+	emptyRecipient: '请至少填写一个收件人、抄送或密送',
 	senderAccountNotExist: '发件人邮箱不存在',
 	noResendToken: 'Resend未配置，只能给站内邮箱发件',
 	noSendProvider: '发信服务未配置，只能给站内邮箱发件',

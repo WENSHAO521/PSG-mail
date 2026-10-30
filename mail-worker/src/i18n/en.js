@@ -26,6 +26,7 @@ const en = {
 	totalSendLimit: 'Total send limit reached',
 	daySendLack: 'Not enough remaining sends today',
 	totalSendLack: 'Not enough total remaining sends',
+	emptyRecipient: 'Add at least one recipient in To, Cc or Bcc',
 	senderAccountNotExist: 'Sender email does not exist',
 	noResendToken: 'Resend API token not configured',
 	noSendProvider: 'Email sending service is not configured',

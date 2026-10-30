@@ -1077,6 +1077,10 @@ function chooseFile() {
   }
 }
 
+function hasAnyRecipient() {
+  return form.receiveEmail.length + form.cc.length + form.bcc.length > 0
+}
+
 // Shared by sendEmail() and sendScheduled() — returns false (and shows the
 // relevant message) if the form isn't ready to leave Compose at all, real
 // send or scheduled.
@@ -1084,7 +1088,8 @@ function validateBeforeSend() {
   // Commit any text typed but not yet confirmed as a tag (user skipped pressing Enter)
   commitPendingInputs()
 
-  if (form.receiveEmail.length === 0) {
+  // To may be left empty when Cc or Bcc has someone, as in Gmail/Outlook.
+  if (!hasAnyRecipient()) {
     ElMessage({ message: t('emptyRecipientMsg'), type: 'error', plain: true })
     return false
   }
@@ -1325,11 +1330,13 @@ async function sendEmail() {
 }
 
 function addRecipientRecord() {
+  // Cc and Bcc addresses are people you wrote to as well.
+  const sentTo = [...new Set([...form.receiveEmail, ...form.cc, ...form.bcc])]
   writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.filter(
-      email => !form.receiveEmail.includes(email)
+      email => !sentTo.includes(email)
   );
 
-  writerStore.sendRecipientRecord.unshift(...form.receiveEmail);
+  writerStore.sendRecipientRecord.unshift(...sentTo);
   writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.slice(0, 500);
 }
 
@@ -1814,9 +1821,9 @@ let autoSaveTimer = null
 async function autoSaveDraft() {
   if (!show.value) return
   const content = editor.value?.getContent?.() ?? form.content
-  if (!content && !form.subject && form.receiveEmail.length === 0) return
+  if (!content && !form.subject && !hasAnyRecipient()) return
   // Don't autosave a draft that only contains the signature with no user input
-  if (!form.subject && form.receiveEmail.length === 0 && !form.draftId) {
+  if (!form.subject && !hasAnyRecipient() && !form.draftId) {
     const sigOnly = userStore.signatureList.some(sig => sig.html && content.includes(sig.html))
     if (sigOnly) return
   }
@@ -1873,7 +1880,7 @@ function close() {
     return true;
   }
 
-  if (!(form.content || form.subject || form.receiveEmail.length > 0)) {
+  if (!(form.content || form.subject || hasAnyRecipient())) {
     show.value = false
     resetForm()
     return true;
@@ -1883,7 +1890,8 @@ function close() {
     let subjectFlag = form.subject === backReply.subject
     let contentFlag = editor.value.getContent() === backReply.content
     let receiveFlag = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]
-    if (backReply.sendType === 'forward' && form.receiveEmail.length === 0) {
+      && form.cc.length === 0 && form.bcc.length === 0
+    if (backReply.sendType === 'forward' && !hasAnyRecipient()) {
       receiveFlag = true;
     }
     if (subjectFlag && contentFlag && receiveFlag) {

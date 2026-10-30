@@ -699,7 +699,7 @@ const en = {
     banRestore: 'Confirm banning {msg}?',
     logOut: 'Sign out',
     clearContentConfirm: 'Are you sure to clear all content?',
-    emptyRecipientMsg: 'Recipient email cannot be empty',
+    emptyRecipientMsg: 'Add at least one recipient in To, Cc or Bcc',
     emptySubjectMsg: 'Subject cannot be empty',
     emptyContentMsg: 'Content cannot be empty',
     separateSend: 'Send separately',
