@@ -1,4 +1,8 @@
 const zh = {
+	claimAdminOnly: '只有管理员可以分配无人收件邮件',
+	claimInvalidId: '邮件或邮箱编号无效',
+	claimNotUnclaimed: '这封邮件已被分配、删除或不再是无人收件，请刷新列表',
+	claimTargetUnavailable: '目标邮箱必须与收件地址一致，且邮箱和用户都处于正常状态',
 	IncorrectPwd: '密码输入错误',
 	passwordChangeInvalid: '邮箱或当前密码不正确',
 	passwordChangeSame: '新密码不能与当前密码相同',
