@@ -71,11 +71,16 @@ export async function email(message, env, ctx) {
 			 userRow = await userService.selectByIdIncludeDel({ env: env }, account.userId);
 		}
 
-		if (account && userRow.email !== env.admin) {
+		if (account && userRow && userRow.email !== env.admin) {
 
-			let { banEmail, availDomain } = await roleService.selectByUserId({ env: env }, account.userId);
+			const roleRow = await roleService.selectByUserId({ env: env }, account.userId);
+			const banEmail = roleRow?.banEmail || '';
+			const availDomain = roleRow?.availDomain || '';
 
-			if (!roleService.hasAvailDomainPerm(availDomain, message.to)) {
+			// The role's domain list limits which extra mailboxes a user may add; it must
+			// not bounce mail to the address the user registered with (their primary
+			// mailbox, also reached here through plus-addressing).
+			if (!isPrimaryAccount(userRow, account) && !roleService.hasAvailDomainPerm(availDomain, message.to)) {
 				message.setReject('The recipient is not authorized to use this domain.');
 				return;
 			}
@@ -194,6 +199,11 @@ export async function email(message, env, ctx) {
 		console.error('邮件接收异常: ', e);
 		throw e
 	}
+}
+
+export function isPrimaryAccount(userRow, account) {
+	return !!userRow?.email && !!account?.email &&
+		userRow.email.toLowerCase() === account.email.toLowerCase();
 }
 
 export function checkBlock(blackSubjectStr, blackContentStr, blackFromStr, email) {

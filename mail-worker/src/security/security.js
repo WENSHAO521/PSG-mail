@@ -47,6 +47,8 @@ const requirePerms = [
 	'/allEmail/delete',
 	'/allEmail/batchDelete',
 	'/allEmail/latest',
+	// No role permission maps here on purpose: only the super admin passes (/claim also covers /claimTargets).
+	'/allEmail/claim',
 	'/setting/setBackground',
 	'/setting/deleteBackground',
 	'/setting/set',

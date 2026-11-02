@@ -15,3 +15,11 @@ export function allEmailBatchDelete(params) {
 export function allEmailLatest(emailId) {
     return http.get('/allEmail/latest', {params: {emailId}, noMsg: true, timeout: 35 * 1000})
 }
+
+export function allEmailClaimTargets(emailId) {
+    return http.get('/allEmail/claimTargets', {params: {emailId}})
+}
+
+export function allEmailClaim(emailId, accountId) {
+    return http.post('/allEmail/claim', {emailId, accountId})
+}

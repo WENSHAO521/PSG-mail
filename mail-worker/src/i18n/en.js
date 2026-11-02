@@ -1,4 +1,8 @@
 const en = {
+	claimAdminOnly: 'Only the administrator can assign unclaimed mail',
+	claimInvalidId: 'Invalid message or mailbox identifier',
+	claimNotUnclaimed: 'This message is already assigned, deleted or no longer unclaimed. Refresh the list.',
+	claimTargetUnavailable: 'The target mailbox must match the recipient address and belong to an active user',
 	IncorrectPwd: 'Incorrect password',
 	passwordChangeInvalid: 'The email or current password is incorrect',
 	passwordChangeSame: 'The new password must be different from the current password',

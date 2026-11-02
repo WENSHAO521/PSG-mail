@@ -88,6 +88,9 @@
               <el-dropdown-item @click="handleDownloadEml">
                 <Icon icon="psg:download" width="16" height="16" /> {{ $t('downloadEml') }}
               </el-dropdown-item>
+              <el-dropdown-item v-if="canClaim" divided @click="handleClaim">
+                <Icon icon="psg:user-plus" width="16" height="16" /> {{ $t('claimAction') }}
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -120,6 +123,9 @@
             </el-dropdown-item>
             <el-dropdown-item v-if="canSnooze" @click="snoozeShow = true">
               <Icon icon="psg:clock" width="16" height="16" /> {{ $t('snoozeAction') }}
+            </el-dropdown-item>
+            <el-dropdown-item v-if="canClaim" @click="handleClaim">
+              <Icon icon="psg:user-plus" width="16" height="16" /> {{ $t('claimAction') }}
             </el-dropdown-item>
             <el-dropdown-item divided @click="handleDelete" v-perm="'email:delete'">
               <Icon icon="psg:trash" width="16" height="16" /> {{ $t('delete') }}
@@ -345,7 +351,7 @@ import { getExtName, formatBytes, previewKind } from '@/utils/file-utils.js'
 import AttPreview from '@/components/att-preview/index.vue'
 import { cvtR2Url, fillImageDomain } from '@/utils/convert.js'
 import { getIconByName } from '@/utils/icon-utils.js'
-import { allEmailDelete } from '@/request/all-email.js'
+import { allEmailDelete, allEmailClaimTargets, allEmailClaim } from '@/request/all-email.js'
 import { useI18n } from 'vue-i18n'
 import { EmailUnreadEnum } from '@/enums/email-enum.js'
 import { avatarBg, avatarTint, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
@@ -872,6 +878,48 @@ function handleSnooze(until) {
     emailStore.deleteIds = [e.emailId]
     emailStore.contentData.email = null
   }).catch(() => {})
+}
+
+// Unclaimed mail (arrived before any mailbox had its address) in the admin's
+// All Mail view: the super admin can hand it to the mailbox created since.
+const canClaim = computed(() => {
+  const e = email.value
+  return !!e && e.type === 0 && e.status === 7 && !e.isDel
+    && emailStore.contentData.delType === 'physics' && hasPerm('*')
+})
+
+async function handleClaim() {
+  const e = email.value
+  if (!e) return
+  let targets
+  try {
+    targets = await allEmailClaimTargets(e.emailId)
+  } catch {
+    return
+  }
+  const target = targets?.accounts?.[0]
+  if (!target) {
+    ElMessageBox.alert(t('claimNoMatch', { email: targets?.toEmail || e.toEmail }), t('claimAction'), {
+      confirmButtonText: t('confirm')
+    }).catch(() => {})
+    return
+  }
+  try {
+    await ElMessageBox.confirm(t('claimConfirm', { email: target.email, user: target.userEmail }), t('claimAction'), {
+      confirmButtonText: t('confirm'),
+      cancelButtonText: t('cancel'),
+      type: 'info'
+    })
+  } catch {
+    return
+  }
+  try {
+    const row = await allEmailClaim(e.emailId, target.accountId)
+    Object.assign(e, { status: row.status, userId: row.userId, accountId: row.accountId, userEmail: target.userEmail })
+    ElMessage({ message: t('claimDone', { email: target.email }), type: 'success', plain: true })
+  } catch {
+    // the request layer already showed the server's reason
+  }
 }
 
 function handleDelete() {
