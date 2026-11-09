@@ -1,11 +1,11 @@
 <template>
   <el-dialog :model-value="modelValue" @update:model-value="v => emit('update:modelValue', v)"
-             :title="$t('snoozeTitle')" width="360" class="snooze-dialog" append-to-body>
+             :title="$t('snoozeTitle')" width="min(360px, calc(100vw - 32px))" class="snooze-dialog" append-to-body>
     <p class="snooze-hint">{{ $t('snoozeHint') }}</p>
     <div class="snooze-presets">
-      <button v-for="p in presets" :key="p.key" type="button" class="snooze-preset" @click="pick(p.time())">
+      <button v-for="p in presets" :key="p.key" type="button" class="snooze-preset" @click="pick(p.time)">
         <span>{{ $t(p.labelKey) }}</span>
-        <small>{{ p.time().format('MM-DD HH:mm') }}</small>
+        <small>{{ p.time.format('MM-DD HH:mm') }}</small>
       </button>
     </div>
     <div class="snooze-custom">
@@ -18,25 +18,41 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 
-defineProps({ modelValue: { type: Boolean, default: false } })
+const props = defineProps({ modelValue: { type: Boolean, default: false } })
 const emit = defineEmits(['update:modelValue', 'confirm'])
 const { t } = useI18n()
 const custom = ref(null)
 
-const presets = [
-  { key: 'later', labelKey: 'snoozeLaterToday', time: () => dayjs().add(3, 'hour').startOf('minute') },
-  { key: 'tomorrow', labelKey: 'snoozeTomorrow', time: () => dayjs().add(1, 'day').hour(8).minute(0).second(0) },
-  { key: 'weekend', labelKey: 'snoozeNextMonday', time: () => {
-    const d = dayjs()
-    return d.add(((8 - d.day()) % 7) || 7, 'day').hour(8).minute(0).second(0)
-  } },
-  { key: 'week', labelKey: 'snoozeNextWeek', time: () => dayjs().add(7, 'day').hour(8).minute(0).second(0) },
-]
+// Gmail-style choices. Candidates that land on the same minute (e.g. "next
+// Monday" and "in a week" when today is Monday) are shown once, and "this
+// weekend" only appears on weekdays.
+function buildPresets() {
+  const now = dayjs()
+  const at8 = d => d.hour(8).minute(0).second(0).millisecond(0)
+  const day = now.day()
+  const candidates = [
+    { key: 'later', labelKey: 'snoozeLaterToday', time: now.add(3, 'hour').startOf('minute') },
+    { key: 'tomorrow', labelKey: 'snoozeTomorrow', time: at8(now.add(1, 'day')) },
+    day >= 1 && day <= 5 && { key: 'weekend', labelKey: 'snoozeThisWeekend', time: at8(now.add(6 - day, 'day')) },
+    { key: 'monday', labelKey: 'snoozeNextMonday', time: at8(now.add(((8 - day) % 7) || 7, 'day')) },
+    { key: 'week', labelKey: 'snoozeNextWeek', time: at8(now.add(7, 'day')) },
+  ].filter(Boolean)
+  const seen = new Set()
+  return candidates.filter(c => {
+    const k = c.time.format('YYYY-MM-DD HH:mm')
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  }).slice(0, 4)
+}
+
+const presets = ref(buildPresets())
+watch(() => props.modelValue, open => { if (open) presets.value = buildPresets() })
 
 function pick(time) {
   if (!time.isAfter(dayjs())) {

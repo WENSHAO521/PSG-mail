@@ -121,6 +121,10 @@
   color: var(--psg-primary);
 }
 
+.workspace-stat-value--danger {
+  color: var(--el-color-danger);
+}
+
 .workspace-stat-description {
   display: block;
   color: var(--psg-text-secondary);
@@ -297,6 +301,12 @@
     flex-direction: column;
     gap: 12px;
     padding: 4px 0 12px;
+  }
+
+  /* Title + a lone icon button: keep the button beside the title. */
+  .workspace-surface-header--inline {
+    align-items: flex-start;
+    flex-direction: row;
   }
 
   .workspace-header-actions,

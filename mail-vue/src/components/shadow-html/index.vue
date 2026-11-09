@@ -255,6 +255,11 @@ function applyDarkMode() {
   shadowContent.classList.toggle('psg-dark', !!uiStore.dark)
 }
 
+// Fixed-width mail (newsletters, wide tables) is shrunk to fit, but never
+// below MIN_SCALE: past that the text gets unreadable, so the rest scrolls
+// sideways instead, the way Gmail shows wide mail.
+const MIN_SCALE = 0.85
+
 function autoScale() {
   if (!shadowRoot || !contentBox.value) return
 
@@ -263,15 +268,16 @@ function autoScale() {
 
   if (!shadowContent) return
 
+  const hostElement = shadowRoot.host
+  hostElement.style.zoom = ''
+
   const parentWidth = parent.offsetWidth
   const childWidth = shadowContent.scrollWidth
 
-  if (childWidth === 0) return
+  if (childWidth === 0 || parentWidth === 0) return
 
-  const scale = parentWidth / childWidth
-
-  const hostElement = shadowRoot.host
-  hostElement.style.zoom = scale
+  const scale = Math.min(1, Math.max(MIN_SCALE, parentWidth / childWidth))
+  hostElement.style.zoom = scale === 1 ? '' : String(scale)
 }
 
 // ── Links inside the mail body ──
@@ -321,7 +327,9 @@ watch(() => uiStore.dark, () => {
 .content-box {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   font-family: 'DM Sans', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 

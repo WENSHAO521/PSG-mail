@@ -47,7 +47,7 @@
         </span>
       </header>
 
-      <div v-if="!rulesStore.rules.length" class="empty-state">
+      <div v-if="!rulesStore.rules.length && !editorOpen" class="empty-state">
         <div class="empty-icon-wrap">
           <Icon icon="psg:tag" width="26" height="26" aria-hidden="true" />
         </div>
@@ -59,7 +59,7 @@
         </el-button>
       </div>
 
-      <div v-else class="rule-list">
+      <div v-else-if="rulesStore.rules.length" class="rule-list">
         <article
           v-for="rule in rulesStore.rules"
           :key="rule.id"

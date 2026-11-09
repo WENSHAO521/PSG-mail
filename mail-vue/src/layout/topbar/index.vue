@@ -88,14 +88,30 @@
       </template>
     </el-dropdown>
 
-    <button type="button" class="tb-theme" :aria-label="$t('theme')" :title="$t('theme')"
-            @click="uiStore.toggleDark()">
-      <Icon :icon="uiStore.dark ? 'solar:moon-linear' : 'mingcute:sun-fill'" width="20" height="20" />
-    </button>
+    <el-dropdown trigger="click" placement="bottom-end" @command="mode => uiStore.setThemeMode(mode)">
+      <button type="button" class="tb-theme" :aria-label="$t('theme')" :title="$t('theme')">
+        <Icon :icon="uiStore.dark ? 'solar:moon-linear' : 'mingcute:sun-fill'" width="20" height="20" />
+      </button>
+      <template #dropdown>
+        <el-dropdown-menu>
+          <el-dropdown-item v-for="m in THEME_OPTIONS" :key="m.mode" :command="m.mode">
+            <div class="tb-menu-item">
+              <span>{{ $t(m.labelKey) }}</span>
+              <Icon v-if="uiStore.themeMode === m.mode" icon="psg:check" width="16" height="16" class="tb-theme-check" />
+            </div>
+          </el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
   </header>
 </template>
 
 <script setup>
+const THEME_OPTIONS = [
+  { mode: 'light', labelKey: 'themeLight' },
+  { mode: 'dark', labelKey: 'themeDark' },
+  { mode: 'system', labelKey: 'themeSystem' },
+]
 import BrandLogo from "@/components/brand-logo/index.vue"
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -318,6 +334,11 @@ function clickLogout() {
 }
 
 .tb-icon-wrap :deep(.icon-btn),
+.tb-theme-check {
+  margin-left: auto;
+  color: var(--psg-primary);
+}
+
 .tb-theme,
 .tb-avatar {
   width: 44px !important;

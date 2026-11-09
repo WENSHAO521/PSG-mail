@@ -213,7 +213,7 @@
       <div class="container">
         <el-input v-model="addForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
           <template #append>
-            <div @click.stop="openSelect">
+            <div class="suffix-picker" @click.stop="openSelect">
               <el-select
                   ref="mySelect"
                   v-model="addForm.suffix"
@@ -227,9 +227,9 @@
                     :value="item"
                 />
               </el-select>
-              <div>
-                <span>{{ addForm.suffix }}</span>
-                <Icon class="setting-icon" icon="psg:chevron-down" width="20" height="20"/>
+              <div class="suffix-label">
+                <span class="suffix-text">{{ addForm.suffix }}</span>
+                <Icon icon="psg:chevron-down" width="16" height="16"/>
               </div>
             </div>
           </template>
@@ -1366,6 +1366,29 @@ defineExpose({ openCreate: openAdd })
 .setting-icon {
   position: relative;
   top: 6px;
+}
+
+.suffix-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  cursor: pointer;
+}
+
+.suffix-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 10px;
+  white-space: nowrap;
+  color: var(--psg-text-secondary);
+}
+
+.suffix-text {
+  max-width: min(200px, 38vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .right-dropdown-item {

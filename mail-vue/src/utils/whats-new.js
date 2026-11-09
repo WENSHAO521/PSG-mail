@@ -10,14 +10,19 @@ export const RELEASE_NOTES = [
     date: '2026-10-10',
     items: [
       {
-        icon: 'solar:palette-round-linear',
-        zh: { title: '全新桜色主题', desc: '主色由橙色换成柔和的桜粉，浅色与深色模式均已适配。' },
+        icon: 'psg:palette',
+        zh: { title: '全新樱色主题', desc: '主色由橙色换成柔和的樱粉，浅色与深色模式均已适配。' },
         en: { title: 'New sakura theme', desc: 'The accent is now a soft sakura pink instead of orange, in both light and dark mode.' },
       },
       {
-        icon: 'solar:download-minimalistic-linear',
-        zh: { title: 'PSG Connect 下载页升级', desc: '换用 PSG Connect 官方图标；Linux 按架构分行，AppImage、DEB、RPM 一目了然。' },
-        en: { title: 'Better PSG Connect downloads', desc: 'Uses the official PSG Connect icon, and Linux builds are grouped by architecture.' },
+        icon: 'psg:clock',
+        zh: { title: '稍后提醒', desc: '邮件可以先移出收件箱，到时间后自动回来并标为未读。' },
+        en: { title: 'Snooze', desc: 'Move a mail out of the inbox and get it back, unread, at the time you pick.' },
+      },
+      {
+        icon: 'psg:send',
+        zh: { title: '发信更顺手', desc: '可以只填抄送或密送；漏写主题、忘了附件会先提醒；Ctrl+Enter 直接发送。' },
+        en: { title: 'Smoother sending', desc: 'Send with only Cc or Bcc, get a nudge for a missing subject or attachment, and press Ctrl+Enter to send.' },
       },
     ],
   },

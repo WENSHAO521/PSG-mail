@@ -131,6 +131,13 @@ function primaryAction() {
   gap: 16px;
   padding-bottom: 16px;
   flex-wrap: wrap;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding-bottom: 0;
+  }
 }
 
 .page-title {

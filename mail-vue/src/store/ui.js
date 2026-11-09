@@ -46,7 +46,9 @@ export const useUiStore = defineStore('ui', {
     }),
     actions: {
         applyTheme(mode = null) {
-            const fallback = this.dark ? 'dark' : 'light'
+            // First visit (no stored mode): follow the system. Installs from
+            // before theme modes kept only `dark`; an explicit dark stays dark.
+            const fallback = this.dark ? 'dark' : 'system'
             const nextMode = normalizeThemeMode(mode ?? this.themeMode, fallback)
             const nextDark = nextMode === 'dark'
                 || (nextMode === 'system' && prefersDarkSystemTheme())

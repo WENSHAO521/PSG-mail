@@ -347,3 +347,9 @@ html.dark {
   border-radius: var(--psg-radius-lg) !important;
   box-shadow: var(--psg-shadow-md) !important;
 }
+
+/* Buttons written as <el-button><Icon/> Text</el-button> put both inside one
+   span; space them so the icon doesn't touch the label. */
+.el-button > span {
+  gap: 6px;
+}

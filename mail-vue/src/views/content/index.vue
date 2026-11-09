@@ -73,7 +73,7 @@
             </button>
           </div>
         </el-popover>
-        <el-dropdown placement="bottom-end" trigger="click">
+        <el-dropdown placement="bottom-end" trigger="click" popper-class="reader-menu">
           <button type="button" class="icon-btn" :aria-label="$t('more')" :title="$t('more')">
             <Icon icon="psg:more" width="19" height="19" />
           </button>
@@ -98,7 +98,7 @@
           {{ emailStore.contentData.emailIndex }}&thinsp;/&thinsp;{{ emailStore.contentData.emailTotal }}
         </span>
       </div>
-      <el-dropdown ref="mobileMenuRef" class="mobile-reader-menu" placement="bottom-end" trigger="click"
+      <el-dropdown ref="mobileMenuRef" class="mobile-reader-menu" placement="bottom-end" trigger="click" popper-class="reader-menu"
                    @visible-change="handleMobileMenuVisible">
         <button type="button" class="icon-btn" :aria-label="$t('more')" :title="$t('more')">
           <Icon icon="psg:more" width="20" height="20" />
@@ -121,8 +121,17 @@
             <el-dropdown-item @click="runAiAction('reply')" v-if="emailStore.contentData.showReply">
               <Icon icon="psg:reply" width="16" height="16" /> {{ $t('aiReplySuggestion') }}
             </el-dropdown-item>
+            <el-dropdown-item @click="mobileLabelShow = true">
+              <Icon icon="psg:tag" width="16" height="16" /> {{ $t('labelApply') }}
+            </el-dropdown-item>
             <el-dropdown-item v-if="canSnooze" @click="snoozeShow = true">
               <Icon icon="psg:clock" width="16" height="16" /> {{ $t('snoozeAction') }}
+            </el-dropdown-item>
+            <el-dropdown-item @click="handlePrint">
+              <Icon icon="psg:printer" width="16" height="16" /> {{ $t('printEmail') }}
+            </el-dropdown-item>
+            <el-dropdown-item @click="handleDownloadEml">
+              <Icon icon="psg:download" width="16" height="16" /> {{ $t('downloadEml') }}
             </el-dropdown-item>
             <el-dropdown-item v-if="canClaim" @click="handleClaim">
               <Icon icon="psg:user-plus" width="16" height="16" /> {{ $t('claimAction') }}
@@ -134,6 +143,18 @@
         </template>
       </el-dropdown>
     </header>
+
+    <!-- Phone: the desktop tag popover has no room in the reader header. -->
+    <el-dialog v-model="mobileLabelShow" :title="$t('labelApply')" width="min(360px, calc(100vw - 32px))" append-to-body>
+      <div class="label-popover-list">
+        <div v-if="!labelStore.labels.length" class="label-popover-empty">{{ $t('labelEmpty') }}</div>
+        <div v-for="l in labelStore.labels" :key="l.labelId" class="label-popover-item" @click="toggleLabel(l)">
+          <span class="label-dot" :style="{ background: l.color }"></span>
+          <span class="label-popover-name">{{ l.name }}</span>
+          <Icon v-if="isLabelApplied(l.labelId)" icon="psg:check-circle" width="16" height="16" class="label-popover-check"/>
+        </div>
+      </div>
+    </el-dialog>
 
     <!-- Scrollable content -->
     <el-scrollbar class="detail-scroll">
@@ -865,6 +886,7 @@ function handleDownloadEml() {
 // Snooze: received mail that is still in a folder (not trash, not the
 // admin's all-mail view) can be hidden until a chosen time.
 const snoozeShow = ref(false)
+const mobileLabelShow = ref(false)
 const canSnooze = computed(() => {
   const e = email.value
   return !!e && e.type === 0 && !e.isDel && emailStore.contentData.delType === 'logic'
@@ -1752,6 +1774,9 @@ function handleDelete() {
 
 /* Global: blockquote inside shadow-html */
 <style>
+.reader-menu .el-dropdown-menu__item {
+  gap: 10px;
+}
 .psg-shadow-blockquote,
 .shadow-html-host blockquote,
 blockquote {

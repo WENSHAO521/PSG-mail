@@ -833,7 +833,7 @@ function useTemplate(tpl) {
   gap: 12px;
   align-items: flex-end;
 
-  @media (max-width: 560px) { flex-direction: column; }
+  @media (max-width: 560px) { flex-direction: column; align-items: stretch; }
 }
 
 .field-grow { flex: 1; min-width: 0; }
