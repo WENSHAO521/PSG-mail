@@ -8,6 +8,16 @@ import { useEmailStore } from '@/store/email.js'
 let timer = null
 let inFlight = false
 let again = false
+let loadedAt = 0
+
+// The background sync asks only when its counts are older than this (or new
+// mail came in), so an idle open tab costs a count query every few minutes,
+// not every 30 seconds. Actions that change read state still refresh at once.
+const SYNC_MAX_AGE_MS = 5 * 60 * 1000
+
+export function refreshUnreadCountsIfStale(maxAgeMs = SYNC_MAX_AGE_MS) {
+  if (Date.now() - loadedAt >= maxAgeMs) refreshUnreadCounts(0)
+}
 
 export function refreshUnreadCounts(delay = 400) {
   clearTimeout(timer)
@@ -21,6 +31,7 @@ async function load() {
     const data = await http.get('/email/unread-counts', { noMsg: true })
     const store = useEmailStore()
     store.unreadCounts = { total: data?.total || 0, accounts: data?.accounts || {} }
+    loadedAt = Date.now()
   } catch {
     // Keep the last known counts.
   } finally {

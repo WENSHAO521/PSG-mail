@@ -23,7 +23,7 @@ import { useAccountStore } from '@/store/account.js'
 import { useSettingStore } from '@/store/setting.js'
 import { useUiStore } from '@/store/ui.js'
 import { sleep } from '@/utils/time-utils.js'
-import { refreshUnreadCounts } from '@/utils/unread-counts.js'
+import { refreshUnreadCounts, refreshUnreadCountsIfStale } from '@/utils/unread-counts.js'
 
 const MAX_RECENT = 500
 // There is deliberately one safe floor for every client. Push is the fast
@@ -53,10 +53,31 @@ let lifecycleInstalled = false
 let syncInFlight = null
 let lastSyncAt = 0
 
+// With web push working, new mail arrives as a push and polling is only a
+// safety net, so it can run far less often (fewer Worker requests and D1
+// reads on the free plan).
+export const MAIL_SYNC_PUSH_INTERVAL_MS = 120_000
+let pushActive = false
+
+async function updatePushActive() {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted'
+      || !('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+      pushActive = false
+      return
+    }
+    const registration = await navigator.serviceWorker.getRegistration()
+    pushActive = !!(await registration?.pushManager?.getSubscription())
+  } catch {
+    pushActive = false
+  }
+}
+
 function safePollIntervalMs() {
   const configured = Number(useSettingStore().settings.autoRefresh || 0)
-  if (!Number.isFinite(configured) || configured <= 0) return MAIL_SYNC_INTERVAL_MS
-  return Math.max(MAIL_SYNC_INTERVAL_MS, Math.round(configured) * 1000)
+  const floor = pushActive ? MAIL_SYNC_PUSH_INTERVAL_MS : MAIL_SYNC_INTERVAL_MS
+  if (!Number.isFinite(configured) || configured <= 0) return floor
+  return Math.max(floor, Math.round(configured) * 1000)
 }
 
 function claimSyncLease() {
@@ -188,6 +209,7 @@ export async function syncNow(reason = 'manual') {
   if (!claimSyncLease()) return
   lastSyncAt = now
 
+  let gotNewMail = false
   syncInFlight = (async () => {
     try {
       await ensureCursor(accountId, allReceive, scope)
@@ -195,6 +217,7 @@ export async function syncNow(reason = 'manual') {
 
       const list = await emailLatest(cursor, accountId, allReceive)
       if (!Array.isArray(list) || list.length === 0) return
+      gotNewMail = true
       if (currentScope() !== scope) return
 
       const newestId = Math.max(...list.map(e => Number(e.emailId || 0)))
@@ -215,8 +238,10 @@ export async function syncNow(reason = 'manual') {
     } finally {
       syncInFlight = null
       // Mail for the other addresses isn't polled row by row; their unread
-      // counts (mailbox switcher, badge) catch up here.
-      refreshUnreadCounts(0)
+      // counts (mailbox switcher, badge) catch up here: at once when new mail
+      // came in, otherwise once the last counts are a few minutes old.
+      if (gotNewMail) refreshUnreadCounts(0)
+      else refreshUnreadCountsIfStale()
     }
   })()
 
@@ -238,6 +263,7 @@ export function flushInboxIfDirty() {
 // never allowed below 30 seconds and every same-origin tab shares a lease.
 async function pollLoop() {
   while (pollRunning) {
+    await updatePushActive()
     await sleep(safePollIntervalMs())
     if (!pollRunning) break
     if (!localStorage.getItem('token')) continue

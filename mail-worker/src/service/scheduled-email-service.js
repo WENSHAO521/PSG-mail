@@ -44,7 +44,11 @@ const MIN_LEAD_SECONDS = 3;
 // remains as a backstop (e.g. if the DO binding is unavailable in some
 // environment) — claimAndProcessById()'s atomic claim means the alarm and
 // the cron racing is always safe, never a double-send.
-const FAST_PATH_THRESHOLD_MS = 2 * 60 * 1000;
+//
+// Every scheduled send now arms an alarm, however far ahead, so the cron
+// (which runs every 5 minutes to save Worker invocations on the free plan)
+// is only the backstop and a "send at 09:00" still leaves at 09:00.
+const FAST_PATH_THRESHOLD_MS = Number.POSITIVE_INFINITY;
 
 async function assertOwnedAccount(c, accountId, userId) {
 	const accountRow = await accountService.selectById(c, accountId);

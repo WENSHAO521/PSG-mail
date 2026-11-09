@@ -163,15 +163,19 @@ describe('scheduledEmailService.armAlarm() — Durable Object wiring', () => {
 		expect(row.result_email_id).toBe(505);
 	}, 12000);
 
-	it('a long delay does not arm the alarm (no alarm scheduled for that DO instance)', async () => {
+	it('a long delay also arms an alarm, at the scheduled time (the cron is only a 5-minute backstop)', async () => {
 		await insertAccount({ accountId: 7003, userId: 7003 });
 		const ctx = makeCtx();
+		const sendSpy = vi.spyOn(emailService, 'send').mockResolvedValue([{ emailId: 502 }]);
 		const created = await scheduledEmailService.create(ctx, {
 			accountId: 7003, scheduledAt: isoMinutesFromNow(10), receiveEmail: ['x@example.com'], subject: 'far future', content: '<p>hi</p>',
 		}, 7003);
 
-		const ran = await runDurableObjectAlarm(stubFor(created.id));
-		expect(ran).toBe(false);
+		const alarmAt = await runInDurableObject(stubFor(created.id), (_instance, state) => state.storage.getAlarm());
+		expect(alarmAt).toBeGreaterThan(Date.now() + 9 * 60 * 1000);
+		// Forced early, it still does not send before scheduledAt.
+		await runDurableObjectAlarm(stubFor(created.id));
+		expect(sendSpy).not.toHaveBeenCalled();
 	});
 
 	it('cancelling before the alarm fires leaves nothing to send — the alarm finds the row no longer pending', async () => {
@@ -263,28 +267,27 @@ describe('scheduledEmailService.armAlarm() — Durable Object wiring', () => {
 		expect(emailService.send).toHaveBeenCalledTimes(1);
 	});
 
-	it('rescheduling out of the fast path disarms the old alarm — it does not fire early at the original time', async () => {
+	it('rescheduling further out re-arms the alarm to the new time — it does not fire early at the original time', async () => {
 		await insertAccount({ accountId: 7009, userId: 7009 });
 		const ctx = makeCtx();
 		const sendSpy = vi.spyOn(emailService, 'send').mockResolvedValue([{ emailId: 508 }]);
 
-		// Fast-path create (delay well under FAST_PATH_THRESHOLD_MS) arms an alarm.
 		const created = await scheduledEmailService.create(ctx, {
-			accountId: 7009, scheduledAt: isoMinutesFromNow(0.1), receiveEmail: ['x@example.com'], subject: 'reschedule out of fast path', content: '<p>hi</p>',
+			accountId: 7009, scheduledAt: isoMinutesFromNow(0.1), receiveEmail: ['x@example.com'], subject: 'reschedule further out', content: '<p>hi</p>',
 		}, 7009);
 
-		// Push it out past FAST_PATH_THRESHOLD_MS (2 minutes) — reschedule()
-		// must disarm the alarm that was armed for the original ~6s delay,
-		// otherwise it would fire at that original time and send the email
-		// long before the newly-chosen 5-minute mark.
+		// Every schedule now has its own alarm (the cron only runs every 5
+		// minutes), so moving it to +5 minutes re-arms the same DO instance.
 		await scheduledEmailService.reschedule(ctx, created.id, 7009, { scheduledAt: isoMinutesFromNow(5) });
 
-		const ran = await runDurableObjectAlarm(stubFor(created.id));
-		expect(ran).toBe(false); // nothing armed anymore — disarm() worked
+		const alarmAt = await runInDurableObject(stubFor(created.id), (_instance, state) => state.storage.getAlarm());
+		expect(alarmAt).toBeGreaterThan(Date.now() + 4 * 60 * 1000);
 
+		// Even if it were fired now, the scheduledAt guard keeps it from sending early.
+		await runDurableObjectAlarm(stubFor(created.id));
 		expect(sendSpy).not.toHaveBeenCalled();
-		const row = await env.db.prepare('SELECT status, scheduled_at FROM scheduled_email WHERE id = ?').bind(created.id).first();
-		expect(row.status).toBe('pending'); // still pending, waiting for the new time via the cron backstop
+		const row = await env.db.prepare('SELECT status FROM scheduled_email WHERE id = ?').bind(created.id).first();
+		expect(row.status).toBe('pending');
 	});
 
 	it('rescheduling within the fast path re-arms the SAME DO instance to the new time (overwrite, not a stale duplicate)', async () => {

@@ -213,3 +213,33 @@ describe('provider copy of on-site mail', () => {
 		expect(await emailService.consumeOnSiteCopy(c, ACC, 'other@psg.test', 'Other subject', '<m3@psg.test>')).toBe(false);
 	});
 });
+
+describe('free-plan usage', () => {
+	it('counts unread Inbox mail through the partial index, not by walking every mail', async () => {
+		const reader = 9799, acc = 9798;
+		const role = await env.db.prepare('SELECT role_id FROM role LIMIT 1').first();
+		await env.db.prepare(`INSERT INTO user (user_id, email, password, salt, type) VALUES (?, 'reader@psg.test', 'x', 'x', ?)`).bind(reader, role.role_id).run();
+		await env.db.prepare('INSERT INTO account (account_id, email, user_id) VALUES (?, ?, ?)').bind(acc, 'reader@psg.test', reader).run();
+		for (let b = 0; b < 10; b++) {
+			await env.db.batch(Array.from({ length: 100 }, () => env.db.prepare(
+				`INSERT INTO email (send_email, name, account_id, user_id, subject, text, content, unread, type) VALUES ('a@x.test', 'A', ?, ?, 'old', '', '', ?, 0)`
+			).bind(acc, reader, emailConst.unread.READ)));
+		}
+		for (let i = 0; i < 3; i++) await insertMail(reader, acc, 'new', { unread: emailConst.unread.UNREAD });
+
+		const reads = [];
+		const wrap = stmt => ({
+			bind: (...args) => wrap(stmt.bind(...args)),
+			all: async () => { const r = await stmt.all(); reads.push(r.meta.rows_read); return r; },
+			first: (...a) => stmt.first(...a),
+			run: (...a) => stmt.run(...a),
+		});
+		const c = makeCtx();
+		c.env = { ...env, db: { prepare: sql => wrap(env.db.prepare(sql)), batch: s => env.db.batch(s) } };
+
+		const counts = await emailService.unreadCounts(c, reader);
+		expect(counts.accounts[acc]).toBe(3);
+		// 1003 Inbox mails, 3 unread: the count reads a handful of rows, not ~1000.
+		expect(Math.max(...reads)).toBeLessThan(50);
+	});
+});
