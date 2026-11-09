@@ -38,6 +38,12 @@ import { afterReceive } from '../email/after-receive';
 // bounce.example.com from example.com apart from a third party.
 const SEPARATE_SEND_LIMIT = 50;
 
+// Storage folder for the attachments of a mail waiting in the scheduled-send
+// queue (Undo Send included); see scheduled-email-service.
+export function schedAttPrefix(userId) {
+	return `sched-att/${userId}/`;
+}
+
 const SECOND_LEVEL = new Set(['co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'or', 'ne', 'go']);
 export function sameOrgDomain(a, b) {
 	const org = addr => {
@@ -356,11 +362,15 @@ const emailService = {
 		const accountCond = allReceive ? '' : 'AND e.account_id = ?';
 		const accessBinds = sharedIds.length > 0 ? [userId, ...sharedIds] : [userId];
 		const accessCond  = sharedIds.length > 0 ? `(e.user_id = ? OR e.account_id IN (${sharedIds.map(() => '?').join(',')}))` : 'e.user_id = ?';
+		// Snoozed mail is kept archived until it is due, but it belongs in
+		// Snoozed only, not in Archive as well.
+		const notSnoozed = await columnExists(c, 'psg_snooze', 'email_id')
+			? 'AND NOT EXISTS (SELECT 1 FROM psg_snooze z WHERE z.email_id = e.email_id)' : '';
 		try {
 			const { results } = await c.env.db.prepare(`
 				SELECT e.*, s.star_id FROM email e
 				LEFT JOIN star s ON s.email_id = e.email_id AND s.user_id = ?
-				WHERE ${accessCond} AND e.is_del = 0 AND COALESCE(e.is_archive,0) = 1
+				WHERE ${accessCond} AND e.is_del = 0 AND COALESCE(e.is_archive,0) = 1 ${notSnoozed}
 				${accountCond} AND e.email_id < ?
 				ORDER BY e.email_id DESC LIMIT ?
 			`).bind(userId, ...accessBinds, ...(allReceive ? [] : [accountId]), emailId, size).all();
@@ -369,7 +379,7 @@ const emailService = {
 			await labelService.attachLabels(c, list);
 			// Whole-folder count on the first page only; later pages keep it.
 			const total = isFirstPage ? await folderCount(c,
-				`${accessCond} AND e.is_del = 0 AND COALESCE(e.is_archive,0) = 1 ${accountCond}`,
+				`${accessCond} AND e.is_del = 0 AND COALESCE(e.is_archive,0) = 1 ${notSnoozed} ${accountCond}`,
 				[...accessBinds, ...(allReceive ? [] : [accountId])]) : null;
 			return { list, total, latestEmail: list[0] || { emailId: 0, accountId, userId } };
 		} catch { return { list: [], total: 0, latestEmail: { emailId: 0, accountId, userId } }; }
@@ -860,6 +870,28 @@ const emailService = {
 	},
 
 	// Reply-To of a received mail; skipped when it only repeats From.
+	// True when a matching on-site copy of the same mail (written by
+	// HandleOnSiteEmail in the last 30 minutes, so without a Message-ID yet)
+	// exists in this mailbox. That copy takes the incoming Message-ID, so
+	// each on-site copy absorbs exactly one returning provider copy.
+	async consumeOnSiteCopy(c, accountId, fromAddress, subject, messageId) {
+		try {
+			const row = await c.env.db.prepare(`
+				UPDATE email SET message_id = ? WHERE email_id = (
+					SELECT email_id FROM email
+					WHERE account_id = ? AND type = ? AND lower(send_email) = lower(?)
+					  AND COALESCE(subject, '') = ? AND COALESCE(message_id, '') = ''
+					  AND create_time >= datetime('now', '-30 minutes')
+					ORDER BY email_id LIMIT 1
+				) RETURNING email_id
+			`).bind(messageId || '<on-site-copy>', accountId, emailConst.type.RECEIVE, fromAddress, subject || '').first();
+			return !!row;
+		} catch (e) {
+			console.error('consumeOnSiteCopy failed', e);
+			return false;
+		}
+	},
+
 	async saveReplyTo(c, emailId, replyTo, fromAddress) {
 		const list = (Array.isArray(replyTo) ? replyTo : [])
 			.flatMap(r => Array.isArray(r?.group) ? r.group : [r])
@@ -947,6 +979,15 @@ const emailService = {
 		const { resendTokens, r2Domain, send, domainList, mailjetApiKey, mailjetSecretKey } = await settingService.query(c);
 
 		let { imageDataList, html } = await attService.toImageUrlHtml(c, content);
+
+		// Checked before anything is handed to a provider: once the mail is
+		// out, failing here would show an error for a mail that was delivered.
+		if (imageDataList.length > 10) {
+			throw new BizError(t('imageAttLimit'));
+		}
+		if (attachments?.length > 10) {
+			throw new BizError(t('attLimit'));
+		}
 
 		//判断是否关闭发件功能
 		if (send === settingConst.send.CLOSE) {
@@ -1046,11 +1087,15 @@ const emailService = {
 		//如果是回复邮件
 		if (sendType === 'reply') {
 
-			emailRow = await this.selectById(c, emailId);
+			// Any mail the sender may read, Deleted included (replying from
+			// Deleted is allowed); never someone else's mail.
+			const owned = await this.getOwned(c, emailId, userId);
 
-			if (!emailRow) {
+			if (!owned) {
 				throw new BizError(t('notExistEmailReply'));
 			}
+
+			emailRow = { messageId: owned.message_id, relation: owned.relation };
 
 		}
 
@@ -1101,6 +1146,7 @@ const emailService = {
 					throw new BizError(t('bccOnlyLimit', { count: SEPARATE_SEND_LIMIT }));
 				}
 				let firstError = null;
+				let bccFailed = 0;
 				for (const address of bccList) {
 					let result;
 					try {
@@ -1111,6 +1157,7 @@ const emailService = {
 					if (result?.error) {
 						console.error(`send: bcc copy to ${address} failed`, result.error.message);
 						firstError = firstError || result.error;
+						bccFailed++;
 					} else if (!sendResult.data) {
 						sendResult = result;
 					}
@@ -1118,6 +1165,7 @@ const emailService = {
 				// Only a total failure fails the send; the copies already out
 				// can't be recalled, so a partial one is still recorded as sent.
 				if (!sendResult.data) sendResult = { error: firstError };
+				else if (bccFailed) sendResult.bccFailed = bccFailed;
 			}
 
 		}
@@ -1129,95 +1177,106 @@ const emailService = {
 			throw new BizError(error.message);
 		}
 
-		imageDataList = imageDataList.map(item => ({...item, contentId: `<${item.contentId}>`}))
+		// From here on the mail may already be out (handed to a provider, or
+		// written to on-site mailboxes). A failure afterwards must not surface
+		// as a failed send: the user (or the scheduler's retry) would send it
+		// again and every recipient would get a second copy.
+		let delivered = !allInternal;
+		let emailResult = null;
+		try {
 
-		//把图片标签cid标签切换会通用url
-		html = this.imgReplace(html, imageDataList, r2Domain);
+			imageDataList = imageDataList.map(item => ({...item, contentId: `<${item.contentId}>`}))
 
-		//封装数据保存到数据库
-		const emailData = {};
-		emailData.sendEmail = accountRow.email;
-		emailData.name = name;
-		emailData.subject = subject;
-		emailData.content = html;
-		emailData.text = text;
-		emailData.accountId = accountId;
-		emailData.status = useCloudflareEmail ? emailConst.status.DELIVERED : emailConst.status.SENT;
-		emailData.type = emailConst.type.SEND;
-		emailData.userId = userId;
-		emailData.resendEmailId = data?.id;
-		emailData.provider = provider;
+			//把图片标签cid标签切换会通用url
+			html = this.imgReplace(html, imageDataList, r2Domain);
 
-		const recipient = [];
-		receiveEmail.forEach(item => {
-			recipient.push({ address: item, name: '' });
-		});
-		emailData.recipient = JSON.stringify(recipient);
+			//封装数据保存到数据库
+			const emailData = {};
+			emailData.sendEmail = accountRow.email;
+			emailData.name = name;
+			emailData.subject = subject;
+			emailData.content = html;
+			emailData.text = text;
+			emailData.accountId = accountId;
+			emailData.status = useCloudflareEmail ? emailConst.status.DELIVERED : emailConst.status.SENT;
+			emailData.type = emailConst.type.SEND;
+			emailData.userId = userId;
+			emailData.resendEmailId = data?.id;
+			emailData.provider = provider;
 
-		// Save CC and BCC so they appear in the reading pane
-		if (cc.length > 0) {
-			emailData.cc = JSON.stringify(cc.map(e => ({ address: e, name: '' })));
-		}
-		if (bcc.length > 0) {
-			emailData.bcc = JSON.stringify(bcc.map(e => ({ address: e, name: '' })));
-		}
+			const recipient = [];
+			receiveEmail.forEach(item => {
+				recipient.push({ address: item, name: '' });
+			});
+			emailData.recipient = JSON.stringify(recipient);
 
-		if (sendType === 'reply') {
-			emailData.inReplyTo = emailRow.messageId;
-			emailData.relation = referencesFor(emailRow);
-		}
-
-		//如果权限有发送次数增加用户发送次数
-		if (roleRow.sendCount && roleRow.sendType !== 'internal') {
-			await userService.incrUserSendCount(c, recipientCount, userId);
-		}
-
-		//保存到数据库并返回结果
-		const emailResult = await orm(c).insert(email).values(emailData).returning().get();
-
-		//保存内嵌附件
-		if (imageDataList.length > 0) {
-			if (imageDataList.length > 10) {
-				throw new BizError(t('imageAttLimit'));
+			// Save CC and BCC so they appear in the reading pane
+			if (cc.length > 0) {
+				emailData.cc = JSON.stringify(cc.map(e => ({ address: e, name: '' })));
 			}
-			await attService.saveArticleAtt(c, imageDataList, userId, accountId, emailResult.emailId);
-		}
-
-		//保存普通附件
-		if (attachments?.length > 0) {
-			if (attachments.length > 10) {
-				throw new BizError(t('attLimit'));
+			if (bcc.length > 0) {
+				emailData.bcc = JSON.stringify(bcc.map(e => ({ address: e, name: '' })));
 			}
-			await attService.saveSendAtt(c, attachments, userId, accountId, emailResult.emailId);
+
+			if (sendType === 'reply') {
+				emailData.inReplyTo = emailRow.messageId;
+				emailData.relation = referencesFor(emailRow);
+			}
+
+			//如果权限有发送次数增加用户发送次数
+			if (roleRow.sendCount && roleRow.sendType !== 'internal') {
+				await userService.incrUserSendCount(c, recipientCount, userId);
+			}
+
+			//保存到数据库并返回结果
+			emailResult = await orm(c).insert(email).values(emailData).returning().get();
+
+			//保存内嵌附件
+			if (imageDataList.length > 0) {
+				await attService.saveArticleAtt(c, imageDataList, userId, accountId, emailResult.emailId);
+			}
+
+			//保存普通附件
+			if (attachments?.length > 0) {
+				await attService.saveSendAtt(c, attachments, userId, accountId, emailResult.emailId);
+			}
+
+			const attList = await attService.selectByEmailIds(c, [emailResult.emailId]);
+			emailResult.attList = attList;
+			if (sendResult.bccFailed) emailResult.bccFailed = sendResult.bccFailed;
+
+			// Always deliver to internal recipients via DB, regardless of whether SMTP was also used.
+			// This handles: allInternal (no SMTP), mixed (SMTP for external + DB for internal).
+			const isInternalEmail = addr => domainList.includes('@' + emailUtils.getDomain(addr));
+			const internalRecipients = [...new Set([
+				...receiveEmail.filter(isInternalEmail),
+				...cc.filter(isInternalEmail),
+				...bcc.filter(isInternalEmail)
+			])];
+			if (internalRecipients.length > 0) {
+				delivered = true;
+				await this.HandleOnSiteEmail(c, internalRecipients, emailResult, attList, { autoSubmitted });
+			}
+
+			const dateStr = dayjs().format('YYYY-MM-DD');
+			let daySendTotal = await c.env.kv.get(kvConst.SEND_DAY_COUNT + dateStr);
+
+			//记录每天发件次数统计
+			if (!daySendTotal) {
+				await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(recipientCount), { expirationTtl: 60 * 60 * 24 });
+			} else  {
+				daySendTotal = Number(daySendTotal) + recipientCount
+				await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(daySendTotal), { expirationTtl: 60 * 60 * 24 });
+			}
+
+			return [ emailResult ];
+		} catch (e) {
+			if (!delivered) throw e;
+			console.error('send: mail delivered but post-send step failed', e);
+			const result = emailResult || { subject, sendEmail: accountRow.email, accountId, type: emailConst.type.SEND, attList: [] };
+			result.saveFailed = true;
+			return [ result ];
 		}
-
-		const attList = await attService.selectByEmailIds(c, [emailResult.emailId]);
-		emailResult.attList = attList;
-
-		// Always deliver to internal recipients via DB, regardless of whether SMTP was also used.
-		// This handles: allInternal (no SMTP), mixed (SMTP for external + DB for internal).
-		const isInternalEmail = addr => domainList.includes('@' + emailUtils.getDomain(addr));
-		const internalRecipients = [...new Set([
-			...receiveEmail.filter(isInternalEmail),
-			...cc.filter(isInternalEmail),
-			...bcc.filter(isInternalEmail)
-		])];
-		if (internalRecipients.length > 0) {
-			await this.HandleOnSiteEmail(c, internalRecipients, emailResult, attList, { autoSubmitted });
-		}
-
-		const dateStr = dayjs().format('YYYY-MM-DD');
-		let daySendTotal = await c.env.kv.get(kvConst.SEND_DAY_COUNT + dateStr);
-
-		//记录每天发件次数统计
-		if (!daySendTotal) {
-			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(recipientCount), { expirationTtl: 60 * 60 * 24 });
-		} else  {
-			daySendTotal = Number(daySendTotal) + recipientCount
-			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(daySendTotal), { expirationTtl: 60 * 60 * 24 });
-		}
-
-		return [ emailResult ];
 	},
 
 	// Attachments sent by reference instead of content: { attId } is an
@@ -1225,15 +1284,29 @@ const emailService = {
 	// a server-side draft. Each one the caller may read is loaded from storage
 	// and turned into a normal base64 attachment; the rest are dropped.
 	async resolveForwardedAttachments(c, attachments, userId) {
-		if (!Array.isArray(attachments) || !attachments.some(a => a && !a.content && (a.attId || a.draftAttKey))) {
+		if (!Array.isArray(attachments) || !attachments.some(a => a && !a.content && (a.attId || a.draftAttKey || a.schedAttKey))) {
 			return attachments || [];
 		}
 		const sharedIds = await getSharedAccountIds(c, userId);
 		const result = [];
 		for (const item of attachments) {
 			if (!item) continue;
-			if (item.content || !(item.attId || item.draftAttKey)) {
+			if (item.content || !(item.attId || item.draftAttKey || item.schedAttKey)) {
 				result.push(item);
+				continue;
+			}
+			// Stored by a scheduled send / Undo Send (scheduled-email-service):
+			// keeps every field of the original attachment except its bytes.
+			if (item.schedAttKey) {
+				if (!String(item.schedAttKey).startsWith(schedAttPrefix(userId))) continue;
+				try {
+					const obj = await r2Service.getObj(c, item.schedAttKey);
+					if (!obj) continue;
+					const { schedAttKey, ...rest } = item;
+					result.push({ ...rest, content: arrayBufferToBase64(await obj.arrayBuffer()) });
+				} catch (e) {
+					console.error(`send: failed to read scheduled attachment ${item.schedAttKey}`, e);
+				}
 				continue;
 			}
 			let key, filename, type;
@@ -2346,8 +2419,11 @@ const emailService = {
 			? `(user_id = ? OR account_id IN (${sharedIds.map(() => '?').join(',')}))`
 			: 'user_id = ?';
 		const accountCond = allReceive ? '' : 'AND account_id = ?';
+		// Inbox only, the same mail the unread badge counts: not Spam or Archive.
+		const spam = await columnExists(c, 'email', 'is_spam') ? 'AND COALESCE(is_spam, 0) = 0' : '';
+		const archive = await columnExists(c, 'email', 'is_archive') ? 'AND COALESCE(is_archive, 0) = 0' : '';
 		await c.env.db.prepare(
-			`UPDATE email SET unread = ? WHERE ${accessCond} AND type = 0 AND is_del = 0 AND unread = ? ${accountCond}`
+			`UPDATE email SET unread = ? WHERE ${accessCond} AND type = 0 AND is_del = 0 AND unread = ? ${spam} ${archive} ${accountCond}`
 		).bind(emailConst.unread.READ, userId, ...sharedIds, emailConst.unread.UNREAD, ...(allReceive ? [] : [accountId])).run();
 	},
 
@@ -2364,5 +2440,27 @@ const emailService = {
 	},
 
 };
+
+// D1 allows at most 100 bound parameters per statement. The bulk actions
+// below put every selected id (plus the caller's shared account ids) into one
+// statement, so "select all" over a couple of loaded pages (50 mails each)
+// failed. Each of them now runs once per chunk of ids.
+const ID_CHUNK = 50;
+const BULK_METHODS = ['delete', 'setUnread', 'archiveEmail', 'unarchiveEmail', 'markSpam', 'unmarkSpam',
+	'snooze', 'unsnooze', 'restore', 'permanentDelete', 'allEmailDelete'];
+for (const name of BULK_METHODS) {
+	const run = emailService[name];
+	emailService[name] = async function (c, params, ...rest) {
+		const raw = params?.emailIds;
+		const asArray = Array.isArray(raw);
+		const ids = (asArray ? raw : String(raw ?? '').split(','))
+			.map(Number).filter(id => Number.isSafeInteger(id) && id > 0);
+		if (!ids.length) return;
+		for (let i = 0; i < ids.length; i += ID_CHUNK) {
+			const chunk = ids.slice(i, i + ID_CHUNK);
+			await run.call(this, c, { ...params, emailIds: asArray ? chunk : chunk.join(',') }, ...rest);
+		}
+	};
+}
 
 export default emailService;

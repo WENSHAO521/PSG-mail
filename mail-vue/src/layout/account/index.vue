@@ -10,6 +10,12 @@
         <span>{{ $t('addAccount') }}</span>
       </button>
     </div>
+    <div class="account-search" v-if="showSearch">
+      <el-input v-model="keyword" size="small" clearable :placeholder="$t('accountSearchPlaceholder')"
+                :aria-label="$t('accountSearchPlaceholder')" @input="onKeywordInput" @clear="onKeywordInput">
+        <template #prefix><Icon icon="psg:search" width="14" height="14"/></template>
+      </el-input>
+    </div>
     <el-scrollbar class="scrollbar" ref="scrollbarRef">
       <div v-infinite-scroll="getAccountList" :infinite-scroll-distance="600" :infinite-scroll-immediate="false">
         <div class="item" :class="itemBg(item.accountId)" v-for="(item, index) in accounts" :key="item.accountId"
@@ -212,6 +218,23 @@ const domainList = computed(() => settingStore.domainList)
 const accounts = reactive([])
 const noLoading = ref(false)
 const loading = ref(false)
+// Mailbox search (address or name), ported from upstream PR #640.
+const keyword = ref('')
+let keywordTimer = null
+let listRequestSeq = 0
+const showSearch = computed(() => !!keyword.value || accounts.length >= 6 || (accounts.length > 0 && !noLoading.value))
+
+function onKeywordInput() {
+  clearTimeout(keywordTimer)
+  keywordTimer = setTimeout(() => {
+    loading.value = false
+    followLoading.value = false
+    noLoading.value = false
+    scrollbarRef.value?.setScrollTop(0)
+    accounts.splice(0, accounts.length)
+    getAccountList()
+  }, 300)
+}
 const followLoading = ref(false);
 const verifyShow = ref(false)
 const setNameShow = ref(false)
@@ -500,8 +523,13 @@ function getAccountList() {
 
   const accountId = accounts.length > 0 ? accounts.at(-1).accountId : 0;
   const lastSort = accounts.length > 0 ? accounts.at(-1).sort : null;
+  const searchText = keyword.value.trim()
+  const seq = ++listRequestSeq
 
-  accountList(accountId, queryParams.size, lastSort).then(async list => {
+  accountList(accountId, queryParams.size, lastSort, searchText).then(async list => {
+
+    // A newer search started meanwhile: its result wins.
+    if (seq !== listRequestSeq) return
 
     let end = Date.now();
     let duration = end - start;
@@ -512,7 +540,8 @@ function getAccountList() {
     if (list.length < queryParams.size) {
       noLoading.value = true
     }
-    if (accounts.length === 0) {
+    // A filtered list must not switch the current mailbox.
+    if (accounts.length === 0 && !searchText) {
       accountStore.currentAccount = list[0]
     }
 
@@ -522,6 +551,7 @@ function getAccountList() {
     followLoading.value = false
     first = false
   }).catch(() => {
+    if (seq !== listRequestSeq) return
     loading.value = false
     followLoading.value = false
   })
@@ -624,6 +654,11 @@ path[fill="#ffdda1"] {
   overflow: hidden;
 
   /* ── Toolbar: count on the left, refresh + add on the right ── */
+  .account-search {
+    padding: 8px 16px 8px 22px;
+    border-bottom: 1px solid var(--psg-border);
+  }
+
   .head-opt {
     display: flex;
     align-items: center;

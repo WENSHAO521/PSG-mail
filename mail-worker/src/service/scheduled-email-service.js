@@ -5,7 +5,9 @@ import { and, eq, desc, lte } from 'drizzle-orm';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
 import accountService from './account-service';
-import emailService from './email-service';
+import emailService, { schedAttPrefix } from './email-service';
+import r2Service from './r2-service';
+import fileUtils from '../utils/file-utils';
 
 const STATUS = {
 	PENDING: 'pending',
@@ -54,6 +56,35 @@ async function assertOwnedAccount(c, accountId, userId) {
 	if (!shared) throw new BizError(t('sendEmailNotCurUser'));
 }
 
+async function storeAttachments(c, userId, attachments) {
+	const refs = [];
+	for (const att of attachments || []) {
+		if (!att) continue;
+		if (!att.content) { refs.push(att); continue; }
+		const { content, ...rest } = att;
+		const bytes = fileUtils.base64ToUint8Array(String(content).replace(/^data:[^,]*,/, '').replace(/\s+/g, ''));
+		const key = schedAttPrefix(userId) + crypto.randomUUID() + fileUtils.getExtFileName(att.filename || '');
+		await r2Service.putObj(c, key, bytes, { contentType: att.contentType || att.type || 'application/octet-stream' });
+		refs.push({ ...rest, size: rest.size ?? bytes.length, schedAttKey: key });
+	}
+	return refs;
+}
+
+// Deletes the stored attachments of a row that will not be sent again.
+async function releaseAttachments(c, row) {
+	let payload;
+	try { payload = JSON.parse(row?.payload || '{}'); } catch { return; }
+	const prefix = schedAttPrefix(row.userId ?? row.user_id);
+	for (const att of payload.attachments || []) {
+		if (!att?.schedAttKey || !String(att.schedAttKey).startsWith(prefix)) continue;
+		try {
+			await r2Service.delete(c, att.schedAttKey);
+		} catch (e) {
+			console.error('release scheduled attachment failed', att.schedAttKey, e);
+		}
+	}
+}
+
 const scheduledEmailService = {
 
 	async create(c, params, userId) {
@@ -87,7 +118,10 @@ const scheduledEmailService = {
 			requestReceipt: !!params.requestReceipt,
 			// Referenced attachments (forwarded, or kept with a draft) are loaded
 			// now: the draft they came from is deleted once this is scheduled.
-			attachments: await emailService.resolveForwardedAttachments(c, params.attachments || [], userId),
+			// D1 rows top out at 2 MB, so the bytes go to object storage and
+			// the row keeps a reference (send() loads them back).
+			attachments: await storeAttachments(c, userId,
+				await emailService.resolveForwardedAttachments(c, params.attachments || [], userId)),
 		};
 
 		const row = await orm(c).insert(scheduledEmail).values({
@@ -198,6 +232,7 @@ const scheduledEmailService = {
 			))
 			.returning().get();
 		if (!result) throw new BizError(t('scheduleNotCancellable') || 'This scheduled email can no longer be cancelled', 400);
+		await releaseAttachments(c, result);
 		return this.toClient(result);
 	},
 
@@ -338,6 +373,9 @@ const scheduledEmailService = {
 			.set({ ...patch, updateTime: new Date().toISOString() })
 			.where(eq(scheduledEmail.id, row.id))
 			.returning().get();
+		if (patch.status === STATUS.SENT || patch.status === STATUS.FAILED) {
+			await releaseAttachments(c, result || row);
+		}
 		return result;
 	},
 
@@ -413,6 +451,9 @@ const scheduledEmailService = {
 		if (!claimed) throw new BizError(t('scheduleNotCancellable') || 'This scheduled email can no longer be edited', 400);
 		let payload;
 		try { payload = JSON.parse(claimed.payload); } catch { payload = {}; }
+		// Compose gets the bytes back; the stored copies are no longer needed.
+		payload.attachments = await emailService.resolveForwardedAttachments(c, payload.attachments || [], userId);
+		await releaseAttachments(c, claimed);
 		return { id: claimed.id, scheduledAt: claimed.scheduledAt, timezone: claimed.timezone, ...payload };
 	},
 
