@@ -27,9 +27,9 @@ const uiStore = useUiStore()
 const canSend = computed(() => hasPerm('email:send'))
 
 const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'archive', 'snoozed', 'spam', 'trash', 'label', 'scheduled'])
-// Compose floats over the everyday mail lists only. Scheduled, Archive, Spam
-// and Deleted are review screens where it would just cover content.
-const COMPOSE_ROUTES = new Set(['email', 'all-inbox', 'star', 'send', 'draft', 'label'])
+// Compose floats over every mail folder, as in Gmail, so it is never missing
+// depending on where you are. Search and Settings have their own screens.
+const COMPOSE_ROUTES = new Set(['email', 'all-inbox', 'star', 'send', 'draft', 'label', 'archive', 'snoozed', 'spam', 'trash', 'scheduled'])
 const onMailScreen = computed(() => COMPOSE_ROUTES.has(route.meta?.name))
 const tabs = computed(() => {
   const name = route.meta?.name

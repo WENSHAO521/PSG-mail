@@ -61,7 +61,7 @@
             <Icon icon="psg:warning" width="22" height="22" />
             <span>{{ $t('vpnLoadError') }}</span>
             <div class="vpn-error-actions">
-              <button type="button" class="vpn-pill" @click="load">{{ $t('retry') }}</button>
+              <button type="button" class="vpn-pill" @click="load(true)">{{ $t('retry') }}</button>
               <a class="vpn-pill" :href="RELEASES_URL" target="_blank" rel="noopener">{{ $t('vpnViewOnGitHub') }}</a>
             </div>
           </div>
@@ -119,20 +119,45 @@ const latest  = ref(null)
 const loading = ref(true)
 const error   = ref(false)
 
-async function load() {
+// GitHub allows 60 unauthenticated API calls per hour per IP, and an office
+// shares one IP, so keep the answer for an hour and fall back to the last
+// good copy when GitHub says no.
+const CACHE_KEY = 'psg-vpn-latest-release'
+const CACHE_TTL = 60 * 60 * 1000
+
+function readCache() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null') } catch { return null }
+}
+
+async function load(force = false) {
+  const cached = readCache()
+  if (!force && cached?.data && Date.now() - cached.at < CACHE_TTL) {
+    latest.value = cached.data
+    loading.value = false
+    error.value = false
+    return
+  }
   loading.value = true
   error.value = false
   try {
     const res = await fetch(GITHUB_API)
     if (!res.ok) throw new Error(res.status)
-    latest.value = await res.json()
+    const json = await res.json()
+    // Keep only what the page uses; the full release JSON is mostly notes.
+    latest.value = {
+      tag_name: json.tag_name,
+      published_at: json.published_at,
+      assets: (json.assets || []).map(a => ({ name: a.name, browser_download_url: a.browser_download_url, size: a.size })),
+    }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data: latest.value })) } catch {}
   } catch {
-    error.value = true
+    if (cached?.data) latest.value = cached.data
+    else error.value = true
   } finally {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(() => load())
 
 function detectPlatform() {
   const ua = navigator.userAgent || ''

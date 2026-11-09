@@ -26,6 +26,7 @@
 
   <div class="app-shell"
        :data-mode="isMailRoute ? 'mail' : 'workspace'"
+       :data-folders="isFolderWorkspace ? 'true' : null"
        :data-collapsed="String(sidebarCollapsed)"
        :data-mobile-detail="String(uiStore.mobileDetailOpen)"
        :data-reader-peek="readerDrag.mode === 'back' ? 'true' : null"
@@ -250,6 +251,10 @@ function showNotice(data) {
 
 const MAIL_ROUTES = new Set(['email', 'all-inbox', 'send', 'draft', 'star', 'archive', 'snoozed', 'spam', 'trash', 'all-email', 'label', 'search'])
 const isMailRoute = computed(() => MAIL_ROUTES.has(route.meta?.name))
+// Workspace pages that are also entries in the folder column keep that
+// column on desktop, so leaving them works like switching any other folder.
+const FOLDER_WORKSPACE_ROUTES = new Set(['scheduled'])
+const isFolderWorkspace = computed(() => FOLDER_WORKSPACE_ROUTES.has(route.meta?.name))
 const sidebarCollapsed = computed(() => uiStore.asideCollapsed && window.innerWidth >= 1025)
 
 const keepAliveList = ['email', 'all-inbox', 'all-email', 'send', 'star', 'draft', 'archive', 'snoozed', 'spam', 'trash', 'label', 'search']
@@ -616,11 +621,22 @@ onBeforeUnmount(() => {
       "main";
   }
 
+  &[data-mode="workspace"][data-folders="true"] {
+    grid-template-columns: 200px minmax(0, 1fr);
+    grid-template-areas:
+      "top top"
+      "folders main";
+  }
+
   @media (max-width: 1280px) {
     padding: 0 16px 16px;
 
     &[data-mode="mail"] {
       grid-template-columns: 184px var(--mail-list-w, 360px) 12px minmax(0, 1fr);
+    }
+
+    &[data-mode="workspace"][data-folders="true"] {
+      grid-template-columns: 184px minmax(0, 1fr);
     }
   }
 
@@ -639,7 +655,7 @@ onBeforeUnmount(() => {
   margin-right: 16px;
 }
 
-.app-shell[data-mode="workspace"] .shell-folders {
+.app-shell[data-mode="workspace"]:not([data-folders="true"]) .shell-folders {
   @media (min-width: 1025px) { display: none; }
 }
 

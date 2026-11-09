@@ -160,6 +160,11 @@
                 'is-selecting': selectionMode,
               }"
               :data-active="item.rightChecked || undefined"
+              tabindex="0"
+              role="button"
+              :aria-current="(!!item.emailId && emailStore.contentData.email?.emailId === item.emailId) || undefined"
+              @keydown.enter.self="onRowClick($event, item)"
+              @keydown.space.self.prevent="onRowClick($event, item)"
               @click="onRowClick($event, item)"
               @contextmenu="handleContextmenu($event, item)"
             >
@@ -1105,9 +1110,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   border-radius: var(--psg-radius-md);
   transition: box-shadow 0.12s ease, background 0.12s ease;
 
+  /* Inset ring: an outer one is painted over by the toolbar row below. */
   &:focus-within {
     background: var(--psg-surface);
-    box-shadow: 0 0 0 2px var(--psg-primary);
+    box-shadow: inset 0 0 0 2px var(--psg-primary);
   }
 }
 
@@ -1606,6 +1612,12 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 
   &.is-checked { background: var(--psg-primary-muted); }
+
+  &:focus { outline: none; }
+  &:focus-visible {
+    outline: 2px solid var(--psg-primary);
+    outline-offset: -2px;
+  }
 
   .mrow-lead {
     width: 8px;

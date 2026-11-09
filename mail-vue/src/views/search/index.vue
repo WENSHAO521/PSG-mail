@@ -16,8 +16,10 @@
       <el-button type="primary" class="search-go-btn" :disabled="!queryText.trim()" @click="runSearch()">{{ $t('search') }}</el-button>
     </div>
 
-    <div class="search-operator-hint">
-      {{ $t('searchOperatorsHint') }}
+    <div class="search-operator-hint" role="group" :aria-label="$t('searchFilters')">
+      <span class="op-label">{{ $t('searchFilters') }}</span>
+      <button v-for="op in OPERATOR_CHIPS" :key="op.insert" type="button" class="op-chip"
+              :title="op.insert" @click="addOperator(op.insert)">{{ $t(op.labelKey) }}</button>
     </div>
 
     <div v-if="multiAccount" class="search-scope" role="group" :aria-label="$t('mailboxes')">
@@ -146,6 +148,30 @@ function formatTime(t) {
 // Words to mark in the results: free-text keywords plus the values of
 // from:, to:, cc: and subject: (the other operators filter, not match text).
 const highlightTerms = ref([])
+
+// Tappable shortcuts for the search operators; the full syntax still works
+// when typed. Each chip appends its operator and puts the cursor after it.
+const OPERATOR_CHIPS = [
+  { labelKey: 'searchOpFrom', insert: 'from:' },
+  { labelKey: 'searchOpTo', insert: 'to:' },
+  { labelKey: 'searchOpSubject', insert: 'subject:' },
+  { labelKey: 'searchOpAttachment', insert: 'has:attachment' },
+  { labelKey: 'searchOpUnread', insert: 'is:unread' },
+  { labelKey: 'searchOpStarred', insert: 'is:starred' },
+  { labelKey: 'searchOpAfter', insert: 'after:' },
+  { labelKey: 'searchOpBefore', insert: 'before:' },
+]
+
+function addOperator(op) {
+  const cur = queryText.value.replace(/\s+$/, '')
+  queryText.value = (cur ? cur + ' ' : '') + op + (op.endsWith(':') ? '' : ' ')
+  nextTick(() => {
+    const el = inputRef.value
+    if (!el) return
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
+  })
+}
 function termsOf(query) {
   const terms = []
   const re = /([a-zA-Z]+):"([^"]*)"|([a-zA-Z]+):(\S+)|"([^"]*)"|(\S+)/g
@@ -202,7 +228,7 @@ function openResult(item) {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
 }
 
 .search-bar-row {
@@ -218,9 +244,10 @@ function openResult(item) {
   gap: 8px;
   height: 44px;
   padding: 0 14px;
-  background: var(--psg-surface);
-  border: 1px solid var(--psg-border);
+  background: var(--psg-surface-muted);
+  border: 1px solid transparent;
   border-radius: var(--psg-radius-md);
+  &:focus-within { border-color: var(--psg-primary); }
 }
 
 .search-icon { color: var(--psg-text-secondary); flex-shrink: 0; }
@@ -241,10 +268,28 @@ function openResult(item) {
 .search-go-btn { border-radius: var(--psg-radius-md) !important; height: 44px; padding: 0 20px; }
 
 .search-operator-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   font-size: 12.5px;
-  line-height: 1.6;
   color: var(--psg-text-muted);
-  overflow-wrap: anywhere;
+}
+
+.op-label { margin-right: 2px; }
+
+.op-chip {
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--psg-border);
+  border-radius: 999px;
+  background: var(--psg-surface);
+  color: var(--psg-text-secondary);
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { color: var(--psg-text); border-color: var(--psg-border-strong, var(--psg-text-muted)); }
+  &:focus-visible { outline: 2px solid var(--psg-primary); outline-offset: 1px; }
 }
 
 .recent-block { display: flex; flex-direction: column; gap: 8px; }

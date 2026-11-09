@@ -76,7 +76,7 @@ export function formatDetailDate(time) {
             ? d.format('ddd, MMM D, h:mm A')
             : d.format('ddd, MMM D, YYYY, h:mm A');
     } else {
-        return d.format('YYYY年M月D日 ddd AH:mm');
+        return d.format('YYYY年M月D日 ddd HH:mm');
     }
 }
 

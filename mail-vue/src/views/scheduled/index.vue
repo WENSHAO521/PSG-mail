@@ -27,14 +27,14 @@
       </div>
       <div class="workspace-stat-card workspace-stat-card--wide surface-card">
         <span class="workspace-stat-label">{{ $t('scheduledIssueCount') }}</span>
-        <span class="workspace-stat-description">{{ issueCount }}</span>
+        <strong class="workspace-stat-value" :class="{ 'workspace-stat-value--danger': issueCount > 0 }">{{ issueCount }}</strong>
       </div>
     </section>
 
     <section class="workspace-surface" aria-labelledby="scheduled-list-title">
-      <header class="workspace-surface-header">
+      <header class="workspace-surface-header workspace-surface-header--inline">
         <div>
-          <h2 id="scheduled-list-title">{{ $t('scheduled') }}</h2>
+          <h2 id="scheduled-list-title">{{ $t('scheduledListTitle') }}</h2>
           <p>{{ $t('scheduledListDesc') }}</p>
         </div>
         <button class="workspace-icon-button" :aria-label="$t('refresh')" :title="$t('refresh')" @click="load">
