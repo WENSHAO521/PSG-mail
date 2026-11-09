@@ -2387,6 +2387,10 @@ const emailService = {
 	// Unread Inbox mail per account the caller can read (own + shared), for
 	// the sidebar badge and the mailbox switcher. Spam, archived, deleted mail
 	// and mail of deleted accounts don't count.
+	// Runs on every client sync, so it must stay cheap: the literal
+	// type/is_del/unread values let SQLite use the partial index
+	// idx_email_unread_inbox (migrations/0029), which holds unread Inbox
+	// mail only, instead of walking every mail of the user.
 	async unreadCounts(c, userId) {
 		const sharedIds = await getSharedAccountIds(c, userId);
 		const accessCond = sharedIds.length > 0
@@ -2397,9 +2401,9 @@ const emailService = {
 		const { results } = await c.env.db.prepare(`
 			SELECT e.account_id AS accountId, COUNT(*) AS count FROM email e
 			JOIN account a ON a.account_id = e.account_id AND a.is_del = 0
-			WHERE ${accessCond} AND e.type = 0 AND e.is_del = 0 AND e.unread = ? ${spam} ${archive}
+			WHERE ${accessCond} AND e.type = 0 AND e.is_del = 0 AND e.unread = ${emailConst.unread.UNREAD} ${spam} ${archive}
 			GROUP BY e.account_id
-		`).bind(userId, ...sharedIds, emailConst.unread.UNREAD).all();
+		`).bind(userId, ...sharedIds).all();
 		const accounts = {};
 		let total = 0;
 		for (const row of results || []) {

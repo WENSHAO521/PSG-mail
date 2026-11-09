@@ -57,7 +57,17 @@ export class ScheduledSendAlarm {
 		// of that, the row itself stays a durable 'pending' row until
 		// claimed, so the once-a-minute cron backstop (processDue) will
 		// still catch it even if DO retries are exhausted.
-		await scheduledEmailService.claimAndProcessById(ctx, scheduledEmailId);
+		const result = await scheduledEmailService.claimAndProcessById(ctx, scheduledEmailId);
+
+		// A failed attempt that will be retried goes back to pending with a
+		// later scheduledAt: wake up again then rather than wait for the cron.
+		if (result?.status === 'pending' && result.scheduledAt) {
+			const whenMs = Date.parse(String(result.scheduledAt).replace(' ', 'T') + 'Z');
+			if (Number.isFinite(whenMs)) {
+				await this.state.storage.put('scheduledEmailId', scheduledEmailId);
+				await this.state.storage.setAlarm(whenMs);
+			}
+		}
 	}
 }
 

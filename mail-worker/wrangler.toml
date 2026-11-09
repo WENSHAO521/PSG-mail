@@ -53,7 +53,7 @@ not_found_handling = "single-page-application"
 run_worker_first = ["/api/*", "/attachments/*", "/static/*"]
 
 [triggers]
-crons = ["* * * * *", "*/30 * * * *", "0 16 * * *"]	#每分钟处理定时发送到期邮件，每30分钟刷新分析缓存，每天晚上12点执行每日任务
+crons = ["*/5 * * * *", "*/30 * * * *", "0 16 * * *"]	#每5分钟处理到期的稍后提醒、转发重试（定时发送由 Durable Object 闹钟准时触发，这里只是兜底），每30分钟刷新分析缓存，每天晚上12点执行每日任务
 
 
 [vars]

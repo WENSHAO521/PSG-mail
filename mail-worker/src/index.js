@@ -51,8 +51,10 @@ export default {
 };
 
 async function runScheduled(c, env) {
-	if (c.cron === '* * * * *') {
-		// Per-minute fallback. Only outcomes worth looking at are recorded (never "ran, nothing due"),
+	// '*/5 * * * *' since 2026-11 (every minute before): fewer Worker
+	// invocations on the free plan. Scheduled sends have their own alarm.
+	if (c.cron === '*/5 * * * *' || c.cron === '* * * * *') {
+		// Fallback. Only outcomes worth looking at are recorded (never "ran, nothing due"),
 		// so monitoring adds no D1 writes to idle minutes.
 		const started = Date.now();
 		const [sched, fwd, snooze] = await Promise.allSettled([
