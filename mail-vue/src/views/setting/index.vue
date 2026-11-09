@@ -799,19 +799,24 @@ function fileToBase64Raw(file) {
 }
 
 async function importFiles(event) {
-  const files = [...(event.target.files || [])]
+  let files = [...(event.target.files || [])]
   event.target.value = ''
   if (!files.length || !importAccountId.value) return
   importing.value = true
   importDone.value = 0
   importTotal.value = files.length
+  // Oldest first: the mail list is ordered by arrival here, so importing in
+  // date order keeps the imported mails in date order among themselves.
+  files = await sortByMailDate(files)
   let ok = 0
+  let skipped = 0
   const failed = []
   for (const file of files) {
     try {
       if (file.size > 20 * 1024 * 1024) throw new Error(t('importEmlTooLarge'))
-      await emailImport(importAccountId.value, await fileToBase64Raw(file))
-      ok++
+      const result = await emailImport(importAccountId.value, await fileToBase64Raw(file))
+      if (result?.duplicate) skipped++
+      else ok++
     } catch (e) {
       failed.push(file.name)
     }
@@ -823,6 +828,25 @@ async function importFiles(event) {
   } else {
     ElMessage({ message: t('importEmlDone', { n: ok }), type: 'success', plain: true })
   }
+  if (skipped) {
+    ElMessage({ message: t('importEmlSkipped', { n: skipped }), type: 'info', plain: true, duration: 5000 })
+  }
+}
+
+// Reads the Date header from the start of each file; files without one keep
+// their place at the end.
+async function sortByMailDate(files) {
+  const dated = await Promise.all(files.map(async (file, index) => {
+    let time = Infinity
+    try {
+      const head = (await file.slice(0, 64 * 1024).text()).split(/\r?\n\r?\n/)[0]
+      const match = head.match(/^Date:[ \t]*(.+)$/mi)
+      const parsed = match ? Date.parse(match[1].trim()) : NaN
+      if (!Number.isNaN(parsed)) time = parsed
+    } catch {}
+    return { file, index, time }
+  }))
+  return dated.sort((a, b) => a.time - b.time || a.index - b.index).map(item => item.file)
 }
 
 async function triggerBackup(provider) {

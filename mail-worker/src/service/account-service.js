@@ -176,11 +176,14 @@ const accountService = {
 
 	async list(c, params, userId) {
 
-		let { accountId, size, lastSort } = params;
+		let { accountId, size, lastSort, keyword } = params;
 
 		accountId = Number(accountId);
 		size = Number(size);
 		lastSort = Number(lastSort);
+		// Filter by address or display name (ported from upstream PR #640).
+		const searchText = typeof keyword === 'string' ? keyword.trim().slice(0, 100) : '';
+		const searchPattern = `%${searchText.replace(/[!%_]/g, '!$&')}%`;
 
 		if (size > 30) {
 			size = 30;
@@ -213,6 +216,10 @@ const accountService = {
 			and(
 				accessCond,
 				eq(account.isDel, isDel.NORMAL),
+				searchText ? or(
+					sql`${account.email} LIKE ${searchPattern} ESCAPE '!'`,
+					sql`${account.name} LIKE ${searchPattern} ESCAPE '!'`
+				) : undefined,
 				or(
 					lt(account.sort, lastSort),
 					and(

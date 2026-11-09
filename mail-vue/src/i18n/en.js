@@ -1244,6 +1244,11 @@ const en = {
     importEmlProgress: 'Importing {done}/{total}',
     importEmlDone: '{n} emails imported',
     importEmlPartial: '{ok} imported, {failed} failed: {names}',
+    importEmlSkipped: '{n} already in this mailbox, skipped',
+    attLimitMsg: 'A mail can have at most {n} attachments',
+    sentButNotSavedMsg: 'The mail was sent, but its copy in Sent could not be saved',
+    bccPartialMsg: '{failed} Bcc recipient(s) could not be reached',
+    accountSearchPlaceholder: 'Search address or name',
     importEmlTooLarge: 'Each file must be 20 MB or smaller',
 }
 

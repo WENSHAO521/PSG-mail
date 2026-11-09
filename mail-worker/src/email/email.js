@@ -97,6 +97,16 @@ export async function email(message, env, ctx) {
 			email.to = [{ address: message.to, name: emailUtils.getName(message.to)}]
 		}
 
+		// Mail one of our mailboxes sent to a list mixing outside and on-site
+		// addresses is written straight into the on-site mailboxes, and the
+		// provider's copy for the same address comes back here through MX.
+		// Drop that second copy (it pairs with one stored on-site copy).
+		if (account && email.from?.address
+			&& (setting.domainList || []).includes('@' + emailUtils.getDomain(email.from.address))
+			&& await emailService.consumeOnSiteCopy({ env }, account.accountId, email.from.address, email.subject, email.messageId)) {
+			return;
+		}
+
 		const toName = email.to.find(item => item.address?.toLowerCase() === message.to.toLowerCase())?.name || '';
 
 		const params = {

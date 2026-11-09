@@ -1141,7 +1141,14 @@ function chooseFile() {
   doc.click()
   doc.onchange = async (e) => {
 
-    const fileList = e.target.files;
+    const fileList = [...e.target.files];
+
+    // The server takes at most 10 attachments per mail.
+    const room = MAX_ATTACHMENTS - form.attachments.length
+    if (fileList.length > room) {
+      ElMessage({ message: t('attLimitMsg', { n: MAX_ATTACHMENTS }), type: 'warning', plain: true })
+      fileList.splice(Math.max(room, 0))
+    }
 
     for (const file of fileList) {
 
@@ -1156,6 +1163,8 @@ function chooseFile() {
 
   }
 }
+
+const MAX_ATTACHMENTS = 10
 
 function hasAnyRecipient() {
   return form.receiveEmail.length + form.cc.length + form.bcc.length > 0
@@ -1176,6 +1185,11 @@ function validateBeforeSend() {
 
   if (invalidAddresses.value.length) {
     ElMessage({ message: t('invalidAddressMsg', { list: invalidAddresses.value.join(', ') }), type: 'error', plain: true })
+    return false
+  }
+
+  if (form.attachments.length > MAX_ATTACHMENTS) {
+    ElMessage({ message: t('attLimitMsg', { n: MAX_ATTACHMENTS }), type: 'error', plain: true })
     return false
   }
 
@@ -1357,8 +1371,16 @@ async function sendEmail() {
   }).then(emailList => {
     const email = emailList[0]
     emailList.forEach(item => {
-      emailStore.sendScroll?.addItem(item)
+      if (item.emailId) emailStore.sendScroll?.addItem(item)
     })
+
+    if (email?.saveFailed) {
+      ElMessage({ message: t('sentButNotSavedMsg'), type: 'warning', plain: true, duration: 6000 })
+    }
+
+    if (email?.bccFailed) {
+      ElMessage({ message: t('bccPartialMsg', { failed: email.bccFailed }), type: 'warning', plain: true, duration: 6000 })
+    }
 
     if (email?.separateFailed) {
       ElMessage({

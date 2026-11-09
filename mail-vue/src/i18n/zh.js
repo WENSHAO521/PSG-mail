@@ -1244,6 +1244,11 @@ const zh = {
     importEmlProgress: '正在导入 {done}/{total}',
     importEmlDone: '已导入 {n} 封邮件',
     importEmlPartial: '已导入 {ok} 封，{failed} 封失败：{names}',
+    importEmlSkipped: '{n} 封已存在，已略过',
+    attLimitMsg: '每封邮件最多 {n} 个附件',
+    sentButNotSavedMsg: '邮件已发出，但已发送副本保存失败',
+    bccPartialMsg: '有 {failed} 位密送收件人发送失败',
+    accountSearchPlaceholder: '搜索邮箱地址或名称',
     importEmlTooLarge: '单个文件不能超过 20 MB',
 }
 export default zh

@@ -60,6 +60,15 @@ const importService = {
 		const isSent = fromAddress.toLowerCase() === own;
 		const to = Array.isArray(mail.to) && mail.to.length ? mail.to : [{ address: accountRow.email, name: '' }];
 
+		// The same file imported twice (or a message already delivered here)
+		// is skipped rather than stored again.
+		if (mail.messageId) {
+			const dup = await c.env.db.prepare(
+				'SELECT email_id FROM email WHERE account_id = ? AND message_id = ? AND type = ? AND is_del = 0 LIMIT 1'
+			).bind(accountRow.accountId, mail.messageId, isSent ? emailConst.type.SEND : emailConst.type.RECEIVE).first();
+			if (dup) return { emailId: dup.email_id, subject: mail.subject || '', sent: isSent, duplicate: true };
+		}
+
 		const sentAt = mail.date ? dayjs(mail.date) : null;
 		const createTime = sentAt?.isValid() ? sentAt.utc().format('YYYY-MM-DD HH:mm:ss') : null;
 
