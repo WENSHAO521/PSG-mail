@@ -1110,9 +1110,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   border-radius: var(--psg-radius-md);
   transition: box-shadow 0.12s ease, background 0.12s ease;
 
+  /* Inset ring: an outer one is painted over by the toolbar row below. */
   &:focus-within {
     background: var(--psg-surface);
-    box-shadow: 0 0 0 2px var(--psg-primary);
+    box-shadow: inset 0 0 0 2px var(--psg-primary);
   }
 }
 
