@@ -219,7 +219,7 @@
                     <Icon icon="psg:clock" width="12" height="12" /> {{ t('snoozeUntilShort', { time: dayjs(item.snoozeUntil).format('MM-DD HH:mm') }) }}
                   </span>
                   <span v-if="mailboxChip(item)" class="mailbox-chip" :style="{ '--chip': mailboxColor(mailboxChip(item)) }"
-                        :title="mailboxChip(item)">{{ mailboxChip(item).split('@')[0] }}@</span>
+                        :title="mailboxChip(item)">{{ mailboxChip(item).split('@')[0] }}</span>
                   <span v-if="showUserInfo" class="mrow-preview">{{ item.userEmail }} → {{ item.type === 0 ? item.toEmail : item.sendEmail }}</span>
                   <span v-else class="mrow-preview">{{ item.formatText }}</span>
                 </div>
@@ -1808,11 +1808,20 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     font-size: 12px;
     font-weight: 400;
     line-height: 16px;
-    padding: 0 4px;
-    border-radius: 4px;
-    color: var(--psg-text-secondary);
-    background: var(--psg-surface-muted);
-    box-shadow: inset 2px 0 0 var(--chip);
+    color: var(--psg-text-muted);
+
+    /* Which mailbox the mail belongs to: a small identity dot and the
+       local part, set as quiet meta rather than a tinted tag. */
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-right: 6px;
+      border-radius: 50%;
+      background: var(--chip);
+      vertical-align: 1px;
+    }
   }
 
   &.is-unread {
