@@ -12,6 +12,7 @@ import oauthService from "./service/oauth-service";
 import analysisService from './service/analysis-service';
 import scheduledEmailService from './service/scheduled-email-service';
 import { safeObjectResponse } from './utils/safe-object-response';
+import { REALTIME_PATH, handleRealtimeUpgrade } from './realtime/realtime';
 import forwardingService from './service/forwarding-service';
 import backupService from './service/backup-service';
 import { bump, flushMetrics, purgeOldMetrics } from './service/ops-metrics';
@@ -19,10 +20,16 @@ import { bump, flushMetrics, purgeOldMetrics } from './service/ops-metrics';
 // entry — this is that export, not a self-contained secondary Worker. See
 // src/durable/scheduled-send-alarm.js for what it's for.
 export { ScheduledSendAlarm } from './durable/scheduled-send-alarm';
+export { MailHub } from './durable/mail-hub';
 export default {
 	 async fetch(req, env, ctx) {
 
 		const url = new URL(req.url)
+
+		// Real-time new-mail hints (WebSocket to the user's MailHub object).
+		if (url.pathname === REALTIME_PATH) {
+			return handleRealtimeUpgrade(req, env);
+		}
 
 		if (url.pathname.startsWith('/api/')) {
 			url.pathname = url.pathname.replace('/api', '')

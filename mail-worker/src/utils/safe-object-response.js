@@ -61,3 +61,22 @@ export function safeObjectResponse(obj) {
 	if (obj.httpMetadata?.cacheControl) headers.set('Cache-Control', obj.httpMetadata.cacheControl);
 	return new Response(obj.body, { headers: hardenObjectHeaders(headers) });
 }
+
+// Metadata written with a stored object. Objects can also be served straight
+// from a public bucket domain (r2Domain / S3), where the hardening above never
+// runs, so the stored headers themselves must already be safe: active types
+// (HTML, SVG, XML, JS) are stored as octet-stream, and only types a browser
+// shows passively may be inline. (Ported from upstream cloud-mail 53584f8.)
+const ACTIVE_TYPE = /html|svg|xml|javascript|ecmascript/;
+
+export function storedObjectMetadata({ contentType, filename, inline = false, cacheControl } = {}) {
+	const type = String(contentType || '').split(';')[0].trim().toLowerCase();
+	const name = String(filename || '').replace(/[\u0000-\u001f"\;]/g, '_');
+	const showInline = inline && INLINE_SAFE.has(type);
+	const metadata = {
+		contentType: !type || ACTIVE_TYPE.test(type) ? 'application/octet-stream' : contentType,
+		contentDisposition: `${showInline ? 'inline' : 'attachment'};filename="${name}"`,
+	};
+	if (cacheControl) metadata.cacheControl = cacheControl;
+	return metadata;
+}

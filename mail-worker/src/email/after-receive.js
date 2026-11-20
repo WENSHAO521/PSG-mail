@@ -7,6 +7,7 @@ import forwardingService from '../service/forwarding-service';
 import notificationEventService from '../service/notification-event-service';
 import webhookService from '../service/webhook-service';
 import mailRuleService from '../service/mail-rule-service';
+import { notifyNewMail } from '../realtime/realtime';
 import { splitAddressList, shouldAutoReply, escapeHtml } from '../utils/inbound-mail';
 
 // One auto-reply per sender per day, the RFC 3834 recommendation.
@@ -57,6 +58,11 @@ export async function afterReceive(c, { account, emailRow, mail, recipient, sett
 				email: emailRow
 			}),
 			forwardingService.dispatchIncoming(c, account, emailRow),
+			notifyNewMail(c.env, {
+				userId: account.userId,
+				accountId: account.accountId,
+				emailId: emailRow.emailId
+			}),
 		]);
 		waitUntil(spamCheck.then(isSpam => isSpam ? null : notifyAndForward()));
 	}
