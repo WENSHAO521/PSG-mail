@@ -1,12 +1,14 @@
 /*
- * PSG Mail — Design Tokens ("Mist", 2026 redesign)
+ * PSG Mail — Design Tokens ("Proof", 2026-11 redesign)
  * Single source of truth for the Light / Dark palette.
  * No other stylesheet may define a raw color value — reference these
  * custom properties instead. Component styles live in their own
  * .vue <style scoped> blocks and consume these tokens.
  *
- * Mist: a cool grey ground with white rounded cards on it, near-black ink,
- * one soft sakura-pink (桜色) accent. Variable names are kept from the previous
+ * Proof: an editorial office. Neutral graphite surfaces laid edge to edge
+ * and split by hairlines, ink-dark text, and the deep 桜 accent used
+ * sparingly — the primary action, the selection, and the proofreader's
+ * margin mark on unread mail. Variable names are kept from the previous
  * system so every component re-themes through them.
  */
 
@@ -14,20 +16,20 @@
   color-scheme: light;
 
   /* Ground + surfaces */
-  --psg-canvas: #E8EBEF;          /* the mist the cards sit on */
+  --psg-canvas: #F7F7F8;          /* chrome: top bar, folder column */
   --psg-surface: #FFFFFF;         /* cards, panels, dialogs */
-  --psg-surface-muted: #F2F2F7;   /* wells, inputs, hover */
-  --psg-surface-active: #E5E5EA;  /* pressed / selected well */
+  --psg-surface-muted: #F1F1F3;   /* wells, inputs, hover */
+  --psg-surface-active: #E8E8EB;  /* pressed / selected well */
   --psg-menu-active-bg: var(--psg-surface);
   --psg-menu-active-text: var(--psg-text);
 
-  --psg-border: #E5E5EA;
-  --psg-border-strong: #1C1C1E;
+  --psg-border: #E6E6E9;          /* hairline, ~8% ink on white */
+  --psg-border-strong: #CFCFD4;
 
   /* Ink */
-  --psg-text: #1C1C1E;
-  --psg-text-secondary: #3C3C43;
-  --psg-text-muted: #636366;      /* >= 4.5:1 on white and on the mist */
+  --psg-text: #18181B;
+  --psg-text-secondary: #4A4A50;
+  --psg-text-muted: #6B6B72;      /* >= 4.5:1 on white and on the canvas */
 
   /* Accent — deep 桜. #B04A6A is ~5.2:1 under white text. */
   --psg-primary: #B04A6A;
@@ -88,29 +90,36 @@
      against a dark surface — no-op in light, inverted in dark. */
   --psg-logo-invert: none;
 
-  /* Mist is a rounded system: small controls 10, fields and rows 14,
-     panels 20, page cards 24. */
-  --psg-radius-xs: 8px;
-  --psg-radius-sm: 10px;
-  --psg-radius-md: 14px;
-  --psg-radius-lg: 20px;
-  --psg-radius-xl: 24px;
+  /* Proof corners: tags 6, controls and rows 8, cards 12, overlays 14. */
+  --psg-radius-xs: 6px;
+  --psg-radius-sm: 8px;
+  --psg-radius-md: 10px;
+  --psg-radius-lg: 12px;
+  --psg-radius-xl: 14px;
   --psg-radius-full: 999px;
 
-  --psg-shadow-xs: 0 1px 2px rgba(28, 28, 30, .05);
-  --psg-shadow-sm: 0 2px 8px rgba(28, 28, 30, .06);
-  --psg-shadow-md: 0 10px 28px rgba(28, 28, 30, .10);
-  --psg-shadow-lg: 0 30px 80px rgba(28, 28, 30, .24);
+  --psg-shadow-xs: 0 1px 2px rgba(0, 0, 0, .05);
+  --psg-shadow-sm: 0 1px 3px rgba(0, 0, 0, .06);
+  --psg-shadow-md: 0 8px 24px rgba(0, 0, 0, .08);
+  --psg-shadow-lg: 0 16px 48px rgba(0, 0, 0, .14);
+
+  /* One easing curve, three durations. */
+  --psg-ease: cubic-bezier(.22, 1, .36, 1);
+  --psg-dur-fast: 140ms;
+  --psg-dur-menu: 180ms;
+  --psg-dur-enter: 320ms;
 
   --psg-font-sans: 'DM Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
   --psg-font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  /* Display serif — page titles and the subject of an open mail only. */
+  --psg-font-display: 'Newsreader', 'Noto Serif SC', 'Songti SC', 'SimSun', Georgia, serif;
 
   /* Framework-neutral aliases. */
   --bg-primary: var(--psg-canvas);
   --bg-secondary: var(--psg-surface);
   --bg-tertiary: var(--psg-surface-muted);
   --bg-elevated: var(--psg-surface);
-  --bg-overlay: rgba(28, 28, 30, .32);
+  --bg-overlay: rgba(24, 24, 27, .28);
   --text-primary: var(--psg-text);
   --text-secondary: var(--psg-text-secondary);
   --text-muted: var(--psg-text-muted);
@@ -136,17 +145,17 @@
 html.dark {
   color-scheme: dark;
 
-  --psg-canvas: #0E0E10;
-  --psg-surface: #1C1C1F;
-  --psg-surface-muted: #2A2A2E;
-  --psg-surface-active: #3A3A3F;
+  --psg-canvas: #0F0F10;
+  --psg-surface: #161618;
+  --psg-surface-muted: #1F1F22;
+  --psg-surface-active: #2A2A2E;
 
-  --psg-border: #2E2E33;
-  --psg-border-strong: #F2F2F7;
+  --psg-border: #262629;
+  --psg-border-strong: #3A3A3F;
 
-  --psg-text: #F2F2F7;
-  --psg-text-secondary: #D1D1D6;
-  --psg-text-muted: #9A9AA0;
+  --psg-text: #EDEDEF;
+  --psg-text-secondary: #B4B4BA;
+  --psg-text-muted: #8A8A91;
 
   /* Sakura pink on dark; ink on top of it, not white. */
   --psg-primary: #F4B6C6;
@@ -203,8 +212,8 @@ html.dark {
   --psg-logo-invert: invert(1);
   --bg-overlay: rgba(0, 0, 0, .6);
 
-  --psg-shadow-xs: 0 1px 2px rgba(0, 0, 0, .3);
-  --psg-shadow-sm: 0 3px 10px rgba(0, 0, 0, .35);
-  --psg-shadow-md: 0 12px 30px rgba(0, 0, 0, .45);
-  --psg-shadow-lg: 0 30px 80px rgba(0, 0, 0, .6);
+  --psg-shadow-xs: 0 0 0 1px rgba(255, 255, 255, .04);
+  --psg-shadow-sm: 0 0 0 1px rgba(255, 255, 255, .05);
+  --psg-shadow-md: 0 0 0 1px rgba(255, 255, 255, .06), 0 12px 32px rgba(0, 0, 0, .5);
+  --psg-shadow-lg: 0 0 0 1px rgba(255, 255, 255, .06), 0 24px 64px rgba(0, 0, 0, .6);
 }

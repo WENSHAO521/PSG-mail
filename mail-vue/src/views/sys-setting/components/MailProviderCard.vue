@@ -98,9 +98,10 @@ function formatNum(n) {
 
 <style scoped lang="scss">
 .provider-card {
+  border: 1px solid var(--psg-border);
   /* Grey tile, same as the quota / stat tiles elsewhere. */
   border-radius: var(--psg-radius-lg);
-  background: var(--psg-surface-muted);
+  background: var(--psg-surface);
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
@@ -115,7 +116,7 @@ function formatNum(n) {
 
 .provider-name {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
 }
 
@@ -136,18 +137,18 @@ function formatNum(n) {
   align-items: baseline;
   justify-content: space-between;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-secondary);
 }
 
 .usage-percent {
-  font-weight: 700;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
 .usage-numbers {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
   font-variant-numeric: tabular-nums;
 }
@@ -168,7 +169,7 @@ function formatNum(n) {
 
 .usage-warn-text {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-danger);
 }
 

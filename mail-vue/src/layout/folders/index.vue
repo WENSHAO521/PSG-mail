@@ -1,6 +1,6 @@
 <template>
-  <!-- Mist folder column: plain text on the mist ground, the active folder
-       lifted onto a white chip. On phones the same list is a slide-in sheet
+  <!-- Proof folder column: plain rows on the canvas; the open folder gets a
+       surface step and the accent margin mark at its left edge. On phones the same list is a slide-in sheet
        opened from the mobile header's title. -->
   <div class="folders-host">
   <div class="folders-backdrop" :data-open="String(uiStore.asideShow)" @click="uiStore.asideShow = false"></div>
@@ -15,7 +15,7 @@
 
     <button v-for="f in visibleFolders" :key="f.name" type="button" class="folder"
             :class="{ active: route.meta?.name === f.name }" @click="go({ name: f.name })">
-      <Icon :icon="f.icon" width="18" height="18" class="folder-icon" />
+      <Icon :icon="f.icon" width="16" height="16" class="folder-icon" />
       <span class="folder-label">{{ $t(f.labelKey) }}</span>
       <span v-if="f.name === 'email' && inboxUnread > 0" class="folder-count">
         {{ inboxUnread > 99 ? '99+' : inboxUnread }}
@@ -139,7 +139,7 @@ function onLabelDeleted(label) {
   gap: 2px;
   min-height: 0;
   overflow-y: auto;
-  padding: 2px 4px 12px 0;
+  padding: 12px 12px 16px;
   scrollbar-width: none;
 
   &::-webkit-scrollbar { display: none; }
@@ -148,32 +148,46 @@ function onLabelDeleted(label) {
 .folders-sheet-head { display: none; }
 
 .folder {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 40px;
-  padding: 0 12px;
+  height: 34px;
+  padding: 0 10px;
   border: 0;
-  border-radius: var(--psg-radius-md);
+  border-radius: var(--psg-radius-sm);
   background: transparent;
-  color: var(--psg-text);
+  color: var(--psg-text-secondary);
   font: inherit;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   text-align: left;
   cursor: pointer;
-  transition: background .12s ease;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
 
   @media (hover: hover) {
-    &:hover:not(.active) { background: color-mix(in srgb, var(--psg-surface) 55%, transparent); }
+    &:hover:not(.active) { background: var(--psg-surface-muted); color: var(--psg-text); }
+  }
+
+  /* Margin mark: the proofreader's line beside the open folder. */
+  &::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
+    background: transparent;
   }
 
   &.active {
-    background: var(--psg-surface);
-    font-weight: 700;
-    box-shadow: var(--psg-shadow-xs);
+    background: var(--psg-surface-active);
+    color: var(--psg-text);
+    font-weight: 500;
 
-    .folder-icon { color: var(--psg-primary); }
+    &::before { background: var(--psg-primary); }
+    .folder-icon { color: var(--psg-text); }
   }
 }
 
@@ -200,11 +214,11 @@ function onLabelDeleted(label) {
   place-items: center;
   border: 0;
   border-radius: var(--psg-radius-xs);
-  background: var(--psg-surface);
+  background: transparent;
   color: var(--psg-text-muted);
   opacity: 0;
   cursor: pointer;
-  transition: opacity .12s ease;
+  transition: opacity var(--psg-dur-fast) var(--psg-ease);
 
   /* No hover on touch screens: keep the menu reachable, and clear of the count. */
   @media (hover: none) { opacity: 1; background: transparent; }
@@ -214,10 +228,10 @@ function onLabelDeleted(label) {
 .folder-icon { color: var(--psg-text-muted); flex-shrink: 0; }
 
 .folder-swatch {
-  width: 10px;
-  height: 10px;
-  margin-inline: 4px;
-  border-radius: 3px;
+  width: 8px;
+  height: 8px;
+  margin-inline: 5px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
@@ -230,27 +244,30 @@ function onLabelDeleted(label) {
 }
 
 .folder-count {
+  font-family: var(--psg-font-mono);
   font-size: 12px;
-  font-weight: 700;
-  color: var(--psg-primary);
+  font-weight: 500;
+  color: var(--psg-text);
   font-variant-numeric: tabular-nums;
 
-  &--quiet { color: var(--psg-text-muted); font-weight: 500; }
+  &--quiet { color: var(--psg-text-muted); font-weight: 400; }
 }
 
 .folders-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 8px 6px 12px;
+  height: 24px;
+  margin: 24px 0 4px;
+  padding: 0 4px 0 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-muted);
 }
 
 .folders-add {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: var(--psg-radius-xs);
   background: transparent;
@@ -259,7 +276,7 @@ function onLabelDeleted(label) {
   place-items: center;
   cursor: pointer;
 
-  @media (hover: hover) { &:hover { background: var(--psg-surface); color: var(--psg-text); } }
+  @media (hover: hover) { &:hover { background: var(--psg-surface-active); color: var(--psg-text); } }
 }
 
 .folders-backdrop { display: none; }
@@ -275,9 +292,10 @@ function onLabelDeleted(label) {
     width: min(84vw, 320px);
     padding: calc(16px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px));
     background: var(--psg-canvas);
-    border-radius: 0 var(--psg-radius-xl) var(--psg-radius-xl) 0;
+    border-radius: 0;
+    border-right: 1px solid var(--psg-border);
     transform: translateX(-105%);
-    transition: transform .2s ease, box-shadow .2s ease;
+    transition: transform var(--psg-dur-enter) var(--psg-ease);
 
     /* Shadow only while open — parked off-screen it would bleed in. */
     &[data-open="true"] { transform: translateX(0); box-shadow: var(--psg-shadow-lg); }
@@ -288,23 +306,23 @@ function onLabelDeleted(label) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 4px 14px 12px;
-    font-size: 22px;
-    font-weight: 700;
+    padding: 4px 0 16px 10px;
+    font-size: 20px;
+    font-weight: 500;
   }
 
   .folders-close {
     width: 40px;
     height: 40px;
     border: 0;
-    border-radius: var(--psg-radius-md);
-    background: var(--psg-surface);
+    border-radius: var(--psg-radius-sm);
+    background: transparent;
     color: var(--psg-text);
     display: grid;
     place-items: center;
   }
 
-  .folder { height: 46px; }
+  .folder { height: 44px; }
 
   .folders-backdrop {
     display: block;
@@ -314,7 +332,7 @@ function onLabelDeleted(label) {
     background: var(--bg-overlay);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .2s ease;
+    transition: opacity var(--psg-dur-enter) var(--psg-ease);
 
     &[data-open="true"] { opacity: 1; pointer-events: auto; }
   }

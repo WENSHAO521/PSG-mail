@@ -189,13 +189,13 @@ async function edit(row) {
   &.status-cancelled { background: var(--psg-surface-muted); border-color: var(--psg-border); color: var(--psg-text-secondary); }
 }
 .item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.item-name { font-size: 13.5px; font-weight: 700; color: var(--psg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-name { font-size: 13.5px; font-weight: 500; color: var(--psg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-meta { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
 .item-sub { font-size: 12px; color: var(--psg-text-secondary); display: inline-flex; align-items: center; gap: 3px; }
 .error-text { color: var(--psg-danger); }
 
 .status-badge {
-  font-size: 12px; font-weight: 700; padding: 1px 7px; white-space: nowrap;
+  font-size: 12px; font-weight: 500; padding: 1px 7px; white-space: nowrap;
   color: var(--psg-text-secondary); background: var(--psg-surface-muted); border: 0;
   &.status-sent { color: var(--psg-text); background: var(--psg-surface-active); border-color: var(--psg-border-strong); }
   &.status-failed { color: var(--psg-danger); background: var(--psg-danger-muted); border-color: var(--psg-danger); }

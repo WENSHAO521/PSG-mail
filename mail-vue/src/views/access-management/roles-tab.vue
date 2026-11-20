@@ -48,9 +48,9 @@
           <template #reference>
             <Icon class="warning" icon="psg:warning" width="18" height="18"/>
           </template>
-          <div style="font-weight: bold;margin-bottom: 2px;">{{ t('emailInterception') }}</div>
+          <div style="font-weight: 500;margin-bottom: 2px;">{{ t('emailInterception') }}</div>
           <div>{{ t('emailInterceptionDesc') }}</div>
-          <div style="font-weight: bold;margin-top: 10px;margin-bottom: 2px;">{{ t('availableDomains') }}</div>
+          <div style="font-weight: 500;margin-top: 10px;margin-bottom: 2px;">{{ t('availableDomains') }}</div>
           <div>{{ t('availableDomainsDesc') }}</div>
         </el-popover>
       </template>
@@ -397,20 +397,20 @@ defineExpose({ openCreate: openAddRole })
 }
 
 .toolbar {
-  padding: 0 12px;
-  height: 44px;
+  padding: 0;
+  height: 40px;
   display: flex;
   align-items: center;
   gap: 4px;
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-md);
+  background: transparent;
+  border-radius: 0;
   border: 0;
   flex-shrink: 0;
 
   .roles-count {
     flex: 1;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--psg-text-secondary);
   }
 
@@ -479,7 +479,7 @@ defineExpose({ openCreate: openAddRole })
   align-items: center;
   gap: 8px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
   min-width: 0;
 
@@ -500,7 +500,7 @@ defineExpose({ openCreate: openAddRole })
 .role-card-meta {
   font-size: 12px;
   color: var(--psg-text-muted);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .warning {
@@ -511,7 +511,7 @@ defineExpose({ openCreate: openAddRole })
   cursor: pointer;
 }
 
-.drawer-title { font-size: 18px; font-weight: 700; }
+.drawer-title { font-size: 18px; font-weight: 500; }
 
 .drawer-body {
   .dialog-input { margin-bottom: 15px; }
@@ -543,13 +543,13 @@ defineExpose({ openCreate: openAddRole })
 }
 
 .loading-show {
-  transition: all 200ms ease 200ms;
+  transition: background-color 200ms ease 200ms;
   opacity: 1;
 }
 
 .loading-hide {
   pointer-events: none;
-  transition: all 200ms;
+  transition: background-color 200ms;
   opacity: 0;
 }
 </style>

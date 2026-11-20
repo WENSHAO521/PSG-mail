@@ -414,7 +414,7 @@
             <div v-for="g in groupsList" :key="g.groupId"
                  style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px;border-bottom:1px solid var(--psg-border)">
               <div>
-                <div style="font-weight:600;font-size:13px">{{ g.name }}</div>
+                <div style="font-weight: 500;font-size:13px">{{ g.name }}</div>
                 <div style="font-size:11.5px;color:var(--psg-text-secondary)">{{ g.contacts.map(c => c.name || c.email).join(', ') }}</div>
               </div>
               <el-button size="small" type="primary" @click="insertGroup(g)">{{ $t('insertGroup') }}</el-button>
@@ -1313,7 +1313,7 @@ async function sendWithUndo() {
     message: () => h('div', { style: 'display:flex;align-items:center;gap:14px;justify-content:space-between' }, [
       h('span', { style: 'color:teal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, snapshot.subject || t('noSubject')),
       h('button', {
-        style: 'color:var(--psg-primary);background:none;border:none;cursor:pointer;font-weight:700;flex-shrink:0;font-size:13px',
+        style: 'color:var(--psg-primary);background:none;border:none;cursor:pointer;font-weight: 500;flex-shrink:0;font-size:13px',
         onClick: async () => {
           if (undone) return
           undone = true
@@ -2220,7 +2220,7 @@ function close() {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
 }
 
@@ -2253,7 +2253,7 @@ function close() {
 }
 
 .from-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.from-name { font-weight: 600; white-space: nowrap; }
+.from-name { font-weight: 500; white-space: nowrap; }
 .from-email {
   color: var(--psg-text-secondary);
   min-width: 0;
@@ -2283,7 +2283,7 @@ function close() {
 .wh-badge {
   font-family: var(--psg-font-sans);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   color: var(--psg-primary);
@@ -2324,7 +2324,7 @@ function close() {
 .sender-menu-head {
   padding: 8px 12px 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-muted);
 }
 
@@ -2346,7 +2346,7 @@ function close() {
   background: var(--psg-surface-muted);
   color: var(--psg-text-secondary);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2382,7 +2382,7 @@ function close() {
 
 .sender-opt-name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.3;
   color: var(--psg-text);
   white-space: nowrap;
@@ -2411,7 +2411,7 @@ function close() {
   background: var(--psg-on-primary);
   color: var(--psg-primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2434,7 +2434,7 @@ function close() {
 
 .wh-name {
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: color-mix(in srgb, var(--psg-on-primary) 90%, transparent);
   white-space: nowrap;
   overflow: hidden;
@@ -2517,7 +2517,7 @@ function close() {
   flex-shrink: 0;
   width: 62px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   color: var(--psg-text-secondary);
@@ -2543,10 +2543,9 @@ function close() {
 
 .field-toggle {
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-secondary);
   cursor: pointer;
-  letter-spacing: 0.03em;
   user-select: none;
   padding: 3px 6px;
   border-radius: var(--compose-radius);
@@ -2621,7 +2620,7 @@ function close() {
 .compose-ai-actions { display: flex; flex-direction: column; gap: 2px; }
 .compose-ai-actions button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; border-radius: var(--psg-radius-xs); padding: 8px 9px; background: transparent; color: var(--psg-text); font-size: 12.5px; text-align: left; cursor: pointer; }
 .compose-ai-actions button:hover { background: var(--psg-menu-active-bg); color: var(--psg-menu-active-text); }
-.compose-ai-trigger { color: var(--psg-primary) !important; }
+.compose-ai-trigger { color: var(--psg-text-secondary) !important; }
 .compose-ai-preview { max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word; padding: 12px; border: 1px solid var(--psg-border); border-radius: var(--psg-radius-xs); background: var(--psg-surface-muted); color: var(--psg-text); line-height: 1.65; font-size: 13px; }
 
 .tb-btn {
@@ -2651,9 +2650,8 @@ function close() {
 .tb-btn--label {
   gap: 5px;
   padding: 0 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .att-list {
@@ -2707,7 +2705,7 @@ function close() {
   height: 34px !important;
   padding: 0 20px !important;
   font-size: 13.5px !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   letter-spacing: 0 !important;
   text-transform: none !important;
   border-radius: var(--compose-radius) !important;
@@ -2777,7 +2775,7 @@ function close() {
 
   strong {
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 1.2;
   }
 
@@ -2836,7 +2834,7 @@ function close() {
 .schedule-panel-label {
   color: var(--psg-text-secondary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.02em;
 }
 
@@ -2864,7 +2862,7 @@ function close() {
   color: var(--psg-text-secondary);
   font: inherit;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.25;
   cursor: pointer;
   transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
@@ -2919,7 +2917,7 @@ function close() {
   padding: 0 12px !important;
   border-radius: var(--compose-radius) !important;
   font-size: 12px !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
 }
 
 /* Cancel is a Secondary action — it shouldn't compete with Confirm's
@@ -3048,7 +3046,7 @@ function close() {
 }
 
 .dir-name {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text);
 }
 
@@ -3098,7 +3096,7 @@ function close() {
   .wh-badge {
     font-family: inherit;
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 500;
     letter-spacing: 0;
     text-transform: none;
     color: var(--psg-text);
@@ -3165,7 +3163,7 @@ function close() {
 
   :deep(.subject-input .el-input__wrapper .el-input__inner) {
     font-size: 16px !important;
-    font-weight: 700 !important;
+    font-weight: 500 !important;
   }
 
   .editor-wrap {
@@ -3262,9 +3260,10 @@ function close() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   Mist compose — a centred 28px card over a soft dim; fields sit in one
-   grey well; flat grey actions with the accent Send. Minimised it still
-   docks bottom-right as a pill and stops blocking the app.
+   Proof compose — a sheet over a light dim. Header, From, To and
+   Subject are full-width rows split by hairlines, like the head of a
+   letter; the editor sits below; actions share one footer with the
+   accent Send at the end. Minimised it docks bottom-right as a bar.
    ══════════════════════════════════════════════════════════ */
 @media (min-width: 768px) {
   .send:not([data-state="minimized"]) {
@@ -3276,8 +3275,8 @@ function close() {
   }
 
   .write-box[data-state="normal"] {
-    width: min(820px, calc(100vw - 48px));
-    height: min(740px, calc(100vh - 48px));
+    width: min(800px, calc(100vw - 48px));
+    height: min(720px, calc(100vh - 48px));
   }
 
   .write-box[data-state="minimized"] {
@@ -3293,85 +3292,95 @@ function close() {
 }
 
 .wh {
-  height: 68px;
-  padding: 0 16px 0 28px;
-  border-bottom: 0;
-}
-
-.write-box[data-state="minimized"] .wh { height: 52px; padding-left: 18px; }
-
-.wh-title { font-size: 20px; letter-spacing: -.01em; }
-.wh-badge { border-radius: var(--psg-radius-xs); padding: 3px 10px; }
-
-.wh-action-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--psg-radius-sm);
-  background: var(--psg-surface-muted);
-  color: var(--psg-text-secondary);
-}
-
-.wh-actions { gap: 6px; }
-
-.field-row {
-  margin: 0 20px;
-  padding: 0 16px;
-  background: var(--psg-surface-muted);
+  height: 56px;
+  padding: 0 12px 0 24px;
   border-bottom: 1px solid var(--psg-border);
 }
 
-.field-row.from-row { border-radius: var(--psg-radius-lg) var(--psg-radius-lg) 0 0; }
+.write-box[data-state="minimized"] .wh { height: 52px; padding-left: 16px; border-bottom: 0; }
 
-.subject-row {
-  border-radius: 0 0 18px 18px;
-  border-bottom: 0;
+.wh-title { font-family: var(--psg-font-display); font-size: 20px; font-weight: 400; }
+.wh-badge {
+  padding: 0;
+  background: transparent;
+  color: var(--psg-text-muted);
+  font-size: 13px;
+  font-weight: 400;
 }
 
-.field-label { width: 60px; font-weight: 500; color: var(--psg-text-muted); }
+.wh-left { gap: 12px; }
+
+.wh-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--psg-radius-sm);
+  background: transparent;
+  color: var(--psg-text-muted);
+}
+
+.wh-actions { gap: 2px; }
+
+.field-row {
+  margin: 0;
+  padding: 0 24px;
+  background: var(--psg-surface);
+  border-bottom: 1px solid var(--psg-border);
+}
+
+.field-row.from-row { border-radius: 0; }
+
+.subject-row {
+  border-radius: 0;
+}
+
+.field-label { width: 64px; font-weight: 400; color: var(--psg-text-muted); }
 
 .from-chip {
   border: 0;
-  background: var(--psg-surface);
-  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-xs);
+  height: 28px;
 }
 
-.editor-wrap { padding: 8px 12px 0; }
+.from-name { font-weight: 500; }
+
+.editor-wrap { padding: 8px 16px 0; }
 
 .toolbar-bar {
-  padding: 14px 20px 20px;
-  border-top: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--psg-border);
   background: transparent;
 }
 
 .tb-btn {
-  height: 44px;
-  min-width: 44px;
-  border-radius: 14px;
-  background: var(--psg-surface-muted);
-  color: var(--psg-text);
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--psg-radius-sm);
+  background: transparent;
+  color: var(--psg-text-secondary);
 }
 
-.tb-btn--label { padding: 0 16px; font-size: 13.5px; letter-spacing: 0; }
+.tb-btn--label { padding: 0 12px; font-size: 14px; font-weight: 400; }
 
-.compose-ai-trigger { color: var(--psg-text) !important; }
+.compose-ai-trigger { color: var(--psg-text-secondary) !important; }
 
 .send-btn {
-  height: 44px !important;
-  padding: 0 24px !important;
+  height: 36px !important;
+  padding: 0 16px !important;
   font-size: 14px !important;
-  font-weight: 700 !important;
-  border-radius: 14px !important;
+  font-weight: 500 !important;
+  border-radius: var(--psg-radius-sm) !important;
 }
 
 .send-later-btn {
-  height: 44px !important;
-  min-width: 44px !important;
-  padding: 0 16px !important;
-  border-radius: 14px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  padding: 0 12px !important;
+  border-radius: var(--psg-radius-sm) !important;
 }
 
 .schedule-panel {
-  border: 0;
+  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-lg);
 }
 

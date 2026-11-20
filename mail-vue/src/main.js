@@ -19,11 +19,13 @@ import './styles/platform.css';
 import '@fontsource/dm-sans/400.css'
 import '@fontsource/dm-sans/500.css'
 import '@fontsource/dm-sans/600.css'
-import '@fontsource/dm-sans/700.css'
+import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
+import '@fontsource/newsreader/400.css'
+import '@fontsource/newsreader/500.css'
 import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 import '@fontsource/noto-sans-sc/chinese-simplified-500.css'
-import '@fontsource/noto-sans-sc/chinese-simplified-700.css'
+import '@fontsource/noto-sans-sc/chinese-simplified-600.css'
 import { init } from '@/init/init.js';
 import { createPinia } from 'pinia';
 import piniaPersistedState from 'pinia-plugin-persistedstate';

@@ -557,13 +557,11 @@ onBeforeUnmount(() => {
 .shortcuts-body { display: flex; flex-direction: column; gap: 0; }
 .sc-section-title {
   font-family: var(--psg-font-sans);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--psg-text-muted);
-  margin-bottom: 10px;
-  &--mt { margin-top: 20px; }
+  margin-bottom: 8px;
+  &--mt { margin-top: 24px; }
 }
 .shortcuts-grid {
   display: flex;
@@ -577,16 +575,16 @@ onBeforeUnmount(() => {
 }
 .sc-key {
   font-family: var(--psg-font-mono);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   background: var(--psg-surface-muted);
   border: 1px solid var(--psg-border);
-  padding: 3px 10px;
-  border-radius: var(--psg-radius-sm);
+  border-bottom-width: 2px;
+  padding: 2px 8px;
+  border-radius: var(--psg-radius-xs);
   min-width: 72px;
   text-align: center;
   color: var(--psg-text);
-  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 .sc-desc {
@@ -596,19 +594,20 @@ onBeforeUnmount(() => {
 </style>
 
 <style lang="scss" scoped>
-/* ── Shell (Mist): top bar over folders | list card | reader card ── */
+/* ── Shell (Proof): one sheet laid edge to edge.
+   Top bar over folders | list | reader, split by hairlines. ── */
 .app-shell {
   height: 100vh;
   overflow: hidden;
   display: grid;
   position: fixed;
   inset: 0;
-  padding: 0 24px 24px;
+  padding: 0;
   background: var(--psg-canvas);
-  grid-template-rows: 72px minmax(0, 1fr);
+  grid-template-rows: 56px minmax(0, 1fr);
 
   &[data-mode="mail"] {
-    grid-template-columns: 200px var(--mail-list-w, 420px) 16px minmax(360px, 1fr);
+    grid-template-columns: 240px var(--mail-list-w, 420px) 1px minmax(360px, 1fr);
     grid-template-areas:
       "top top top top"
       "folders list gap detail";
@@ -622,21 +621,19 @@ onBeforeUnmount(() => {
   }
 
   &[data-mode="workspace"][data-folders="true"] {
-    grid-template-columns: 200px minmax(0, 1fr);
+    grid-template-columns: 240px minmax(0, 1fr);
     grid-template-areas:
       "top top"
       "folders main";
   }
 
   @media (max-width: 1280px) {
-    padding: 0 16px 16px;
-
     &[data-mode="mail"] {
-      grid-template-columns: 184px var(--mail-list-w, 360px) 12px minmax(0, 1fr);
+      grid-template-columns: 208px var(--mail-list-w, 360px) 1px minmax(0, 1fr);
     }
 
     &[data-mode="workspace"][data-folders="true"] {
-      grid-template-columns: 184px minmax(0, 1fr);
+      grid-template-columns: 208px minmax(0, 1fr);
     }
   }
 
@@ -652,7 +649,6 @@ onBeforeUnmount(() => {
 
 .shell-folders {
   grid-area: folders;
-  margin-right: 16px;
 }
 
 .app-shell[data-mode="workspace"]:not([data-folders="true"]) .shell-folders {
@@ -670,7 +666,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: hidden;
   background: var(--psg-surface);
-  border-radius: var(--psg-radius-xl);
+  border-left: 1px solid var(--psg-border);
 
   /* Mobile: sit between the fixed header and the bottom tab bar */
   @media (max-width: 1024px) {
@@ -686,15 +682,23 @@ onBeforeUnmount(() => {
 }
 
 /* ── Drag handle between list and detail panes ───────────────
-   A near-invisible 6px hit target that only reveals itself on
-   hover/drag, so it reads as "the gap between panes" at rest and
-   as an obvious control the moment you reach for it. ── */
+   At rest it is the hairline between the panes; an 8px hit area
+   either side of it turns the line to the accent on hover/drag. ── */
 .mail-list-resizer {
   grid-area: gap;
   position: relative;
   cursor: col-resize;
-  background: transparent;
+  background: var(--psg-border);
   z-index: 6;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -4px;
+    right: -4px;
+  }
 
   &::after {
     content: '';
@@ -705,7 +709,7 @@ onBeforeUnmount(() => {
     width: 2px;
     transform: translateX(-50%);
     background: transparent;
-    transition: background 0.15s ease;
+    transition: background-color var(--psg-dur-fast) var(--psg-ease);
   }
 
   @media (hover: hover) {
@@ -723,7 +727,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
   background: var(--psg-surface);
-  border-radius: var(--psg-radius-xl);
   padding: 0;
 
   /* Mobile: a full-screen reading page (its own back button + actions) */
@@ -759,7 +762,6 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: hidden;
   background: var(--psg-surface);
-  border-radius: var(--psg-radius-xl);
   display: flex;
   flex-direction: column;
 
@@ -772,6 +774,10 @@ onBeforeUnmount(() => {
     height: auto;
     z-index: 5;
   }
+}
+
+.app-shell[data-folders="true"] .workspace-pane {
+  @media (min-width: 1025px) { border-left: 1px solid var(--psg-border); }
 }
 
 .workspace-body {
@@ -789,7 +795,7 @@ onBeforeUnmount(() => {
 @media (max-width: 1024px) {
   .app-shell {
     --m-header-h: calc(64px + env(safe-area-inset-top, 0px));
-    --m-tabbar-h: calc(74px + env(safe-area-inset-bottom, 0px));
+    --m-tabbar-h: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
   .mobile-chrome--top {

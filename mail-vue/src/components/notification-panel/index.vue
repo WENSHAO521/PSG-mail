@@ -13,7 +13,7 @@
           :max="99"
           class="notif-badge"
         >
-          <Icon icon="psg:bell" width="20" height="20"/>
+          <Icon icon="psg:bell" width="18" height="18"/>
         </el-badge>
       </button>
     </template>
@@ -56,7 +56,7 @@
       <!-- Empty -->
       <div v-else class="notif-empty">
         <div class="notif-empty-icon" aria-hidden="true">
-          <Icon icon="psg:bell" width="20" height="20"/>
+          <Icon icon="psg:bell" width="18" height="18"/>
         </div>
         <p class="notif-empty-text">{{ $t('noNotifications') }}</p>
       </div>
@@ -104,13 +104,18 @@ async function openNotification(item) {
   align-items: center;
   justify-content: center;
 
+  /* Unread count: a small accent figure, not an alarm. */
   :deep(.el-badge__content) {
-    background: var(--psg-danger);
+    top: 2px;
+    right: 4px;
+    background: var(--psg-primary);
     color: var(--psg-on-primary);
-    border-color: transparent;
+    border: 2px solid var(--psg-canvas);
+    font-family: var(--psg-font-mono);
     font-size: 10px;
+    font-weight: 500;
     height: 16px;
-    line-height: 16px;
+    line-height: 12px;
     padding: 0 4px;
     min-width: 16px;
   }
@@ -126,16 +131,14 @@ async function openNotification(item) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px 10px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--psg-border);
   flex-shrink: 0;
 
   .notif-title {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 500;
     color: var(--psg-text);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
   }
 
   .notif-head-actions {
@@ -148,7 +151,7 @@ async function openNotification(item) {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--psg-text-secondary);
     padding: 0;
     &:hover { color: var(--psg-text); }
@@ -167,7 +170,7 @@ async function openNotification(item) {
   border: 0;
   background: transparent;
   text-align: left;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--psg-border);
   cursor: pointer;
 
@@ -180,12 +183,12 @@ async function openNotification(item) {
   }
 
   &.is-unread {
-    background: var(--psg-primary-muted);
+    box-shadow: inset 2px 0 0 var(--psg-primary);
   }
 
   .notif-sender {
-    font-size: 12.5px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--psg-text);
     overflow: hidden;
     white-space: nowrap;

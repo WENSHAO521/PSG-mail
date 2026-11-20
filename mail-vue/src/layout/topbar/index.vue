@@ -40,7 +40,7 @@
     </form>
 
     <button v-if="canSend" type="button" class="tb-compose" @click="openCompose">
-      <Icon icon="psg:compose" width="17" height="17" />
+      <Icon icon="psg:compose" width="16" height="16" />
       <span>{{ $t('compose') }}</span>
     </button>
 
@@ -69,7 +69,7 @@
             <div class="tb-menu-item"><Icon icon="psg:shield" width="16" height="16" /><span>{{ $t('vpn') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item @click="router.push({ name: 'about' })">
-            <div class="tb-menu-item"><Icon icon="solar:info-circle-linear" width="16" height="16" /><span>{{ $t('aboutApp') }}</span></div>
+            <div class="tb-menu-item"><Icon icon="psg:info-circle" width="16" height="16" /><span>{{ $t('aboutApp') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item divided disabled>
             <div class="tb-menu-heading">{{ $t('language') }}</div>
@@ -90,7 +90,7 @@
 
     <el-dropdown trigger="click" placement="bottom-end" @command="mode => uiStore.setThemeMode(mode)">
       <button type="button" class="tb-theme" :aria-label="$t('theme')" :title="$t('theme')">
-        <Icon :icon="uiStore.dark ? 'solar:moon-linear' : 'mingcute:sun-fill'" width="20" height="20" />
+        <Icon :icon="uiStore.dark ? 'psg:moon' : 'psg:sun'" width="18" height="18" />
       </button>
       <template #dropdown>
         <el-dropdown-menu>
@@ -197,88 +197,109 @@ function clickLogout() {
 </script>
 
 <style scoped lang="scss">
+/* Proof top bar: brand over the folder column, text tabs with an accent
+   rule under the current section, search, then actions. One hairline
+   below separates it from the sheet. */
 .topbar {
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 72px;
-  padding: 0 4px;
+  height: 56px;
+  padding: 0 16px 0 0;
+  border-bottom: 1px solid var(--psg-border);
+  background: var(--psg-canvas);
 }
 
 .tb-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 196px;
+  width: 240px;
+  height: 100%;
+  padding-left: 20px;
   flex-shrink: 0;
   cursor: pointer;
 }
 
 .tb-mark {
-  width: 26px;
-  height: 31px;
+  width: 18px;
+  height: 22px;
   color: var(--psg-text);
 }
 
 .tb-name {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -.01em;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--psg-text);
 }
 
 .tb-nav {
   display: flex;
+  align-self: stretch;
   gap: 4px;
-  padding: 4px;
-  border-radius: var(--psg-radius-md);
-  background: var(--psg-surface);
   flex-shrink: 0;
 }
 
 .tb-nav-item {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 36px;
-  padding: 0 14px;
+  height: 100%;
+  padding: 0 12px;
   border: 0;
-  border-radius: var(--psg-radius-sm);
   background: transparent;
-  color: var(--psg-text-secondary);
+  color: var(--psg-text-muted);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  transition: color var(--psg-dur-fast) var(--psg-ease);
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: transparent;
+    transition: background-color var(--psg-dur-fast) var(--psg-ease);
+  }
 
   @media (hover: hover) {
-    &:hover:not(.active) { background: var(--psg-surface-muted); color: var(--psg-text); }
+    &:hover:not(.active) { color: var(--psg-text); }
   }
 
   &.active {
-    background: var(--psg-text);
-    color: var(--psg-surface);
-    font-weight: 600;
+    color: var(--psg-text);
+
+    &::after { background: var(--psg-primary); }
   }
 }
 
+.tb-nav :deep(.el-dropdown) { height: 100%; line-height: inherit; }
+
 .tb-search {
   flex: 1;
-  max-width: 520px;
-  min-width: 220px;
+  max-width: 480px;
+  min-width: 200px;
+  margin-left: 8px;
   margin-right: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 44px;
-  padding: 0 14px 0 16px;
-  border-radius: var(--psg-radius-md);
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px 0 12px;
+  border-radius: var(--psg-radius-sm);
   background: var(--psg-surface);
+  box-shadow: inset 0 0 0 1px var(--psg-border);
   color: var(--psg-text-muted);
-  transition: box-shadow .14s ease;
+  transition: box-shadow var(--psg-dur-fast) var(--psg-ease);
 
-  &:focus-within { box-shadow: 0 0 0 2px var(--psg-primary); }
+  &:focus-within { box-shadow: inset 0 0 0 1px var(--psg-primary), 0 0 0 3px var(--psg-primary-muted); }
 
   input {
     flex: 1;
@@ -291,14 +312,18 @@ function clickLogout() {
     font-size: 14px;
 
     &::placeholder { color: var(--psg-text-muted); }
+    &::-webkit-search-cancel-button { display: none; }
   }
 }
 
 .tb-kbd {
   font-family: var(--psg-font-mono);
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: var(--psg-radius-xs);
+  font-size: 12px;
+  line-height: 16px;
+  padding: 0 6px;
+  border: 1px solid var(--psg-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
   background: var(--psg-surface-muted);
   color: var(--psg-text-muted);
 }
@@ -317,46 +342,61 @@ function clickLogout() {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 20px;
+  height: 36px;
+  padding: 0 16px 0 12px;
   border: 0;
-  border-radius: var(--psg-radius-md);
+  border-radius: var(--psg-radius-sm);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
   font: inherit;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background .14s ease, transform .1s ease;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), transform var(--psg-dur-fast) var(--psg-ease);
 
   @media (hover: hover) { &:hover { background: var(--psg-primary-hover); } }
-  &:active { transform: scale(.97); }
+  &:active { transform: scale(.98); }
 }
 
-.tb-icon-wrap :deep(.icon-btn),
+.tb-icon-wrap { display: contents; }
+
 .tb-theme-check {
   margin-left: auto;
   color: var(--psg-primary);
 }
 
 .tb-theme,
-.tb-avatar {
-  width: 44px !important;
-  height: 44px !important;
+.tb-avatar,
+.tb-icon-wrap :deep(.icon-btn) {
+  width: 36px !important;
+  height: 36px !important;
   border: 0 !important;
-  border-radius: var(--psg-radius-md) !important;
-  background: var(--psg-surface) !important;
-  color: var(--psg-text) !important;
+  border-radius: var(--psg-radius-sm) !important;
+  background: transparent !important;
+  color: var(--psg-text-secondary) !important;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   cursor: pointer;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
+
+  @media (hover: hover) {
+    &:hover { background: var(--psg-surface-active) !important; color: var(--psg-text) !important; }
+  }
 }
 
 .tb-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  margin-left: 4px;
   overflow: hidden;
+  border-radius: 50% !important;
+  background: var(--psg-surface-active) !important;
+  color: var(--psg-text) !important;
   font: inherit;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
 
   img { width: 100%; height: 100%; object-fit: cover; }
 }
@@ -365,10 +405,10 @@ function clickLogout() {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 16px 8px;
+  padding: 8px 16px;
   max-width: 260px;
 
-  strong { font-size: 14px; color: var(--psg-text); }
+  strong { font-size: 14px; font-weight: 500; color: var(--psg-text); }
   span { font-size: 12px; color: var(--psg-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
@@ -377,20 +417,21 @@ function clickLogout() {
   align-items: center;
   gap: 10px;
   min-width: 180px;
+  color: var(--psg-text);
 
+  > svg:first-child { color: var(--psg-text-muted); }
   .tb-check { margin-left: auto; color: var(--psg-primary); }
 }
 
 .tb-menu-heading {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-muted);
 }
 
-.tb-danger { color: var(--psg-danger); }
+.tb-danger, .tb-danger > svg:first-child { color: var(--psg-danger) !important; }
 
 @media (max-width: 1280px) {
-  .tb-brand { width: auto; }
-  .tb-name { display: none; }
+  .tb-brand { width: 208px; }
 }
 </style>

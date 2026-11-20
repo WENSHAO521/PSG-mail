@@ -790,9 +790,9 @@ html.dark {
 
 
 /* ══════════════════════════════════════════════════════════
-   Mist toolbar — one soft grey bar with rounded 34px buttons, the
-   Mist stroke icons (mist-icons.js), quiet chevrons, and the accent
-   only for toggles that are on.
+   Proof toolbar — flat on the surface above a hairline, 34px
+   buttons, the line icons (mist-icons.js), quiet chevrons, and the
+   accent only for toggles that are on.
    ══════════════════════════════════════════════════════════ */
 .tox .tox-editor-header {
   background: transparent !important;
@@ -804,11 +804,13 @@ html.dark {
 .tox .tox-toolbar,
 .tox .tox-toolbar__primary,
 .tox .tox-toolbar-overlord {
-  background: var(--psg-surface-muted) !important;
-  border-radius: var(--psg-radius-md) !important;
+  background: transparent !important;
+  border-radius: 0 !important;
 }
 
-.tox .tox-toolbar__primary { padding: 4px 6px !important; }
+.tox .tox-toolbar__primary { padding: 4px 0 !important; }
+
+.tox .tox-editor-header { border-bottom: 1px solid var(--psg-border) !important; }
 
 .tox .tox-toolbar__group {
   gap: 2px;
@@ -829,14 +831,14 @@ html.dark {
 }
 
 .tox .tox-tbtn:hover {
-  background: var(--psg-surface) !important;
+  background: var(--psg-surface-muted) !important;
 }
 
 .tox .tox-tbtn--enabled,
 .tox .tox-tbtn--enabled:hover {
-  background: var(--psg-surface) !important;
+  background: var(--psg-surface-active) !important;
   color: var(--psg-primary) !important;
-  box-shadow: var(--psg-shadow-xs);
+  box-shadow: none;
 }
 
 .tox .tox-tbtn svg { fill: currentColor !important; }

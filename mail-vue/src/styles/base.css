@@ -94,7 +94,7 @@ pre,
   background: var(--psg-surface-muted);
   color: var(--psg-primary);
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -118,4 +118,17 @@ html.psg-theme-switching *::after {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Display serif — used for page titles and the subject of an open mail,
+   the two places the screen reads like a typeset page. Never on labels. */
+.psg-display {
+  font-family: var(--psg-font-display);
+  font-weight: 400;
+  letter-spacing: -.01em;
+  font-optical-sizing: auto;
+}
+
+.psg-figure {
+  font-variant-numeric: tabular-nums;
 }

@@ -571,7 +571,7 @@ function submit() {
 
   if (addForm.email.length < settingStore.settings.minEmailPrefix) {
     ElMessage({
-      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}),
+      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}, Number(settingStore.settings.minEmailPrefix) || 2),
       type: 'error',
       plain: true,
     })
@@ -704,7 +704,7 @@ path[fill="#ffdda1"] {
       color: var(--psg-on-primary);
       font: inherit;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
       transition: filter 0.12s;
       @media (hover: hover) {
@@ -767,7 +767,7 @@ path[fill="#ffdda1"] {
     border-radius: var(--psg-radius-sm);
     background: var(--psg-primary);
     color: var(--psg-on-primary);
-    font-weight: 700;
+    font-weight: 500;
     font-size: 14px;
     display: flex;
     align-items: center;
@@ -794,7 +794,7 @@ path[fill="#ffdda1"] {
     .item-name {
       min-width: 0;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
       color: var(--psg-text);
       overflow: hidden;
       white-space: nowrap;
@@ -808,7 +808,7 @@ path[fill="#ffdda1"] {
       background: var(--psg-surface-active);
       color: var(--psg-text-secondary);
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 500;
       line-height: 18px;
     }
 

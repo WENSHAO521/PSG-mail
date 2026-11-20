@@ -419,7 +419,7 @@ function sendToGroup(g) {
     background: transparent;
     color: var(--psg-text-secondary);
     font-size: 12.5px;
-    font-weight: 600;
+    font-weight: 500;
     padding: 6px 12px;
     border-radius: var(--psg-radius-sm);
     cursor: pointer;
@@ -462,7 +462,7 @@ function sendToGroup(g) {
   align-items: center;
   gap: 6px;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
@@ -472,7 +472,7 @@ function sendToGroup(g) {
 .ct-badge {
   flex-shrink: 0;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 1px 7px;
   border-radius: 999px;
   color: var(--psg-primary);
@@ -538,9 +538,11 @@ function sendToGroup(g) {
 
 .page-title {
   margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -.02em;
+  font-family: var(--psg-font-display);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -.01em;
+  line-height: 40px;
   color: var(--psg-text);
 }
 
@@ -552,9 +554,10 @@ function sendToGroup(g) {
 
 .page-stats {
   margin: 8px 0 0;
+  font-family: var(--psg-font-mono);
   font-size: 12px;
-  font-weight: 600;
-  color: var(--psg-text-secondary);
+  font-weight: 400;
+  color: var(--psg-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -609,7 +612,7 @@ function sendToGroup(g) {
   text-align: left;
 }
 .empty-icon { color: var(--psg-text-secondary); opacity: 0.4; }
-.empty-title { font-size: 14.5px; font-weight: 700; color: var(--psg-text); }
+.empty-title { font-size: 14.5px; font-weight: 500; color: var(--psg-text); }
 .empty-desc  { font-size: 12.5px; color: var(--psg-text-secondary); line-height: 1.5; }
 .empty-btn { margin-top: 10px; }
 
@@ -652,7 +655,7 @@ function sendToGroup(g) {
   width: 34px; height: 34px; border-radius: var(--psg-radius-sm);
   background: var(--psg-surface-muted);
   border: 0;
-  color: var(--psg-text); font-size: 13px; font-weight: 700;
+  color: var(--psg-text); font-size: 13px; font-weight: 500;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -660,7 +663,7 @@ function sendToGroup(g) {
 .grp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 .grp-name {
-  font-size: 14px; font-weight: 700;
+  font-size: 14px; font-weight: 500;
   color: var(--psg-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -705,7 +708,7 @@ function sendToGroup(g) {
 }
 
 .member-more {
-  font-size: 11.5px; font-weight: 700;
+  font-size: 11.5px; font-weight: 500;
   color: var(--psg-text-muted);
   padding-left: 13px;
 }
@@ -729,7 +732,7 @@ function sendToGroup(g) {
 .grp-action {
   display: inline-flex; align-items: center; gap: 5px;
   background: transparent; border: none; cursor: pointer;
-  font-size: 12px; font-weight: 700;
+  font-size: 12px; font-weight: 500;
   color: var(--psg-text-secondary); padding: 4px 0;
   font-family: inherit;
   transition: color 0.12s;
@@ -738,7 +741,7 @@ function sendToGroup(g) {
 
 .send-btn {
   height: 30px; padding: 0 12px;
-  font-size: 12px; font-weight: 700;
+  font-size: 12px; font-weight: 500;
   border-radius: var(--psg-radius-sm) !important;
   :deep(svg) { margin-right: 5px; }
 
@@ -761,7 +764,7 @@ function sendToGroup(g) {
 .drawer-field { display: flex; flex-direction: column; gap: 8px; }
 
 .drawer-label {
-  font-size: 12px; font-weight: 700; letter-spacing: 0;
+  font-size: 12px; font-weight: 500; letter-spacing: 0;
   color: var(--psg-text-secondary);
 }
 
@@ -774,7 +777,7 @@ function sendToGroup(g) {
   background: var(--psg-surface-muted);
   border: 0;
   border-radius: var(--psg-radius-sm); cursor: pointer;
-  font-size: 12px; font-weight: 700;
+  font-size: 12px; font-weight: 500;
   color: var(--psg-text-secondary); padding: 4px 10px;
   transition: border-color 0.12s, color 0.12s; font-family: inherit;
   &:hover { border-color: var(--psg-border-strong); color: var(--psg-text); }
@@ -801,7 +804,7 @@ function sendToGroup(g) {
   width: 28px; height: 28px; border-radius: var(--psg-radius-sm);
   background: var(--psg-surface-muted);
   border: 0;
-  color: var(--psg-text); font-size: 11px; font-weight: 700;
+  color: var(--psg-text); font-size: 11px; font-weight: 500;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 

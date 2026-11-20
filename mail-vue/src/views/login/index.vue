@@ -3,30 +3,31 @@
     <!-- Optional admin-configured background image -->
     <div v-if="background" class="custom-bg" :style="background"></div>
 
-    <!-- ── Left: Mist brand card with a small, decorative inbox preview ── -->
+    <!-- ── Left: the brand sheet — headline, then a proof of the inbox rising
+         from the bottom edge. Sample rows only (not real mail). ── -->
     <div class="brand-panel">
-      <div class="brand-card">
-        <div class="brand-top">
-          <BrandLogo class="brand-mark" />
-          <span class="brand-name">PSG Mail</span>
-        </div>
+      <div class="brand-top">
+        <BrandLogo class="brand-mark" />
+        <span class="brand-name">PSG Mail</span>
+      </div>
 
-        <div class="brand-editorial">
-          <h1 class="brand-wordmark">{{ $t('loginHeroTitle') }}</h1>
-          <p class="brand-caption">{{ $t('brandPanelLine') }}</p>
-        </div>
+      <div class="brand-editorial">
+        <h1 class="brand-wordmark">{{ $t('loginHeroTitle') }}</h1>
+        <p class="brand-caption">{{ $t('brandPanelLine') }}</p>
+      </div>
 
-        <div class="brand-preview" aria-hidden="true">
-          <div v-for="row in previewRows" :key="row.name" class="bp-row" :class="{ 'bp-row--unread': row.unread }">
-            <span class="bp-avatar" :style="avatarTint(row.name)">{{ row.name[0] }}</span>
-            <span class="bp-text">
-              <span class="bp-line"><b>{{ row.name }}</b><em>{{ row.time }}</em></span>
-              <span class="bp-subject">{{ row.subject }}</span>
-            </span>
-          </div>
+      <div class="brand-preview" aria-hidden="true">
+        <div class="bp-head">
+          <span class="bp-title">{{ $t('inbox') }}</span>
+          <span class="bp-count">2 / 5</span>
         </div>
-
-        <div class="brand-footnote">Panorama Scholarly Group</div>
+        <div v-for="row in previewRows" :key="row.subject" class="bp-row" :class="{ 'bp-row--unread': row.unread, 'bp-row--open': row.open }">
+          <span class="bp-avatar">{{ row.name[0] }}</span>
+          <span class="bp-text">
+            <span class="bp-line"><b>{{ row.name }}</b><em>{{ row.time }}</em></span>
+            <span class="bp-subject">{{ row.subject }}</span>
+          </span>
+        </div>
       </div>
     </div>
 
@@ -305,12 +306,13 @@
 <script setup>
 import { loadTurnstile } from '@/utils/turnstile-script.js'
 import BrandLogo from "@/components/brand-logo/index.vue"
-import { avatarTint } from '@/utils/avatar.js'
-// Decorative sample rows for the sign-in brand card (not real mail).
+// Decorative sample rows for the sign-in brand sheet (not real mail).
 const previewRows = [
-  { name: 'Editorial Office', time: '09:41', subject: 'Manuscript PSG-2026-118 accepted', unread: true },
-  { name: 'Peer Review', time: '08:15', subject: 'Reviewer report received', unread: true },
-  { name: 'Author Services', time: 'Mon', subject: 'Proofs ready for your approval', unread: false },
+  { name: 'Editorial Office', time: '09:41', subject: 'Manuscript PSG-2026-118 accepted', unread: true, open: true },
+  { name: 'Peer Review', time: '08:15', subject: 'Reviewer report received for PSG-2026-104', unread: true },
+  { name: 'Author Services', time: 'Mon', subject: 'Proofs ready for your approval' },
+  { name: 'Production', time: 'Mon', subject: 'Vol. 12, Issue 2 sent to the printer' },
+  { name: 'Board Secretary', time: 'Fri', subject: 'Agenda for the editorial board, 3 Dec' },
 ]
 import router from "@/router";
 import {computed, nextTick, reactive, ref} from "vue";
@@ -636,7 +638,7 @@ function bind() {
 
   if (getEmailName(bindForm.email).length < settingStore.settings.minEmailPrefix) {
     ElMessage({
-      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}),
+      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}, Number(settingStore.settings.minEmailPrefix) || 2),
       type: 'error',
       plain: true,
     })
@@ -788,7 +790,7 @@ function submitRegister() {
 
   if (getEmailName(registerForm.email).length < settingStore.settings.minEmailPrefix) {
     ElMessage({
-      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}),
+      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}, Number(settingStore.settings.minEmailPrefix) || 2),
       type: 'error',
       plain: true,
     })
@@ -947,7 +949,7 @@ function submitRegister() {
   height: 100%;
   width: 100%;
   display: flex;
-  background: var(--psg-canvas);
+  background: var(--psg-surface);
   overflow: hidden;
   position: relative;
   font-family: var(--psg-font-sans);
@@ -959,288 +961,263 @@ function submitRegister() {
   z-index: 0;
 }
 
-/* ── Left: Mist brand card ──────────────────────────────────── */
+/* ── Left: the brand sheet ─────────────────────────────────────── */
 .brand-panel {
   position: relative;
   z-index: 1;
   flex: 1 1 0;
   min-width: 0;
   display: flex;
-  padding: 24px 0 24px 24px;
+  flex-direction: column;
+  padding: 32px 56px 0;
+  background: var(--psg-canvas);
+  border-right: 1px solid var(--psg-border);
+  overflow: hidden;
 
   @media (max-width: 980px) { display: none; }
 }
 
-.brand-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  padding: 40px 48px;
-  border-radius: 28px;
-  background: var(--psg-surface);
-  overflow: hidden;
-}
-
-.brand-top { display: flex; align-items: center; gap: 12px; }
+.brand-top { display: flex; align-items: center; gap: 10px; }
 
 .brand-mark {
-  width: 28px;
-  height: 34px;
+  width: 20px;
+  height: 24px;
   flex-shrink: 0;
   color: var(--psg-text);
 }
 
-.brand-name { font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--psg-text); }
+.brand-name { font-size: 16px; font-weight: 600; color: var(--psg-text); }
 
-.brand-editorial { margin-top: auto; max-width: 520px; }
+.brand-editorial { margin-top: clamp(48px, 12vh, 128px); max-width: 560px; }
 
 .brand-wordmark {
   margin: 0;
-  font-size: clamp(34px, 3.6vw, 52px);
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  font-family: var(--psg-font-display);
+  font-size: clamp(40px, 4.2vw, 60px);
+  font-weight: 400;
+  letter-spacing: -.02em;
+  line-height: 1.05;
   color: var(--psg-text);
   text-wrap: balance;
 }
 
 .brand-caption {
-  margin: 18px 0 0;
-  max-width: 420px;
-  font-size: 16px;
-  line-height: 1.6;
+  margin: 20px 0 0;
+  max-width: 28rem;
+  font-size: 17px;
+  line-height: 28px;
   color: var(--psg-text-secondary);
 }
 
+/* The proof: a slice of the real inbox, cropped by the bottom edge. */
 .brand-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-width: 460px;
-  padding: 8px;
-  border-radius: var(--psg-radius-lg);
-  background: var(--psg-surface-muted);
+  margin-top: auto;
+  transform: translateY(24px);
+  width: min(560px, 100%);
+  max-height: 46vh;
+  overflow: hidden;
+  border: 1px solid var(--psg-border);
+  border-bottom: 0;
+  border-radius: var(--psg-radius-lg) var(--psg-radius-lg) 0 0;
+  background: var(--psg-surface);
+  box-shadow: var(--psg-shadow-md);
 }
 
+.bp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--psg-border);
+}
+
+.bp-title { font-family: var(--psg-font-display); font-size: 22px; color: var(--psg-text); }
+.bp-count { font-family: var(--psg-font-mono); font-size: 12px; color: var(--psg-text-muted); }
+
 .bp-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px;
-  border-radius: var(--psg-radius-md);
-
-  &:first-child { background: var(--psg-surface); box-shadow: var(--psg-shadow-xs); }
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--psg-border);
 }
+
+.bp-row--open { background: var(--psg-surface-active); }
 
 .bp-avatar {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
-  border-radius: var(--psg-radius-md);
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  font-weight: 700;
+  background: var(--psg-surface-active);
+  color: var(--psg-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.bp-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bp-row--open .bp-avatar { background: var(--psg-surface); }
+
+.bp-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0; }
 
 .bp-line {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   font-size: 14px;
+  line-height: 20px;
 
-  b { font-weight: 500; color: var(--psg-text); }
-  em { font-style: normal; font-size: 12px; color: var(--psg-text-muted); }
+  b { font-weight: 400; color: var(--psg-text-secondary); }
+  em { font-style: normal; font-family: var(--psg-font-mono); font-size: 12px; color: var(--psg-text-muted); }
 }
 
 .bp-subject {
-  font-size: 13.5px;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--psg-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Margin mark on unread mail, as in the app. */
 .bp-row--unread {
-  .bp-line b { font-weight: 700; }
-  .bp-line em { color: var(--psg-primary); font-weight: 700; }
-  .bp-subject { color: var(--psg-text); font-weight: 600; }
-}
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
+    background: var(--psg-primary);
+  }
 
-.brand-footnote {
-  font-size: 13px;
-  color: var(--psg-text-muted);
+  .bp-line b { font-weight: 600; color: var(--psg-text); }
+  .bp-line em { color: var(--psg-text); }
+  .bp-subject { color: var(--psg-text); font-weight: 500; }
 }
 
 /* ── Right auth column ──────────────────────────────────────── */
 .form-wrapper {
   position: relative;
   z-index: 1;
-  flex: 0 0 520px;
+  flex: 0 0 min(560px, 44vw);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px;
+  padding: 48px;
+  background: var(--psg-surface);
 
-  @media (max-width: 980px) { flex: 1 1 auto; }
-  @media (max-width: 767px) { padding: 20px; }
-  @media (max-width: 420px) {
-    padding: 12px;
-  }
+  @media (max-width: 980px) { flex: 1 1 auto; padding: 32px; }
+  @media (max-width: 767px) { padding: 24px 20px; }
 }
 
 .container {
   width: 100%;
-  max-width: 420px;
-  background: var(--psg-surface);
+  max-width: 380px;
+  background: transparent;
   border: 0;
-  border-radius: 28px;
+  border-radius: 0;
   box-shadow: none;
-  padding: 40px 36px 28px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-
-  @media (max-width: 767px) { padding: 32px 22px 22px; }
-  @media (max-width: 420px) {
-    padding: 28px 18px 20px;
-    max-width: 100%;
-    border-radius: var(--psg-radius-md);
-  }
 }
 
-/* Compact in-card brand (shown when side panel is hidden) */
+/* Compact brand (shown when the side panel is hidden) */
 .card-brand {
   display: none;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 26px;
+  gap: 10px;
+  margin-bottom: 40px;
 
   @media (max-width: 980px) { display: flex; }
 }
 
-.card-brand-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.card-brand-meta { display: flex; flex-direction: column; gap: 0; min-width: 0; }
 .card-brand-name {
-  font-family: var(--psg-font-sans);
-  font-variant-numeric: tabular-nums;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 16px;
+  font-weight: 500;
   color: var(--psg-text);
-
-  @media (max-width: 420px) {
-    font-size: 16px;
-    letter-spacing: 0.02em;
-  }
 }
 .card-brand-sub {
-  font-family: var(--psg-font-sans);
-  font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--psg-text-muted);
 }
 
 .form-eyebrow {
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--psg-primary);
+  font-weight: 500;
+  color: var(--psg-text-muted);
   margin-bottom: 12px;
 }
 
 .form-title {
-  font-weight: 700;
-  font-size: 30px;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-family: var(--psg-font-display);
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 40px;
+  letter-spacing: -.01em;
   color: var(--psg-text);
 }
 
 .form-desc {
-  margin-top: 10px;
-  margin-bottom: 28px;
+  margin-top: 4px;
+  margin-bottom: 32px;
   color: var(--psg-text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .field-label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--psg-text);
-  letter-spacing: 0.01em;
-  margin: 2px 0 7px;
+  margin: 0 0 8px;
 }
 
 /* ── Inputs ─────────────────────────────────────────────────── */
 .el-input {
   width: 100%;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 :deep(.el-input__wrapper) {
-  border-radius: var(--psg-radius-md) !important;
-  height: 46px;
-  background: var(--psg-surface-muted) !important;
-  box-shadow: none !important;
-  transition: box-shadow 0.15s ease, background 0.15s ease !important;
-}
-:deep(.el-input__wrapper:hover) {
-  background: var(--psg-surface-active) !important;
-}
-:deep(.el-input__wrapper.is-focus) {
-  background: var(--psg-surface) !important;
-  box-shadow: 0 0 0 2px var(--psg-focus) !important;
+  border-radius: var(--psg-radius-sm) !important;
+  height: 40px;
 }
 :deep(.el-input__inner) {
   font-size: 14px !important;
   color: var(--psg-text) !important;
 }
 
-/* ── Email + domain group ───────────────────────────────────── */
+/* ── Email + domain group: one field, the domain in a muted end cap ── */
 .email-input :deep(.el-input__wrapper) {
-  box-shadow: none !important;
-  border: 0 !important;
-  /* Rounded on the outer (left) edge only — the right edge butts against
-     the domain append box below, which carries the matching outer-right
-     rounding. Rounding all four corners on both halves (the previous
-     bug) made them render as two disconnected pill-shaped boxes with a
-     visible gap instead of one seamless input group. */
-  border-top-left-radius: var(--psg-radius-md) !important;
-  border-bottom-left-radius: var(--psg-radius-md) !important;
+  border-top-left-radius: var(--psg-radius-sm) !important;
+  border-bottom-left-radius: var(--psg-radius-sm) !important;
   border-top-right-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
-  background: var(--psg-surface-muted) !important;
-  height: 46px;
-  transition: border-color 0.15s !important;
-}
-.email-input :deep(.el-input__wrapper.is-focus) {
-  border-color: var(--psg-focus) !important;
-  box-shadow: none !important;
+  height: 40px;
 }
 .email-input :deep(.el-input-group__append) {
-  box-shadow: none !important;
+  box-shadow: inset 0 1px 0 var(--psg-border), inset -1px 0 0 var(--psg-border), inset 0 -1px 0 var(--psg-border) !important;
   border: 0 !important;
-  border-left: 1px solid var(--psg-border) !important;
-  border-top-right-radius: var(--psg-radius-md) !important;
-  border-bottom-right-radius: var(--psg-radius-md) !important;
+  border-top-right-radius: var(--psg-radius-sm) !important;
+  border-bottom-right-radius: var(--psg-radius-sm) !important;
   border-top-left-radius: 0 !important;
   border-bottom-left-radius: 0 !important;
-  background: var(--psg-surface-active) !important;
+  background: var(--psg-surface-muted) !important;
   padding: 0 12px !important;
-  height: 46px;
+  height: 40px;
+  font-family: var(--psg-font-mono);
   font-size: 13px !important;
-  font-weight: 500 !important;
+  font-weight: 400 !important;
   white-space: nowrap;
   color: var(--psg-text-secondary) !important;
-}
-.email-input:focus-within :deep(.el-input-group__append) {
-  border-top-color:    var(--psg-focus) !important;
-  border-right-color:  var(--psg-focus) !important;
-  border-bottom-color: var(--psg-focus) !important;
 }
 
 /* ── Options row ────────────────────────────────────────────── */
@@ -1248,12 +1225,12 @@ function submitRegister() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 4px 0 20px;
+  margin: 0 0 24px;
 }
 .remember-check :deep(.el-checkbox__label) {
   font-size: 13px;
   color: var(--psg-text-secondary);
-  padding-left: 7px;
+  padding-left: 8px;
 }
 .text-link {
   border: 0;
@@ -1261,52 +1238,27 @@ function submitRegister() {
   background: transparent;
   font-family: inherit;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--psg-text);
+  font-weight: 400;
+  color: var(--psg-text-secondary);
   cursor: pointer;
-  transition: opacity 0.12s;
   text-align: right;
+  transition: color var(--psg-dur-fast) var(--psg-ease);
 }
-.text-link:hover { opacity: .7; text-decoration: underline; }
+.text-link:hover { color: var(--psg-text); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── Buttons ────────────────────────────────────────────────── */
 .btn {
-  height: 46px;
+  height: 40px;
   width: 100%;
-  border-radius: var(--psg-radius-md);
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  border-radius: var(--psg-radius-sm);
+  font-weight: 500;
   font-size: 14px;
 }
-.btn-oauth { margin-top: 12px; }
-
-:deep(.el-button--primary) {
-  background: var(--psg-primary) !important;
-  border-color: var(--psg-primary) !important;
-  color: var(--psg-on-primary) !important;
-  font-weight: 600 !important;
-  border-radius: var(--psg-radius-md) !important;
-  letter-spacing: 0.01em !important;
-  box-shadow: var(--psg-shadow-sm) !important;
-  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease !important;
-
-  &:hover, &:focus {
-    background: var(--psg-primary-hover) !important;
-    border-color: var(--psg-primary-hover) !important;
-    box-shadow: var(--psg-shadow-md) !important;
-  }
-  &:active {
-    background: var(--psg-primary-active) !important;
-    border-color: var(--psg-primary-active) !important;
-    transform: translateY(1px);
-    box-shadow: var(--psg-shadow-xs) !important;
-  }
-  &.is-loading { opacity: 0.75; }
-}
+.btn-oauth { margin: 12px 0 0 !important; }
 
 /* ── Switch + note ──────────────────────────────────────────── */
 .switch {
-  margin-top: 22px;
+  margin-top: 24px;
   text-align: center;
   font-size: 13px;
   color: var(--psg-text-secondary);
@@ -1315,25 +1267,34 @@ function submitRegister() {
   span {
     color: var(--psg-text);
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 500;
     text-decoration: underline;
+    text-underline-offset: 3px;
   }
 }
 
 .authorized-note {
-  margin-top: 26px;
-  padding-top: 18px;
+  margin-top: 32px;
+  padding-top: 16px;
   border-top: 1px solid var(--psg-border);
-  font-size: 11px;
-  line-height: 1.6;
-  letter-spacing: 0.01em;
+  font-size: 12px;
+  line-height: 18px;
   color: var(--psg-text-muted);
   text-align: center;
 }
 
 /* ── Has custom background: drop the panel, float the card ───── */
 #login-box.has-bg .brand-panel { display: none; }
-#login-box.has-bg .form-wrapper { flex: 1 1 auto; }
+#login-box.has-bg .form-wrapper { flex: 1 1 auto; background: transparent; }
+#login-box.has-bg .container {
+  max-width: 420px;
+  padding: 40px 36px 28px;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-xl);
+  box-shadow: var(--psg-shadow-md);
+
+  @media (max-width: 767px) { padding: 32px 22px 22px; }
+}
 #login-box.has-bg .card-brand { display: flex; }
 
 /* ── Misc (preserved) ───────────────────────────────────────── */
@@ -1517,9 +1478,7 @@ function submitRegister() {
     font-family: var(--psg-font-sans);
     font-variant-numeric: tabular-nums;
     font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-weight: 500;
     color: var(--psg-text-secondary);
     text-decoration: none;
   }
@@ -1568,8 +1527,7 @@ function submitRegister() {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
   font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 500;
   padding: 1px 4px;
   border: 1px solid var(--psg-border);
   color: var(--psg-text-muted);

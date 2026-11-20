@@ -375,7 +375,7 @@ function actionLabel(action, actionValue) {
 .rules-page {
   width: min(1120px, 100%);
   margin: 0 auto;
-  padding: 28px 32px 64px;
+  padding: 40px 32px 64px;
 
   @media (max-width: 720px) {
     padding: 20px 16px 40px;
@@ -386,8 +386,8 @@ function actionLabel(action, actionValue) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 28px;
-  margin-bottom: 22px;
+  gap: 24px;
+  margin-bottom: 24px;
 
   @media (max-width: 620px) {
     align-items: flex-start;
@@ -413,12 +413,13 @@ function actionLabel(action, actionValue) {
 }
 
 .rules-hero h1 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: var(--psg-text);
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  line-height: 1.15;
+  font-family: var(--psg-font-display);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -.01em;
+  line-height: 40px;
 }
 
 .rules-hero p {
@@ -438,7 +439,7 @@ function actionLabel(action, actionValue) {
   min-height: 44px;
   padding-inline: 20px;
   border-radius: var(--psg-radius-md) !important;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .primary-action {
@@ -461,15 +462,18 @@ function actionLabel(action, actionValue) {
   svg {
     flex: 0 0 auto;
     margin-top: 1px;
-    color: var(--psg-primary);
+    color: var(--psg-text-muted);
   }
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: minmax(130px, .65fr) minmax(130px, .65fr) minmax(220px, 1.7fr);
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 0;
+  margin-bottom: 24px;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-lg);
+  overflow: hidden;
 
   @media (max-width: 620px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -480,33 +484,33 @@ function actionLabel(action, actionValue) {
   }
 }
 
+/* Figures share one ruled band; cells split by hairlines. */
 .stat-card {
-  min-height: 92px;
-  padding: 18px 20px;
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-lg);
+  min-height: 88px;
+  padding: 16px 20px;
+  background: var(--psg-surface);
+  box-shadow: -1px 0 0 var(--psg-border), 0 -1px 0 var(--psg-border);
 }
 
 .stat-label {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: var(--psg-text-muted);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .stat-value {
   display: block;
   color: var(--psg-text);
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  line-height: 1;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 32px;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-value--accent {
-  color: var(--psg-primary);
+  color: var(--psg-text);
 }
 
 .stat-description {
@@ -535,9 +539,8 @@ function actionLabel(action, actionValue) {
 .editor-header h2 {
   margin: 0 0 2px;
   color: var(--psg-text);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -.01em;
+  font-size: 17px;
+  font-weight: 500;
 }
 
 .section-header p {
@@ -551,44 +554,45 @@ function actionLabel(action, actionValue) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 7px;
-  color: var(--psg-primary);
-  background: var(--psg-primary-muted);
-  border-radius: var(--psg-radius-sm);
-  font-family: var(--psg-font-sans);
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  color: var(--psg-text-muted);
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-xs);
+  font-family: var(--psg-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .empty-state {
+  border: 1px solid var(--psg-border);
   display: flex;
   align-items: center;
   flex-direction: column;
   padding: 56px 24px 60px;
   text-align: center;
-  background: var(--psg-surface-muted);
+  background: var(--psg-surface);
   border-radius: var(--psg-radius-lg);
 }
 
 .empty-icon-wrap {
   display: grid;
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   margin-bottom: 16px;
   place-items: center;
-  color: var(--psg-primary);
-  background: var(--psg-surface);
-  border-radius: var(--psg-radius-lg);
+  color: var(--psg-text-muted);
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-sm);
 }
 
 .empty-state h3 {
-  margin: 0 0 5px;
+  margin: 0 0 4px;
   color: var(--psg-text);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .empty-state p {
@@ -610,13 +614,14 @@ function actionLabel(action, actionValue) {
   align-items: center;
   gap: 14px;
   min-width: 0;
-  padding: 16px 18px;
-  background: var(--psg-surface-muted);
+  padding: 16px 20px;
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-lg);
-  transition: background-color 160ms ease, opacity 160ms ease;
+  transition: border-color var(--psg-dur-fast) var(--psg-ease), opacity var(--psg-dur-fast) var(--psg-ease);
 
   &:hover {
-    background: var(--psg-surface-active);
+    border-color: var(--psg-border-strong);
   }
 
   &--disabled {
@@ -636,9 +641,9 @@ function actionLabel(action, actionValue) {
   height: 40px;
   flex: 0 0 auto;
   place-items: center;
-  color: var(--psg-primary);
-  background: var(--psg-surface);
-  border-radius: var(--psg-radius-md);
+  color: var(--psg-text-muted);
+  background: var(--psg-surface-muted);
+  border-radius: var(--psg-radius-sm);
 }
 
 .rule-content {
@@ -659,7 +664,7 @@ function actionLabel(action, actionValue) {
   margin: 0;
   color: var(--psg-text);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -674,7 +679,7 @@ function actionLabel(action, actionValue) {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0;
 }
 
@@ -706,7 +711,7 @@ function actionLabel(action, actionValue) {
 
 .detail-value {
   color: var(--psg-text-secondary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .keyword-value {
@@ -788,11 +793,12 @@ function actionLabel(action, actionValue) {
 }
 
 .editor-form {
+  border: 1px solid var(--psg-border);
   display: flex;
   flex-direction: column;
   gap: 20px;
   padding: 22px;
-  background: var(--psg-surface-muted);
+  background: var(--psg-surface);
   border-radius: var(--psg-radius-lg);
 }
 
@@ -818,7 +824,7 @@ function actionLabel(action, actionValue) {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0;
 }
 
@@ -847,7 +853,7 @@ function actionLabel(action, actionValue) {
   strong {
     color: var(--psg-text);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   small {
@@ -874,7 +880,7 @@ function actionLabel(action, actionValue) {
   border-radius: var(--psg-radius-xs);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 
   &:hover {
     color: var(--psg-text);

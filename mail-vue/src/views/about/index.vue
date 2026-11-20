@@ -100,26 +100,28 @@ const hasNotes = !!currentNotes()
 }
 
 .hero-product {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -.02em;
+  font-family: var(--psg-font-display);
+  font-size: 32px;
+  font-weight: 400;
   color: var(--psg-text);
-  line-height: 1.2;
+  line-height: 40px;
 }
 
 .hero-version-chip {
   margin-top: 10px;
   padding: 4px 12px;
+  font-family: var(--psg-font-mono);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--psg-text-secondary);
   background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-full);
+  border-radius: var(--psg-radius-xs);
 }
 
 /* ── Card ─────────────────────────────────────────── */
 .about-card {
-  background: var(--psg-surface-muted);
+  border: 1px solid var(--psg-border);
+  background: var(--psg-surface);
   border-radius: var(--psg-radius-lg);
   padding: 4px 0;
   overflow: hidden;
@@ -127,7 +129,7 @@ const hasNotes = !!currentNotes()
 
 .about-card-title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-muted);
   padding: 12px 20px 4px;
 }
@@ -156,14 +158,14 @@ const hasNotes = !!currentNotes()
   text-align: right;
 
   &.mono {
-    font-weight: 600;
+    font-weight: 500;
   }
 }
 
 .about-link {
   font-family: var(--psg-font-sans);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-primary);
   text-decoration: none;
   text-underline-offset: 2px;
@@ -178,7 +180,7 @@ const hasNotes = !!currentNotes()
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 3px 10px;
   border-radius: var(--psg-radius-full);
   background: color-mix(in srgb, currentColor 12%, transparent);
@@ -234,7 +236,7 @@ const hasNotes = !!currentNotes()
 
 .about-btn {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   border-radius: var(--psg-radius-sm);
