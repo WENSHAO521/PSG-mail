@@ -1069,22 +1069,20 @@ defineExpose({ openCreate: openAdd })
 }
 
 .toolbar {
-  padding: 0 12px;
-  height: 44px;
+  padding: 0;
+  height: 40px;
   display: flex;
   gap: 4px;
   flex-wrap: nowrap;
   align-items: center;
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-md);
+  background: transparent;
+  border-radius: 0;
   border: 0;
   flex-shrink: 0;
 
   :deep(.el-input__wrapper) {
     height: 30px;
-    box-shadow: none !important;
-    border: 0;
-    background: var(--psg-surface-muted);
+    min-height: 32px;
     border-radius: var(--psg-radius-sm);
     transition: border-color 0.12s;
     &:hover { border-color: var(--psg-border-strong); }
@@ -1135,12 +1133,12 @@ defineExpose({ openCreate: openAdd })
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px;
-  background: var(--psg-surface-muted);
+  padding: 8px 16px;
+  background: var(--psg-primary-muted);
   border: 0;
-  border-radius: var(--psg-radius-md);
+  border-radius: var(--psg-radius-sm);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text);
 }
 
@@ -1166,7 +1164,7 @@ defineExpose({ openCreate: openAdd })
 }
 
 .user-cell-name {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
@@ -1183,14 +1181,14 @@ defineExpose({ openCreate: openAdd })
 
 .user-avatar {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--psg-radius-sm);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .table-card {
@@ -1248,7 +1246,7 @@ defineExpose({ openCreate: openAdd })
   .details-item-title {
     white-space: pre;
     color: var(--psg-text-secondary);
-    font-weight: bold;
+    font-weight: 500;
     padding-right: 10px;
   }
 }
@@ -1353,13 +1351,13 @@ defineExpose({ openCreate: openAdd })
 }
 
 .loading-show {
-  transition: all 200ms ease 200ms;
+  transition: background-color 200ms ease 200ms;
   opacity: 1;
 }
 
 .loading-hide {
   pointer-events: none;
-  transition: all 200ms;
+  transition: background-color 200ms;
   opacity: 0;
 }
 

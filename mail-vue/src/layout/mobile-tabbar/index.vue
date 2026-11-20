@@ -52,50 +52,70 @@ function openCompose() {
 </script>
 
 <style scoped lang="scss">
+/* Edge-to-edge tab bar on a hairline; the open tab is ink, the rest muted. */
 .m-tabbar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
-  height: 64px;
-  margin: 0 10px calc(10px + env(safe-area-inset-bottom, 0px));
-  border-radius: var(--psg-radius-lg);
-  background: #1C1C1E;
-  box-shadow: var(--psg-shadow-md);
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--psg-border);
+  background: var(--psg-canvas);
 }
 
 .m-tab {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   height: 100%;
   border: 0;
   background: transparent;
-  color: #A1A1A6;
+  color: var(--psg-text-muted);
   font: inherit;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 400;
+  transition: color var(--psg-dur-fast) var(--psg-ease);
 
-  &.active { color: #FFFFFF; font-weight: 700; }
+  &.active {
+    color: var(--psg-text);
+    font-weight: 500;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: 50%;
+      width: 24px;
+      height: 2px;
+      margin-left: -12px;
+      border-radius: 0 0 2px 2px;
+      background: var(--psg-primary);
+    }
+  }
 }
 
 .m-fab {
   position: fixed;
-  right: 18px;
-  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   z-index: 31;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 54px;
-  padding: 0 20px;
+  height: 48px;
+  padding: 0 20px 0 16px;
   border: 0;
   border-radius: var(--psg-radius-lg);
   background: var(--psg-primary);
   color: var(--psg-on-primary);
   font: inherit;
-  font-weight: 700;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--psg-primary) 32%, transparent);
+  font-weight: 500;
+  box-shadow: var(--psg-shadow-md);
+  transition: transform var(--psg-dur-fast) var(--psg-ease);
+
+  &:active { transform: scale(.97); }
 }
 </style>

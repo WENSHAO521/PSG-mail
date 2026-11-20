@@ -45,8 +45,9 @@ const initial = computed(() => ((userStore.user?.name || userStore.user?.email |
   gap: 8px;
   width: 100%;
   height: calc(64px + env(safe-area-inset-top, 0px));
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px 18px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px 16px;
   background: var(--psg-canvas);
+  border-bottom: 1px solid var(--psg-border);
 }
 
 .m-title {
@@ -59,9 +60,9 @@ const initial = computed(() => ((userStore.user?.name || userStore.user?.email |
   background: transparent;
   color: var(--psg-text);
   font: inherit;
+  font-family: var(--psg-font-display);
   font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -.02em;
+  font-weight: 400;
 
   span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
@@ -70,21 +71,27 @@ const initial = computed(() => ((userStore.user?.name || userStore.user?.email |
 
 .m-notif :deep(.icon-btn),
 .m-avatar {
-  width: 42px !important;
-  height: 42px !important;
+  width: 40px !important;
+  height: 40px !important;
   border: 0 !important;
-  border-radius: var(--psg-radius-md) !important;
-  background: var(--psg-surface) !important;
-  color: var(--psg-text) !important;
+  border-radius: var(--psg-radius-sm) !important;
+  background: transparent !important;
+  color: var(--psg-text-secondary) !important;
   display: grid;
   place-items: center;
   flex-shrink: 0;
 }
 
 .m-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  margin-left: 4px;
+  border-radius: 50% !important;
+  background: var(--psg-surface-active) !important;
   overflow: hidden;
   font: inherit;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
 
   img { width: 100%; height: 100%; object-fit: cover; }
 }

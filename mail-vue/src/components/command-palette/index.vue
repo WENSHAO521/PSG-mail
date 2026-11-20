@@ -286,9 +286,7 @@ defineExpose({ open, close })
 
 .result-group-label {
   font-size: 9.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  font-weight: 500;
   color: var(--psg-text-secondary);
   padding: 8px 10px 4px;
   user-select: none;

@@ -148,8 +148,8 @@
             <div v-else class="swipe-bg swipe-bg--archive" :style="{ opacity: swipeArchiveOpacity(item) }">
               <Icon icon="psg:archive" width="18" /><span>{{ $t('archive') }}</span>
             </div>
-            <!-- Mist row: unread dot · avatar · name/time, subject, arrived-on
-                 chip + preview (the admin All Mail list shows owner → peer). -->
+            <!-- Proof row: margin mark (unread) · avatar · name/time, subject,
+                 arrived-on chip + preview (the admin All Mail list shows owner → peer). -->
             <div
               class="mrow"
               :style="rowSwipeStyle(item)"
@@ -171,7 +171,7 @@
               <div class="mrow-lead">
                 <span class="mrow-dot" aria-hidden="true"></span>
               </div>
-              <div class="mrow-avatar" :style="avatarTint(item.sendEmail || item.name)">
+              <div class="mrow-avatar">
                 <span class="mrow-avatar-letter">{{ senderLetter(item) }}</span>
                 <img v-if="senderImg(item)" :src="senderImg(item)" class="mrow-avatar-img" alt=""
                      @error="e => { e.target.style.display = 'none'; markGravatarMiss(item.sendEmail) }" />
@@ -186,24 +186,24 @@
                     </el-tooltip>
                   </span>
                   <span class="mrow-name"><slot name="name" :email="item">{{ item.name }}</slot></span>
-                  <Icon v-if="item.isStar && showStar" icon="fluent-color:star-16" width="13" height="13" class="mrow-star" />
+                  <Icon v-if="item.isStar && showStar" icon="psg:star" width="14" height="14" class="mrow-star is-starred" />
                   <span class="mrow-time">{{ item.formatCreateTime }}</span>
                   <div class="mrow-actions">
                     <button v-if="archiveEmail" type="button" class="icon-btn" :title="$t('archive')" :aria-label="$t('archive')"
                             @click.stop="archiveEmail(item.emailId)">
-                      <Icon icon="psg:archive" width="15" height="15" />
+                      <Icon icon="psg:archive" width="16" height="16" />
                     </button>
                     <button v-if="restoreEmail" type="button" class="icon-btn" :title="$t('restore')" :aria-label="$t('restore')"
                             @click.stop="restoreEmail(item.emailId)">
-                      <Icon icon="solar:inbox-out-linear" width="15" height="15" />
+                      <Icon icon="psg:unarchive" width="16" height="16" />
                     </button>
                     <button v-if="showStar" type="button" class="icon-btn" :title="$t('star')" :aria-label="$t('star')"
                             @click.stop="starChange(item)">
-                      <Icon :icon="item.isStar ? 'fluent-color:star-16' : 'psg:star'" width="15" height="15" />
+                      <Icon icon="psg:star" width="16" height="16" :class="{ 'is-starred': item.isStar }" />
                     </button>
                     <button v-perm="'email:delete'" type="button" class="icon-btn icon-danger" :title="$t('delete')" :aria-label="$t('delete')"
                             @click.stop="rightDeleteItem(item)">
-                      <Icon icon="psg:trash" width="15" height="15" />
+                      <Icon icon="psg:trash" width="16" height="16" />
                     </button>
                   </div>
                 </div>
@@ -283,7 +283,7 @@
       <template #dropdown>
         <el-dropdown-menu>
           <el-dropdown-item v-if="rightClickEmail.code" @click="copyCode(rightClickEmail.code)">
-            <div class="ctx-item"><Icon icon="fluent-color:clipboard-24" width="18" height="18" /><span>{{ t('copyCode') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:copy" width="16" height="16" /><span>{{ t('copyCode') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="['email'].includes(props.type)" @click="emailRead(rightClickEmail.emailId)">
             <div class="ctx-item"><Icon icon="psg:mail" width="18" height="18" /><span>{{ t('markAsRead') }}</span></div>
@@ -313,10 +313,10 @@
             <div class="ctx-item"><Icon icon="psg:archive" width="18" height="18" /><span>{{ t('archive') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="['archive','snoozed'].includes(props.type)" @click="unarchiveAction(rightClickEmail.emailId)">
-            <div class="ctx-item"><Icon icon="solar:inbox-out-linear" width="18" height="18" /><span>{{ props.type === 'snoozed' ? t('unsnooze') : t('unarchive') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:unarchive" width="16" height="16" /><span>{{ props.type === 'snoozed' ? t('unsnooze') : t('unarchive') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'trash'" @click="restoreAction(rightClickEmail.emailId)">
-            <div class="ctx-item"><Icon icon="solar:inbox-out-linear" width="18" height="18" /><span>{{ t('restore') }}</span></div>
+            <div class="ctx-item"><Icon icon="psg:unarchive" width="16" height="16" /><span>{{ t('restore') }}</span></div>
           </el-dropdown-item>
           <el-dropdown-item v-if="props.type === 'email'" @click="markSpamAction(rightClickEmail.emailId)">
             <div class="ctx-item"><Icon icon="psg:warning" width="18" height="18" /><span>{{ t('markAsSpam') }}</span></div>
@@ -344,7 +344,7 @@ import {useLabelStore} from "@/store/label.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {sleep} from "@/utils/time-utils.js"
-import { avatarLetter, avatarTint, mailboxColor, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
+import { avatarLetter, mailboxColor, storedAvatar, gravatarCandidate, markGravatarMiss } from '@/utils/avatar.js'
 import { useAvatarCacheStore } from '@/store/avatar-cache.js'
 import {fromNow} from "@/utils/day.js";
 import dayjs from "dayjs";
@@ -542,7 +542,7 @@ function mailboxChip(item) {
 }
 
 // .mrow: three text lines (name/time, subject, chip + preview) + 4px gap.
-const itemHeight = computed(() => 84)
+const itemHeight = computed(() => 76)
 
 watch(itemHeight, () => { keyCount.value++ })
 
@@ -1084,11 +1084,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
 .explorer-title {
   margin: 0;
-  font-family: var(--psg-font-sans);
-  font-size: 22px;
-  letter-spacing: -.01em;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-family: var(--psg-font-display);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 32px;
   color: var(--psg-text);
 }
 
@@ -1102,18 +1101,18 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 40px;
+  height: 36px;
   margin: 12px 20px 0;
-  padding: 0 12px;
-  background: var(--psg-surface-muted);
+  padding: 0 10px;
+  background: var(--psg-surface);
   border: 0;
-  border-radius: var(--psg-radius-md);
-  transition: box-shadow 0.12s ease, background 0.12s ease;
+  border-radius: var(--psg-radius-sm);
+  box-shadow: inset 0 0 0 1px var(--psg-border);
+  transition: box-shadow var(--psg-dur-fast) var(--psg-ease);
 
   /* Inset ring: an outer one is painted over by the toolbar row below. */
   &:focus-within {
-    background: var(--psg-surface);
-    box-shadow: inset 0 0 0 2px var(--psg-primary);
+    box-shadow: inset 0 0 0 1px var(--psg-primary), inset 0 0 0 3px var(--psg-primary-muted);
   }
 }
 
@@ -1129,7 +1128,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   outline: 0;
   background: transparent;
   color: var(--psg-text);
-  font-size: 13px;
+  font-size: 14px;
 
   &::placeholder { color: var(--psg-text-muted); }
 }
@@ -1156,8 +1155,8 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   height: 48px;
   display: flex;
   align-items: center;
-  padding: 0 10px 0 16px;
-  border-bottom: 0;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--psg-border);
   background: var(--psg-surface);
   flex-shrink: 0;
 
@@ -1175,15 +1174,13 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   .mail-count {
     margin-left: auto;
     flex-shrink: 0;
-    font-family: var(--psg-font-sans);
-    font-size: 12.5px;
-    font-weight: 500;
-    text-transform: none;
-    letter-spacing: 0;
-    color: var(--psg-text-secondary);
+    font-family: var(--psg-font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--psg-text-muted);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    padding: 0 16px;
+    padding: 0 4px 0 12px;
   }
 }
 
@@ -1253,35 +1250,38 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 .filter-chips {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 4px;
+  gap: 2px;
+  padding: 2px;
+  margin: 0 4px;
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface-muted);
   flex-shrink: 0;
 }
 
-/* Pill filters, as in the redesign: active = filled ink, rest outlined. */
+/* Segmented filter: the chosen side is a raised white step. */
 .filter-chip {
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--psg-border);
-  border-radius: 14px;
-  background: var(--psg-surface);
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--psg-radius-xs);
+  background: transparent;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   font-family: var(--psg-font-sans);
-  color: var(--psg-text);
-  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+  color: var(--psg-text-muted);
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
   white-space: nowrap;
 
   @media (hover: hover) {
-    &:hover:not(.active) { background: var(--psg-surface-muted); }
+    &:hover:not(.active) { color: var(--psg-text); }
   }
 
   &.active {
-    background: var(--psg-text);
-    border-color: var(--psg-text);
-    color: var(--psg-surface);
-    font-weight: 600;
+    background: var(--psg-surface);
+    color: var(--psg-text);
+    font-weight: 500;
+    box-shadow: var(--psg-shadow-xs);
   }
 }
 
@@ -1322,10 +1322,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   height: 32px;
   border: 1px solid transparent;
   background: transparent;
-  border-radius: var(--psg-radius-md);
+  border-radius: var(--psg-radius-sm);
   cursor: pointer;
-  color: var(--psg-text-secondary);
-  transition: background 0.10s ease, color 0.10s ease, border-color 0.10s;
+  color: var(--psg-text-muted);
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
   flex-shrink: 0;
 
   @media (hover: hover) {
@@ -1383,7 +1383,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
     .search-input-inline {
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
     }
   }
 
@@ -1560,7 +1560,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   gap: 8px;
   padding: 0 20px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-on-primary);
   pointer-events: none;
   border: 0;
@@ -1583,24 +1583,25 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 }
 
 /* ══════════════════════════════════════════════════════════
-   Mail row (.mrow) — 2026 redesign. Three lines in a fixed 84px row
-   (the virtual list needs a constant height): name + time, subject,
-   arrived-on chip + preview. Unread = accent dot + weight, never fading
-   read mail. Every folder, the admin All Mail list included, uses it.
+   Mail row (.mrow) — Proof. Three lines in a fixed 76px row (the
+   virtual list needs a constant height): name + time, subject,
+   arrived-on chip + preview. Rows run edge to edge on hairlines.
+   Unread mail carries the margin mark — a 2px accent rule at the left
+   edge — plus weight; read mail never fades.
    ══════════════════════════════════════════════════════════ */
 :deep(.mrow) {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  height: 80px;
+  gap: 12px;
+  height: 76px;
   box-sizing: border-box;
-  margin: 2px 10px;
-  padding: 12px 12px 12px 4px;
-  background: transparent;
-  border-radius: var(--psg-radius-lg);
+  margin: 0;
+  padding: 12px 16px 12px 20px;
+  background: var(--psg-surface);
+  border-bottom: 1px solid var(--psg-border);
   cursor: pointer;
-  transition: background 120ms ease;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease);
 
   @media (hover: hover) {
     &:hover { background: var(--psg-surface-muted); }
@@ -1608,7 +1609,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
   &.is-open,
   &[data-active] {
-    background: var(--psg-surface-muted);
+    background: var(--psg-surface-active);
   }
 
   &.is-checked { background: var(--psg-primary-muted); }
@@ -1620,17 +1621,18 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
   }
 
   .mrow-lead {
-    width: 8px;
-    flex-shrink: 0;
-    padding-top: 18px;
-    display: flex;
-    justify-content: center;
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
   }
 
   .mrow-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
+    display: block;
+    width: 2px;
+    height: 100%;
+    border-radius: 0 2px 2px 0;
     background: transparent;
   }
 
@@ -1640,10 +1642,13 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
      checked, or while in (mobile long-press) selection mode. */
   .mrow-avatar {
     position: relative;
-    width: 44px;
-    height: 44px;
+    width: 32px;
+    height: 32px;
+    margin-top: 2px;
     flex-shrink: 0;
-    border-radius: var(--psg-radius-md);
+    border-radius: 50%;
+    background: var(--psg-surface-active);
+    color: var(--psg-text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1652,8 +1657,8 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
   .mrow-avatar-letter {
     color: inherit;
-    font-size: 15px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 500;
     line-height: 1;
   }
 
@@ -1671,9 +1676,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     height: auto;
     justify-content: center;
     background: var(--psg-surface);
-    border-radius: var(--psg-radius-md);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--psg-border);
     opacity: 0;
-    transition: opacity 0.12s ease;
+    transition: opacity var(--psg-dur-fast) var(--psg-ease);
   }
 
   @media (hover: hover) {
@@ -1687,7 +1693,7 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
   }
 
   .mrow-line {
@@ -1707,17 +1713,18 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 14px;
-    font-weight: 500;
-    color: var(--psg-text);
+    font-weight: 400;
+    color: var(--psg-text-secondary);
   }
 
-  .mrow-star { flex-shrink: 0; }
+  .mrow-star { flex-shrink: 0; color: var(--psg-primary); }
 
   .mrow-time {
     flex-shrink: 0;
+    font-family: var(--psg-font-mono);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
-    color: var(--psg-text-secondary);
+    color: var(--psg-text-muted);
     white-space: nowrap;
   }
 
@@ -1748,7 +1755,8 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
 
     .code-tag {
       flex-shrink: 0;
-      font-size: 11px;
+      font-family: var(--psg-font-mono);
+      font-size: 12px;
       color: var(--psg-text);
       border: 1px solid var(--psg-border);
       padding: 0 4px;
@@ -1763,10 +1771,10 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     white-space: nowrap;
   }
 
-  .mrow-labels { display: inline-flex; gap: 3px; flex-shrink: 0; }
-  .mrow-label { width: 7px; height: 7px; border-radius: 2px; }
+  .mrow-labels { display: inline-flex; gap: 4px; flex-shrink: 0; }
+  .mrow-label { width: 6px; height: 6px; border-radius: 50%; }
 
-  .mrow-line--meta { height: 18px; }
+  .mrow-line--meta { height: 20px; }
 
   .mrow-preview {
     flex: 1;
@@ -1782,37 +1790,40 @@ function vibrate(ms) { try { navigator.vibrate?.(ms) } catch {} }
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    font-size: 11px;
-    font-weight: 600;
+    gap: 4px;
+    font-family: var(--psg-font-mono);
+    font-size: 12px;
+    font-weight: 400;
     line-height: 16px;
-    padding: 0 5px;
-    border-radius: 4px;
-    color: var(--psg-warning, #b26a00);
-    background: color-mix(in srgb, var(--psg-warning, #b26a00) 12%, transparent);
+    color: var(--psg-warning);
   }
 
   .mailbox-chip {
     flex-shrink: 0;
-    max-width: 110px;
+    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 11px;
-    font-weight: 600;
+    font-family: var(--psg-font-mono);
+    font-size: 12px;
+    font-weight: 400;
     line-height: 16px;
-    padding: 0 5px;
+    padding: 0 4px;
     border-radius: 4px;
-    color: color-mix(in srgb, var(--chip) 60%, var(--psg-text));
-    background: color-mix(in srgb, var(--chip) 14%, transparent);
+    color: var(--psg-text-secondary);
+    background: var(--psg-surface-muted);
+    box-shadow: inset 2px 0 0 var(--chip);
   }
 
   &.is-unread {
-    .mrow-name { font-weight: 700; }
-    .mrow-subject { color: var(--psg-text); font-weight: 600; }
-    .mrow-time { color: var(--psg-primary); font-weight: 600; }
+    .mrow-name { color: var(--psg-text); font-weight: 600; }
+    .mrow-subject { color: var(--psg-text); font-weight: 500; }
+    .mrow-time { color: var(--psg-text); }
   }
 }
+
+:deep(.is-starred path) { fill: currentColor; }
+.icon-btn :deep(.is-starred) { color: var(--psg-primary); }
 
 /* The mobile header already names the folder. */
 @media (max-width: 767px) {

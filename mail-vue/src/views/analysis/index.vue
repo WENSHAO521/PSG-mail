@@ -35,7 +35,6 @@
       <section class="stat-card">
         <div class="stat-row-top">
           <span class="stat-label">{{ $t('totalReceived') }}</span>
-          <div class="stat-icon"><Icon icon="psg:inbox" width="20" height="20"/></div>
         </div>
         <div class="stat-row-value">
           <div class="stat-value">
@@ -48,12 +47,6 @@
             <span class="delta-caption">{{ $t('vsLastWeek') }}</span>
           </div>
         </div>
-        <div class="stat-visual">
-          <svg class="spark" viewBox="0 0 68 28" preserveAspectRatio="none">
-            <path :d="receiveSpark.area" class="spark-area"/>
-            <path :d="receiveSpark.line" class="spark-line"/>
-          </svg>
-        </div>
         <div class="stat-breakdown">
           <span class="bd-normal">{{ numberCount.normalReceiveTotal }} {{ $t('active') }}</span>
           <span class="bd-del">{{ numberCount.delReceiveTotal }} {{ $t('deleted') }}</span>
@@ -63,7 +56,6 @@
       <section class="stat-card">
         <div class="stat-row-top">
           <span class="stat-label">{{ $t('totalSent') }}</span>
-          <div class="stat-icon"><Icon icon="psg:send" width="20" height="20"/></div>
         </div>
         <div class="stat-row-value">
           <div class="stat-value">
@@ -76,12 +68,6 @@
             <span class="delta-caption">{{ $t('vsLastWeek') }}</span>
           </div>
         </div>
-        <div class="stat-visual">
-          <svg class="spark" viewBox="0 0 68 28" preserveAspectRatio="none">
-            <path :d="sendSpark.area" class="spark-area"/>
-            <path :d="sendSpark.line" class="spark-line"/>
-          </svg>
-        </div>
         <div class="stat-breakdown">
           <span class="bd-normal">{{ numberCount.normalSendTotal }} {{ $t('active') }}</span>
           <span class="bd-del">{{ numberCount.delSendTotal }} {{ $t('deleted') }}</span>
@@ -91,17 +77,10 @@
       <section class="stat-card">
         <div class="stat-row-top">
           <span class="stat-label">{{ $t('totalMailboxes') }}</span>
-          <div class="stat-icon"><Icon icon="psg:all-mail" width="20" height="20"/></div>
         </div>
         <div class="stat-row-value">
           <div class="stat-value">
             <el-statistic :formatter="value => Math.round(value)" :value="accountData"/>
-          </div>
-        </div>
-        <div class="stat-visual">
-          <div class="composition-bar">
-            <div class="comp-normal" :style="{ width: accountNormalPct + '%' }"></div>
-            <div class="comp-del" :style="{ width: accountDelPct + '%' }"></div>
           </div>
         </div>
         <div class="stat-breakdown">
@@ -113,7 +92,6 @@
       <section class="stat-card">
         <div class="stat-row-top">
           <span class="stat-label">{{ $t('totalUsers') }}</span>
-          <div class="stat-icon"><Icon icon="psg:group" width="20" height="20"/></div>
         </div>
         <div class="stat-row-value">
           <div class="stat-value">
@@ -126,12 +104,6 @@
             <span class="delta-caption">{{ $t('vsLastWeek') }}</span>
           </div>
         </div>
-        <div class="stat-visual">
-          <svg class="spark" viewBox="0 0 68 28" preserveAspectRatio="none">
-            <path :d="userSpark.area" class="spark-area"/>
-            <path :d="userSpark.line" class="spark-line"/>
-          </svg>
-        </div>
         <div class="stat-breakdown">
           <span class="bd-normal">{{ numberCount.normalUserTotal }} {{ $t('active') }}</span>
           <span class="bd-del">{{ numberCount.delUserTotal }} {{ $t('deleted') }}</span>
@@ -140,7 +112,7 @@
     </div>
 
     <!-- ── Charts row 1 ── -->
-    <div class="chart-grid">
+    <div class="chart-grid chart-grid--lead-narrow">
       <section class="chart-card chart-card--source">
         <div class="chart-head">
           <div>
@@ -149,13 +121,6 @@
           </div>
         </div>
         <div class="source-body" v-if="senderData && senderData.length">
-          <div class="source-donut">
-            <div class="sender-pie chart-area"></div>
-            <div class="donut-center">
-              <span class="donut-total">{{ senderTotalCount.toLocaleString() }}</span>
-              <span class="donut-caption">{{ $t('emailSourceTotal', { n: senderData.length }) }}</span>
-            </div>
-          </div>
           <ul class="source-list">
             <li v-for="(item, idx) in senderData" :key="item.name + idx" class="source-row">
               <span class="source-rank">{{ idx + 1 }}</span>
@@ -190,7 +155,7 @@
     </div>
 
     <!-- ── Charts row 2 ── -->
-    <div class="chart-grid">
+    <div class="chart-grid chart-grid--lead-wide">
       <section class="chart-card">
         <div class="chart-head">
           <div>
@@ -198,7 +163,7 @@
             <p class="chart-subtitle">{{ $t('emailTrafficSubtitle', { n: rangeDays }) }}</p>
           </div>
         </div>
-        <div class="email-column chart-area"></div>
+        <div class="email-column chart-area chart-area--main"></div>
       </section>
 
       <section class="chart-card chart-card--ring">
@@ -208,13 +173,14 @@
           </div>
         </div>
         <div class="ring-body">
-          <div class="ring-visual" :style="{ '--ring-pct': ringClamped }">
-            <div class="ring-inner">
-              <span class="ring-value">
-                <el-statistic :formatter="value => Math.round(value)" :value="daySendAnimated"/>
-              </span>
-              <span class="ring-label">{{ $t('insightSentToday') }}</span>
-            </div>
+          <div class="ring-figure">
+            <span class="ring-value">
+              <el-statistic :formatter="value => Math.round(value)" :value="daySendAnimated"/>
+            </span>
+            <span class="ring-label">{{ $t('insightSentToday') }}</span>
+          </div>
+          <div class="ring-track" :style="{ '--ring-pct': ringClamped }" role="presentation">
+            <div class="ring-fill"></div>
           </div>
           <div class="ring-meta">
             <div class="ring-meta-row">
@@ -323,22 +289,20 @@ const sendSeries = ref([])
 const headerDate = computed(() => locale.value === 'en' ? dayjs().format('MMM D, YYYY') : dayjs().format('YYYY年M月D日'))
 
 const topic = computed(() => ({
-  // Mist palette, mirrored from tokens.css (echarts draws on canvas and
-  // cannot resolve CSS var()). Charts sit on the grey --psg-surface-muted well.
-  color: uiStore.dark ? '#F2F2F7' : '#1C1C1E',
-  background: uiStore.dark ? '#2A2A2E' : '#F2F2F7',
-  borderColor: uiStore.dark ? '#2A2A2E' : '#F2F2F7',
-  scaleLineColor: uiStore.dark ? '#3A3A3F' : '#D1D1D6',
-  crossColor: uiStore.dark ? '#8E8E93' : '#AEAEB2',
-  axisColor: uiStore.dark ? '#8E8E93' : '#636366',
-  splitLineColor: uiStore.dark ? '#3A3A3F' : '#E5E5EA',
+  // Proof palette, mirrored from tokens.css (echarts draws on canvas and
+  // cannot resolve CSS var()). Charts sit on the white --psg-surface sheet.
+  color: uiStore.dark ? '#EDEDEF' : '#18181B',
+  background: uiStore.dark ? '#161618' : '#FFFFFF',
+  borderColor: uiStore.dark ? '#262629' : '#E6E6E9',
+  scaleLineColor: uiStore.dark ? '#262629' : '#EDEDF0',
+  crossColor: uiStore.dark ? '#3A3A3F' : '#CFCFD4',
+  axisColor: uiStore.dark ? '#8A8A91' : '#6B6B72',
+  splitLineColor: uiStore.dark ? '#262629' : '#EDEDF0',
   accentGreen: uiStore.dark ? '#F4B6C6' : '#B04A6A',
   accentGreenRgb: uiStore.dark ? '244, 182, 198' : '176, 74, 106',
-  // Secondary series — quiet ink, so the accent stays the one loud colour
-  accentSecondary: uiStore.dark ? '#8E8E93' : '#8E8E93',
-  categoryPalette: uiStore.dark
-    ? ['#F4B6C6', '#FADAE3', '#E5E5EA', '#AEAEB2', '#8E8E93', '#636366']
-    : ['#B04A6A', '#D98BA1', '#3C3C43', '#636366', '#AEAEB2', '#D1D1D6'],
+  // Secondary series — a neutral step, so the accent stays the one colour
+  accentSecondary: uiStore.dark ? '#4A4A50' : '#CFCFD4',
+  monoFont: "'JetBrains Mono', ui-monospace, monospace",
 }))
 
 let leaveWidth = 0
@@ -350,18 +314,6 @@ let boxKey = ref(0)
 let analysisDark = uiStore.dark
 
 // ── Derived analytics (all computed from real API data — nothing fabricated) ──
-
-function buildSparkline(values, w = 68, h = 28) {
-  if (!values || values.length < 2) return {line: '', area: ''}
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = (max - min) || 1
-  const stepX = w / (values.length - 1)
-  const pts = values.map((v, i) => [i * stepX, h - ((v - min) / range) * (h - 4) - 2])
-  const line = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')
-  const area = line + ` L${w},${h} L0,${h} Z`
-  return {line, area}
-}
 
 function weekOverWeek(arr) {
   if (!arr || arr.length < 14) return null
@@ -385,9 +337,6 @@ function deltaLabel(d) {
   return `${d.pct > 0 ? '+' : ''}${d.pct}%`
 }
 
-const receiveSpark = computed(() => buildSparkline(receiveSeries.value.slice(-7).map(d => d.total)))
-const sendSpark = computed(() => buildSparkline(sendSeries.value.slice(-7).map(d => d.total)))
-const userSpark = computed(() => buildSparkline(userSeries.value.slice(-7).map(d => d.total)))
 
 const receiveDelta = computed(() => weekOverWeek(receiveSeries.value))
 const sendDelta = computed(() => weekOverWeek(sendSeries.value))
@@ -396,8 +345,6 @@ const userDelta = computed(() => weekOverWeek(userSeries.value))
 const receiveLast7Total = computed(() => receiveSeries.value.slice(-7).reduce((s, d) => s + d.total, 0))
 const userLast7Total = computed(() => userSeries.value.slice(-7).reduce((s, d) => s + d.total, 0))
 
-const accountNormalPct = computed(() => accountTotal.value ? Math.round(numberCount.normalAccountTotal / accountTotal.value * 100) : 0)
-const accountDelPct = computed(() => accountTotal.value ? Math.max(0, 100 - accountNormalPct.value) : 0)
 
 const avgSend7 = computed(() => {
   const arr = sendSeries.value.slice(-7)
@@ -418,9 +365,9 @@ function senderBarWidth(item) {
   return Math.round(item.value / senderMaxValue.value * 100)
 }
 
+// The leading sender carries the accent; the rest are one neutral step.
 function sourceColor(idx) {
-  const palette = topic.value.categoryPalette
-  return palette[idx % palette.length]
+  return idx === 0 ? 'var(--psg-primary)' : 'var(--psg-border-strong)'
 }
 
 // ── Data loading ──
@@ -662,13 +609,15 @@ function createIncreaseLine() {
       },
       axisLine: {
         lineStyle: {
-          color: topic.value.axisColor,
+          color: topic.value.crossColor,
           width: 1,
           type: 'solid'
         }
       },
       axisLabel: {
         color: topic.value.axisColor,
+        fontFamily: topic.value.monoFont,
+        fontSize: 11,
         formatter: function (value, index) {
           if (index === 0) {
             return '  ' + value;
@@ -684,6 +633,8 @@ function createIncreaseLine() {
       type: 'value',
       axisLabel: {
         color: topic.value.axisColor,
+        fontFamily: topic.value.monoFont,
+        fontSize: 11,
         margin: 8,
       },
       boundaryGap: [0, 0.15],
@@ -698,7 +649,7 @@ function createIncreaseLine() {
       splitLine: {
         show: true,
         lineStyle: {
-          type: 'dashed',
+          type: 'solid',
           color: topic.value.scaleLineColor
         }
       }
@@ -718,19 +669,10 @@ function createIncreaseLine() {
         },
         lineStyle: {
           color: topic.value.accentGreen,
-          width: 2.5
+          width: 2
         },
         areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            {
-              offset: 0,
-              color: `rgba(${topic.value.accentGreenRgb}, 0.28)`
-            },
-            {
-              offset: 1,
-              color: `rgba(${topic.value.accentGreenRgb}, 0.02)`
-            }
-          ])
+          color: `rgba(${topic.value.accentGreenRgb}, 0.06)`
         },
       }
     ]
@@ -787,11 +729,12 @@ function createEmailColumnChart() {
       data: [t('emailReceived'), t('emailSent')],
       top: '0',
       right: '0',
-      itemWidth: 10,
-      itemHeight: 10,
+      itemWidth: 8,
+      itemHeight: 8,
       icon: 'circle',
       textStyle: {
-        color: topic.value.color,
+        color: topic.value.axisColor,
+        fontSize: 12,
       }
     },
     grid: {
@@ -810,12 +753,14 @@ function createEmailColumnChart() {
       axisLine: {
         show: true,
         lineStyle: {
-          color: topic.value.axisColor,
+          color: topic.value.crossColor,
           width: 1,
         }
       },
       axisLabel: {
-        color: topic.value.axisColor
+        color: topic.value.axisColor,
+        fontFamily: topic.value.monoFont,
+        fontSize: 11
       }
     },
     yAxis: {
@@ -828,14 +773,16 @@ function createEmailColumnChart() {
         show: true,
         lineStyle: {
           color: topic.value.splitLineColor,
-          type: 'dashed',
+          type: 'solid',
         }
       },
       axisLine: {
         show: false
       },
       axisLabel: {
-        color: topic.value.axisColor
+        color: topic.value.axisColor,
+        fontFamily: topic.value.monoFont,
+        fontSize: 11
       },
       type: 'value',
       boundaryGap: [0, 0.15],
@@ -844,12 +791,12 @@ function createEmailColumnChart() {
       {
         name: t('emailReceived'),
         type: 'bar',
-        barGap: '30%',
-        barMaxWidth: 16,
+        barGap: '20%',
+        barMaxWidth: 14,
         data: rWindow.map(d => d.total),
         itemStyle: {
           color: topic.value.accentGreen,
-          borderRadius: [3, 3, 0, 0]
+          borderRadius: [2, 2, 0, 0]
         }
       },
       {
@@ -859,7 +806,7 @@ function createEmailColumnChart() {
         data: sWindow.map(d => d.total),
         itemStyle: {
           color: topic.value.accentSecondary,
-          borderRadius: [3, 3, 0, 0]
+          borderRadius: [2, 2, 0, 0]
         }
       }
     ]
@@ -881,11 +828,11 @@ function createEmailColumnChart() {
 .page-outer {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 24px 32px 56px;
+  padding: 40px 32px 64px;
   display: grid;
-  gap: 20px;
+  gap: 24px;
   grid-auto-rows: min-content;
-  @media (max-width: 960px)  { padding: 20px 24px 40px; gap: 14px; }
+  @media (max-width: 960px)  { padding: 24px 24px 40px; gap: 16px; }
   @media (max-width: 640px)  { padding: 16px 16px 32px; }
 }
 
@@ -895,7 +842,6 @@ function createEmailColumnChart() {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 16px;
   flex-wrap: wrap;
 
   /* Phones: stack the title and the toolbar (this scoped rule outranks the
@@ -904,22 +850,25 @@ function createEmailColumnChart() {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-    padding-bottom: 4px;
   }
 }
 
 .page-title {
   margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -.02em;
+  font-family: var(--psg-font-display);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -.01em;
+  line-height: 40px;
   color: var(--psg-text);
+  @media (max-width: 640px) { font-size: 26px; line-height: 32px; }
 }
 
 .page-subtitle {
   margin: 4px 0 0;
   font-size: 14px;
   color: var(--psg-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .header-toolbar {
@@ -931,7 +880,7 @@ function createEmailColumnChart() {
 
 .range-toggle {
   display: inline-flex;
-  padding: 3px;
+  padding: 2px;
   gap: 2px;
   background: var(--psg-surface-muted);
   border: 0;
@@ -942,13 +891,15 @@ function createEmailColumnChart() {
   appearance: none;
   border: none;
   background: transparent;
-  padding: 5px 12px;
+  height: 28px;
+  padding: 0 12px;
+  font-family: var(--psg-font-mono);
   font-size: 12px;
-  font-weight: 600;
-  color: var(--psg-text-secondary);
+  font-weight: 400;
+  color: var(--psg-text-muted);
   border-radius: var(--psg-radius-xs);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
 
   &:hover { color: var(--psg-text); }
   &.active {
@@ -959,24 +910,23 @@ function createEmailColumnChart() {
 }
 
 .icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 0;
+  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-sm);
-  background: var(--psg-surface-muted);
-  color: var(--psg-text-secondary);
+  background: var(--psg-surface);
+  color: var(--psg-text-muted);
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  transition: border-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease), background-color var(--psg-dur-fast) var(--psg-ease);
 
   @media (hover: hover) {
     &:hover {
       border-color: var(--psg-border-strong);
       color: var(--psg-text);
-      background: var(--psg-surface-active);
     }
   }
   &:disabled { opacity: 0.5; cursor: default; }
@@ -988,137 +938,80 @@ function createEmailColumnChart() {
   to { transform: rotate(360deg); }
 }
 
-/* ── Stat cards grid ── */
+/* ── Stat band: four figures in one ruled strip ── */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  @media (max-width: 1200px) { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 767px)  { grid-template-columns: 1fr 1fr; }
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-lg);
+  overflow: hidden;
+  @media (max-width: 1024px) { grid-template-columns: repeat(2, 1fr); }
   @media (max-width: 480px)  { grid-template-columns: 1fr; }
 }
 
 .stat-card {
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-md);
-  border: 0;
-  padding: 22px;
-  transition: border-color 0.16s ease;
-
-  @media (hover: hover) {
-    &:hover { border-color: var(--psg-border-strong); }
-  }
-
-  .stat-row-top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 24px;
+  background: var(--psg-surface);
+  box-shadow: -1px 0 0 var(--psg-border), 0 -1px 0 var(--psg-border);
 
   .stat-label {
     font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0;
+    font-weight: 400;
     color: var(--psg-text-muted);
-  }
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--psg-radius-md);
-    background: var(--psg-surface);
-    color: var(--psg-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
   }
 
   .stat-row-value {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
-    margin-top: 8px;
   }
 
   .stat-value {
     :deep(.el-statistic__number) {
-      font-size: 28px !important;
-      font-weight: 700 !important;
-      letter-spacing: -0.02em !important;
-      line-height: 1.1 !important;
+      font-size: 32px !important;
+      font-weight: 500 !important;
+      line-height: 40px !important;
+      font-variant-numeric: tabular-nums;
+      color: var(--psg-text) !important;
     }
   }
 
   .stat-delta-wrap {
     display: flex;
-    align-items: center;
-    gap: 6px;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 12px;
   }
 
   .stat-delta {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
+    font-family: var(--psg-font-mono);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 500;
 
-    &.delta-up { color: var(--psg-primary); }
+    &.delta-up { color: var(--psg-success); }
     &.delta-down { color: var(--psg-danger); }
     &.delta-flat, &.delta-new { color: var(--psg-text-muted); }
   }
 
-  .delta-arrow {
-    width: 0;
-    height: 0;
-    border-left: 3.5px solid transparent;
-    border-right: 3.5px solid transparent;
-    border-bottom: 5px solid currentColor;
-  }
-  .delta-down .delta-arrow { transform: rotate(180deg); }
-  .delta-flat .delta-arrow, .delta-new .delta-arrow { display: none; }
+  .delta-arrow { display: none; }
 
   .delta-caption {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--psg-text-muted);
   }
-
-  .stat-visual {
-    margin: 12px 0 10px;
-  }
-
-  .spark {
-    width: 100%;
-    height: 28px;
-    display: block;
-  }
-  .spark-area { fill: var(--psg-primary-muted); stroke: none; }
-  .spark-line {
-    fill: none;
-    stroke: var(--psg-primary);
-    stroke-width: 1.75;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .composition-bar {
-    display: flex;
-    height: 6px;
-    border-radius: var(--psg-radius-xs);
-    overflow: hidden;
-    background: var(--psg-surface-active);
-  }
-  .comp-normal { background: var(--psg-primary); height: 100%; }
-  .comp-del { background: var(--psg-text-muted); height: 100%; opacity: 0.45; }
 
   .stat-breakdown {
     display: flex;
     gap: 12px;
+    font-family: var(--psg-font-mono);
     font-size: 12px;
-    color: var(--psg-text-secondary);
+    color: var(--psg-text-muted);
+    font-variant-numeric: tabular-nums;
   }
 
   .bd-normal { color: var(--psg-text-secondary); }
@@ -1128,16 +1021,19 @@ function createEmailColumnChart() {
 /* ── Chart cards ── */
 .chart-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  @media (max-width: 900px) { grid-template-columns: 1fr; }
+  @media (max-width: 900px) { grid-template-columns: 1fr !important; }
+
+  &--lead-narrow { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  &--lead-wide { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 }
 
 .chart-card {
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-md);
-  border: 0;
-  padding: 20px;
+  background: var(--psg-surface);
+  border-radius: var(--psg-radius-lg);
+  border: 1px solid var(--psg-border);
+  padding: 20px 24px 24px;
 
   .chart-head {
     display: flex;
@@ -1145,116 +1041,74 @@ function createEmailColumnChart() {
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 16px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--psg-border);
   }
 
   .chart-title {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 500;
     color: var(--psg-text);
     margin: 0;
   }
 
   .chart-subtitle {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--psg-text-muted);
-    margin: 4px 0 0;
+    margin: 2px 0 0;
   }
 
   .chart-area {
-    height: 280px;
-    @media (max-width: 640px) { height: 220px; }
-    @media (max-width: 420px) { height: 180px; }
+    height: 240px;
+    @media (max-width: 640px) { height: 200px; }
+
+    &--main {
+      height: 320px;
+      @media (max-width: 640px) { height: 240px; }
+    }
   }
 
   .chart-empty {
-    height: 280px;
+    height: 240px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     color: var(--psg-text-muted);
 
     span {
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 400;
     }
-
-    @media (max-width: 640px) { height: 220px; }
-    @media (max-width: 420px) { height: 180px; }
   }
 }
 
-/* ── Email source: donut + ranked list ── */
+/* ── Email source: ranked list with thin bars ── */
 .source-body {
   display: flex;
-  align-items: center;
-  gap: 20px;
-
-  @media (max-width: 640px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.source-donut {
-  position: relative;
-  width: 168px;
-  height: 168px;
-  flex-shrink: 0;
-
-  @media (max-width: 640px) { align-self: center; }
-
-  .chart-area { width: 100%; height: 100%; }
-}
-
-.donut-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  pointer-events: none;
-  text-align: center;
-}
-
-.donut-total {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--psg-text);
-  letter-spacing: -0.01em;
-}
-
-.donut-caption {
-  font-size: 12px;
-  color: var(--psg-text-muted);
-  max-width: 96px;
 }
 
 .source-list {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  gap: 12px;
   min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .source-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .source-rank {
   width: 16px;
   flex-shrink: 0;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
+  font-family: var(--psg-font-mono);
+  font-size: 12px;
   color: var(--psg-text-muted);
 }
 
@@ -1271,7 +1125,7 @@ function createEmailColumnChart() {
 }
 
 .source-name {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--psg-text);
   white-space: nowrap;
   overflow: hidden;
@@ -1279,6 +1133,7 @@ function createEmailColumnChart() {
 }
 
 .source-pct {
+  font-family: var(--psg-font-mono);
   font-size: 12px;
   color: var(--psg-text-muted);
   flex-shrink: 0;
@@ -1286,29 +1141,29 @@ function createEmailColumnChart() {
 }
 
 .source-bar-track {
-  height: 5px;
-  border-radius: var(--psg-radius-xs);
-  background: var(--psg-surface-active);
+  height: 4px;
+  border-radius: 2px;
+  background: var(--psg-surface-muted);
   overflow: hidden;
 }
 
 .source-bar-fill {
   height: 100%;
-  border-radius: var(--psg-radius-xs);
-  transition: width 0.5s ease;
+  border-radius: 2px;
+  transition: width var(--psg-dur-enter) var(--psg-ease);
 }
 
 .source-value {
   flex-shrink: 0;
-  min-width: 30px;
+  min-width: 32px;
   text-align: right;
+  font-family: var(--psg-font-mono);
   font-size: 12px;
-  font-weight: 600;
   color: var(--psg-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Today's sending: progress ring ── */
+/* ── Today's sending: one figure against the seven-day average ── */
 .chart-card--ring {
   display: flex;
   flex-direction: column;
@@ -1317,82 +1172,83 @@ function createEmailColumnChart() {
 .ring-body {
   flex: 1;
   display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
 }
 
-.ring-visual {
-  --ring-pct: 0;
-  position: relative;
-  width: 132px;
-  height: 132px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: conic-gradient(var(--psg-primary) calc(var(--ring-pct) * 1%), var(--psg-surface-active) 0);
-  transition: background 0.6s ease;
-}
-
-.ring-inner {
-  position: absolute;
-  inset: 12px;
-  border-radius: 50%;
-  background: var(--psg-surface);
+.ring-figure {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .ring-value {
   :deep(.el-statistic__number) {
-    font-size: 26px !important;
-    font-weight: 700 !important;
+    font-size: 48px !important;
+    font-weight: 400 !important;
+    line-height: 52px !important;
+    font-family: var(--psg-font-display);
     color: var(--psg-text) !important;
+    font-variant-numeric: tabular-nums;
   }
 }
 
 .ring-label {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--psg-text-muted);
-  font-weight: 500;
+}
+
+.ring-track {
+  --ring-pct: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--psg-surface-muted);
+  overflow: hidden;
+}
+
+.ring-fill {
+  width: calc(var(--ring-pct) * 1%);
+  height: 100%;
+  border-radius: 3px;
+  background: var(--psg-primary);
+  transition: width var(--psg-dur-enter) var(--psg-ease);
 }
 
 .ring-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  flex: 1;
-  min-width: 140px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--psg-border);
 }
 
 .ring-meta-row {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .ring-meta-label {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--psg-text-muted);
-  letter-spacing: 0;
 }
 
 .ring-meta-value {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 500;
   color: var(--psg-text);
+  font-variant-numeric: tabular-nums;
 
-  &.delta-up { color: var(--psg-primary); }
+  &.delta-up { color: var(--psg-success); }
   &.delta-down { color: var(--psg-danger); }
 }
 
-/* ── Operational insights ── */
+/* ── Operational insights: a short ruled table of three ── */
 .insights-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 0;
   @media (max-width: 767px) { grid-template-columns: 1fr; }
 }
 
@@ -1400,31 +1256,40 @@ function createEmailColumnChart() {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 14px;
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-sm);
+  padding: 4px 24px;
+  background: transparent;
   border: 0;
+
+  &:first-child { padding-left: 0; }
+  & + & { border-left: 1px solid var(--psg-border); }
+
+  @media (max-width: 767px) {
+    padding: 12px 0;
+    & + & { border-left: 0; border-top: 1px solid var(--psg-border); }
+  }
 }
 
 .insight-label {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--psg-text-muted);
 }
 
 .insight-value {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 32px;
   color: var(--psg-text);
   font-variant-numeric: tabular-nums;
 }
 
 .insight-delta {
+  font-family: var(--psg-font-mono);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--psg-text-muted);
 
-  &.delta-up { color: var(--psg-primary); }
+  &.delta-up { color: var(--psg-success); }
   &.delta-down { color: var(--psg-danger); }
   &.delta-flat { color: var(--psg-text-muted); }
 }

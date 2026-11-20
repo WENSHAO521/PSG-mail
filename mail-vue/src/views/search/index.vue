@@ -295,7 +295,7 @@ function openResult(item) {
 .recent-block { display: flex; flex-direction: column; gap: 8px; }
 .recent-head {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 11px; font-weight: 500;
   color: var(--psg-text-muted);
 }
 .recent-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -349,7 +349,7 @@ function openResult(item) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  &.unread { font-weight: 700; color: var(--psg-text); }
+  &.unread { font-weight: 500; color: var(--psg-text); }
 }
 
 .result-time { font-size: 11px; color: var(--psg-text-secondary); flex-shrink: 0; }
@@ -390,7 +390,7 @@ function openResult(item) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  &.unread { font-weight: 700; color: var(--psg-text); }
+  &.unread { font-weight: 500; color: var(--psg-text); }
 }
 
 .result-snippet {

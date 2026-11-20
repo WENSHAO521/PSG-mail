@@ -326,8 +326,7 @@ function formatDate(iso) {
 h2 {
   margin: 0 0 12px;
   font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -.01em;
+  font-weight: 500;
   color: var(--psg-text);
 }
 
@@ -356,10 +355,11 @@ h2 {
 
   h1 {
     margin: 0;
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -.02em;
-    line-height: 1.15;
+    font-family: var(--psg-font-display);
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -.01em;
+    line-height: 40px;
     color: var(--psg-text);
   }
 
@@ -383,7 +383,7 @@ h2 {
   border-radius: var(--psg-radius-full);
   background: var(--psg-surface-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
 }
 
@@ -400,7 +400,7 @@ h2 {
   background: var(--psg-primary);
   color: var(--psg-on-primary);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
   transition: background .14s ease;
 
@@ -429,11 +429,11 @@ h2 {
 
   > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 
-  strong { font-size: 14px; font-weight: 700; color: var(--psg-text); line-height: 1.35; }
+  strong { font-size: 14px; font-weight: 500; color: var(--psg-text); line-height: 1.35; }
 
   span { font-size: 13px; color: var(--psg-text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
 
-  a { color: var(--psg-primary); font-weight: 600; text-decoration: none; }
+  a { color: var(--psg-primary); font-weight: 500; text-decoration: none; }
   a:hover { text-decoration: underline; }
 }
 
@@ -447,7 +447,7 @@ h2 {
   background: var(--psg-surface);
   color: var(--psg-primary);
   font-size: 13px !important;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 /* ── Platform list ── */
@@ -487,7 +487,7 @@ h2 {
   align-items: center;
   gap: 8px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
 }
 
@@ -497,7 +497,7 @@ h2 {
   background: var(--psg-primary-muted);
   color: var(--psg-primary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .vpn-row-desc {
@@ -542,7 +542,7 @@ h2 {
   width: 64px;
   flex-shrink: 0;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text-muted);
 }
 
@@ -559,7 +559,7 @@ h2 {
   color: var(--psg-text);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: none;
   cursor: pointer;
   transition: background .14s ease, color .14s ease;
@@ -595,7 +595,7 @@ h2 {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-muted);
   text-decoration: none;
 

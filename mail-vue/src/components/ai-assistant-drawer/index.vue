@@ -215,7 +215,7 @@ async function respondConfirm(approve) {
 }
 
 .ai-confirm-title {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 13px;
   margin-bottom: 8px;
   color: var(--psg-text);
@@ -242,7 +242,7 @@ async function respondConfirm(approve) {
 }
 
 .ai-confirm-arg-key {
-  font-weight: 600;
+  font-weight: 500;
   flex-shrink: 0;
 }
 

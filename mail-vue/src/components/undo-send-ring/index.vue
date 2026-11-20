@@ -58,7 +58,7 @@ text {
   fill: var(--el-color-primary);
   font-size: 13px;
   font-style: normal; /* EP renders the icon slot inside an <i> */
-  font-weight: 700;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 </style>

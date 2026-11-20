@@ -158,7 +158,7 @@ onBeforeUnmount(() => ro?.disconnect())
 
 .mb-count {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-primary);
   font-variant-numeric: tabular-nums;
   margin-left: 2px;
@@ -184,11 +184,11 @@ onBeforeUnmount(() => ro?.disconnect())
   &.active {
     background: var(--psg-primary-muted-strong);
     color: color-mix(in srgb, var(--psg-primary) 80%, var(--psg-text));
-    font-weight: 700;
+    font-weight: 500;
   }
 }
 
-.mb-more { font-weight: 700; color: var(--psg-text); }
+.mb-more { font-weight: 500; color: var(--psg-text); }
 
 .mb-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .mb-dot--menu { display: inline-block; margin-right: 8px; }

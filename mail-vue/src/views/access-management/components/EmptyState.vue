@@ -53,7 +53,7 @@ defineEmits(['cta'])
 .empty-title {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
 }
 

@@ -13,7 +13,7 @@
 
     <ul v-if="notes" class="wn-list">
       <li v-for="item in notes.items" :key="item.icon" class="wn-item">
-        <span class="wn-icon"><Icon :icon="item.icon" width="20" height="20" /></span>
+        <span class="wn-icon"><Icon :icon="item.icon" width="18" height="18" /></span>
         <div>
           <strong>{{ item[lang].title }}</strong>
           <span>{{ item[lang].desc }}</span>
@@ -44,33 +44,33 @@ onMounted(() => setTimeout(showWhatsNewIfUpdated, 1200))
 
 <style lang="scss" scoped>
 .wn-head { display: flex; align-items: center; gap: 12px; }
-.wn-logo { width: 28px; height: 34px; color: var(--psg-primary); }
-.wn-title { font-size: 18px; font-weight: 700; color: var(--psg-text); line-height: 1.2; }
-.wn-sub { margin-top: 2px; font-size: 12px; color: var(--psg-text-muted); }
+.wn-logo { width: 20px; height: 24px; color: var(--psg-text); }
+.wn-title { font-family: var(--psg-font-display); font-size: 22px; font-weight: 400; color: var(--psg-text); line-height: 28px; }
+.wn-sub { margin-top: 2px; font-family: var(--psg-font-mono); font-size: 12px; color: var(--psg-text-muted); }
 
-.wn-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+/* A short changelog: rows on hairlines, not tiles. */
+.wn-list { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
 
 .wn-item {
   display: flex;
   gap: 12px;
-  padding: 14px;
-  border-radius: var(--psg-radius-lg);
-  background: var(--psg-surface-muted);
+  padding: 16px 0;
+  border-top: 1px solid var(--psg-border);
 
-  > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  strong { font-size: 14px; color: var(--psg-text); }
-  span { font-size: 13px; line-height: 1.5; color: var(--psg-text-secondary); }
+  &:last-child { border-bottom: 1px solid var(--psg-border); }
+
+  > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  strong { font-size: 14px; font-weight: 500; color: var(--psg-text); }
+  span { font-size: 13px; line-height: 20px; color: var(--psg-text-secondary); }
 }
 
 .wn-icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
-  border-radius: var(--psg-radius-md);
-  background: var(--psg-primary-muted);
-  color: var(--psg-primary);
+  color: var(--psg-text-muted);
 }
 
 .wn-btn { width: 100%; }

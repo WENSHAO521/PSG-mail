@@ -46,7 +46,7 @@
                 </div>
                 <div>
                   <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
-                             :active-text="$t('enabled')" :inactive-text="$t('disabled')" v-model="setting.register"/>
+ v-model="setting.register"/>
                 </div>
               </div>
               <div class="setting-item">
@@ -56,7 +56,7 @@
                 </div>
                 <div>
                   <el-switch @change="change" :before-change="beforeChange" :active-value="1" :inactive-value="0"
-                             :active-text="$t('enabled')" :inactive-text="$t('disabled')" v-model="setting.loginDomain"/>
+ v-model="setting.loginDomain"/>
                 </div>
               </div>
               <div class="setting-item">
@@ -87,7 +87,7 @@
                 </div>
                 <div>
                   <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
-                             :active-text="$t('enabled')" :inactive-text="$t('disabled')" v-model="setting.addEmail"/>
+ v-model="setting.addEmail"/>
                 </div>
               </div>
               <div class="setting-item">
@@ -100,7 +100,7 @@
                 </div>
                 <div>
                   <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
-                             :active-text="$t('enabled')" :inactive-text="$t('disabled')" v-model="setting.manyEmail"/>
+ v-model="setting.manyEmail"/>
                 </div>
               </div>
               <div class="setting-item">
@@ -113,7 +113,7 @@
                 </div>
                 <div>
                   <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
-                             :active-text="$t('enabled')" :inactive-text="$t('disabled')" v-model="setting.syncDelete"/>
+ v-model="setting.syncDelete"/>
                 </div>
               </div>
               <div class="setting-item">
@@ -412,7 +412,7 @@
           </div>
 
           <div v-show="activeSettingSection === 'push'" class="settings-card">
-            <div class="card-title">通知与转发</div>
+            <div class="card-title">{{ $t('sysPushTitle') }}</div>
             <div class="card-content">
               <div class="setting-item">
                 <div><span>{{ $t('tgBot') }}</span></div>
@@ -557,7 +557,7 @@
           </div>
 
           <div v-show="activeSettingSection === 'ai'" class="settings-card">
-            <div class="card-title">AI 与智能识别</div>
+            <div class="card-title">{{ $t('sysAiTitle') }}</div>
             <div class="card-content">
               <div class="setting-item">
                 <div><span>{{ $t('aiServiceStatus') }}</span><p>{{ $t('aiServiceStatusDesc') }}</p></div>
@@ -1402,10 +1402,10 @@ const systemSettingNav = computed(() => [
   {key: 'email', label: t('emailSetting'), icon: 'psg:mail', desc: t('sysEmailDesc')},
   {key: 'mail-provider', label: t('mailSendingService'), icon: 'psg:activity', desc: t('sysMailProviderDesc')},
   {key: 'storage', label: t('oss'), icon: 'psg:database', desc: t('sysStorageDesc')},
-  {key: 'push', label: '通知与转发', icon: 'psg:send', desc: t('sysPushDesc')},
+  {key: 'push', label: t('sysPushTitle'), icon: 'psg:send', desc: t('sysPushDesc')},
   {key: 'verify', label: t('turnstileSetting'), icon: 'psg:shield', desc: t('sysVerifyDesc')},
   {key: 'notice', label: t('noticeTitle'), icon: 'psg:megaphone', desc: t('sysNoticeDesc')},
-  {key: 'ai', label: 'AI 与智能识别', icon: 'psg:sparkles', desc: t('sysAiDesc')},
+  {key: 'ai', label: t('sysAiTitle'), icon: 'psg:sparkles', desc: t('sysAiDesc')},
 ])
 const activeSettingMeta = computed(() => {
   return systemSettingNav.value.find(item => item.key === activeSettingSection.value) || systemSettingNav.value[0]
@@ -2221,12 +2221,12 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 
   .loading-show {
-    transition: all 200ms ease 200ms;
+    transition: background-color 200ms ease 200ms;
     opacity: 1;
   }
 
   .loading-hide {
-    transition: all 200ms;
+    transition: background-color 200ms;
     pointer-events: none;
     opacity: 0;
   }
@@ -2243,7 +2243,7 @@ function editSetting(settingForm, refreshStatus = true) {
   .scroll-body {
     max-width: 1080px;
     margin: 0 auto;
-    padding: 28px 32px 48px;
+    padding: 40px 32px 64px;
 
     @media (max-width: 960px)  { padding: 14px 16px 32px; }
     @media (max-width: 640px)  { padding: 12px 12px 28px; }
@@ -2253,8 +2253,8 @@ function editSetting(settingForm, refreshStatus = true) {
 /* ── Shell: sidebar + panel ── */
 .settings-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 40px;
+  grid-template-columns: 208px minmax(0, 1fr);
+  gap: 48px;
   align-items: start;
 
   @media (max-width: 820px) {
@@ -2294,35 +2294,48 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .settings-nav-item {
   width: 100%;
-  min-height: 42px;
+  position: relative;
+  min-height: 34px;
   margin: 0;
-  padding: 0 12px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   border: none;
-  border-radius: var(--psg-radius-md);
+  border-radius: var(--psg-radius-sm);
   background: transparent;
-  color: var(--psg-text);
+  color: var(--psg-text-secondary);
   font-family: var(--psg-font-sans);
   font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
+  font-weight: 400;
+  text-align: left;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
 
   &:hover {
     background: var(--psg-surface-muted);
     color: var(--psg-text);
   }
 
-  &.active {
-    background: var(--psg-surface-muted);
-    color: var(--psg-text);
-    font-weight: 700;
+  /* Margin mark beside the open section. */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
+    background: transparent;
+  }
 
-    .settings-nav-icon { color: var(--psg-primary); }
+  &.active {
+    background: var(--psg-surface-active);
+    color: var(--psg-text);
+    font-weight: 500;
+
+    &::before { background: var(--psg-primary); }
+    .settings-nav-icon { color: var(--psg-text); }
   }
 
   @media (max-width: 820px) {
@@ -2338,21 +2351,21 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 .settings-panel-header {
-  padding: 0 0 20px;
+  padding: 0 0 24px;
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
 
   h1 {
-    margin: 0 0 6px;
+    margin: 0 0 4px;
     color: var(--psg-text);
-    font-family: var(--psg-font-sans);
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -.02em;
-    line-height: 1.2;
-    @media (max-width: 640px) { font-size: 22px; }
+    font-family: var(--psg-font-display);
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -.01em;
+    line-height: 40px;
+    @media (max-width: 640px) { font-size: 26px; line-height: 32px; }
   }
 
   p {
@@ -2360,8 +2373,8 @@ function editSetting(settingForm, refreshStatus = true) {
     max-width: 38rem;
     color: var(--psg-text-secondary);
     font-size: 14px;
-    font-weight: 500;
-    line-height: 1.4;
+    font-weight: 400;
+    line-height: 20px;
   }
 
   @media (max-width: 520px) {
@@ -2386,8 +2399,8 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .settings-save-button {
   flex: 0 0 auto;
-  min-width: 68px;
-  height: 42px !important;
+  min-width: 72px;
+  height: 36px !important;
   border-radius: var(--psg-radius-sm) !important;
   margin: 0 !important;
 }
@@ -2436,7 +2449,7 @@ function editSetting(settingForm, refreshStatus = true) {
     margin: 0 0 2px;
     color: var(--psg-text);
     font-size: 14.5px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 1.3;
   }
 
@@ -2464,7 +2477,7 @@ function editSetting(settingForm, refreshStatus = true) {
     margin-bottom: 8px;
     color: var(--psg-text);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
   }
 }
 
@@ -2542,7 +2555,7 @@ function editSetting(settingForm, refreshStatus = true) {
   span:first-child {
     color: var(--psg-text);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
   }
 }
 
@@ -2551,7 +2564,7 @@ function editSetting(settingForm, refreshStatus = true) {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .appearance-preview {
@@ -2574,8 +2587,7 @@ function editSetting(settingForm, refreshStatus = true) {
   margin-bottom: 12px;
   color: var(--psg-text-secondary);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-weight: 500;
 }
 
 .preview-frame {
@@ -2596,7 +2608,7 @@ function editSetting(settingForm, refreshStatus = true) {
   font-family: var(--psg-font-sans);
   font-variant-numeric: tabular-nums;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0;
 }
 
@@ -2617,7 +2629,7 @@ function editSetting(settingForm, refreshStatus = true) {
 .preview-title {
   color: var(--psg-text);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   margin-bottom: 4px;
   overflow: hidden;
   white-space: nowrap;
@@ -2647,7 +2659,7 @@ function editSetting(settingForm, refreshStatus = true) {
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .bot-verify-select {
@@ -2682,7 +2694,7 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .provider-config-label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text);
   margin-bottom: 6px;
 }
@@ -2705,7 +2717,7 @@ function editSetting(settingForm, refreshStatus = true) {
   flex-direction: column;
   gap: 4px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text);
 }
 
@@ -2713,19 +2725,20 @@ function editSetting(settingForm, refreshStatus = true) {
   padding: 4px 0;
   display: flex;
   flex-direction: column;
-  background: var(--psg-surface-muted);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-lg);
 }
 
 .setting-item {
   display: grid;
   grid-template-columns: minmax(190px, 1fr) minmax(150px, auto);
-  min-height: 80px;
-  gap: 20px;
-  padding: 14px 22px;
+  min-height: 72px;
+  gap: 24px;
+  padding: 16px 20px;
   align-items: center;
-  border-bottom: 1px solid color-mix(in srgb, var(--psg-border) 80%, var(--psg-surface));
-  font-weight: 600;
+  border-bottom: 1px solid var(--psg-border);
+  font-weight: 400;
 
   > div:first-child {
     display: flex;
@@ -2737,20 +2750,21 @@ function editSetting(settingForm, refreshStatus = true) {
     span {
       color: var(--psg-text);
       font-size: 14px;
-      line-height: 1.35;
+      font-weight: 500;
+      line-height: 20px;
     }
 
     p {
       flex-basis: 100%;
-      margin: 1px 0 0;
-      color: var(--psg-text-secondary);
+      margin: 2px 0 0;
+      color: var(--psg-text-muted);
       font-size: 13px;
-      font-weight: 550;
-      line-height: 1.35;
+      font-weight: 400;
+      line-height: 18px;
 
       &.danger-warn {
         color: var(--psg-danger);
-        font-weight: 600;
+        font-weight: 500;
         margin-top: 6px;
       }
     }
@@ -2762,7 +2776,7 @@ function editSetting(settingForm, refreshStatus = true) {
     justify-content: flex-end;
     align-items: center;
     color: var(--psg-text);
-    font-weight: 600;
+    font-weight: 400;
     text-align: right;
   }
 
@@ -2790,8 +2804,8 @@ function editSetting(settingForm, refreshStatus = true) {
 .setting-item > div:first-child p.usage-danger { color: var(--psg-danger); }
 
 .r2domain-item {
-  min-height: 80px;
-  padding: 14px 20px;
+  min-height: 72px;
+  padding: 16px 20px;
   display: grid;
   grid-template-columns: minmax(190px, 1fr) minmax(150px, auto);
   gap: 20px;
@@ -2807,7 +2821,7 @@ function editSetting(settingForm, refreshStatus = true) {
     span {
       color: var(--psg-text);
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
       line-height: 1.35;
     }
   }
@@ -2964,7 +2978,7 @@ function editSetting(settingForm, refreshStatus = true) {
       padding-right: 5px;
       position: relative;
       font-size: 16px;
-      font-weight: bold;;
+      font-weight: 500;;
     }
   }
 }
@@ -3125,7 +3139,7 @@ function editSetting(settingForm, refreshStatus = true) {
   padding: 4px 8px;
   border-radius: var(--psg-radius-xs);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
 }
 .ai-service-status.is-ready { background: var(--psg-primary-muted); color: var(--psg-primary); }
 .ai-service-status.is-unavailable { background: var(--psg-danger-muted); color: var(--psg-danger); }

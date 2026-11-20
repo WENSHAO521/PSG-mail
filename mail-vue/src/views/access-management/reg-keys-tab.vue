@@ -424,27 +424,25 @@ defineExpose({ openCreate: openAdd })
 
 .summary-line {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-secondary);
   padding: 0 2px;
 }
 
 .toolbar {
-  padding: 8px 12px;
-  min-height: 44px;
+  padding: 0;
+  min-height: 40px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-md);
+  background: transparent;
+  border-radius: 0;
   border: 0;
 
   :deep(.el-input__wrapper) {
     height: 30px;
-    box-shadow: none !important;
-    border: 0;
-    background: var(--psg-surface-muted);
+    min-height: 32px;
     border-radius: var(--psg-radius-sm);
     transition: border-color 0.12s;
     &:hover { border-color: var(--psg-border-strong); }
@@ -469,7 +467,7 @@ defineExpose({ openCreate: openAdd })
     flex-shrink: 0;
     padding: 5px 12px;
     font-size: 12.5px;
-    font-weight: 600;
+    font-weight: 500;
     font-family: var(--psg-font-sans);
     color: var(--psg-text-secondary);
     background: var(--psg-surface-muted);
@@ -522,7 +520,7 @@ defineExpose({ openCreate: openAdd })
       }
 
       .code {
-        font-weight: 700;
+        font-weight: 500;
         font-size: 14px;
         white-space: nowrap;
         overflow: hidden;
@@ -585,13 +583,13 @@ defineExpose({ openCreate: openAdd })
 }
 
 .loading-show {
-  transition: all 200ms ease 200ms;
+  transition: background-color 200ms ease 200ms;
   opacity: 1;
 }
 
 .loading-hide {
   pointer-events: none;
-  transition: all 200ms;
+  transition: background-color 200ms;
   opacity: 0;
 }
 

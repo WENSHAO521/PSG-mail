@@ -73,7 +73,7 @@ const title = computed(() => {
 
 .sqw-title {
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -82,7 +82,7 @@ const title = computed(() => {
 .sqw-numbers {
   margin-top: 4px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
 }
 

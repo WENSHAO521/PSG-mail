@@ -5,31 +5,30 @@
     <span class="empty-text">{{ $t('selectEmailHint') }}</span>
   </div>
 
-  <!-- Email view: surface-card floating card -->
+  <!-- Email view: the reading sheet -->
   <article v-else class="surface-card email-detail">
 
-    <!-- Header: min-h-16, circular icon-buttons -->
+    <!-- Header: one quiet toolbar row over a hairline -->
     <header class="detail-header">
       <div class="header-left">
         <!-- Back button: always visible; clears selection on desktop, triggers mobile nav -->
         <button type="button" class="icon-btn detail-back-btn" :aria-label="$t('back')" :title="$t('back')" @click="handleBack">
-          <Icon icon="psg:chevron-left" width="20" height="20" />
+          <Icon icon="psg:chevron-left" width="18" height="18" />
         </button>
         <button type="button" class="icon-btn" @click="changeStar" v-if="emailStore.contentData.showStar"
                 :aria-label="$t('star')" :title="$t('star')">
-          <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'psg:star'"
-                :width="email.isStar ? 20 : 18" :height="email.isStar ? 20 : 18" />
+          <Icon icon="psg:star" width="18" height="18" :class="{ 'is-starred': email.isStar }" />
         </button>
         <!-- Destructive action: kept last (never adjacent to Back/Reply muscle-memory
              position) and visually quiet at rest — only turns --psg-danger on hover. -->
         <button v-perm="'email:delete'" type="button" class="icon-btn icon-danger" @click="handleDelete"
                 :title="$t('delete')" :aria-label="$t('delete')">
-          <Icon icon="psg:trash" width="19" height="19" />
+          <Icon icon="psg:trash" width="18" height="18" />
         </button>
         <el-tooltip :content="$t('markAsUnread')" placement="bottom"
                     v-if="emailStore.contentData.showUnread">
           <button type="button" class="icon-btn" :aria-label="$t('markAsUnread')" @click="handleMarkAsUnread">
-            <Icon icon="psg:mail" width="19" height="19" />
+            <Icon icon="psg:mail" width="18" height="18" />
           </button>
         </el-tooltip>
       </div>
@@ -37,7 +36,7 @@
         <el-popover placement="bottom-end" width="220" trigger="click">
           <template #reference>
             <button type="button" class="icon-btn" :title="$t('labelApply')" :aria-label="$t('labelApply')">
-              <Icon icon="psg:tag" width="19" height="19" />
+              <Icon icon="psg:tag" width="18" height="18" />
             </button>
           </template>
           <div class="label-popover-list">
@@ -53,8 +52,8 @@
           <button type="button" class="icon-btn" :class="{ 'icon-btn--active': showTranslation }"
                   :aria-label="translateBtnLabel"
                   @click="handleTranslate" :disabled="translating">
-            <Icon v-if="translating" icon="svg-spinners:3-dots-fade" width="20" height="20" />
-            <Icon v-else icon="psg:globe" width="19" height="19" />
+            <Icon v-if="translating" icon="svg-spinners:3-dots-fade" width="18" height="18" />
+            <Icon v-else icon="psg:globe" width="18" height="18" />
           </button>
         </el-tooltip>
         <el-popover placement="bottom-end" width="190" trigger="click">
@@ -75,7 +74,7 @@
         </el-popover>
         <el-dropdown placement="bottom-end" trigger="click" popper-class="reader-menu">
           <button type="button" class="icon-btn" :aria-label="$t('more')" :title="$t('more')">
-            <Icon icon="psg:more" width="19" height="19" />
+            <Icon icon="psg:more" width="18" height="18" />
           </button>
           <template #dropdown>
             <el-dropdown-menu>
@@ -101,12 +100,12 @@
       <el-dropdown ref="mobileMenuRef" class="mobile-reader-menu" placement="bottom-end" trigger="click" popper-class="reader-menu"
                    @visible-change="handleMobileMenuVisible">
         <button type="button" class="icon-btn" :aria-label="$t('more')" :title="$t('more')">
-          <Icon icon="psg:more" width="20" height="20" />
+          <Icon icon="psg:more" width="18" height="18" />
         </button>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item v-if="emailStore.contentData.showStar" @click="changeStar">
-              <Icon :icon="email.isStar ? 'fluent-color:star-16' : 'psg:star'" width="16" height="16" />
+              <Icon icon="psg:star" width="16" height="16" :class="{ 'is-starred': email.isStar }" />
               {{ email.isStar ? $t('unstar') : $t('star') }}
             </el-dropdown-item>
             <el-dropdown-item v-if="emailStore.contentData.showUnread" @click="handleMarkAsUnread">
@@ -992,7 +991,7 @@ function handleDelete() {
   padding-bottom: 12%;
   box-sizing: border-box;
 
-  .empty-icon { color: var(--psg-text-muted); opacity: 0.5; }
+  .empty-icon { color: var(--psg-text-muted); opacity: 0.6; }
 
   .empty-text {
     font-size: 14px;
@@ -1013,17 +1012,18 @@ function handleDelete() {
 
 /* ── Header ──────────────────────────────────────────────── */
 .detail-header {
-  min-height: 72px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 16px;
   background: var(--psg-surface);
+  border-bottom: 1px solid var(--psg-border);
   flex-shrink: 0;
 }
 
-.header-left  { display: flex; align-items: center; gap: 6px; }
-.header-right { display: flex; align-items: center; gap: 6px; }
+.header-left  { display: flex; align-items: center; gap: 2px; }
+.header-right { display: flex; align-items: center; gap: 2px; }
 .mobile-reader-menu { display: none; }
 .mobile-reader-actions { display: none; }
 
@@ -1036,14 +1036,14 @@ function handleDelete() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: var(--psg-radius-sm);
-  background: var(--psg-surface-muted);
+  background: transparent;
   cursor: pointer;
-  color: var(--psg-text);
-  transition: background 0.12s ease, color 0.12s ease;
+  color: var(--psg-text-muted);
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
   flex-shrink: 0;
 
   @media (hover: hover) {
@@ -1072,12 +1072,12 @@ function handleDelete() {
 }
 
 .page-counter {
-  font-family: var(--psg-font-sans);
+  font-family: var(--psg-font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--psg-text-muted);
   white-space: nowrap;
-  margin-left: 6px;
+  margin-left: 8px;
 }
 
 /* ── Scroll ──────────────────────────────────────────────── */
@@ -1091,29 +1091,31 @@ function handleDelete() {
   max-width: none;
   box-sizing: border-box;
   margin: 0;
-  padding: 8px 48px 40px;
-  @media (max-width: 1280px) { padding: 24px 24px 40px; }
+  padding: 32px 48px 48px;
+  @media (max-width: 1280px) { padding: 24px 32px 40px; }
   @media (max-width: 1024px) { padding: 20px 20px 36px; }
   @media (max-width: 767px)  { padding: 16px 16px 32px; }
   @media (max-width: 420px)  { padding: 16px 14px; }
 }
 
 /* ── Subject ─────────────────────────────────────────────── */
+/* Set like the title of a proof: the display serif, regular weight. */
 .email-title {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  line-height: 1.25;
+  max-width: 34em;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 38px;
+  letter-spacing: -.01em;
   color: var(--psg-text);
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   text-wrap: balance;
   word-break: break-word;
-  font-family: var(--psg-font-sans);
-  letter-spacing: -0.01em;
+  font-family: var(--psg-font-display);
 
   @media (max-width: 767px) {
-    font-size: 22px;
-    margin-bottom: 14px;
+    font-size: 24px;
+    line-height: 30px;
+    margin-bottom: 12px;
   }
 }
 
@@ -1125,13 +1127,24 @@ function handleDelete() {
 }
 
 .detail-label-chip {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+  padding: 0 8px;
   border-radius: var(--psg-radius-xs);
-  color: var(--chip-color);
-  background: color-mix(in srgb, var(--chip-color) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--chip-color) 30%, transparent);
+  color: var(--psg-text-secondary);
+  background: var(--psg-surface-muted);
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--chip-color);
+  }
 }
 
 .label-popover-list {
@@ -1152,8 +1165,8 @@ function handleDelete() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 8px;
-  border-radius: var(--psg-radius-sm);
+  padding: 8px;
+  border-radius: var(--psg-radius-xs);
   cursor: pointer;
 
   &:hover { background: var(--psg-surface-muted); }
@@ -1181,11 +1194,14 @@ function handleDelete() {
 }
 
 /* ── Meta card ────────────────────────────────────────────── */
+/* The folio: who, to whom, when — over a hairline, like a proof's slug. */
 .meta-card {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--psg-border);
 
   @media (max-width: 767px) {
     gap: 10px;
@@ -1194,17 +1210,17 @@ function handleDelete() {
 }
 
 .meta-avatar {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  border-radius: var(--psg-radius-md);
+  border-radius: 50%;
 
-  .meta-initial { color: inherit; font-size: 16px; font-weight: 700; line-height: 1; }
+  .meta-initial { color: inherit; font-size: 14px; font-weight: 500; line-height: 1; }
   .meta-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 }
 
@@ -1230,7 +1246,7 @@ function handleDelete() {
 
 .meta-sender-name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
   overflow: hidden;
   white-space: nowrap;
@@ -1240,10 +1256,10 @@ function handleDelete() {
 }
 
 .meta-date {
-  font-family: var(--psg-font-sans);
+  font-family: var(--psg-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 12px;
-  color: var(--psg-text-secondary);
+  color: var(--psg-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
   padding-top: 2px;
@@ -1256,9 +1272,9 @@ function handleDelete() {
   cursor: help;
 }
 .meta-sender-email {
-  font-family: var(--psg-font-sans);
-  font-size: 13px;
-  color: var(--psg-text-secondary);
+  font-family: var(--psg-font-mono);
+  font-size: 12px;
+  color: var(--psg-text-muted);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -1296,7 +1312,7 @@ function handleDelete() {
   font-size: 13px;
   line-height: 1.5;
 
-  &--to { color: var(--psg-text); font-weight: 700; }
+  &--to { color: var(--psg-text); font-weight: 500; }
 }
 
 .email-status-alert {
@@ -1325,26 +1341,28 @@ function handleDelete() {
   &.is-zoomed { overflow-x: auto; overscroll-behavior-x: contain; }
 }
 
+/* Plain-text mail reads as prose, at a book measure. */
 .email-text {
-  font-family: var(--psg-font-mono);
+  font-family: var(--psg-font-sans);
   white-space: pre-wrap; word-break: break-word;
-  margin: 0; font-size: 14px; line-height: 1.8; color: var(--psg-text-secondary);
+  max-width: 68ch;
+  margin: 0; font-size: 15px; line-height: 1.7; color: var(--psg-text);
 }
 
 .thread-box {
   margin-top: 32px; max-width: min(100%, 720px);
   border-top: 1px solid var(--psg-border); padding-top: 12px;
 }
-.thread-head { font-size: 12px; font-weight: 600; color: var(--psg-text-muted); margin-bottom: 6px; }
+.thread-head { font-size: 12px; font-weight: 500; color: var(--psg-text-muted); margin-bottom: 8px; }
 .thread-row {
   display: grid; grid-template-columns: minmax(80px, 160px) 1fr auto; gap: 12px; align-items: center;
-  width: 100%; padding: 8px 10px; border: 0; border-radius: var(--psg-radius-md);
+  width: 100%; padding: 8px; border: 0; border-radius: var(--psg-radius-sm);
   background: transparent; color: var(--psg-text); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
 }
 @media (hover: hover) { .thread-row:hover { background: var(--psg-surface-muted); } }
-.thread-from { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thread-from { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .thread-snippet { color: var(--psg-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.thread-time { color: var(--psg-text-muted); font-size: 12px; white-space: nowrap; }
+.thread-time { color: var(--psg-text-muted); font-family: var(--psg-font-mono); font-size: 12px; white-space: nowrap; }
 @media (max-width: 640px) {
   .thread-row { grid-template-columns: 1fr auto; }
   .thread-snippet { grid-column: 1 / -1; grid-row: 2; }
@@ -1354,19 +1372,19 @@ function handleDelete() {
 
 /* ── Attachments ─────────────────────────────────────────── */
 .att-container {
-  margin-top: 40px; max-width: min(100%, 560px);
-  border: 1px solid var(--psg-border); border-radius: var(--psg-radius-md); padding: 16px;
+  margin-top: 32px; max-width: min(100%, 560px);
+  padding-top: 16px; border-top: 1px solid var(--psg-border);
 }
 .att-header {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
 }
 .att-title-text {
-  font-size: 13px; font-weight: 700; color: var(--psg-text);
-  font-family: var(--psg-font-sans); text-transform: none; letter-spacing: 0;
+  font-size: 13px; font-weight: 500; color: var(--psg-text);
+  font-family: var(--psg-font-sans);
 }
 .att-count {
-  font-size: 12.5px; color: var(--psg-text-muted);
-  font-family: var(--psg-font-sans);
+  font-size: 12px; color: var(--psg-text-muted);
+  font-family: var(--psg-font-mono);
 }
 .att-list { display: flex; flex-direction: column; gap: 4px; }
 
@@ -1374,8 +1392,8 @@ function handleDelete() {
   display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-sm);
-  background: var(--psg-surface-muted);
-  padding: 8px 12px; cursor: pointer; transition: background 0.12s ease;
+  background: var(--psg-surface);
+  padding: 8px 8px 8px 12px; cursor: pointer; transition: background-color var(--psg-dur-fast) var(--psg-ease);
 
   @media (hover: hover) {
     &:hover { background: var(--psg-surface-active); }
@@ -1383,8 +1401,7 @@ function handleDelete() {
 
   .att-icon-file { flex-shrink: 0; color: var(--psg-text-muted); }
   .att-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--psg-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  font-family: var(--psg-font-sans);
-  font-variant-numeric: tabular-nums;
+  .att-size { flex-shrink: 0; font-family: var(--psg-font-mono); font-size: 12px; color: var(--psg-text-muted); font-variant-numeric: tabular-nums; }
   .att-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 }
 
@@ -1394,11 +1411,11 @@ function handleDelete() {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 24px 24px;
-  padding: 8px 8px 8px 10px;
+  margin: 0;
+  padding: 12px 16px;
   box-sizing: border-box;
-  border-radius: var(--psg-radius-lg);
-  background: var(--psg-surface-muted);
+  border-top: 1px solid var(--psg-border);
+  background: var(--psg-surface);
 
   /* Phones get the fixed action bar instead (.mobile-reader-actions). */
   @media (max-width: 767px) { display: none; }
@@ -1410,21 +1427,23 @@ function handleDelete() {
   gap: 8px;
   flex: 1;
   min-width: 0;
-  height: 44px;
-  padding: 0 10px;
+  height: 36px;
+  padding: 0 12px;
   border: 0;
-  border-radius: var(--psg-radius-md);
-  background: transparent;
+  border-radius: var(--psg-radius-sm);
+  background: var(--psg-surface);
+  box-shadow: inset 0 0 0 1px var(--psg-border);
   color: var(--psg-text-muted);
   font: inherit;
   font-size: 14px;
   text-align: left;
   cursor: text;
+  transition: box-shadow var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
 
   span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   @media (hover: hover) {
-    &:hover { background: var(--psg-surface); color: var(--psg-text-secondary); }
+    &:hover { box-shadow: inset 0 0 0 1px var(--psg-border-strong); color: var(--psg-text-secondary); }
   }
 }
 
@@ -1438,27 +1457,26 @@ function handleDelete() {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 44px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 12px;
   border: 0;
-  border-radius: var(--psg-radius-md);
+  border-radius: var(--psg-radius-sm);
   background: transparent;
   color: var(--psg-text-secondary);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
 
   @media (hover: hover) {
-    &:hover { background: var(--psg-surface); color: var(--psg-text); }
+    &:hover { background: var(--psg-surface-muted); color: var(--psg-text); }
   }
 
   &--primary {
-    padding: 0 20px;
-    font-weight: 700;
+    padding: 0 16px;
     background: var(--psg-primary);
     color: var(--psg-on-primary);
-    font-weight: 600;
 
     @media (hover: hover) {
       &:hover { background: var(--psg-primary-hover); color: var(--psg-on-primary); }
@@ -1481,19 +1499,22 @@ function handleDelete() {
   color: var(--psg-text-secondary);
 }
 .translate-bar-icon { flex-shrink: 0; color: var(--psg-primary); }
-.translate-bar-text { flex: 1; min-width: 0; font-weight: 600; }
+.translate-bar-text { flex: 1; min-width: 0; font-weight: 500; }
 .translate-bar-actions { display: flex; align-items: center; gap: 4px; }
 .translate-bar-btn {
   border: 0;
   border-radius: var(--psg-radius-xs);
   background: transparent;
   padding: 4px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--psg-primary);
   cursor: pointer;
   &:hover { background: var(--psg-menu-active-bg); }
 }
+:deep(.is-starred) { color: var(--psg-primary); }
+:deep(.is-starred path) { fill: currentColor; }
+
 .email-body.is-translating { opacity: .55; transition: opacity .2s; }
 
 .ai-mail-panel { margin: 16px 0 8px; border: 1px solid var(--psg-border); border-radius: var(--psg-radius-md); overflow: hidden; background: var(--psg-surface-muted); }
@@ -1515,7 +1536,7 @@ function handleDelete() {
   gap: 6px;
   font-family: var(--psg-font-sans);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   color: var(--psg-text-muted);
@@ -1661,28 +1682,29 @@ function handleDelete() {
     z-index: 40;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--psg-border);
     background: var(--psg-surface);
   }
 
   .mobile-reader-actions button {
-    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    min-height: 48px;
-    padding: 0 6px;
-    border: 0;
-    border-radius: var(--psg-radius-md);
-    background: var(--psg-surface-muted);
+    min-height: 44px;
+    padding: 0 8px;
+    border: 1px solid var(--psg-border);
+    border-radius: var(--psg-radius-sm);
+    background: var(--psg-surface);
     color: var(--psg-text);
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   .mobile-reader-actions button:first-child {
+    border-color: var(--psg-primary);
     background: var(--psg-primary);
     color: var(--psg-on-primary);
   }
@@ -1713,7 +1735,7 @@ function handleDelete() {
   gap: 2px;
   font-size: 13px;
   line-height: 1.45;
-  strong { font-size: 14px; font-weight: 700; }
+  strong { font-size: 14px; font-weight: 500; }
   span { color: var(--psg-text-secondary); }
 }
 .spam-banner-btn {
@@ -1726,7 +1748,7 @@ function handleDelete() {
   color: var(--psg-text);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   box-shadow: var(--psg-shadow-xs);
   &:disabled { opacity: .6; cursor: default; }
@@ -1753,7 +1775,7 @@ function handleDelete() {
   gap: 2px;
   font-size: 13px;
   line-height: 1.45;
-  strong { font-size: 13px; font-weight: 600; }
+  strong { font-size: 13px; font-weight: 500; }
   span { color: var(--psg-text-secondary); overflow-wrap: anywhere; }
 }
 .tracker-banner-btn {
@@ -1766,7 +1788,7 @@ function handleDelete() {
   color: var(--psg-primary);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   @media (hover: hover) { &:hover { background: var(--psg-surface-active); } }
 }

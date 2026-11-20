@@ -165,9 +165,10 @@ onMounted(() => { load().catch(() => {}) })
 .is-warning .forwarding-notice-icon { color: var(--psg-warning); }
 
 .forwarding-card {
+  border: 1px solid var(--psg-border);
   overflow: hidden;
   border-radius: var(--psg-radius-lg);
-  background: var(--psg-surface-muted);
+  background: var(--psg-surface);
 }
 
 .forwarding-add-row {
@@ -189,13 +190,13 @@ onMounted(() => { load().catch(() => {}) })
   &:last-child { border-bottom: 0; }
 }
 .forwarding-address-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
-.forwarding-address { color: var(--psg-text); font-size: 14px; font-weight: 600; word-break: break-all; }
+.forwarding-address { color: var(--psg-text); font-size: 14px; font-weight: 500; word-break: break-all; }
 .forwarding-status {
   flex-shrink: 0;
   padding: 1px 8px;
   border-radius: var(--psg-radius-full);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 18px;
 }
 .status-pending { background: color-mix(in srgb, var(--psg-warning) 16%, transparent); color: var(--psg-warning); }

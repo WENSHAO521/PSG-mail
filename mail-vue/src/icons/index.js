@@ -896,6 +896,15 @@ addCollection({
         "layers": {
             "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"><path d=\"m12 3 9 5-9 5-9-5Z\"/><path d=\"m3 13 9 5 9-5\"/></g>"
         },
+        "sun": {
+            "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2.75v1.5M12 19.75v1.5M4.75 12h-1.5M20.75 12h-1.5M6.87 6.87L5.81 5.81M18.19 18.19l-1.06-1.06M6.87 17.13l-1.06 1.06M18.19 5.81l-1.06 1.06\"/></g>"
+        },
+        "moon": {
+            "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\" d=\"M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z\"/>"
+        },
+        "unarchive": {
+            "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 8h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8ZM3 4h18v4H3z\"/><path d=\"M12 17v-6m-2.5 2.5L12 11l2.5 2.5\"/></g>"
+        },
         "info-circle": {
             "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 11v5\"/><circle cx=\"12\" cy=\"8\" r=\".9\" fill=\"currentColor\" stroke=\"none\"/></g>"
         },

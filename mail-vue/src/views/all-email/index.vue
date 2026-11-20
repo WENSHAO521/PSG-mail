@@ -421,10 +421,10 @@ function getEmailList(emailId, size) {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 3px;
+  padding: 2px;
   flex-shrink: 0;
   background: var(--psg-surface-muted);
-  border-radius: var(--psg-radius-xs);
+  border-radius: var(--psg-radius-sm);
 }
 
 .filter-chip {
@@ -432,20 +432,23 @@ function getEmailList(emailId, size) {
   background: transparent;
   cursor: pointer;
   height: 24px;
-  padding: 0 11px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 400;
   font-family: var(--psg-font-sans);
-  color: var(--psg-text-secondary);
+  color: var(--psg-text-muted);
   border-radius: var(--psg-radius-xs);
-  transition: background 0.14s ease, color 0.14s ease;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
   white-space: nowrap;
 
+  &:hover:not(.active) { color: var(--psg-text); }
+
   &.active {
-    background: var(--psg-surface-muted);
+    background: var(--psg-surface);
     color: var(--psg-text);
     border: 0;
-    font-weight: 600;
+    font-weight: 500;
+    box-shadow: var(--psg-shadow-xs);
   }
 }
 
@@ -498,8 +501,7 @@ function getEmailList(emailId, size) {
 
 .more-btn {
   font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -1px;
+  font-weight: 500;
 }
 
 .filter-text-btn-icon,
@@ -523,7 +525,7 @@ function getEmailList(emailId, size) {
 
 .adv-label {
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text-secondary);
 }
 

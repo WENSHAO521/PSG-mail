@@ -1222,7 +1222,7 @@ function submitPwd() {
   .scroll-body {
     max-width: 1080px;
     margin: 0 auto;
-    padding: 28px 32px 48px;
+    padding: 40px 32px 64px;
 
     @media (max-width: 960px) { padding: 14px 16px 32px; }
     @media (max-width: 640px) { padding: 12px 12px 28px; }
@@ -1232,8 +1232,8 @@ function submitPwd() {
 /* ── Shell: sidebar + panel ── */
 .settings-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 40px;
+  grid-template-columns: 208px minmax(0, 1fr);
+  gap: 48px;
   align-items: start;
 
   @media (max-width: 820px) {
@@ -1276,35 +1276,48 @@ function submitPwd() {
 
 .settings-nav-item {
   width: 100%;
-  min-height: 42px;
+  position: relative;
+  min-height: 34px;
   margin: 0;
-  padding: 0 12px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   border: none;
-  border-radius: var(--psg-radius-md);
+  border-radius: var(--psg-radius-sm);
   background: transparent;
-  color: var(--psg-text);
+  color: var(--psg-text-secondary);
   font-family: var(--psg-font-sans);
   font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
+  font-weight: 400;
+  text-align: left;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background-color var(--psg-dur-fast) var(--psg-ease), color var(--psg-dur-fast) var(--psg-ease);
 
   &:hover {
     background: var(--psg-surface-muted);
     color: var(--psg-text);
   }
 
-  &.active {
-    background: var(--psg-surface-muted);
-    color: var(--psg-text);
-    font-weight: 700;
+  /* Margin mark beside the open section. */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
+    background: transparent;
+  }
 
-    .settings-nav-icon { color: var(--psg-primary); }
+  &.active {
+    background: var(--psg-surface-active);
+    color: var(--psg-text);
+    font-weight: 500;
+
+    &::before { background: var(--psg-primary); }
+    .settings-nav-icon { color: var(--psg-text); }
   }
 
   @media (max-width: 820px) {
@@ -1321,21 +1334,21 @@ function submitPwd() {
 
 /* ── Panel ── */
 .settings-panel-header {
-  padding: 0 0 20px;
+  padding: 0 0 24px;
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
 
   h1 {
-    margin: 0 0 6px;
+    margin: 0 0 4px;
     color: var(--psg-text);
-    font-family: var(--psg-font-sans);
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -.02em;
-    line-height: 1.2;
-    @media (max-width: 640px) { font-size: 22px; }
+    font-family: var(--psg-font-display);
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -.01em;
+    line-height: 40px;
+    @media (max-width: 640px) { font-size: 26px; line-height: 32px; }
   }
 
   p {
@@ -1343,8 +1356,8 @@ function submitPwd() {
     max-width: 38rem;
     color: var(--psg-text-secondary);
     font-size: 14px;
-    font-weight: 500;
-    line-height: 1.4;
+    font-weight: 400;
+    line-height: 20px;
   }
 
   @media (max-width: 520px) {
@@ -1370,8 +1383,8 @@ function submitPwd() {
 
 .settings-save-button {
   flex: 0 0 auto;
-  min-width: 68px;
-  height: 42px !important;
+  min-width: 72px;
+  height: 36px !important;
   border-radius: var(--psg-radius-sm) !important;
   margin: 0 !important;
 }
@@ -1414,7 +1427,7 @@ function submitPwd() {
 
 .import-body {
   gap: 12px;
-  padding: 16px 22px;
+  padding: 16px 20px;
   border-top: 1px solid var(--psg-border);
 }
 
@@ -1477,7 +1490,7 @@ function submitPwd() {
 
 .backup-provider-name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--psg-text);
   margin-bottom: 3px;
 }
@@ -1519,12 +1532,13 @@ function submitPwd() {
 
 /* ── Card body padding ── */
 .card-body {
-  padding: 20px 22px;
+  padding: 20px;
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: var(--psg-surface-muted);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-lg);
 }
 
@@ -1536,7 +1550,7 @@ function submitPwd() {
   overflow: hidden;
 
   > * {
-    padding: 16px 22px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--psg-border);
     &:last-child { border-bottom: 0; }
   }
@@ -1552,7 +1566,7 @@ function submitPwd() {
   align-items: center;
   gap: 12px;
   min-height: 56px;
-  padding: 10px 16px 10px 22px;
+  padding: 8px 16px 8px 20px;
   border-bottom: 1px solid var(--psg-border);
 }
 
@@ -1586,10 +1600,10 @@ function submitPwd() {
 
 .avatar-wrap {
   position: relative;
-  width: 76px; height: 76px;
-  border-radius: var(--psg-radius-lg); overflow: hidden;
+  width: 72px; height: 72px;
+  border-radius: 50%; overflow: hidden;
   cursor: pointer; flex-shrink: 0;
-  background: var(--psg-primary);
+  background: var(--psg-surface-active);
   &:hover .avatar-lens { opacity: 1; }
 }
 
@@ -1598,8 +1612,7 @@ function submitPwd() {
 .avatar-init {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 26px; font-weight: 900;
-  letter-spacing: -0.04em; color: var(--psg-on-primary); user-select: none;
+  font-size: 26px; font-weight: 500; color: var(--psg-text-secondary); user-select: none;
 }
 
 .avatar-lens {
@@ -1616,8 +1629,7 @@ function submitPwd() {
 }
 
 .meta-name {
-  font-size: 16px; font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 16px; font-weight: 500;
   color: var(--psg-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -1632,8 +1644,7 @@ function submitPwd() {
 
 .meta-role {
   display: inline-flex; align-items: center;
-  font-size: 9px; font-weight: 900;
-  letter-spacing: 0.14em; text-transform: uppercase;
+  font-size: 9px; font-weight: 500;
   color: var(--psg-text); background: var(--psg-surface-muted);
   border: 1px solid var(--psg-border);
   padding: 2px 6px; border-radius: var(--psg-radius-sm);
@@ -1649,7 +1660,8 @@ function submitPwd() {
 .data-table {
   display: flex; flex-direction: column;
   padding: 4px 22px;
-  background: var(--psg-surface-muted);
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-lg);
 }
 
@@ -1677,9 +1689,7 @@ function submitPwd() {
 
 .plan-label {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 500;
   color: var(--psg-text-muted);
   margin-bottom: 12px;
 }
@@ -1697,15 +1707,15 @@ function submitPwd() {
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: var(--psg-surface-muted);
-  border: 0;
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-lg);
   color: var(--psg-text-secondary);
 }
 
 .plan-tile-value {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
   line-height: 1.3;
 }
@@ -1740,12 +1750,12 @@ function submitPwd() {
 /* ── Link buttons ── */
 .link-btn {
   background: transparent; border: none; cursor: pointer;
-  font-size: 12px; font-weight: 700;
+  font-size: 12px; font-weight: 500;
   color: var(--psg-text); padding: 0;
   text-decoration: underline;
   transition: opacity 0.12s; user-select: none; font-family: inherit;
   &:hover { opacity: 0.65; }
-  &.dim { color: var(--psg-text-secondary); font-weight: 600; }
+  &.dim { color: var(--psg-text-secondary); font-weight: 500; }
 }
 
 /* ── Editor shell ── */
@@ -1756,7 +1766,7 @@ function submitPwd() {
 }
 
 .toggle-label {
-  font-size: 14px; font-weight: 700;
+  font-size: 14px; font-weight: 500;
   color: var(--psg-text);
   margin-bottom: 4px;
 }
@@ -1786,12 +1796,11 @@ function submitPwd() {
   display: flex; align-items: center; gap: 8px;
 }
 .notif-device-name {
-  font-size: 13px; font-weight: 700;
+  font-size: 13px; font-weight: 500;
   color: var(--psg-text);
 }
 .notif-device-platform {
   font-size: 11px; color: var(--psg-text-secondary);
-  text-transform: uppercase; letter-spacing: 0.04em;
 }
 .notif-device-tag {
   font-size: 11px; color: var(--psg-danger);
@@ -1830,7 +1839,7 @@ function submitPwd() {
 }
 
 .danger-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.danger-heading { font-size: 14px; font-weight: 700; color: var(--psg-text); }
+.danger-heading { font-size: 14px; font-weight: 500; color: var(--psg-text); }
 .danger-desc-text { font-size: 13px; line-height: 1.5; color: var(--psg-text-secondary); }
 
 /* ── Password dialog ── */
@@ -1888,8 +1897,7 @@ function submitPwd() {
 .pwd-field { display: flex; flex-direction: column; gap: 7px; }
 
 .pwd-label {
-  font-size: 10px; font-weight: 900;
-  text-transform: uppercase; letter-spacing: 0.10em;
+  font-size: 10px; font-weight: 500;
   color: var(--psg-text-secondary);
 }
 

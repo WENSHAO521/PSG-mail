@@ -223,12 +223,13 @@ defineExpose({ save, saving })
 
 <style scoped>
 .card-body {
+  border: 1px solid var(--psg-border);
   padding: 20px 22px;
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: var(--psg-surface-muted);
+  background: var(--psg-surface);
   border-radius: var(--psg-radius-lg);
 }
 
@@ -276,7 +277,7 @@ defineExpose({ save, saving })
   color: var(--psg-text);
   font: inherit;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: background .12s ease, color .12s ease;
 
@@ -305,7 +306,7 @@ defineExpose({ save, saving })
   transition: background .12s ease;
 
   &:hover { background: var(--psg-surface-active); }
-  &.is-active { background: var(--psg-menu-active-bg); color: var(--psg-menu-active-text); font-weight: 600; }
+  &.is-active { background: var(--psg-menu-active-bg); color: var(--psg-menu-active-text); font-weight: 500; }
   &:hover .sig-item-del, &.is-active .sig-item-del { opacity: 1; }
 }
 
@@ -324,7 +325,7 @@ defineExpose({ save, saving })
   background: var(--psg-primary-muted);
   color: var(--psg-primary);
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sig-item-del {
@@ -370,7 +371,7 @@ defineExpose({ save, saving })
 }
 
 .sig-name-input :deep(.el-input__wrapper) { min-height: 40px; padding: 0 16px; }
-.sig-name-input :deep(.el-input__inner) { font-weight: 600; }
+.sig-name-input :deep(.el-input__inner) { font-weight: 500; }
 
 :where(.sig-editor) :deep(.sig-name-input .el-input__wrapper:not(.is-focus)) {
   background-color: var(--psg-surface) !important;
@@ -465,7 +466,7 @@ defineExpose({ save, saving })
 
 .toggle-label {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--psg-text);
   margin-bottom: 4px;
 }
