@@ -1285,7 +1285,16 @@ function submitRegister() {
 
 /* ── Has custom background: drop the panel, float the card ───── */
 #login-box.has-bg .brand-panel { display: none; }
-#login-box.has-bg .form-wrapper { flex: 1 1 auto; }
+#login-box.has-bg .form-wrapper { flex: 1 1 auto; background: transparent; }
+#login-box.has-bg .container {
+  max-width: 420px;
+  padding: 40px 36px 28px;
+  border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-xl);
+  box-shadow: var(--psg-shadow-md);
+
+  @media (max-width: 767px) { padding: 32px 22px 22px; }
+}
 #login-box.has-bg .card-brand { display: flex; }
 
 /* ── Misc (preserved) ───────────────────────────────────────── */
