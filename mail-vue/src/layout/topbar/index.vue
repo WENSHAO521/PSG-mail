@@ -280,7 +280,7 @@ function clickLogout() {
   }
 }
 
-.tb-nav :deep(.el-dropdown) { height: 100%; }
+.tb-nav :deep(.el-dropdown) { height: 100%; line-height: inherit; }
 
 .tb-search {
   flex: 1;

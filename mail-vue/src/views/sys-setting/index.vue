@@ -118,7 +118,7 @@
               </div>
               <div class="setting-item">
                 <div>
-                  <span>{{ $t('minEmailPrefix', {msg: minEmailPrefix}) }}</span>
+                  <span>{{ $t('minEmailPrefix', {msg: minEmailPrefix}, Number(minEmailPrefix) || 2) }}</span>
                   <p>{{ $t('sysEmailPrefixLengthDesc') }}</p>
                 </div>
                 <div>

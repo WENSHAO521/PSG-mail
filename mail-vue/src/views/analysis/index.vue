@@ -9,7 +9,7 @@
       <div>
         <h1 class="page-title">{{ $t('analyticsTitle') }}</h1>
         <p class="page-subtitle">
-          {{ $t('analyticsSubtitle', { date: headerDate, mail: (receiveTotal + sendTotal).toLocaleString(), mailbox: accountTotal.toLocaleString() }) }}
+          {{ $t('analyticsSubtitle', { date: headerDate, mail: (receiveTotal + sendTotal).toLocaleString(), mailbox: accountTotal.toLocaleString() }, accountTotal) }}
         </p>
       </div>
       <div class="header-toolbar">
