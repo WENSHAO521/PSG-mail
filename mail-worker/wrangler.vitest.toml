@@ -29,9 +29,19 @@ id = "0000000000000000000000000000vitest"
 name = "SCHEDULED_SEND_ALARM"
 class_name = "ScheduledSendAlarm"
 
+# Real-time new-mail hints over WebSocket (src/durable/mail-hub.js). Hibernating:
+# idle connections cost nothing, so open tabs can stop polling every 30 s.
+[[durable_objects.bindings]]
+name = "MAIL_HUB"
+class_name = "MailHub"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ScheduledSendAlarm"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["MailHub"]
 
 [vars]
 ai_model = ""

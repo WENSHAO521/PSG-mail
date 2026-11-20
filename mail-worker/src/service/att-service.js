@@ -10,6 +10,7 @@ import { parseHTML } from 'linkedom';
 import { v4 as uuidv4 } from 'uuid';
 import domainUtils from '../utils/domain-uitls';
 import settingService from "./setting-service";
+import { storedObjectMetadata } from '../utils/safe-object-response';
 
 const attService = {
 
@@ -67,15 +68,14 @@ const attService = {
 	async addAtt(c, attachments) {
 
 		const items = attachments.map(attachment => {
-			// The name comes from the sender; keep it out of the header syntax.
-			const fileName = String(attachment.filename || '').replace(/[\r\n"\\;]/g, '_')
-			const metadate = { contentType: attachment.mimeType }
-			if (!attachment.contentId) {
-				metadate.contentDisposition = `attachment;filename="${fileName}"`
-			} else {
-				metadate.contentDisposition = `inline;filename="${fileName}"`
-				metadate.cacheControl = `max-age=259200`
-			}
+			// Type and name come from the sender; storedObjectMetadata keeps
+			// active content (HTML/SVG) from being stored as renderable.
+			const metadate = storedObjectMetadata({
+				contentType: attachment.mimeType,
+				filename: attachment.filename,
+				inline: !!attachment.contentId,
+				cacheControl: attachment.contentId ? `max-age=259200` : undefined,
+			})
 			return { key: attachment.key, content: attachment.content, metadata: metadate };
 		});
 
@@ -131,7 +131,9 @@ const attService = {
 
 			// A quoted inline image shown without a public bucket domain points
 			// at the worker itself (/api/oss/attachments/… or /attachments/…).
-			const localKey = src && /^\/(?:api\/oss\/)?(attachments\/[^?#]+)$/.exec(src)?.[1];
+			// TinyMCE may rewrite those to relative paths (../attachments/…),
+			// which must still become cid: parts (upstream cloud-mail 28494e7).
+			const localKey = src && /^(?:\.{1,2}\/)*\/?(?:api\/oss\/)?(attachments\/[^?#]+)$/.exec(src)?.[1];
 
 			//邮件正文站内图片转cid附件
 			if (src && (src.startsWith(domainUtils.toOssDomain(r2Domain)) || src.startsWith('attachments/') || localKey)) {
@@ -221,7 +223,7 @@ const attService = {
 		const items = attList.map(a => ({
 			key: a.key,
 			content: a.buff,
-			metadata: { contentType: a.type || a.contentType, contentDisposition: `attachment;filename=${a.filename}` }
+			metadata: storedObjectMetadata({ contentType: a.type || a.contentType, filename: a.filename })
 		}));
 
 		await this.storeObjectsAndRows(c, items, () => orm(c).insert(att).values(attDataList).run());
@@ -238,11 +240,12 @@ const attService = {
 			if (!attData.buff) {
 				continue;
 			}
-			await r2Service.putObj(c, attData.key, attData.buff, {
+			await r2Service.putObj(c, attData.key, attData.buff, storedObjectMetadata({
 				contentType: attData.mimeType,
+				filename: attData.filename,
+				inline: true,
 				cacheControl: `max-age=259200`,
-				contentDisposition: `inline;filename=${attData.filename}`
-			});
+			}));
 			delete attData.buff;
 		}
 

@@ -24,6 +24,7 @@ import { useSettingStore } from '@/store/setting.js'
 import { useUiStore } from '@/store/ui.js'
 import { sleep } from '@/utils/time-utils.js'
 import { refreshUnreadCounts, refreshUnreadCountsIfStale } from '@/utils/unread-counts.js'
+import { startRealtime, stopRealtime, nudgeRealtime, isRealtimeConnected } from '@/utils/realtime-client.js'
 
 const MAX_RECENT = 500
 // There is deliberately one safe floor for every client. Push is the fast
@@ -57,6 +58,9 @@ let lastSyncAt = 0
 // safety net, so it can run far less often (fewer Worker requests and D1
 // reads on the free plan).
 export const MAIL_SYNC_PUSH_INTERVAL_MS = 120_000
+// With the real-time socket open, new mail is announced the moment it is
+// stored; the poll is only a check that nothing slipped through.
+export const MAIL_SYNC_REALTIME_INTERVAL_MS = 300_000
 let pushActive = false
 
 async function updatePushActive() {
@@ -75,7 +79,8 @@ async function updatePushActive() {
 
 function safePollIntervalMs() {
   const configured = Number(useSettingStore().settings.autoRefresh || 0)
-  const floor = pushActive ? MAIL_SYNC_PUSH_INTERVAL_MS : MAIL_SYNC_INTERVAL_MS
+  const floor = isRealtimeConnected() ? MAIL_SYNC_REALTIME_INTERVAL_MS
+    : pushActive ? MAIL_SYNC_PUSH_INTERVAL_MS : MAIL_SYNC_INTERVAL_MS
   if (!Number.isFinite(configured) || configured <= 0) return floor
   return Math.max(floor, Math.round(configured) * 1000)
 }
@@ -274,6 +279,34 @@ async function pollLoop() {
   }
 }
 
+// Every open tab gets the same hint. A visible tab always handles it; among
+// hidden tabs only one does (first to claim the id in localStorage), so N
+// background tabs don't make N detail requests and N notifications.
+async function claimRealtimeHint(emailId) {
+  if (typeof document === 'undefined') return true
+  const key = `psg-mail-rt:${emailId}`
+  if (document.visibilityState === 'visible') {
+    // Mark it taken so hidden tabs still waiting on their claim back off.
+    try { window.localStorage.setItem(key, syncOwnerId) } catch {}
+    setTimeout(() => {
+      try { if (window.localStorage.getItem(key) === syncOwnerId) window.localStorage.removeItem(key) } catch {}
+    }, 60_000)
+    return true
+  }
+  try {
+    if (window.localStorage.getItem(key)) return false
+    window.localStorage.setItem(key, syncOwnerId)
+    await sleep(50 + Math.random() * 100)
+    const owner = window.localStorage.getItem(key)
+    setTimeout(() => {
+      try { if (window.localStorage.getItem(key) === syncOwnerId) window.localStorage.removeItem(key) } catch {}
+    }, 60_000)
+    return owner === syncOwnerId
+  } catch {
+    return true
+  }
+}
+
 export function startFallbackPolling() {
   if (pollLoopStarted) return
   pollLoopStarted = true
@@ -283,11 +316,22 @@ export function startFallbackPolling() {
   // mistaken for the current baseline and never trigger a notification.
   void syncNow('startup')
   pollLoop()
+  startRealtime({
+    // A web push for the same mail also arrives when push is on; its service
+    // worker already shows the system notification, so don't add a second.
+    onNewMail: async ({ emailId, accountId }) => {
+      if (!await claimRealtimeHint(emailId)) return
+      await handleNewMailSignal({ emailId, accountId, source: 'realtime', notify: !pushActive })
+    },
+    // Hints sent while the socket was down are lost; catch up once.
+    onReconnectNeeded: () => { void syncNow('realtime-reconnect') },
+  })
 }
 
 export function stopFallbackPolling() {
   pollRunning = false
   pollLoopStarted = false
+  stopRealtime()
   releaseSyncLease()
 }
 
@@ -319,10 +363,16 @@ export function installLifecycleSync() {
   lifecycleInstalled = true
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') syncNow('visibility')
+    if (document.visibilityState === 'visible') {
+      nudgeRealtime()
+      syncNow('visibility')
+    }
   })
   window.addEventListener('focus', () => syncNow('focus'))
-  window.addEventListener('online', () => syncNow('online'))
+  window.addEventListener('online', () => {
+    nudgeRealtime()
+    syncNow('online')
+  })
 
   // Web: service worker background-notification clicks postMessage here.
   if ('serviceWorker' in navigator) {
