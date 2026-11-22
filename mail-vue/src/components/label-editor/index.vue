@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="visible" :title="editing ? $t('labelEdit') : $t('newLabel')" width="400" align-center>
+  <el-dialog v-model="visible" :title="editing ? $t('labelEdit') : $t('newLabel')" width="400" align-center append-to-body>
     <div class="le-body">
       <el-input v-model="name" :placeholder="$t('newLabelPrompt')" maxlength="60" @keyup.enter="save" />
       <div class="le-swatches" role="radiogroup" :aria-label="$t('labelColor')">

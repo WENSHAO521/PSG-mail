@@ -454,6 +454,13 @@ defineExpose({ openCreate: openAdd })
   .search-input {
     width: min(220px, calc(100vw - 200px));
   }
+
+  /* Phone: search takes its own row, the status pills sit under it from the left. */
+  @media (max-width: 767px) {
+    .search { flex: 1 0 100%; }
+    .search-input { width: 100%; }
+    .status-pills { margin-left: 0; }
+  }
 }
 
 .status-pills {

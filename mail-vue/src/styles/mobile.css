@@ -189,7 +189,6 @@ body,
   .rules-page .rule-actions {
     align-items: center;
     min-height: 44px;
-    padding-left: 50px;
   }
 
   .rules-page .icon-action,
@@ -441,11 +440,18 @@ body,
   }
 
   .page-outer .range-toggle {
-    flex: 1;
+    flex: 0 0 auto;
+    margin-right: auto;
   }
 
   .page-outer .range-btn {
-    min-height: 44px;
+    min-height: 36px;
+    padding-inline: 14px;
+  }
+
+  .page-outer .header-toolbar .icon-btn {
+    width: 36px;
+    height: 36px;
   }
 
   .role-grid,
@@ -519,5 +525,17 @@ body,
     right: auto !important;
     left: calc(var(--split-list-w, 380px) - 18px);
     transform: translateX(-100%);
+  }
+}
+
+/* Most page dialogs render in place, inside a fixed pane (z-index 5) that sits
+   under the mobile header and tab bar (z-index 30). Their overlay then could
+   not cover the chrome: the header hid the dialog title and close button.
+   Lift the pane above the chrome while one of its dialogs/drawers is open. */
+@media (max-width: 1024px) {
+  .workspace-pane:has(.el-overlay:not([style*="display: none"])),
+  .mail-list-pane:has(.el-overlay:not([style*="display: none"])),
+  .mail-detail-pane:has(.el-overlay:not([style*="display: none"])) {
+    z-index: 40 !important;
   }
 }

@@ -1360,9 +1360,24 @@ function submitPwd() {
     line-height: 20px;
   }
 
+  /* Phone: back link and Save share the first row; title and note below.
+     The page header already names the area, so the section title shrinks. */
   @media (max-width: 520px) {
-    align-items: stretch;
-    flex-direction: column;
+    position: relative;
+    display: block;
+    padding-bottom: 16px;
+
+    h1 { font-size: 22px; line-height: 28px; }
+    p { font-size: 13px; line-height: 18px; }
+
+    .settings-save-button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      min-width: 60px;
+      min-height: 32px;
+      height: 32px !important;
+    }
   }
 }
 
@@ -1371,11 +1386,12 @@ function submitPwd() {
   align-items: center;
   gap: 3px;
   border: 0;
-  padding: 0;
-  margin: 0 0 8px;
+  padding: 0 8px 0 0;
+  margin: 0 0 6px;
+  min-height: 32px;
   background: transparent;
   color: var(--psg-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
 
   @media (max-width: 820px) { display: inline-flex; }

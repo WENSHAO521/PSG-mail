@@ -202,11 +202,15 @@ function updateContent() {
         color: var(--psg-primary, #1E5940);
       }
 
+      /* Text wraps at the reading width. A fixed-width table or image that
+         is wider still overflows, and the box around the mail scrolls
+         sideways for it, instead of the whole mail (paragraphs included)
+         being laid out at the widest element's width. */
       .shadow-content {
         background: var(--psg-html-shadow-bg, transparent);
-        width: fit-content;
+        width: 100%;
         height: fit-content;
-        min-width: 100%;
+        overflow-wrap: anywhere;
       }
 
       /* Trackers blocked on receipt carry [hidden]; mail CSS such as
@@ -270,6 +274,7 @@ function autoScale() {
 
   const hostElement = shadowRoot.host
   hostElement.style.zoom = ''
+  hostElement.style.width = ''
 
   const parentWidth = parent.offsetWidth
   const childWidth = shadowContent.scrollWidth
@@ -277,7 +282,10 @@ function autoScale() {
   if (childWidth === 0 || parentWidth === 0) return
 
   const scale = Math.min(1, Math.max(MIN_SCALE, parentWidth / childWidth))
-  hostElement.style.zoom = scale === 1 ? '' : String(scale)
+  if (scale === 1) return
+  hostElement.style.zoom = String(scale)
+  // Zoom shrinks the box too; widen it back so text still fills the pane.
+  hostElement.style.width = `${100 / scale}%`
 }
 
 // ── Links inside the mail body ──

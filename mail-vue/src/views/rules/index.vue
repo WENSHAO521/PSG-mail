@@ -475,20 +475,25 @@ function actionLabel(action, actionValue) {
   border-radius: var(--psg-radius-lg);
   overflow: hidden;
 
-  @media (max-width: 620px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Phone: one short band of figures; the prose cell repeats the page note. */
+  @media (max-width: 767px) {
+    display: flex;
+    margin-bottom: 16px;
 
-    .stat-card--wide {
-      grid-column: 1 / -1;
-    }
+    .stat-card { flex: 1 1 0; min-width: 0; min-height: 0; padding: 10px 14px; }
+    .stat-card--wide { display: none; }
+    .stat-label { margin-bottom: 2px; font-size: 12px; }
+    .stat-value { font-size: 18px; line-height: 24px; }
   }
 }
 
-/* Figures share one ruled band; cells split by hairlines. */
+/* Figures share one ruled band; cells split by hairlines. The cells are
+   square: .surface-card's radius made each one a separate rounded box. */
 .stat-card {
   min-height: 88px;
   padding: 16px 20px;
   background: var(--psg-surface);
+  border-radius: 0;
   box-shadow: -1px 0 0 var(--psg-border), 0 -1px 0 var(--psg-border);
 }
 
@@ -644,6 +649,9 @@ function actionLabel(action, actionValue) {
   color: var(--psg-text-muted);
   background: var(--psg-surface-muted);
   border-radius: var(--psg-radius-sm);
+
+  /* Phone: the tile wrapped onto a line of its own above the title. */
+  @media (max-width: 620px) { display: none; }
 }
 
 .rule-content {
@@ -742,7 +750,8 @@ function actionLabel(action, actionValue) {
 
   @media (max-width: 620px) {
     width: 100%;
-    padding-left: 50px;
+    padding-left: 0;
+    margin-left: -6px;
   }
 }
 
