@@ -305,6 +305,7 @@ const zh = {
     notifStagePermission: '通知权限未授予',
     notifStageUnsupported: '当前浏览器不支持网页推送',
     notifStageUnknown: '未知错误',
+    newMessage: '新邮件',
     noSubject: '（无主题）',
     newEmailFrom: '来自 {name} 的新邮件',
     noMoreData: '没有更多数据了',

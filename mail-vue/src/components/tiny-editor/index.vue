@@ -64,6 +64,12 @@ const props = defineProps({
   fullscreenActive: {
     type: Boolean,
     default: false
+  },
+  // 'bottom' docks the formatting bar under the text, just above Compose's
+  // Send row, so the subject line runs straight into the body.
+  toolbarLocation: {
+    type: String,
+    default: 'top'
   }
 });
 
@@ -264,6 +270,7 @@ function initEditor(initialContent = null) {
     // narrow layouts rather than being hidden behind an anonymous drawer.
     toolbar: props.toolbar ?? 'fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignformat listformat | link | moreformat',
     toolbar_mode: 'wrap',
+    toolbar_location: props.toolbarLocation,
     font_size_formats: '10px 11px 12px 14px 16px 18px 20px 24px 28px 32px 36px 48px',
     emoticons_search: false,
     placeholder: props.placeholder || undefined,
@@ -591,13 +598,23 @@ function destroyEditor() {
    the two bespoke selects can be targeted and sized independently instead of
    sharing one generic width range. */
 .tox-tbtn[data-mce-name="fontfamily"].tox-tbtn--select.tox-tbtn--bespoke {
-  min-width: 88px !important;
-  max-width: 100px !important;
+  /* Sized to its label: a fixed 88-100px cut "Default font" to "Default f…". */
+  min-width: 0 !important;
+  max-width: 150px !important;
 }
 
 .tox-tbtn[data-mce-name="fontsize"].tox-tbtn--select.tox-tbtn--bespoke {
-  min-width: 86px !important;
-  max-width: 96px !important;
+  min-width: 0 !important;
+  max-width: 76px !important;
+}
+
+/* The select's label box has a fixed width in oxide; let it shrink to the
+   text so the chevron sits right after it instead of 30px further on. */
+.tox .tox-tbtn--bespoke .tox-tbtn__select-label {
+  width: auto !important;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Keep the named overflow affordance in the primary toolbar row. It is an
@@ -605,9 +622,21 @@ function destroyEditor() {
    visual affordance needs and is what previously pushed it onto a second
    line in the compose window. */
 .tox-tbtn[data-mce-name="moreformat"] {
-  width: 40px !important;
-  min-width: 40px !important;
-  padding-inline: 2px !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  padding-inline: 0 !important;
+}
+
+/* Icon-only menus (align, lists, more) open on click like any icon button;
+   their trailing caret made the row read as a wall of dropdowns. The font
+   and size selects keep theirs, since they show a value. */
+.tox .tox-tbtn--select:not(.tox-tbtn--bespoke) {
+  width: 34px !important;
+  padding: 0 !important;
+  justify-content: center;
+}
+.tox .tox-tbtn--select:not(.tox-tbtn--bespoke) .tox-tbtn__select-chevron {
+  display: none !important;
 }
 
 .tox .tox-edit-area::before {
@@ -888,8 +917,31 @@ html.dark {
   border: 0 !important;
 }
 
+/* Group dividers are short ticks centred on the buttons, not full-height
+   rules, so the row reads as one bar with a few pauses in it. */
 .tox .tox-toolbar__group + .tox-toolbar__group {
-  border-left: 1px solid var(--psg-border) !important;
+  border-left: 0 !important;
+}
+.tox .tox-toolbar__group + .tox-toolbar__group::before {
+  content: '';
+  align-self: center;
+  width: 1px;
+  height: 18px;
+  margin-right: 4px;
+  background: var(--psg-border);
+}
+
+/* Colour pickers: the caret half is a narrow tab that only darkens with
+   its own button, instead of a second full-width target. */
+.tox .tox-split-button__chevron {
+  width: 14px !important;
+  padding: 0 !important;
+}
+
+/* Toolbar under the text (Compose): the hairline goes above it. */
+.tox.tox-tinymce--toolbar-bottom .tox-editor-header {
+  border-bottom: 0 !important;
+  border-top: 1px solid var(--psg-border) !important;
 }
 
 .tox .tox-tbtn {
@@ -937,7 +989,6 @@ html.dark {
   box-shadow: none !important;
 }
 
-.tox .tox-split-button__chevron { width: 18px !important; }
 
 /* Menus opened from the toolbar. */
 .tox .tox-menu {
