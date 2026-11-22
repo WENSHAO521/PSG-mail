@@ -518,6 +518,13 @@ h2 {
 
   /* Not enough room beside the info: drop under it, aligned with the text. */
   @media (max-width: 900px) { flex: 1 1 100%; justify-content: flex-start; padding-left: 58px; }
+  /* Phone: equal buttons on one even grid instead of a ragged wrap. */
+  @media (max-width: 640px) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    padding-left: 0;
+    .vpn-pill { justify-content: center; }
+  }
 }
 
 .vpn-row-groups {
@@ -536,6 +543,17 @@ h2 {
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* Phone: the arch label heads its row, its three formats share one line. */
+@media (max-width: 640px) {
+  .vpn-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    .vpn-pill { justify-content: center; padding: 0 8px; }
+    .vpn-group-arch { grid-column: 1 / -1; width: auto; }
+  }
 }
 
 .vpn-group-arch {

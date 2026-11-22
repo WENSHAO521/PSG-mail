@@ -2377,9 +2377,24 @@ function editSetting(settingForm, refreshStatus = true) {
     line-height: 20px;
   }
 
+  /* Phone: back link and Save share the first row; title and note below.
+     The page header already names the area, so the section title shrinks. */
   @media (max-width: 520px) {
-    align-items: stretch;
-    flex-direction: column;
+    position: relative;
+    display: block;
+    padding-bottom: 16px;
+
+    h1 { font-size: 22px; line-height: 28px; }
+    p { font-size: 13px; line-height: 18px; }
+
+    .settings-save-button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      min-width: 60px;
+      min-height: 32px;
+      height: 32px !important;
+    }
   }
 }
 
@@ -2388,11 +2403,12 @@ function editSetting(settingForm, refreshStatus = true) {
   align-items: center;
   gap: 3px;
   border: 0;
-  padding: 0;
-  margin: 0 0 8px;
+  padding: 0 8px 0 0;
+  margin: 0 0 6px;
+  min-height: 32px;
   background: transparent;
   color: var(--psg-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   @media (max-width: 820px) { display: inline-flex; }
 }
@@ -2829,6 +2845,14 @@ function editSetting(settingForm, refreshStatus = true) {
   > div:last-child {
     min-width: 0;
     text-align: right;
+  }
+
+  /* The 190px + 150px minimums are wider than a phone: stack like .setting-item. */
+  @media (max-width: 560px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+
+    > div:last-child { text-align: left; }
   }
 }
 

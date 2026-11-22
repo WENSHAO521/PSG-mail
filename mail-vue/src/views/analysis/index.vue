@@ -946,7 +946,13 @@ function createEmailColumnChart() {
   border-radius: var(--psg-radius-lg);
   overflow: hidden;
   @media (max-width: 1024px) { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 480px)  { grid-template-columns: 1fr; }
+  /* Phone: keep two per row, tighter, so all four figures fit one screen. */
+  @media (max-width: 480px) {
+    .stat-card { padding: 12px 14px; gap: 4px; }
+    .stat-card .stat-value :deep(.el-statistic__number) { font-size: 24px !important; line-height: 30px !important; }
+    .stat-card .stat-row-value { gap: 2px 8px; }
+    .stat-card .stat-breakdown { gap: 8px; font-size: 11px; }
+  }
 }
 
 .stat-card {

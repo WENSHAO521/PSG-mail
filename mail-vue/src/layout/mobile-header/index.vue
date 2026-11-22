@@ -65,6 +65,10 @@ const initial = computed(() => ((userStore.user?.name || userStore.user?.email |
   font-weight: 400;
 
   span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  svg { flex: 0 0 auto; }
+
+  /* Narrow phones: long admin titles (用户与访问管理) fit instead of truncating. */
+  @media (max-width: 360px) { font-size: 22px; }
 }
 
 .m-spacer { flex: 1; }
