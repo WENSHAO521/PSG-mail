@@ -305,6 +305,7 @@ const en = {
     notifStagePermission: 'Notification permission not granted',
     notifStageUnsupported: "This browser doesn't support web push",
     notifStageUnknown: 'Unknown error',
+    newMessage: 'New message',
     noSubject: '(No subject)',
     newEmailFrom: 'New email from {name}',
     noMoreData: 'No more data',

@@ -288,9 +288,18 @@ html.dark {
 }
 
 .el-button--primary {
+  /* Element Plus's own `.el-button { color: var(--el-button-text-color) }`
+     can load after this file and win the tie, which put white text on the
+     light-pink dark-mode primary. The variable it reads is set below. */
   border-color: var(--psg-primary);
   background-color: var(--psg-primary);
   color: var(--psg-on-primary);
+}
+
+.el-button.el-button--primary:not(.is-plain):not(.is-text):not(.is-link) {
+  --el-button-text-color: var(--psg-on-primary);
+  --el-button-hover-text-color: var(--psg-on-primary);
+  --el-button-active-text-color: var(--psg-on-primary);
 }
 
 .el-button--primary:hover,

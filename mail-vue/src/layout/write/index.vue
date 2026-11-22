@@ -14,12 +14,7 @@
            @touchstart.passive="sheetTouchStart" @touchmove="sheetTouchMove" @touchend.passive="sheetTouchEnd"
            @touchcancel.passive="sheetTouchEnd">
         <div class="wh-left">
-          <div class="wh-badge">
-            <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
-            <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
-            <span v-else>{{ $t('compose') }}</span>
-          </div>
-          <span class="wh-title">{{ form.subject || $t('noSubject') }}</span>
+          <span class="wh-title" :class="{ 'is-placeholder': !form.subject }">{{ form.subject || headerFallback }}</span>
         </div>
         <div class="wh-actions">
           <button type="button" class="wh-action-btn"
@@ -86,7 +81,7 @@
         </div>
 
         <!-- To -->
-        <div class="field-row">
+        <div class="field-row to-row" :class="{ 'is-expanded': moreFields }">
           <span class="field-label">{{ $t('recipient') }}</span>
           <el-input-tag ref="toTagRef" class="field-tag" @add-tag="addTagChange" tag-type="primary"
                         @input="inputChange" size="default" v-model="form.receiveEmail">
@@ -108,11 +103,18 @@
             <span class="field-toggle" :class="{ 'is-on': form.requestReceipt }"
                   role="switch" :aria-checked="form.requestReceipt" :title="$t('readReceiptTip')"
                   @click.stop="form.requestReceipt = !form.requestReceipt">{{ $t('readReceipt') }}</span>
-            <button type="button" class="icon-btn-sm" :title="$t('recentContacts')"
-                    :aria-label="$t('recentContacts')" @click.stop="openContacts">
-              <Icon icon="psg:user-plus" width="14" height="14"/>
-            </button>
           </div>
+          <button type="button" class="icon-btn-sm" :title="$t('recentContacts')"
+                  :aria-label="$t('recentContacts')" @click.stop="openContacts">
+            <Icon icon="psg:user-plus" width="14" height="14"/>
+          </button>
+          <!-- Phones: Cc / Bcc / read receipt fold behind this caret, so the
+               recipients get the whole row (as in Gmail's app). -->
+          <button type="button" class="icon-btn-sm field-more" :aria-expanded="moreFields"
+                  :title="$t('cc') + ' / ' + $t('bcc')" :aria-label="$t('cc') + ' / ' + $t('bcc')"
+                  @click.stop="moreFields = !moreFields">
+            <Icon icon="psg:chevron-down" width="16" height="16"/>
+          </button>
         </div>
 
         <!-- Cc -->
@@ -157,40 +159,123 @@
         <!-- Editor -->
         <div class="editor-wrap">
           <tinyEditor :def-value="defValue" ref="editor" radius="var(--compose-radius)"
+                      toolbar-location="bottom"
+                      :toolbar="isPhone ? phoneToolbar : null" :toolbar-mode="isPhone ? 'scrolling' : 'wrap'"
                       :native-fullscreen="false" :fullscreen-active="windowState === 'maximized'"
                       @fullscreen="toggleMaximize" @escape="handleEscape" @shortcut="runComposeShortcut"
                       @change="change" @focus="focusChange" @submit="sendEmail" />
         </div>
 
-        <!-- Toolbar -->
+        <!-- Attachments: their own strip above the action row -->
+        <div v-if="form.attachments.length" class="att-row">
+          <div class="att-list">
+            <div class="att-item" v-for="(item,index) in form.attachments" :key="index">
+              <Icon v-bind="getIconByName(item.filename)" width="14" height="14"/>
+              <span class="att-filename">{{ item.filename }}</span>
+              <span class="att-size">{{ formatBytes(item.size) }}</span>
+              <Icon icon="psg:close-circle" width="16" height="16"
+                    style="cursor:pointer;flex-shrink:0" @click="delAtt(index)"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action row: Send first (as in Gmail), then the insert tools;
+             clearing the body sits alone at the far end, away from Send. -->
         <div class="toolbar-bar">
           <div class="toolbar-left">
-            <el-popover v-model:visible="aiPopoverOpen" placement="top-start" width="230"
-                        trigger="click" popper-class="compose-ai-popper">
-              <div class="compose-ai-actions">
-                <button v-for="action in aiActions" :key="action.value" type="button" @click="runComposeAi(action.value)">
-                  <Icon icon="psg:sparkles" width="14" height="14" /> {{ t(action.labelKey) }}
-                </button>
+            <div class="send-group">
+              <div v-if="showSchedulePicker" class="schedule-panel" role="dialog"
+                   :aria-label="$t('sendLater')"
+                   @touchstart.passive="scheduleTouchStart"
+                   @touchmove="scheduleTouchMove"
+                   @touchend="scheduleTouchEnd">
+                <div class="schedule-panel-header">
+                  <span class="mobile-sheet-handle" aria-hidden="true"></span>
+                  <div class="schedule-panel-title">
+                    <span class="schedule-panel-icon">
+                      <Icon icon="psg:clock" width="16" height="16"/>
+                    </span>
+                    <span>
+                      <strong>{{ $t('sendLater') }}</strong>
+                      <small>{{ $t('schedulePanelHint') }}</small>
+                    </span>
+                  </div>
+                  <button type="button" class="schedule-panel-close"
+                          :aria-label="$t('cancel')" @click="cancelSchedulePicker">
+                    <Icon icon="psg:close" width="15" height="15"/>
+                  </button>
+                </div>
+
+                <div class="schedule-panel-section">
+                  <div class="schedule-panel-label">{{ $t('scheduleQuick') }}</div>
+                  <div class="schedule-quick-grid">
+                    <button v-for="preset in schedulePresets" :key="preset.value"
+                            type="button" class="schedule-quick-btn"
+                            :class="{ 'is-active': isSchedulePresetActive(preset.value) }"
+                            :aria-pressed="isSchedulePresetActive(preset.value)"
+                            @click="applySchedulePreset(preset.value)">
+                      {{ $t(preset.labelKey) }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="schedule-panel-section schedule-panel-custom">
+                  <div class="schedule-panel-label-row">
+                    <span class="schedule-panel-label">{{ $t('scheduleFor') }}</span>
+                    <span class="schedule-panel-timezone">{{ scheduleTimezone }}</span>
+                  </div>
+                  <el-date-picker
+                    v-model="scheduledAt"
+                    type="datetime"
+                    :placeholder="$t('scheduleFor')"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                    :disabled-date="isScheduleDateDisabled"
+                    size="default"
+                    class="schedule-picker"
+                    popper-class="schedule-datetime-popper"
+                  />
+                </div>
+
+                <div class="schedule-panel-footer">
+                  <span class="schedule-panel-note">
+                    <Icon icon="psg:clock" width="13" height="13"/>
+                    {{ scheduleTimezone }}
+                  </span>
+                  <div class="schedule-panel-actions">
+                    <el-button class="schedule-cancel-btn" @click="cancelSchedulePicker">
+                      {{ $t('cancel') }}
+                    </el-button>
+                    <el-button class="schedule-confirm-btn" type="primary"
+                               @click="sendScheduled" :disabled="!scheduledAt">
+                      {{ $t('scheduleConfirmBtn') }}
+                    </el-button>
+                  </div>
+                </div>
               </div>
-              <template #reference>
-                <button type="button" class="tb-btn tb-btn--label compose-ai-trigger" :aria-label="$t('aiTransform')">
-                  <Icon icon="psg:sparkles" width="16" height="16"/><span>{{ $t('aiTransform') }}</span>
-                </button>
-              </template>
-            </el-popover>
-            <button type="button" class="tb-btn tb-btn--label" @click="chooseFile">
-              <Icon icon="psg:paperclip" width="16" height="16"/>
-              <span>{{ $t('attachments') }}</span>
-            </button>
-            <button type="button" class="tb-btn" @click="clearContent" :title="$t('clear')"
-                    :aria-label="$t('clear')">
-              <Icon icon="psg:eraser" width="17" height="17"/>
+
+              <el-button class="send-btn" type="primary" @click="sendEmail">
+                <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
+                <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
+                <span v-else>{{ $t('send') }}</span>
+              </el-button>
+              <el-tooltip :content="$t('sendLater')" placement="top" :disabled="showSchedulePicker">
+                <el-button class="send-later-btn" type="primary" :class="{ 'is-active': showSchedulePicker }"
+                           :aria-label="$t('sendLater')" :aria-expanded="showSchedulePicker"
+                           @click="toggleSchedulePicker">
+                  <Icon icon="psg:clock" width="16" height="16"/>
+                </el-button>
+              </el-tooltip>
+            </div>
+            <span class="tb-sep" aria-hidden="true"></span>
+            <button type="button" class="tb-btn" @click="chooseFile" :title="$t('attachments')"
+                    :aria-label="$t('attachments')">
+              <Icon icon="psg:paperclip" width="18" height="18"/>
             </button>
             <el-dropdown trigger="click" @command="insertTemplate" :hide-on-click="true"
                          popper-class="write-template-dropdown">
-              <button type="button" class="tb-btn tb-btn--label">
-                <Icon icon="psg:template" width="16" height="16"/>
-                <span>{{ $t('insertTemplate') }}</span>
+              <button type="button" class="tb-btn" :title="$t('insertTemplate')" :aria-label="$t('insertTemplate')">
+                <Icon icon="psg:template" width="18" height="18"/>
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -203,9 +288,8 @@
             </el-dropdown>
             <el-dropdown v-if="userStore.signatureList.length" trigger="click" @command="applySignature"
                          :hide-on-click="true" popper-class="write-template-dropdown">
-              <button type="button" class="tb-btn tb-btn--label" :title="$t('signature')">
-                <Icon icon="psg:edit" width="16" height="16"/>
-                <span>{{ $t('signatureInsert') }}</span>
+              <button type="button" class="tb-btn" :title="$t('signatureInsert')" :aria-label="$t('signatureInsert')">
+                <Icon icon="psg:edit" width="18" height="18"/>
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -216,101 +300,25 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            <div class="att-list">
-              <div class="att-item" v-for="(item,index) in form.attachments" :key="index">
-                <Icon v-bind="getIconByName(item.filename)" width="14" height="14"/>
-                <span class="att-filename">{{ item.filename }}</span>
-                <span class="att-size">{{ formatBytes(item.size) }}</span>
-                <Icon icon="psg:close-circle" width="16" height="16"
-                      style="cursor:pointer;flex-shrink:0" @click="delAtt(index)"/>
-              </div>
-            </div>
-          </div>
-          <div class="toolbar-right">
-            <div v-if="showSchedulePicker" class="schedule-panel" role="dialog"
-                 :aria-label="$t('sendLater')"
-                 @touchstart.passive="scheduleTouchStart"
-                 @touchmove="scheduleTouchMove"
-                 @touchend="scheduleTouchEnd">
-              <div class="schedule-panel-header">
-                <span class="mobile-sheet-handle" aria-hidden="true"></span>
-                <div class="schedule-panel-title">
-                  <span class="schedule-panel-icon">
-                    <Icon icon="psg:clock" width="16" height="16"/>
-                  </span>
-                  <span>
-                    <strong>{{ $t('sendLater') }}</strong>
-                    <small>{{ $t('schedulePanelHint') }}</small>
-                  </span>
-                </div>
-                <button type="button" class="schedule-panel-close"
-                        :aria-label="$t('cancel')" @click="cancelSchedulePicker">
-                  <Icon icon="psg:close" width="15" height="15"/>
+            <el-popover v-model:visible="aiPopoverOpen" placement="top-start" width="230"
+                        trigger="click" popper-class="compose-ai-popper">
+              <div class="compose-ai-actions">
+                <button v-for="action in aiActions" :key="action.value" type="button" @click="runComposeAi(action.value)">
+                  <Icon icon="psg:sparkles" width="14" height="14" /> {{ t(action.labelKey) }}
                 </button>
               </div>
-
-              <div class="schedule-panel-section">
-                <div class="schedule-panel-label">{{ $t('scheduleQuick') }}</div>
-                <div class="schedule-quick-grid">
-                  <button v-for="preset in schedulePresets" :key="preset.value"
-                          type="button" class="schedule-quick-btn"
-                          :class="{ 'is-active': isSchedulePresetActive(preset.value) }"
-                          :aria-pressed="isSchedulePresetActive(preset.value)"
-                          @click="applySchedulePreset(preset.value)">
-                    {{ $t(preset.labelKey) }}
-                  </button>
-                </div>
-              </div>
-
-              <div class="schedule-panel-section schedule-panel-custom">
-                <div class="schedule-panel-label-row">
-                  <span class="schedule-panel-label">{{ $t('scheduleFor') }}</span>
-                  <span class="schedule-panel-timezone">{{ scheduleTimezone }}</span>
-                </div>
-                <el-date-picker
-                  v-model="scheduledAt"
-                  type="datetime"
-                  :placeholder="$t('scheduleFor')"
-                  format="YYYY-MM-DD HH:mm"
-                  value-format="YYYY-MM-DD HH:mm:ss"
-                  :disabled-date="isScheduleDateDisabled"
-                  size="default"
-                  class="schedule-picker"
-                  popper-class="schedule-datetime-popper"
-                />
-              </div>
-
-              <div class="schedule-panel-footer">
-                <span class="schedule-panel-note">
-                  <Icon icon="psg:clock" width="13" height="13"/>
-                  {{ scheduleTimezone }}
-                </span>
-                <div class="schedule-panel-actions">
-                  <el-button class="schedule-cancel-btn" @click="cancelSchedulePicker">
-                    {{ $t('cancel') }}
-                  </el-button>
-                  <el-button class="schedule-confirm-btn" type="primary"
-                             @click="sendScheduled" :disabled="!scheduledAt">
-                    {{ $t('scheduleConfirmBtn') }}
-                  </el-button>
-                </div>
-              </div>
-            </div>
-
-            <el-tooltip :content="$t('sendLater')" placement="top" :disabled="showSchedulePicker">
-              <el-button class="send-later-btn" :class="{ 'is-active': showSchedulePicker }"
-                         :aria-label="$t('sendLater')" :aria-expanded="showSchedulePicker"
-                         @click="toggleSchedulePicker">
-                <Icon icon="psg:clock" width="16" height="16"/>
-                <span class="send-later-label">{{ $t('sendLater') }}</span>
-              </el-button>
-            </el-tooltip>
-            <el-button class="send-btn" type="primary" @click="sendEmail">
-              <Icon icon="psg:send" width="15" height="15" style="margin-right:6px"/>
-              <span v-if="form.sendType === 'reply'">{{ $t('reply') }}</span>
-              <span v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</span>
-              <span v-else>{{ $t('send') }}</span>
-            </el-button>
+              <template #reference>
+                <button type="button" class="tb-btn compose-ai-trigger" :title="$t('aiTransform')" :aria-label="$t('aiTransform')">
+                  <Icon icon="psg:sparkles" width="18" height="18"/>
+                </button>
+              </template>
+            </el-popover>
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="tb-btn" @click="clearContent" :title="$t('clear')"
+                    :aria-label="$t('clear')">
+              <Icon icon="psg:eraser" width="18" height="18"/>
+            </button>
           </div>
         </div>
 
@@ -504,6 +512,9 @@ const emailStore = useEmailStore();
 const accountStore = useAccountStore()
 const editor = ref({})
 const userStore = useUserStore();
+// Header title before a subject is typed: what kind of message this is.
+const headerFallback = computed(() => form.sendType === 'reply' ? t('reply')
+  : form.sendType === 'forward' ? t('forward') : t('newMessage'))
 const show = ref(false);
 const windowState = ref('normal'); // 'normal' | 'minimized' | 'maximized'
 function toggleMinimize() {
@@ -617,6 +628,11 @@ function stopDrag() {
   window.removeEventListener('mouseup', stopDrag)
 }
 const showCc = ref(false);
+const moreFields = ref(false);
+// Phones get one swipeable format row, everyday styles first and the
+// font pickers last, instead of the desktop row wrapped onto two lines.
+const isPhone = typeof window !== 'undefined' && window.innerWidth < 768
+const phoneToolbar = 'bold italic underline strikethrough | forecolor backcolor | alignformat listformat link | moreformat | fontfamily fontsize'
 const showBcc = ref(false);
 const percent = ref(0)
 let percentMessage = null
@@ -3467,23 +3483,24 @@ function close() {
 }
 
 .wh {
-  height: 56px;
-  padding: 0 12px 0 24px;
+  height: 52px;
+  padding: 0 10px 0 20px;
   border-bottom: 1px solid var(--psg-border);
 }
 
 .write-box[data-state="minimized"] .wh { height: 52px; padding-left: 16px; border-bottom: 0; }
 
-.wh-title { font-family: var(--psg-font-display); font-size: 20px; font-weight: 400; }
-.wh-badge {
-  padding: 0;
-  background: transparent;
-  color: var(--psg-text-muted);
-  font-size: 13px;
-  font-weight: 400;
+/* One title in the UI face: the subject once there is one, otherwise what
+   kind of message this is. (The serif title beside a small "Compose" label
+   read as two headings fighting.) */
+.wh-title {
+  font-family: var(--psg-font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--psg-text);
 }
 
-.wh-left { gap: 12px; }
+.wh-left { gap: 0; }
 
 .wh-action-btn {
   width: 32px;
@@ -3493,39 +3510,79 @@ function close() {
   color: var(--psg-text-muted);
 }
 
-.wh-actions { gap: 2px; }
+.wh-actions { gap: 0; }
 
+/* Rows share one left edge (20px) with the header, the format bar and the
+   action row, so everything in the window lines up on one margin. */
 .field-row {
   margin: 0;
-  padding: 0 24px;
+  min-height: 44px;
+  padding: 0 20px;
   background: var(--psg-surface);
   border-bottom: 1px solid var(--psg-border);
 }
 
-.field-row.from-row { border-radius: 0; }
+.field-row.from-row { border-radius: 0; padding-block: 6px; }
 
 .subject-row {
+  min-height: 46px;
   border-radius: 0;
 }
 
-.field-label { width: 64px; font-weight: 400; color: var(--psg-text-muted); }
+.field-label { width: 56px; font-size: 13px; font-weight: 400; color: var(--psg-text-muted); }
 
+.field-actions { gap: 2px; }
+
+.field-toggle {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--psg-text-muted);
+  padding: 4px 6px;
+}
+
+/* From reads as text with a caret, not a grey pill. */
 .from-chip {
   border: 0;
-  background: var(--psg-surface-muted);
+  background: transparent;
   border-radius: var(--psg-radius-xs);
-  height: 28px;
+  height: 30px;
+  padding: 0 6px;
+  gap: 6px;
+  font-size: 14px;
+
+  &.selectable:hover { background: var(--psg-surface-muted); }
 }
 
 .from-name { font-weight: 500; }
+.from-email { font-size: 13px; color: var(--psg-text-muted); }
 
-.editor-wrap { padding: 8px 16px 0; }
+.editor-wrap { padding: 0; }
+
+/* The format bar sits under the text, inset to the same 20px margin. */
+.editor-wrap :deep(.tox .tox-editor-header) {
+  padding: 4px 10px !important;
+}
+/* Colour buttons: the caret tab hugs its swatch icon. */
+.editor-wrap :deep(.tox .tox-split-button .tox-tbtn:not(.tox-split-button__chevron)) {
+  width: 30px !important;
+  min-width: 30px !important;
+}
+.editor-wrap :deep(.tox .tox-toolbar__primary) { padding: 0 !important; }
+
+.att-row {
+  flex-shrink: 0;
+  padding: 8px 20px 0;
+}
+.att-row .att-list { padding: 0; flex-wrap: wrap; overflow: visible; }
 
 .toolbar-bar {
-  padding: 12px 16px;
-  border-top: 1px solid var(--psg-border);
+  padding: 10px 14px 12px 20px;
+  border-top: 0;
   background: transparent;
+  gap: 8px;
 }
+
+.toolbar-left { gap: 2px; }
 
 .tb-btn {
   height: 36px;
@@ -3535,26 +3592,52 @@ function close() {
   color: var(--psg-text-secondary);
 }
 
-.tb-btn--label { padding: 0 12px; font-size: 14px; font-weight: 400; }
+.tb-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 8px 0 10px;
+  background: var(--psg-border);
+  flex-shrink: 0;
+}
 
 .compose-ai-trigger { color: var(--psg-text-secondary) !important; }
 
-.send-btn {
-  height: 36px !important;
-  padding: 0 16px !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  border-radius: var(--psg-radius-sm) !important;
+/* Send and Send later are one split button: the label does the common
+   thing, the clock half opens the schedule panel. */
+.send-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
-.send-later-btn {
+.send-btn {
   height: 36px !important;
+  padding: 0 18px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: var(--psg-radius-sm) 0 0 var(--psg-radius-sm) !important;
+}
+
+.send-group .send-later-btn {
+  height: 36px !important;
+  width: 36px !important;
   min-width: 36px !important;
-  padding: 0 12px !important;
-  border-radius: var(--psg-radius-sm) !important;
+  padding: 0 !important;
+  margin-left: 0 !important;
+  border-radius: 0 var(--psg-radius-sm) var(--psg-radius-sm) 0 !important;
+  border-left: 1px solid color-mix(in srgb, var(--psg-on-primary) 28%, transparent) !important;
+}
+
+.send-group .send-later-btn.is-active {
+  background: var(--psg-primary-active) !important;
+  border-color: var(--psg-primary-active) !important;
+  color: var(--psg-on-primary) !important;
 }
 
 .schedule-panel {
+  left: 0;
+  right: auto;
   border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-lg);
 }
@@ -3574,7 +3657,7 @@ function close() {
 
 /* The sender dropdown's wrapper must be allowed to shrink, or a long
    "Name <address>" pushes the From row past the screen edge on phones. */
-.from-row .el-dropdown { min-width: 0; max-width: 100%; }
+.from-row .el-dropdown { min-width: 0; max-width: 100%; margin-left: -6px; }
 .from-chip { min-width: 0; }
 .from-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
 
@@ -3618,4 +3701,91 @@ function close() {
   }
 }
 
+
+.field-more { display: none; }
+.subject-input { flex: 1; min-width: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   Phones — one white sheet, edge to edge, like the mail reader:
+   rows run full width on hairlines (no grey canvas, no inset cards),
+   the To row keeps its width for recipients (Cc / Bcc / read receipt
+   fold behind a caret), and the format bar is a single swipeable row.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .send:not([data-state="minimized"]),
+  .write-box:not([data-state="minimized"]) { background: var(--psg-surface); }
+
+  .container { padding: 0; background: var(--psg-surface); }
+
+  .wh { height: calc(56px + env(safe-area-inset-top, 0px)); padding-left: 16px; }
+  .wh-title { font-size: 17px; }
+
+  .field-row {
+    min-height: 48px;
+    margin: 0;
+    padding: 0 8px 0 16px;
+    gap: 4px;
+  }
+
+  .field-label { width: 52px; font-size: 14px; }
+
+  .field-row.from-row { flex-wrap: nowrap; padding-block: 4px; }
+  .from-chip { font-size: 14px; }
+  .from-email { display: none; }
+
+  /* Recipients get the row; the extras fold away behind the caret. */
+  .field-more { display: flex; }
+  .icon-btn-sm { width: 36px; height: 36px; }
+  .field-more svg { transition: transform var(--psg-dur-fast, .15s) ease; }
+  .to-row.is-expanded .field-more svg { transform: rotate(180deg); }
+  .to-row .field-actions { display: none; }
+  .to-row.is-expanded { flex-wrap: wrap; }
+  .to-row.is-expanded .field-actions {
+    display: flex;
+    order: 10;
+    flex-basis: 100%;
+    margin: 0;
+    padding: 0 0 8px 56px;
+    gap: 4px;
+  }
+  .field-toggle {
+    height: 30px;
+    padding: 0 10px;
+    background: transparent;
+    border: 1px solid var(--psg-border);
+    font-size: 13px;
+    color: var(--psg-text-secondary);
+  }
+  .field-toggle.is-on {
+    border-color: transparent;
+    background: var(--psg-primary-muted);
+    color: var(--psg-primary);
+  }
+
+  .el-input-tag.field-tag.is-focused { box-shadow: none !important; }
+  .el-input-tag.field-tag :deep(.el-tag) { max-width: 100%; }
+
+  .subject-row { min-height: 50px; }
+  :deep(.subject-input .el-input__wrapper.is-focus) {
+    box-shadow: none !important;
+    padding-left: 0 !important;
+    margin-left: 0;
+  }
+
+  .editor-wrap { min-height: 200px; }
+  .editor-wrap :deep(.tox .tox-editor-header) { padding: 2px 6px !important; }
+
+  .att-row { padding: 8px 16px 0; }
+
+  .toolbar-bar {
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 16px;
+    border-top: 0;
+  }
+  .toolbar-left { overflow: visible; gap: 0; }
+  .tb-btn { width: 40px; height: 40px; background: transparent; }
+  .tb-sep { margin: 0 4px 0 8px; }
+  .send-btn { height: 40px !important; min-width: 0 !important; padding: 0 18px !important;
+    border-radius: var(--psg-radius-sm) 0 0 var(--psg-radius-sm) !important; }
+  .send-group .send-later-btn { height: 40px !important; width: 40px !important; min-width: 40px !important; }
+}
 </style>
