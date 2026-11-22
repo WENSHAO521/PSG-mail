@@ -121,6 +121,11 @@ const allActions = computed(() => [
     action: () => router.push({ name: 'setting' })
   },
   {
+    id: 'shortcuts', group: t('appearance'), label: t('shortcutsTitle'),
+    icon: 'psg:keyboard', shortcut: '?',
+    action: () => { uiStore.shortcutsShow = true }
+  },
+  {
     id: 'theme', group: t('appearance'), label: uiStore.dark ? t('lightMode') : t('darkMode'),
     icon: uiStore.dark ? 'mingcute:sun-fill' : 'solar:moon-linear',
     action: () => uiStore.toggleDark()

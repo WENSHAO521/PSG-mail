@@ -19,6 +19,8 @@ export const useUiStore = defineStore('ui', {
         commandPaletteShow: false,
         accountShow: false,
         aiAssistantShow: false,
+        // Keyboard shortcuts sheet ("?", account menu, command palette).
+        shortcutsShow: false,
         mobileDetailOpen: false,
         // Phone composer pulled down into its docked bar.
         composeDocked: false,

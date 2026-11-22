@@ -931,6 +931,9 @@ addCollection({
         },
         "restore": {
             "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"8\" y=\"4\" width=\"12\" height=\"12\" rx=\"1.3\"/><path d=\"M4 8v10.5A1.5 1.5 0 0 0 5.5 20H16\"/></g>"
+        },
+        "keyboard": {
+            "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"5.5\" width=\"19\" height=\"13\" rx=\"2\"/><path d=\"M6 9.5h.01M9.5 9.5h.01M13 9.5h.01M16.5 9.5h.01M6 12.5h.01M18 12.5h.01M9.5 12.5h5M8 15.5h8\"/></g>"
         }
     }
 })

@@ -24,7 +24,8 @@ defineExpose({
   getSelectedContent,
   getSelectedText,
   replaceSelection,
-  setSignature
+  setSignature,
+  openLink
 })
 
 const props = defineProps({
@@ -51,12 +52,24 @@ const props = defineProps({
   radius: {
     type: String,
     default: 'var(--psg-radius-sm)'
+  },
+  // TinyMCE's own fullscreen pins the editor alone over the whole page —
+  // inside Compose that hid the header, recipients and Send button and left
+  // no way back. Compose turns it off and maximizes its own window instead
+  // (the menu item then emits 'fullscreen').
+  nativeFullscreen: {
+    type: Boolean,
+    default: true
+  },
+  fullscreenActive: {
+    type: Boolean,
+    default: false
   }
 });
 
 
 const {locale, t} = useI18n()
-const emit = defineEmits(['change','focus','submit']);
+const emit = defineEmits(['change','focus','submit','escape','fullscreen','shortcut']);
 const editor = shallowRef(null);
 const isInitialized = ref(false);
 const editorRef = ref(null);
@@ -84,8 +97,16 @@ watch(() => props.defValue, (newValue) => {
 watch(() => [uiStore.dark, settingStore.lang], () => {
   const content = editor.value ? editor.value.getContent() : null;
   destroyEditor();
-  initEditor(content);
+  // After the theme class has landed, so the colours read below are the new ones.
+  nextTick(() => initEditor(content));
 });
+
+// The editor body lives in an iframe that can't see the app's CSS variables,
+// so their current values are copied in. (Hard-coded greys here made the
+// dark body a lighter panel than the Compose sheet around it.)
+function token(name, fallback) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+}
 
 const language = computed(() => {
   if (locale.value === 'zh') {
@@ -102,6 +123,21 @@ function clearEditor() {
 }
 
 const tinyBase = import.meta.env.BASE_URL + 'tinymce'
+
+// The editor body's own font. Kept identical to the first font_family_formats
+// entry so the font select names it ("默认字体") instead of falling back to
+// TinyMCE's generic label.
+const DEFAULT_FONT_STACK = '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
+
+function isFullscreen() {
+  if (props.nativeFullscreen) return !!editor.value?.plugins?.fullscreen?.isFullscreen?.()
+  return props.fullscreenActive
+}
+
+function toggleFullscreen() {
+  if (props.nativeFullscreen) editor.value?.execCommand('mceFullScreen')
+  else emit('fullscreen')
+}
 
 function initTinyMCE() {
   if (window.tinymce) {
@@ -121,6 +157,8 @@ function initTinyMCE() {
 }
 
 function initEditor(initialContent = null) {
+  const surface = token('--psg-surface', uiStore.dark ? '#161618' : '#FFFFFF')
+  const ink = token('--psg-text', uiStore.dark ? '#EDEDEF' : '#18181B')
   window.tinymce.init({
     selector: `#${props.editorId}`,
     base_url: tinyBase,
@@ -152,14 +190,14 @@ function initEditor(initialContent = null) {
     content_style: `
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto:wght@400;700&family=Open+Sans:wght@400;600&family=Lato:wght@400;700&family=Poppins:wght@400;600&family=Nunito:wght@400;600&family=Montserrat:wght@400;600&family=Source+Sans+3:wght@400;600&family=Raleway:wght@400;600&family=Ubuntu:wght@400;500&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;600&family=Lora:wght@400;600&family=EB+Garamond:wght@400;500&family=Noto+Serif:wght@400;700&family=Oswald:wght@400;600&family=Roboto+Mono:wght@400;500&family=Source+Code+Pro:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&family=ZCOOL+XiaoWei&family=Ma+Shan+Zheng&display=swap');
       :root {
-        --scrollbar-track-color: ${uiStore.dark ? '#1C1C1F' : '#FFFFFF'};
+        --scrollbar-track-color: ${surface};
         --scrollbar-thumb-color: ${uiStore.dark ? '#3A3A3F' : '#D1D1D6'};
       }
       /* Oxide pins the placeholder at left: 1px, ignoring the body padding,
          so the hint sat left of where typed text actually starts. Letting it
          take its static position lines the two up. */
       .mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before { left: auto !important; right: auto !important; }
-      body { padding: 12px 16px !important; font-size: 15px; line-height: 1.7; color: ${uiStore.dark ? '#F2F2F7' : '#1C1C1E'}; }
+      body { padding: 12px 16px !important; font-family: ${DEFAULT_FONT_STACK}; font-size: 15px; line-height: 1.7; color: ${ink}; }
       a { color: ${uiStore.dark ? '#F4B6C6' : '#B04A6A'}; }
       blockquote, .mceNonEditable {
         color: ${uiStore.dark ? '#D1D1D6' : '#3C3C43'} !important;
@@ -173,7 +211,7 @@ function initEditor(initialContent = null) {
         body { padding: 10px 12px !important; }
       }
       ${uiStore.dark ? `
-        body { background: #1C1C1F !important; color: #F2F2F7 !important; }
+        body { background: ${surface} !important; color: ${ink} !important; }
         hr { border-color: #2E2E33 !important; }
         code { background-color: #2A2A2E; }
         figure figcaption { color: #9A9AA0; }
@@ -181,7 +219,7 @@ function initEditor(initialContent = null) {
       ` : ''}
     `,
     font_family_formats: [
-      'Default=-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+      `${t('editorDefaultFont')}=${DEFAULT_FONT_STACK}`,
       'Inter=Inter,sans-serif',
       'Roboto=Roboto,sans-serif',
       'Open Sans=Open Sans,sans-serif',
@@ -211,7 +249,7 @@ function initEditor(initialContent = null) {
       'Verdana=Verdana,Geneva,sans-serif',
       'Courier New=Courier New,Courier,monospace',
     ].join('; '),
-    plugins: 'link image advlist lists emoticons fullscreen table preview code',
+    plugins: `link image advlist lists emoticons ${props.nativeFullscreen ? 'fullscreen ' : ''}table preview code`,
     // Only the buttons someone reaches for on most emails stay on the main
     // row: fonts, the four basic styles, colors, alignment, lists, link and
     // image. Everything used rarely (quote, emoji, table, HTML source,
@@ -282,7 +320,10 @@ function initEditor(initialContent = null) {
           { type: 'separator' },
           { type: 'menuitem', icon: 'sourcecode', text: t('editorHtmlSource'), onAction: () => ed.execCommand('mceCodeEditor') },
           { type: 'menuitem', icon: 'preview', text: t('editorPreview'), onAction: () => ed.execCommand('mcePreview') },
-          { type: 'menuitem', icon: 'fullscreen', text: t('editorFullscreen'), onAction: () => ed.execCommand('mceFullScreen') },
+          // Compose is already full-screen on phones; no item that does nothing.
+          ...(!props.nativeFullscreen && window.innerWidth < 768 ? [] : [
+            { type: 'menuitem', icon: 'fullscreen', text: isFullscreen() ? t('editorExitFullscreen') : t('editorFullscreen'), onAction: toggleFullscreen },
+          ]),
           { type: 'separator' },
           { type: 'menuitem', icon: 'remove-formatting', text: t('editorClearFormat'), onAction: () => ed.execCommand('RemoveFormat') },
         ]),
@@ -291,18 +332,6 @@ function initEditor(initialContent = null) {
       ed.on('init', () => {
         ed.setContent(initialContent ?? props.defValue);
         isInitialized.value = true;
-        // TinyMCE's zh_CN pack labels the empty font-family select as
-        // “预设”, which is misleading in a mail editor. Keep the native
-        // select behavior and only replace its initial label with the
-        // language-aware product term.
-        const updateFontButtonLabel = () => {
-          const fontButton = document.querySelector('[data-mce-name="fontfamily"]')
-          const fontLabel = fontButton?.querySelector('.tox-tbtn__select-label')
-          if (fontLabel) fontLabel.textContent = t('editorFontFamily')
-          if (fontButton) fontButton.setAttribute('aria-label', t('editorFontFamily'))
-        }
-        requestAnimationFrame(updateFontButtonLabel)
-        setTimeout(updateFontButtonLabel, 120)
       });
       ed.on('input change', () => {
         const content = ed.getContent();
@@ -312,12 +341,42 @@ function initEditor(initialContent = null) {
       ed.on('focus', () => {
         emit('focus', focus);
       })
-      // Keys typed in the editor stay inside its iframe, so Ctrl/Cmd+Enter
-      // is passed up here for the compose window to send.
+      // Gmail's formatting shortcuts. 'meta' is Ctrl on Windows/Linux and
+      // Cmd on macOS; numbers are key codes where TinyMCE can't derive them
+      // from the character (\ = 220, [ = 219, ] = 221).
+      const cmd = (name) => () => ed.execCommand(name)
+      ed.addShortcut('meta+shift+7', t('editorNumberedList'), cmd('InsertOrderedList'))
+      ed.addShortcut('meta+shift+8', t('editorBulletList'), cmd('InsertUnorderedList'))
+      ed.addShortcut('meta+shift+9', t('editorQuote'), cmd('mceBlockQuote'))
+      ed.addShortcut('meta+shift+l', t('editorAlignLeft'), cmd('JustifyLeft'))
+      ed.addShortcut('meta+shift+e', t('editorAlignCenter'), cmd('JustifyCenter'))
+      ed.addShortcut('meta+shift+r', t('editorAlignRight'), cmd('JustifyRight'))
+      ed.addShortcut('meta+220', t('editorClearFormat'), cmd('RemoveFormat'))
+      ed.addShortcut('meta+219', t('editorDecreaseIndent'), cmd('Outdent'))
+      ed.addShortcut('meta+221', t('editorIncreaseIndent'), cmd('Indent'))
+
+      // Keys typed in the editor stay inside its iframe and never reach the
+      // page's own listeners, so the compose-level ones are passed up here.
       ed.on('keydown', (e) => {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        if (e.isComposing || e.keyCode === 229) return
+        const mod = e.ctrlKey || e.metaKey
+        if (e.key === 'Enter' && mod) {
           e.preventDefault();
-          emit('submit');
+          if (!e.repeat) emit('submit');
+        } else if (e.key === 'Escape' && !mod && !e.altKey) {
+          if (props.nativeFullscreen && isFullscreen()) {
+            e.preventDefault()
+            toggleFullscreen()
+          } else {
+            emit('escape', e)
+          }
+        } else if (mod && e.shiftKey && !e.altKey && e.code === 'KeyF' && !props.nativeFullscreen && window.innerWidth >= 768) {
+          // Same key as TinyMCE's own fullscreen toggle on the other pages.
+          e.preventDefault()
+          emit('fullscreen')
+        } else if (mod && e.shiftKey && !e.altKey && (e.code === 'KeyC' || e.code === 'KeyB')) {
+          e.preventDefault()
+          emit('shortcut', e.code === 'KeyC' ? 'cc' : 'bcc')
         }
       })
     },
@@ -386,6 +445,12 @@ function setSignature(html) {
   emit('change', ed.getContent(), ed.getContent({ format: 'text' }))
 }
 
+function openLink() {
+  if (!editor.value) return
+  editor.value.focus()
+  editor.value.execCommand('mceLink')
+}
+
 function getSelectedContent() {
   return editor.value?.selection?.getContent({ format: 'html' }) || ''
 }
@@ -443,11 +508,16 @@ function destroyEditor() {
   max-width: 160px !important;
 }
 
+/* Native fullscreen (Templates, Signatures): an opaque sheet above the top
+   bar. The flat-toolbar rules below make .tox-tinymce transparent, which let
+   the app's nav show through the toolbar; and the default z-index (1200) sat
+   under the top bar. Kept below the menu/dialog sink (.tox-tinymce-aux). */
 .tox.tox-tinymce.tox-fullscreen {
   padding-right: 15px;
   padding-left: 15px;
   padding-bottom: 15px;
-  background: var(--el-bg-color);
+  background: var(--psg-surface) !important;
+  z-index: 2050 !important;
   @media (max-width: 767px) {
     padding-right: 10px;
     padding-left: 10px;

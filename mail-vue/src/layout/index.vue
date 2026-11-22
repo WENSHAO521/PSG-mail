@@ -5,7 +5,8 @@
   <WhatsNew/>
 
   <!-- Keyboard shortcuts dialog -->
-  <el-dialog v-model="showShortcuts" :title="$t('shortcutsTitle')" width="460" align-center>
+  <el-dialog v-model="uiStore.shortcutsShow" :title="$t('shortcutsTitle')" width="min(720px, calc(100vw - 32px))" align-center
+             class="shortcuts-dialog">
     <div class="shortcuts-body">
       <div class="sc-section-title">{{ $t('shortcutActions') }}</div>
       <div class="shortcuts-grid">
@@ -21,6 +22,14 @@
           <span class="sc-desc">{{ $t(sc.label) }}</span>
         </div>
       </div>
+      <div class="sc-section-title sc-section-title--mt">{{ $t('shortcutComposeSection') }}</div>
+      <div class="shortcuts-grid">
+        <div class="sc-row" v-for="sc in composeShortcuts" :key="sc.key">
+          <kbd class="sc-key">{{ sc.key }}</kbd>
+          <span class="sc-desc">{{ $t(sc.label) }}</span>
+        </div>
+      </div>
+      <p class="sc-note">{{ $t('shortcutTypingNote') }}</p>
     </div>
   </el-dialog>
 
@@ -120,7 +129,6 @@ const settingStore = useSettingStore()
 const accountStore = useAccountStore()
 const writerRef = ref({})
 const cmdPaletteRef = ref(null)
-const showShortcuts = ref(false)
 const isMobile = ref(window.innerWidth < 1025)
 
 // ── Draggable list/detail pane divider ──────────────────────────────────
@@ -221,6 +229,24 @@ const navShortcuts = [
   { key: 'G S',    label: 'shortcutGoSent'   },
   { key: 'G D',    label: 'shortcutGoDrafts' },
   { key: 'G T',    label: 'shortcutGoStarred'},
+]
+// Shown as ⌘ on a Mac, where 'meta' shortcuts are Cmd.
+const MOD = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘' : 'Ctrl'
+const composeShortcuts = [
+  { key: `${MOD} Enter`,     label: 'shortcutSend' },
+  { key: 'Esc',              label: 'shortcutCloseCompose' },
+  { key: `${MOD} Shift F`,   label: 'shortcutComposeFullscreen' },
+  { key: `${MOD} Shift C`,   label: 'shortcutAddCc' },
+  { key: `${MOD} Shift B`,   label: 'shortcutAddBcc' },
+  { key: `${MOD} B / I / U`, label: 'shortcutBoldItalicUnderline' },
+  { key: `${MOD} K`,         label: 'shortcutInsertLink' },
+  { key: `${MOD} Shift 7`,   label: 'shortcutNumberedList' },
+  { key: `${MOD} Shift 8`,   label: 'shortcutBulletList' },
+  { key: `${MOD} Shift 9`,   label: 'shortcutQuote' },
+  { key: `${MOD} Shift L / E / R`, label: 'shortcutAlign' },
+  { key: `${MOD} [ / ]`,     label: 'shortcutIndent' },
+  { key: `${MOD} \\`,        label: 'shortcutClearFormat' },
+  { key: `${MOD} Z / Y`,     label: 'shortcutUndoRedo' },
 ]
 
 let pendingG = false
@@ -399,20 +425,36 @@ function handleMouseBack(e) {
 
 // Keyboard shortcuts
 function handleKeydown(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+  // Already handled (the top bar's "/" focus, Compose's own keys) or an IME
+  // still composing.
+  if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return
+  const target = e.target instanceof Element ? e.target : document.body
+  // Inside Compose its own keys apply (Ctrl+K there inserts a link).
+  const inCompose = !!target.closest('.send')
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+    if (inCompose) return
     e.preventDefault()
     cmdPaletteRef.value?.open()
     return
   }
-  const tag = e.target.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+  const tag = target.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return
   if (e.ctrlKey || e.metaKey || e.altKey) return
+  // Single-key shortcuts stay out of Compose, open dialogs and menus —
+  // pressing "r" on a focused Compose button used to replace the mail being
+  // written with a reply.
+  if (inCompose || target.closest('.el-overlay, .el-popper, .tox, .palette-overlay')) return
+  // Compose is a modal sheet on desktop: the page behind it is dimmed and
+  // its shortcuts are off until Compose is closed or minimized.
+  if (uiStore.writerRef?.isOpen?.()) return
+  // Holding a key down repeats only for moving through the list.
+  if (e.repeat && e.key !== 'j' && e.key !== 'k') return
 
   // g-prefix navigation (Gmail-style: g then i/a/s/d/t)
   if (pendingG) {
     clearTimeout(pendingGTimer)
     pendingG = false
-    switch (e.key) {
+    switch (e.key.toLowerCase()) {
       case 'i': router.push({ name: 'email' }); return
       case 'a': router.push({ name: 'all-inbox' }); return
       case 's': router.push({ name: 'send' }); return
@@ -422,20 +464,24 @@ function handleKeydown(e) {
     return
   }
 
-  if (e.key === 'g') {
+  if (e.key.toLowerCase() === 'g' && !e.shiftKey) {
     pendingG = true
     pendingGTimer = setTimeout(() => { pendingG = false }, 1200)
     return
   }
 
   const email = emailStore.contentData?.email
-  switch (e.key) {
-    case 'c': uiStore.writerRef?.open?.(); break
+  // Caps Lock on: "C" still means "c" (Shift+letter is left alone).
+  const key = !e.shiftKey && e.key.length === 1 ? e.key.toLowerCase() : e.key
+  switch (key) {
+    case 'c': e.preventDefault(); uiStore.writerRef?.open?.(); break
     case 'r': if (email) uiStore.writerRef?.openReply?.(email); break
     case 'a': if (email) uiStore.writerRef?.openReplyAll?.(email); break
     case 'f': if (email) uiStore.writerRef?.openForward?.(email); break
-    case '?': showShortcuts.value = true; break
-    // Real mail search — distinct from Ctrl+K's Command Palette.
+    case '?': uiStore.shortcutsShow = true; break
+    // Real mail search — distinct from Ctrl+K's Command Palette. On desktop
+    // the top bar's search box takes "/" first (and marks it handled); this
+    // is the fallback where that box isn't shown.
     case '/': e.preventDefault(); router.push({ name: 'search' }); break
     case 'j': emailStore.activeList?.openRelative(1); break
     case 'k': emailStore.activeList?.openRelative(-1); break
@@ -564,9 +610,10 @@ onBeforeUnmount(() => {
   &--mt { margin-top: 24px; }
 }
 .shortcuts-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
+  @media (max-width: 600px) { grid-template-columns: minmax(0, 1fr); }
 }
 .sc-row {
   display: flex;
@@ -583,6 +630,7 @@ onBeforeUnmount(() => {
   padding: 2px 8px;
   border-radius: var(--psg-radius-xs);
   min-width: 72px;
+  flex-shrink: 0;
   text-align: center;
   color: var(--psg-text);
   white-space: nowrap;
@@ -590,6 +638,15 @@ onBeforeUnmount(() => {
 .sc-desc {
   font-size: 13px;
   color: var(--psg-text-secondary);
+}
+.sc-note {
+  margin: 20px 0 0;
+  font-size: 12px;
+  color: var(--psg-text-muted);
+}
+.shortcuts-dialog .el-dialog__body {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
 }
 </style>
 

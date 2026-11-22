@@ -1,5 +1,5 @@
 <template>
-  <div class="send" v-show="show" :data-state="windowState">
+  <div class="send" v-show="show" :data-state="windowState" @mousedown.self="onBackdropClick">
     <div class="write-box" :data-state="windowState" ref="writeBoxRef"
          :style="sheetDrag.dy || sheetDrag.settling
            ? { transform: `translateY(${sheetDrag.dy}px)`, transition: sheetDrag.settling ? 'transform .2s ease' : 'none' }
@@ -8,8 +8,9 @@
 
       <!-- ── Header — mousedown here drags the window; a plain click (no
            movement) still falls through to the minimize-restore toggle. ── -->
-      <div class="wh" :class="{ 'wh-draggable': windowState !== 'minimized' }"
+      <div class="wh" :class="{ 'wh-draggable': windowState === 'normal' }"
            @mousedown="startDrag" @click="windowState === 'minimized' && toggleMinimize()"
+           @dblclick="headerDblClick"
            @touchstart.passive="sheetTouchStart" @touchmove="sheetTouchMove" @touchend.passive="sheetTouchEnd"
            @touchcancel.passive="sheetTouchEnd">
         <div class="wh-left">
@@ -150,12 +151,14 @@
         <div class="field-row subject-row">
           <span class="field-label">{{ $t('subject') }}</span>
           <el-input class="subject-input" v-model="form.subject"
-                    :placeholder="t('subject')" />
+                    :placeholder="t('subject')" @keydown.enter="subjectEnter" />
         </div>
 
         <!-- Editor -->
         <div class="editor-wrap">
           <tinyEditor :def-value="defValue" ref="editor" radius="var(--compose-radius)"
+                      :native-fullscreen="false" :fullscreen-active="windowState === 'maximized'"
+                      @fullscreen="toggleMaximize" @escape="handleEscape" @shortcut="runComposeShortcut"
                       @change="change" @focus="focusChange" @submit="sendEmail" />
         </div>
 
@@ -175,20 +178,20 @@
                 </button>
               </template>
             </el-popover>
-            <div class="tb-btn tb-btn--label" @click="chooseFile">
+            <button type="button" class="tb-btn tb-btn--label" @click="chooseFile">
               <Icon icon="psg:paperclip" width="16" height="16"/>
               <span>{{ $t('attachments') }}</span>
-            </div>
+            </button>
             <button type="button" class="tb-btn" @click="clearContent" :title="$t('clear')"
                     :aria-label="$t('clear')">
               <Icon icon="psg:eraser" width="17" height="17"/>
             </button>
             <el-dropdown trigger="click" @command="insertTemplate" :hide-on-click="true"
                          popper-class="write-template-dropdown">
-              <div class="tb-btn tb-btn--label">
+              <button type="button" class="tb-btn tb-btn--label">
                 <Icon icon="psg:template" width="16" height="16"/>
                 <span>{{ $t('insertTemplate') }}</span>
-              </div>
+              </button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item v-if="!templatesList.length" disabled>{{ $t('noTemplates') }}</el-dropdown-item>
@@ -200,10 +203,10 @@
             </el-dropdown>
             <el-dropdown v-if="userStore.signatureList.length" trigger="click" @command="applySignature"
                          :hide-on-click="true" popper-class="write-template-dropdown">
-              <div class="tb-btn tb-btn--label" :title="$t('signature')">
+              <button type="button" class="tb-btn tb-btn--label" :title="$t('signature')">
                 <Icon icon="psg:edit" width="16" height="16"/>
                 <span>{{ $t('signatureInsert') }}</span>
-              </div>
+              </button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item v-for="sig in userStore.signatureList" :key="sig.id" :command="sig">
@@ -508,6 +511,23 @@ function toggleMinimize() {
 }
 function toggleMaximize() {
   windowState.value = windowState.value === 'maximized' ? 'normal' : 'maximized'
+  // A dragged offset belongs to the small window; carried into the centred
+  // maximized one it pushed the header or the Send button off-screen.
+  dragOffset.x = 0
+  dragOffset.y = 0
+}
+
+// Maximized: a click on the dimmed page around the sheet puts it back to the
+// normal size (the normal window stays put — a stray click there would
+// otherwise throw away the user's place).
+function headerDblClick(e) {
+  if (windowState.value === 'minimized' || window.innerWidth < 768) return
+  if (e.target.closest?.('button')) return
+  toggleMaximize()
+}
+
+function onBackdropClick() {
+  if (windowState.value === 'maximized' && window.innerWidth > 767) toggleMaximize()
 }
 
 // ── Phones: pull the full-screen composer down by its header to dock it ──
@@ -559,7 +579,7 @@ let dragStartOffsetY = 0
 let dragBaseRect = null
 
 function startDrag(e) {
-  if (windowState.value === 'minimized') return
+  if (windowState.value !== 'normal') return
   if (window.innerWidth < 768) return
   if (e.target.closest('button, .el-dropdown, .wh-sender')) return
   const box = writeBoxRef.value
@@ -1125,8 +1145,11 @@ function clearContent() {
     cancelButtonText: t('cancel'),
     type: 'warning'
   }).then(() => {
+    // Clearing a mail that was already saved as a draft discards that draft
+    // too, or it stayed behind in Drafts.
+    if (form.draftId) deleteDrafts([form.draftId]).catch(() => {})
     resetForm()
-  })
+  }).catch(() => {})
 
 }
 
@@ -1463,6 +1486,7 @@ function resetForm() {
   backReply.sendType = ''
   showSchedulePicker.value = false
   scheduledAt.value = ''
+  lastSavedSnapshot = ''
   editor.value.clearEditor()
 }
 
@@ -1505,7 +1529,8 @@ function applySignature(item) {
   editor.value?.setSignature?.(item && typeof item === 'object' ? sigInner(item.html) : '')
 }
 
-function openForward(email) {
+async function openForward(email) {
+  if (!(await stashOpenDraft())) return
   resetForm();
 
   email.subject = email.subject || ''
@@ -1581,7 +1606,8 @@ function forwardAttachments(email) {
     .map(att => ({ attId: att.attId, filename: att.filename, contentType: att.mimeType, size: att.size }))
 }
 
-function openReplyAll(email) {
+async function openReplyAll(email) {
+  if (!(await stashOpenDraft())) return
   resetForm()
   email.subject = email.subject || ''
 
@@ -1642,8 +1668,8 @@ function openReplyAll(email) {
   })
 }
 
-function openReply(email) {
-
+async function openReply(email) {
+  if (!(await stashOpenDraft())) return
   resetForm();
 
   email.subject = email.subject || ''
@@ -1882,7 +1908,16 @@ function _showWindow() {
   loadSenderAccounts()
 }
 
-function open(prefill) {
+async function open(prefill) {
+  // Compose / "c" while a mail is being written brings that window back
+  // rather than wiping it (there is one Compose window).
+  if (show.value && !prefill && !isPristine()) {
+    windowState.value = windowState.value === 'minimized' ? 'normal' : windowState.value
+    try { editor.value.focus() } catch {}
+    return
+  }
+  if (!(await stashOpenDraft())) return
+  resetForm()
   _showWindow()
   const sig = sigBlock('new')
   const sigHtml = sig ? `<p><br></p>${sig}` : ''
@@ -1895,7 +1930,9 @@ function open(prefill) {
   }
 }
 
-function openWithTemplate(tpl) {
+async function openWithTemplate(tpl) {
+  if (!(await stashOpenDraft())) return
+  resetForm()
   _showWindow()
   const sig = sigBlock('new')
   const sigHtml = sig ? `<p><br></p>${sig}` : ''
@@ -1904,10 +1941,25 @@ function openWithTemplate(tpl) {
   setTimeout(() => { defValue.value = (tpl.content || '') + sigHtml })
 }
 
-function openDraft(draft) {
+async function openDraft(draft) {
+  if (show.value && draft?.draftId && draft.draftId === form.draftId) {
+    windowState.value = windowState.value === 'minimized' ? 'normal' : windowState.value
+    return
+  }
+  if (!(await stashOpenDraft())) return
+  resetForm()
   Object.assign(form, {...draft})
+  // A draft's Cc/Bcc rows were hidden, so its Cc and Bcc went out unseen.
+  showCc.value = form.cc?.length > 0
+  showBcc.value = form.bcc?.length > 0
+  lastSavedSnapshot = draftSnapshot()
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
+  windowState.value = 'normal'
+  dragOffset.x = 0
+  dragOffset.y = 0
+  loadTemplates()
+  loadSenderAccounts()
   show.value = true;
   try { editor.value.focus() } catch {}
 }
@@ -1919,6 +1971,8 @@ function openDraft(draft) {
 // sender's email string, so resolve it against the loaded sender list the
 // same way selectSender() does.
 async function openScheduled(payload) {
+  if (!(await stashOpenDraft())) return
+  resetForm()
   _showWindow()
   await loadSenderAccounts()
 
@@ -1943,34 +1997,172 @@ async function openScheduled(payload) {
   try { editor.value.focus() } catch {}
 }
 
+// ── Keyboard ───────────────────────────────────────────────────────────
+// Listened for in the capture phase, so the check for an open menu or
+// dialog sees it before Element Plus / TinyMCE close it on the same Escape.
+// (Keys typed inside the editor never reach this window — the editor passes
+// Escape, Ctrl+Enter and Ctrl+Shift+C/B up as events instead.)
+function isVisible(el) {
+  return el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
+}
+
+// Something layered over Compose that Escape should close first: a TinyMCE
+// menu or dialog, an Element Plus dialog / message box, or a dropdown,
+// select or popover (tooltips don't count).
+function hasOpenOverlay() {
+  if (document.querySelector('.tox-dialog-wrap, .tox-menu, .tox-pop')) return true
+  for (const el of document.querySelectorAll('.el-overlay, .el-popper:not(.is-dark)')) {
+    if (isVisible(el)) return true
+  }
+  return false
+}
+
+function composeHasFocus(target) {
+  const box = writeBoxRef.value
+  if (!box) return false
+  const node = target instanceof Node ? target : document.activeElement
+  // Nothing focused (a click on the dimmed page) still means Compose.
+  return box.contains(node) || box.contains(document.activeElement) || node === document.body
+}
+
+// Escape: closes the send-later panel first, then leaves the maximized
+// view, then closes Compose (which offers to keep the draft).
+// Returns whether it acted.
+function handleEscape() {
+  if (!show.value || windowState.value === 'minimized' || hasOpenOverlay()) return false
+  if (showSchedulePicker.value) cancelSchedulePicker()
+  else if (windowState.value === 'maximized') toggleMaximize()
+  else close()
+  return true
+}
+
+function focusField(name) {
+  nextTick(() => {
+    try { ({ to: toTagRef, cc: ccTagRef, bcc: bccTagRef })[name]?.value?.focus?.() } catch {}
+  })
+}
+
+// Gmail: Ctrl+Shift+C adds Cc, Ctrl+Shift+B adds Bcc.
+function runComposeShortcut(name) {
+  if (name === 'cc') { showCc.value = true; focusField('cc') }
+  else if (name === 'bcc') { showBcc.value = true; focusField('bcc') }
+}
+
+// Enter in the subject moves on to the message body (not while an IME is
+// still composing — that Enter only commits the characters).
+function subjectEnter(e) {
+  if (e.isComposing || e.keyCode === 229) return
+  e.preventDefault()
+  try { editor.value.focus() } catch {}
+}
+
 const handleKeyDown = (event) => {
-  if (event.key === 'Escape') {
-    close()
-  } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && show.value) {
+  if (!show.value || windowState.value === 'minimized') return
+  if (event.isComposing || event.keyCode === 229) return
+  const mod = event.ctrlKey || event.metaKey
+  if (event.key === 'Escape' && !mod && !event.altKey) {
+    // Open (not docked) Compose is a modal sheet, so Escape is its own
+    // whatever has focus — unless a menu or dialog is on top (handleEscape
+    // checks). Stopped once handled: the "save draft?" box close() may open
+    // would otherwise see this same Escape and dismiss itself straight away.
+    if (handleEscape()) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    return
+  }
+  if (!composeHasFocus(event.target) || hasOpenOverlay()) return
+  if (event.key === 'Enter' && mod) {
     event.preventDefault()
-    sendEmail()
+    event.stopPropagation()
+    if (!event.repeat) sendEmail()
+  } else if (mod && event.shiftKey && !event.altKey && (event.code === 'KeyC' || event.code === 'KeyB')) {
+    event.preventDefault()
+    event.stopPropagation()
+    runComposeShortcut(event.code === 'KeyC' ? 'cc' : 'bcc')
+  } else if (mod && event.shiftKey && !event.altKey && event.code === 'KeyF') {
+    event.preventDefault()
+    event.stopPropagation()
+    if (window.innerWidth >= 768) toggleMaximize()
+  } else if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') {
+    // Gmail: Ctrl+K inserts a link. Without this the app's command palette
+    // opened on top of the half-written mail.
+    event.preventDefault()
+    event.stopPropagation()
+    editor.value?.openLink?.()
   }
 };
 
 let autoSaveTimer = null
+let lastSavedSnapshot = ''
+
+function draftSnapshot() {
+  return JSON.stringify([form.sendEmail, form.subject, form.receiveEmail, form.cc, form.bcc,
+    form.content, form.attachments.length])
+}
+
+// The body has something the user put there — not just the signature block
+// Compose inserted on open.
+function bodyHasInput(html) {
+  const doc = new DOMParser().parseFromString(html || '', 'text/html')
+  doc.querySelectorAll('.psg-signature').forEach(el => el.remove())
+  return !!doc.body.textContent.trim() || !!doc.body.querySelector('img, table')
+}
+
+// True while the window holds nothing worth keeping: empty apart from the
+// signature, or a reply/forward exactly as it was opened.
+function isPristine() {
+  const content = editor.value?.getContent?.() ?? form.content
+  if (form.attachments.length && form.sendType !== 'forward') return false
+  if (!form.subject && !hasAnyRecipient() && !bodyHasInput(content)) return true
+  if (backReply.sendType === 'reply' || backReply.sendType === 'forward') {
+    const sameSubject = form.subject === backReply.subject
+    const sameContent = content === backReply.content
+    let sameRecipients = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]
+      && form.cc.length === 0 && form.bcc.length === 0
+    if (backReply.sendType === 'forward' && !hasAnyRecipient()) sameRecipients = true
+    return sameSubject && sameContent && sameRecipients
+  }
+  return false
+}
+
+// Opening another mail while one is being written keeps the open one as a
+// draft first (there is one Compose window), instead of overwriting it.
+// Returns false if that save failed — the caller then leaves it open.
+async function stashOpenDraft() {
+  if (!show.value) return true
+  form.content = editor.value?.getContent?.() ?? form.content
+  if (form.draftId || !isPristine()) {
+    try {
+      await saveDraft(form)
+    } catch {
+      ElMessage({ message: t('draftSaveFail'), type: 'error', plain: true })
+      windowState.value = windowState.value === 'minimized' ? 'normal' : windowState.value
+      return false
+    }
+    ElMessage({ message: t('draftKeptBeforeSwitch'), type: 'success', plain: true })
+  }
+  resetForm()
+  return true
+}
 
 async function autoSaveDraft() {
   if (!show.value) return
   const content = editor.value?.getContent?.() ?? form.content
-  if (!content && !form.subject && !hasAnyRecipient()) return
-  // Don't autosave a draft that only contains the signature with no user input
-  if (!form.subject && !hasAnyRecipient() && !form.draftId) {
-    const sigOnly = userStore.signatureList.some(sig => sig.html && content.includes(sig.html))
-    if (sigOnly) return
-  }
-
   form.content = content
+  // Nothing typed yet (only the signature, or a reply/forward as it was
+  // opened): no draft, like Gmail. Nothing changed since the last save: no
+  // second save and no second "saved" toast every 30 seconds.
+  if (!form.draftId && isPristine()) return
+  const snapshot = draftSnapshot()
+  if (form.draftId && snapshot === lastSavedSnapshot) return
 
   try {
     await persistDraft()
   } catch {
     return // tried again on the next tick
   }
+  lastSavedSnapshot = snapshot
 
   ElMessage({ message: t('autoSavedDraft'), type: 'success', plain: true, duration: 1500 })
 }
@@ -1990,12 +2182,12 @@ async function persistDraft() {
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keydown', handleKeyDown, true);
   autoSaveTimer = setInterval(autoSaveDraft, 30000)
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keydown', handleKeyDown, true);
   clearInterval(autoSaveTimer)
   window.removeEventListener('mousemove', onDrag)
   window.removeEventListener('mouseup', stopDrag)
@@ -2005,9 +2197,7 @@ function close() {
 
   if (selectStatus) openSelect();
 
-  if (!form.content) {
-    form.content = editor.value.getContent();
-  }
+  form.content = editor.value.getContent();
 
   if (form.draftId) {
     saveDraft(form).catch(() => ElMessage({ message: t('draftSaveFail'), type: 'error', plain: true }))
@@ -2016,25 +2206,10 @@ function close() {
     return true;
   }
 
-  if (!(form.content || form.subject || hasAnyRecipient())) {
+  if (isPristine()) {
     show.value = false
     resetForm()
     return true;
-  }
-
-  if (backReply.sendType === 'reply' || backReply.sendType === 'forward') {
-    let subjectFlag = form.subject === backReply.subject
-    let contentFlag = editor.value.getContent() === backReply.content
-    let receiveFlag = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]
-      && form.cc.length === 0 && form.bcc.length === 0
-    if (backReply.sendType === 'forward' && !hasAnyRecipient()) {
-      receiveFlag = true;
-    }
-    if (subjectFlag && contentFlag && receiveFlag) {
-      show.value = false
-      resetForm()
-      return true;
-    }
   }
 
   ElMessageBox.confirm(t('saveDraftConfirm'), {
@@ -3442,4 +3617,5 @@ function close() {
     background: var(--psg-border);
   }
 }
+
 </style>

@@ -65,6 +65,9 @@
           <el-dropdown-item @click="uiStore.aiAssistantShow = true">
             <div class="tb-menu-item"><Icon icon="psg:sparkles" width="16" height="16" /><span>{{ $t('aiAssistant') }}</span></div>
           </el-dropdown-item>
+          <el-dropdown-item @click="uiStore.shortcutsShow = true">
+            <div class="tb-menu-item"><Icon icon="psg:keyboard" width="16" height="16" /><span>{{ $t('shortcut') }}</span><kbd class="tb-menu-kbd">?</kbd></div>
+          </el-dropdown-item>
           <el-dropdown-item @click="router.push({ name: 'vpn' })">
             <div class="tb-menu-item"><Icon icon="psg:shield" width="16" height="16" /><span>{{ $t('vpn') }}</span></div>
           </el-dropdown-item>
@@ -159,9 +162,12 @@ function submitSearch() {
   router.push({ name: 'search', query: q ? { q } : {} })
 }
 function onSlash(e) {
-  if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+  if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return
   const tag = (e.target?.tagName || '').toLowerCase()
-  if (tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) return
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) return
+  if (e.target?.closest?.('.send, .el-overlay, .el-popper')) return
+  // Hidden top bar (phones): leave "/" to the layout, which opens Search.
+  if (!searchRef.value?.getClientRects().length) return
   e.preventDefault()
   searchRef.value?.focus()
 }
@@ -421,6 +427,15 @@ function clickLogout() {
 
   > svg:first-child { color: var(--psg-text-muted); }
   .tb-check { margin-left: auto; color: var(--psg-primary); }
+  .tb-menu-kbd {
+    margin-left: auto;
+    font-family: var(--psg-font-mono);
+    font-size: 11px;
+    color: var(--psg-text-muted);
+    border: 1px solid var(--psg-border);
+    border-radius: var(--psg-radius-xs);
+    padding: 0 5px;
+  }
 }
 
 .tb-menu-heading {
