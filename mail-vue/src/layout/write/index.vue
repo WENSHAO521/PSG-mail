@@ -81,7 +81,7 @@
         </div>
 
         <!-- To -->
-        <div class="field-row">
+        <div class="field-row to-row" :class="{ 'is-expanded': moreFields }">
           <span class="field-label">{{ $t('recipient') }}</span>
           <el-input-tag ref="toTagRef" class="field-tag" @add-tag="addTagChange" tag-type="primary"
                         @input="inputChange" size="default" v-model="form.receiveEmail">
@@ -103,11 +103,18 @@
             <span class="field-toggle" :class="{ 'is-on': form.requestReceipt }"
                   role="switch" :aria-checked="form.requestReceipt" :title="$t('readReceiptTip')"
                   @click.stop="form.requestReceipt = !form.requestReceipt">{{ $t('readReceipt') }}</span>
-            <button type="button" class="icon-btn-sm" :title="$t('recentContacts')"
-                    :aria-label="$t('recentContacts')" @click.stop="openContacts">
-              <Icon icon="psg:user-plus" width="14" height="14"/>
-            </button>
           </div>
+          <button type="button" class="icon-btn-sm" :title="$t('recentContacts')"
+                  :aria-label="$t('recentContacts')" @click.stop="openContacts">
+            <Icon icon="psg:user-plus" width="14" height="14"/>
+          </button>
+          <!-- Phones: Cc / Bcc / read receipt fold behind this caret, so the
+               recipients get the whole row (as in Gmail's app). -->
+          <button type="button" class="icon-btn-sm field-more" :aria-expanded="moreFields"
+                  :title="$t('cc') + ' / ' + $t('bcc')" :aria-label="$t('cc') + ' / ' + $t('bcc')"
+                  @click.stop="moreFields = !moreFields">
+            <Icon icon="psg:chevron-down" width="16" height="16"/>
+          </button>
         </div>
 
         <!-- Cc -->
@@ -153,6 +160,7 @@
         <div class="editor-wrap">
           <tinyEditor :def-value="defValue" ref="editor" radius="var(--compose-radius)"
                       toolbar-location="bottom"
+                      :toolbar="isPhone ? phoneToolbar : null" :toolbar-mode="isPhone ? 'scrolling' : 'wrap'"
                       :native-fullscreen="false" :fullscreen-active="windowState === 'maximized'"
                       @fullscreen="toggleMaximize" @escape="handleEscape" @shortcut="runComposeShortcut"
                       @change="change" @focus="focusChange" @submit="sendEmail" />
@@ -620,6 +628,11 @@ function stopDrag() {
   window.removeEventListener('mouseup', stopDrag)
 }
 const showCc = ref(false);
+const moreFields = ref(false);
+// Phones get one swipeable format row, everyday styles first and the
+// font pickers last, instead of the desktop row wrapped onto two lines.
+const isPhone = typeof window !== 'undefined' && window.innerWidth < 768
+const phoneToolbar = 'bold italic underline strikethrough | forecolor backcolor | alignformat listformat link | moreformat | fontfamily fontsize'
 const showBcc = ref(false);
 const percent = ref(0)
 let percentMessage = null
@@ -3688,4 +3701,91 @@ function close() {
   }
 }
 
+
+.field-more { display: none; }
+.subject-input { flex: 1; min-width: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   Phones — one white sheet, edge to edge, like the mail reader:
+   rows run full width on hairlines (no grey canvas, no inset cards),
+   the To row keeps its width for recipients (Cc / Bcc / read receipt
+   fold behind a caret), and the format bar is a single swipeable row.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .send:not([data-state="minimized"]),
+  .write-box:not([data-state="minimized"]) { background: var(--psg-surface); }
+
+  .container { padding: 0; background: var(--psg-surface); }
+
+  .wh { height: calc(56px + env(safe-area-inset-top, 0px)); padding-left: 16px; }
+  .wh-title { font-size: 17px; }
+
+  .field-row {
+    min-height: 48px;
+    margin: 0;
+    padding: 0 8px 0 16px;
+    gap: 4px;
+  }
+
+  .field-label { width: 52px; font-size: 14px; }
+
+  .field-row.from-row { flex-wrap: nowrap; padding-block: 4px; }
+  .from-chip { font-size: 14px; }
+  .from-email { display: none; }
+
+  /* Recipients get the row; the extras fold away behind the caret. */
+  .field-more { display: flex; }
+  .icon-btn-sm { width: 36px; height: 36px; }
+  .field-more svg { transition: transform var(--psg-dur-fast, .15s) ease; }
+  .to-row.is-expanded .field-more svg { transform: rotate(180deg); }
+  .to-row .field-actions { display: none; }
+  .to-row.is-expanded { flex-wrap: wrap; }
+  .to-row.is-expanded .field-actions {
+    display: flex;
+    order: 10;
+    flex-basis: 100%;
+    margin: 0;
+    padding: 0 0 8px 56px;
+    gap: 4px;
+  }
+  .field-toggle {
+    height: 30px;
+    padding: 0 10px;
+    background: transparent;
+    border: 1px solid var(--psg-border);
+    font-size: 13px;
+    color: var(--psg-text-secondary);
+  }
+  .field-toggle.is-on {
+    border-color: transparent;
+    background: var(--psg-primary-muted);
+    color: var(--psg-primary);
+  }
+
+  .el-input-tag.field-tag.is-focused { box-shadow: none !important; }
+  .el-input-tag.field-tag :deep(.el-tag) { max-width: 100%; }
+
+  .subject-row { min-height: 50px; }
+  :deep(.subject-input .el-input__wrapper.is-focus) {
+    box-shadow: none !important;
+    padding-left: 0 !important;
+    margin-left: 0;
+  }
+
+  .editor-wrap { min-height: 200px; }
+  .editor-wrap :deep(.tox .tox-editor-header) { padding: 2px 6px !important; }
+
+  .att-row { padding: 8px 16px 0; }
+
+  .toolbar-bar {
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 16px;
+    border-top: 0;
+  }
+  .toolbar-left { overflow: visible; gap: 0; }
+  .tb-btn { width: 40px; height: 40px; background: transparent; }
+  .tb-sep { margin: 0 4px 0 8px; }
+  .send-btn { height: 40px !important; min-width: 0 !important; padding: 0 18px !important;
+    border-radius: var(--psg-radius-sm) 0 0 var(--psg-radius-sm) !important; }
+  .send-group .send-later-btn { height: 40px !important; width: 40px !important; min-width: 40px !important; }
+}
 </style>
