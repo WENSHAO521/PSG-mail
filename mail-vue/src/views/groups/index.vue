@@ -64,7 +64,7 @@
         </div>
         <div v-else class="ct-list">
           <div class="ct-row" v-for="c in filteredContacts" :key="c.email">
-            <div class="grp-avatar">{{ ((c.name || c.email)[0] || '#').toUpperCase() }}</div>
+            <div class="grp-avatar is-person">{{ ((c.name || c.email)[0] || '#').toUpperCase() }}</div>
             <div class="ct-main">
               <div class="ct-name">
                 {{ c.name || c.email.split('@')[0] }}
@@ -660,6 +660,14 @@ function sendToGroup(g) {
   flex-shrink: 0;
 }
 
+/* People get the app's neutral round avatar (as in the mail list); a
+   square tile is kept for groups. */
+.grp-avatar.is-person {
+  border-radius: 50%;
+  background: var(--psg-surface-active);
+  color: var(--psg-text-secondary);
+}
+
 .grp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 .grp-name {
@@ -801,10 +809,10 @@ function sendToGroup(g) {
 }
 
 .row-avatar {
-  width: 28px; height: 28px; border-radius: var(--psg-radius-sm);
-  background: var(--psg-surface-muted);
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--psg-surface-active);
   border: 0;
-  color: var(--psg-text); font-size: 11px; font-weight: 500;
+  color: var(--psg-text-secondary); font-size: 11px; font-weight: 500;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 

@@ -461,7 +461,7 @@ import { useNotificationStore } from "@/store/notification.js"
 import dayjs from "dayjs"
 import PersonalForwarding from '@/components/personal-forwarding/index.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const accountStore = useAccountStore()
 const settingStore = useSettingStore()
 const mobileNavigation = useMobileNavigationStore()
@@ -1017,7 +1017,9 @@ const userInitial = computed(() => {
 const memberSinceText = computed(() => {
   const raw = userStore.user?.account?.createTime
   const d = raw && dayjs(raw)
-  return d && d.isValid() ? d.format('MMM D, YYYY') : '—'
+  if (!d || !d.isValid()) return '—'
+  // 'MMM D, YYYY' with the zh locale printed "11月 23, 2026".
+  return d.format(locale.value === 'en' ? 'MMM D, YYYY' : 'YYYY年M月D日')
 })
 
 // Backend convention: 0 (or null) on role.sendCount/accountCount means the
@@ -1429,7 +1431,9 @@ function submitPwd() {
 }
 
 /* ── Cloud backup ── */
-.backup-body {
+/* Two classes so this outranks the .card-body padding declared further
+   down (it lost, which indented the rows and the empty state twice). */
+.card-body.backup-body {
   gap: 0;
   padding: 0;
 }
@@ -1468,7 +1472,7 @@ function submitPwd() {
 }
 
 .backup-empty-state {
-  padding: 24px;
+  padding: 20px;
   font-size: 13px;
   color: var(--psg-text-secondary);
 }

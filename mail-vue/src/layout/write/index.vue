@@ -153,7 +153,7 @@
         <div class="field-row subject-row">
           <span class="field-label">{{ $t('subject') }}</span>
           <el-input class="subject-input" v-model="form.subject"
-                    :placeholder="t('subject')" @keydown.enter="subjectEnter" />
+                    :aria-label="t('subject')" @keydown.enter="subjectEnter" />
         </div>
 
         <!-- Editor -->
@@ -517,6 +517,29 @@ const headerFallback = computed(() => form.sendType === 'reply' ? t('reply')
   : form.sendType === 'forward' ? t('forward') : t('newMessage'))
 const show = ref(false);
 const windowState = ref('normal'); // 'normal' | 'minimized' | 'maximized'
+
+// Closing Compose hides it with v-show, and focus stayed in the hidden
+// editor iframe: keydown never reached the window again, so every shortcut
+// (j/k, e, #, c…) was dead until the user clicked the page. Hand focus back
+// to what had it before Compose opened, or to the page.
+let focusBeforeCompose = null
+watch(show, (open) => {
+  if (open) {
+    const active = document.activeElement
+    focusBeforeCompose = active && active !== document.body && !active.closest?.('.send') ? active : null
+    return
+  }
+  nextTick(() => {
+    const active = document.activeElement
+    if (active && active !== document.body && active.closest?.('.send')) {
+      active.blur?.()
+      const back = focusBeforeCompose
+      if (back?.isConnected && back.offsetParent !== null) back.focus?.({ preventScroll: true })
+      else window.focus()
+    }
+    focusBeforeCompose = null
+  })
+})
 function toggleMinimize() {
   windowState.value = windowState.value === 'minimized' ? 'normal' : 'minimized'
 }

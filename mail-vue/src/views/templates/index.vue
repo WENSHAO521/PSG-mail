@@ -828,7 +828,7 @@ function useTemplate(tpl) {
 
 .save-btn { border-radius: var(--psg-radius-sm) !important; font-weight: 500 !important; }
 
-.editor-fields { display: flex; flex-direction: column; gap: 16px; max-width: 900px; }
+.editor-fields { display: flex; flex-direction: column; gap: 16px; }
 
 /* Name + Category side by side */
 .field-row {
@@ -883,10 +883,12 @@ function useTemplate(tpl) {
   :deep(.el-select__wrapper) { border-radius: var(--psg-radius-sm) !important; }
 }
 
+/* A hairline like the fields above it, so the body reads as one field
+   (the muted fill left the white text area with no visible edge). */
 .editor-frame {
-  height: 320px;
-  border: 0;
-  background: var(--psg-surface-muted);
+  height: 360px;
+  border: 1px solid var(--psg-border);
+  background: var(--psg-surface);
   border-radius: var(--psg-radius-sm); overflow: hidden;
 }
 </style>

@@ -193,9 +193,16 @@ function updateContent() {
           font-weight: 700;
       }
 
+      /* Paragraphs keep the spacing their author's client gave them (as
+         Gmail and Outlook show them); margin: 0 ran a <p>-built mail into
+         one block of text. The first and last lose their outer margin so
+         the mail still starts flush under the header. */
       p {
-        margin: 0;
+        margin: 1em 0;
       }
+
+      .shadow-content > p:first-child { margin-top: 0; }
+      .shadow-content > p:last-child { margin-bottom: 0; }
 
       a {
         text-decoration: none;

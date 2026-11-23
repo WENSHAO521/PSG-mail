@@ -357,8 +357,12 @@ const ringClamped = computed(() => Math.max(0, Math.min(100, Math.round(ringPct.
 const senderTotalCount = computed(() => senderData.value.reduce((s, d) => s + d.value, 0))
 const senderMaxValue = computed(() => senderData.value.reduce((m, d) => Math.max(m, d.value), 0) || 1)
 
+// Share of all received mail, not of the six senders listed: with the
+// top-6 sum as the base, six senders of one mail each read 17% apiece out
+// of twelve mails.
 function senderPct(item) {
-  return senderTotalCount.value ? Math.round(item.value / senderTotalCount.value * 100) : 0
+  const base = Math.max(receiveTotal.value || 0, senderTotalCount.value)
+  return base ? Math.round(item.value / base * 100) : 0
 }
 
 function senderBarWidth(item) {
@@ -826,7 +830,7 @@ function createEmailColumnChart() {
 }
 
 .page-outer {
-  max-width: 1240px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 40px 32px 64px;
   display: grid;

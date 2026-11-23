@@ -195,6 +195,16 @@ html.dark {
   border-radius: var(--psg-radius-sm) !important;
 }
 
+/* Desktop: one control height. Element Plus sizes an input from
+   --el-component-size but hard-codes selects (32 / small 24) and buttons
+   (32), so the 36px root value put a 36px input next to a 32px select or
+   button in the same row, and a small select (24) under a small input (28).
+   Pointer layouts use 32 like EP's own buttons; touch layouts keep 36. */
+@media (min-width: 1025px) {
+  :root { --el-component-size: 32px; }
+  .el-select--small .el-select__wrapper { min-height: var(--el-component-size-small); }
+}
+
 :where(.el-message, .el-popover, .el-popper, .el-dropdown-menu, .el-select-dropdown, .el-picker-panel) {
   border-radius: var(--psg-radius-md) !important;
 }

@@ -80,6 +80,9 @@
           <el-dropdown-item v-for="option in languageOptions" :key="option.value"
                             @click="changeLanguage(option.value)">
             <div class="tb-menu-item" role="menuitemradio" :aria-checked="activeLanguage === option.value">
+              <!-- Icon-width spacer: the language names line up with the
+                   labels of the items above instead of their icons. -->
+              <span class="tb-icon-slot" aria-hidden="true" />
               <span>{{ option.label }}</span>
               <Icon v-if="activeLanguage === option.value" icon="psg:check-circle" width="15" height="15" class="tb-check" />
             </div>
@@ -427,6 +430,7 @@ function clickLogout() {
 
   > svg:first-child { color: var(--psg-text-muted); }
   .tb-check { margin-left: auto; color: var(--psg-primary); }
+  .tb-icon-slot { width: 16px; flex-shrink: 0; }
   .tb-menu-kbd {
     margin-left: auto;
     font-family: var(--psg-font-mono);

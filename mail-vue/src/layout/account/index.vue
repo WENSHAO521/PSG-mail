@@ -699,7 +699,7 @@ path[fill="#ffdda1"] {
       height: 32px;
       padding: 0 14px;
       border: 0;
-      border-radius: var(--psg-radius-full);
+      border-radius: var(--psg-radius-sm);
       background: var(--psg-primary);
       color: var(--psg-on-primary);
       font: inherit;
@@ -764,9 +764,11 @@ path[fill="#ffdda1"] {
     flex-shrink: 0;
     width: 36px;
     height: 36px;
-    border-radius: var(--psg-radius-sm);
-    background: var(--psg-primary);
-    color: var(--psg-on-primary);
+    /* Neutral circle like every other avatar in the app (it was the one
+       accent-filled square left). */
+    border-radius: 50%;
+    background: var(--psg-surface-active);
+    color: var(--psg-text-secondary);
     font-weight: 500;
     font-size: 14px;
     display: flex;
