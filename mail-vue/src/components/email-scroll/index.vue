@@ -149,7 +149,7 @@
               <Icon icon="psg:archive" width="18" /><span>{{ $t('archive') }}</span>
             </div>
             <!-- Proof row: margin mark (unread) · avatar · name/time, subject,
-                 arrived-on chip + preview (the admin All Mail list shows owner → peer). -->
+                 arrived-on chip + preview (the admin All Mail list shows sender → recipient). -->
             <div
               class="mrow"
               :style="rowSwipeStyle(item)"
@@ -220,7 +220,7 @@
                   </span>
                   <span v-if="mailboxChip(item)" class="mailbox-chip" :style="{ '--chip': mailboxColor(mailboxChip(item)) }"
                         :title="mailboxChip(item)">{{ mailboxChip(item).split('@')[0] }}</span>
-                  <span v-if="showUserInfo" class="mrow-preview">{{ item.userEmail }} → {{ item.type === 0 ? item.toEmail : item.sendEmail }}</span>
+                  <span v-if="showUserInfo" class="mrow-preview">{{ mailFlow(item) }}</span>
                   <span v-else class="mrow-preview">{{ item.formatText }}</span>
                 </div>
               </div>
@@ -611,9 +611,21 @@ function htmlToText(email) {
   return ''
 }
 
+// Admin All Mail: which way the mail went. A received mail (type 0) ran
+// sender → the owning mailbox; a sent one ran the owner → its recipient.
+// (It used to print the owner on both sides of a received mail.)
+function mailFlow(item) {
+  return item.type === 0
+    ? `${item.sendEmail} → ${item.toEmail || item.userEmail}`
+    : `${item.sendEmail || item.userEmail} → ${item.toEmail}`
+}
+
 function cleanSpace(text) {
+  // Zero-width and soft-hyphen characters go; a no-break or ideographic
+  // space is still a space ("Hello&nbsp;world" used to read "Helloworld").
   return text
-    .replace(/[​-‏﻿͏ 　­]/g, '')
+    .replace(/[​-‏﻿͏­]/g, '')
+    .replace(/[ 　]/g, ' ')
     .replace(/\s+/g, ' ').trim();
 }
 

@@ -436,10 +436,15 @@ function actionLabel(action, actionValue) {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 44px;
-  padding-inline: 20px;
-  border-radius: var(--psg-radius-md) !important;
+  min-height: 36px;
+  padding-inline: 16px;
+  border-radius: var(--psg-radius-sm) !important;
   font-weight: 500;
+
+  @media (max-width: 1024px) {
+    min-height: 44px;
+    padding-inline: 20px;
+  }
 }
 
 .primary-action {

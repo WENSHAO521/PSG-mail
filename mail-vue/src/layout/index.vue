@@ -615,10 +615,15 @@ onBeforeUnmount(() => {
   gap: 8px 20px;
   @media (max-width: 600px) { grid-template-columns: minmax(0, 1fr); }
 }
+/* Keys sit in a fixed column so every description starts on one line
+   (they used to start wherever a wider keycap like "Ctrl Shift L / E / R"
+   pushed them). */
 .sc-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 156px minmax(0, 1fr);
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  .sc-key { justify-self: start; }
 }
 .sc-key {
   font-family: var(--psg-font-mono);

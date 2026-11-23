@@ -1,5 +1,6 @@
 import http from '@/axios/index.js';
 import { withUnreadRefresh } from '@/utils/unread-counts.js';
+import { useNotificationStore } from '@/store/notification.js';
 
 export function emailList(accountId, allReceive, emailId, timeSort, size, type, unread = 0) {
     return http.get('/email/list', {params: {accountId, allReceive, emailId, timeSort, size, type, unread}})
@@ -29,6 +30,9 @@ export function emailSearch(query, accountId, allReceive, cursor, size) {
 }
 
 export function emailRead(emailIds) {
+    // A mail read anywhere clears its bell notification too (the bell kept
+    // counting mail that had already been opened).
+    try { useNotificationStore().markRead(emailIds) } catch {}
     return withUnreadRefresh(http.put('/email/read', {emailIds}))
 }
 

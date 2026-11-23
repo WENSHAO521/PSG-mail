@@ -111,7 +111,7 @@ function primaryAction() {
 </style>
 <style scoped lang="scss">
 .page-outer {
-  max-width: 1320px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 40px 32px 64px;
   @media (max-width: 960px) { padding: 24px 24px 40px; }

@@ -88,5 +88,12 @@ export function htmlToPlainText(html) {
   const stripped = String(html || '').replace(/<(img|iframe|object|embed|video|audio|source|link|image|input)\b[^>]*>/gi, '')
   const body = new DOMParser().parseFromString(stripped, 'text/html').body
   body.querySelectorAll('script, style, title').forEach(el => el.remove())
+  // textContent runs block elements together ("<p>Hello,</p><p>This" read
+  // "Hello,This" in the list preview). Mark block and line breaks first.
+  body.querySelectorAll('br').forEach(el => el.replaceWith('\n'))
+  body.querySelectorAll(PREVIEW_BLOCKS).forEach(el => el.append(' '))
   return body.textContent || ''
 }
+
+const PREVIEW_BLOCKS = 'p, div, li, tr, td, th, h1, h2, h3, h4, h5, h6, blockquote, pre, section, article, header, footer, table, ul, ol, dt, dd'
+

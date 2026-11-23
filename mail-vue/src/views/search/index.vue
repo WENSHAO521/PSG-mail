@@ -1,5 +1,6 @@
 <template>
   <div class="search-page">
+    <h2 class="search-title">{{ $t('search') }}</h2>
     <div class="search-bar-row">
       <div class="search-input-wrap">
         <Icon icon="psg:search" width="18" height="18" class="search-icon"/>
@@ -224,16 +225,27 @@ function openResult(item) {
 .search-page {
   height: 100%;
   overflow-y: auto;
-  padding: 16px 16px 40px;
+  padding: 20px 20px 40px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   background: var(--psg-surface);
 }
 
+/* Same header rhythm as the other mail lists (email-scroll's explorer
+   head): serif title, then a 36px hairline search field. */
+.search-title {
+  margin: 0 0 -2px;
+  font-family: var(--psg-font-display);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 32px;
+  color: var(--psg-text);
+}
+
 .search-bar-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .search-input-wrap {
@@ -242,12 +254,13 @@ function openResult(item) {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 14px;
-  background: var(--psg-surface-muted);
-  border: 1px solid transparent;
-  border-radius: var(--psg-radius-md);
-  &:focus-within { border-color: var(--psg-primary); }
+  height: 36px;
+  padding: 0 10px;
+  background: var(--psg-surface);
+  border: 0;
+  border-radius: var(--psg-radius-sm);
+  box-shadow: inset 0 0 0 1px var(--psg-border);
+  &:focus-within { box-shadow: inset 0 0 0 1px var(--psg-primary), 0 0 0 3px var(--psg-primary-muted); }
 }
 
 .search-icon { color: var(--psg-text-secondary); flex-shrink: 0; }
@@ -265,7 +278,7 @@ function openResult(item) {
   font-variant-numeric: tabular-nums;
 }
 
-.search-go-btn { border-radius: var(--psg-radius-md) !important; height: 44px; padding: 0 20px; }
+.search-go-btn { height: 36px; padding: 0 16px; }
 
 .search-operator-hint {
   display: flex;
@@ -407,4 +420,12 @@ function openResult(item) {
 .result-att-icon { color: var(--psg-text-secondary); flex-shrink: 0; }
 
 .load-more-row { display: flex; justify-content: center; padding: 8px 0; }
+
+/* Touch layouts have their own header and keep the larger targets. */
+@media (max-width: 1024px) {
+  .search-page { padding: 16px 16px 40px; }
+  .search-title { display: none; }
+  .search-input-wrap { height: 44px; padding: 0 14px; }
+  .search-go-btn { height: 44px; padding: 0 20px; }
+}
 </style>

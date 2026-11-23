@@ -66,28 +66,28 @@ const listRef = ref(null)
 
 const allActions = computed(() => [
   {
-    id: 'compose', group: t('compose'), label: t('compose'),
+    id: 'compose', group: t('shortcutActions'), label: t('compose'),
     icon: 'psg:compose', shortcut: 'C',
     action: () => uiStore.writerRef?.open?.()
   },
   {
     id: 'inbox', group: t('navigate'), label: t('inbox'),
-    icon: 'psg:inbox',
+    icon: 'psg:inbox', shortcut: 'G I',
     action: () => router.push({ name: 'email' })
   },
   {
     id: 'sent', group: t('navigate'), label: t('sent'),
-    icon: 'psg:send',
+    icon: 'psg:send', shortcut: 'G S',
     action: () => router.push({ name: 'send' })
   },
   {
     id: 'drafts', group: t('navigate'), label: t('drafts'),
-    icon: 'psg:draft',
+    icon: 'psg:draft', shortcut: 'G D',
     action: () => router.push({ name: 'draft' })
   },
   {
     id: 'starred', group: t('navigate'), label: t('starred'),
-    icon: 'psg:bookmark',
+    icon: 'psg:star', shortcut: 'G T',
     action: () => router.push({ name: 'star' })
   },
   {
@@ -127,7 +127,7 @@ const allActions = computed(() => [
   },
   {
     id: 'theme', group: t('appearance'), label: uiStore.dark ? t('lightMode') : t('darkMode'),
-    icon: uiStore.dark ? 'mingcute:sun-fill' : 'solar:moon-linear',
+    icon: uiStore.dark ? 'psg:sun' : 'psg:moon',
     action: () => uiStore.toggleDark()
   },
 ])
@@ -230,6 +230,7 @@ defineExpose({ open, close })
   width: min(580px, calc(100vw - 32px));
   background: var(--psg-surface);
   border: 1px solid var(--psg-border);
+  border-radius: var(--psg-radius-lg);
   box-shadow: var(--psg-shadow-lg);
   overflow: hidden;
   display: flex;
@@ -290,7 +291,7 @@ defineExpose({ open, close })
 }
 
 .result-group-label {
-  font-size: 9.5px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--psg-text-secondary);
   padding: 8px 10px 4px;

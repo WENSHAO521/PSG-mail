@@ -49,7 +49,11 @@ export const useNotificationStore = defineStore('notification', {
               read: !row.unread,
             })
           }
-          this.items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+          // Newest first. Mail that arrives in one burst shares a second-
+          // resolution created_at, so the event id breaks the tie (the panel
+          // used to list such a burst oldest first).
+          this.items.sort((a, b) => (new Date(b.time).getTime() - new Date(a.time).getTime())
+            || ((Number(b.eventId) || 0) - (Number(a.eventId) || 0)))
           if (this.items.length > 100) this.items.length = 100
           persistedLoaded = true
         } catch {
@@ -81,11 +85,16 @@ export const useNotificationStore = defineStore('notification', {
       this.items.forEach(n => { n.read = true })
       try { await notificationEventsReadAll() } catch {}
     },
-    async markRead(emailId) {
+    // Accepts one id or a list. Only notifications still unread here are
+    // sent to the server, so opening an old mail costs no request.
+    async markRead(emailIds) {
+      const wanted = new Set((Array.isArray(emailIds) ? emailIds : [emailIds]).map(String))
+      const ids = []
       this.items.forEach(n => {
-        if (String(n.emailId) === String(emailId)) n.read = true
+        if (n.read || !wanted.has(String(n.emailId))) return
+        n.read = true
+        if (n.eventId) ids.push(n.eventId)
       })
-      const ids = this.items.filter(n => String(n.emailId) === String(emailId) && n.eventId).map(n => n.eventId)
       if (ids.length) {
         try { await notificationEventsRead(ids) } catch {}
       }

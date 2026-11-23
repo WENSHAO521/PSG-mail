@@ -153,7 +153,7 @@
                 </div>
                 <div class="forward">
                   <span>{{ setting.autoCleanDays > 0 ? $t('autoCleanRetain', { days: setting.autoCleanDays }) : $t('disabled') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openAutoClean">
+                  <el-button class="opt-button" size="small" @click="openAutoClean">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -383,7 +383,7 @@
                 </div>
                 <div class="r2domain">
                   <span>{{ setting.r2Domain || '' }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="r2DomainShow = true">
+                  <el-button class="opt-button" size="small" @click="r2DomainShow = true">
                     <Icon icon="psg:edit" width="16" height="16"/>
                   </el-button>
                 </div>
@@ -393,7 +393,7 @@
                   <span>{{ $t('s3Configuration') }}</span>
                 </div>
                 <div class="r2domain">
-                  <el-button class="opt-button" size="small" type="primary" @click="addS3Show = true">
+                  <el-button class="opt-button" size="small" @click="addS3Show = true">
                     <Icon icon="psg:settings" width="16" height="16"/>
                   </el-button>
                 </div>
@@ -418,7 +418,7 @@
                 <div><span>{{ $t('tgBot') }}</span></div>
                 <div class="forward">
                   <span>{{ setting.tgBotStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openTgSetting">
+                  <el-button class="opt-button" size="small" @click="openTgSetting">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -427,7 +427,7 @@
                 <div><span>{{ $t('otherEmail') }}</span></div>
                 <div class="forward">
                   <span>{{ setting.forwardStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openThirdEmailSetting">
+                  <el-button class="opt-button" size="small" @click="openThirdEmailSetting">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -436,7 +436,7 @@
                 <div><span>{{ $t('webhook') }}</span></div>
                 <div class="forward">
                   <span>{{ setting.webhookStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openWebhookSetting">
+                  <el-button class="opt-button" size="small" @click="openWebhookSetting">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -452,7 +452,7 @@
                 </div>
                 <div class="forward">
                   <span>{{ setting.alibabaSmtpConfigured ? $t('providerStatusNormal') : $t('providerStatusUnconfigured') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openAlibabaForm">
+                  <el-button class="opt-button" size="small" @click="openAlibabaForm">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -461,7 +461,7 @@
                 <div><span>{{ $t('forwardingRules') }}</span></div>
                 <div class="forward">
                   <span>{{ setting.ruleType === 0 ? $t('forwardAll') : $t('rules') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openForwardRules">
+                  <el-button class="opt-button" size="small" @click="openForwardRules">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -477,7 +477,7 @@
               <div class="setting-item">
                 <div><span>{{ $t('signUpVerification') }}</span></div>
                 <div>
-                  <el-button class="opt-button" size="small" type="primary" @click="openRegVerifyCount">
+                  <el-button class="opt-button" size="small" @click="openRegVerifyCount">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                   <el-select
@@ -496,7 +496,7 @@
               <div class="setting-item">
                 <div><span>{{ $t('addEmailVerification') }}</span></div>
                 <div>
-                  <el-button class="opt-button" size="small" type="primary" @click="openAddVerifyCount">
+                  <el-button class="opt-button" size="small" @click="openAddVerifyCount">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                   <el-select
@@ -516,7 +516,7 @@
                 <div><span>{{ $t('turnstileSiteKey') }}</span></div>
                 <div class="bot-verify">
                   <span>{{ setting.siteKey }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
+                  <el-button class="opt-button" size="small" @click="turnstileShow = true">
                     <Icon icon="psg:edit" width="16" height="16"/>
                   </el-button>
                 </div>
@@ -525,7 +525,7 @@
                 <div><span>{{ $t('turnstileSecretKey') }}</span></div>
                 <div class="bot-verify">
                   <span> {{ setting.secretKey }} </span>
-                  <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
+                  <el-button class="opt-button" size="small" @click="turnstileShow = true">
                     <Icon icon="psg:edit" width="16" height="16"/>
                   </el-button>
                 </div>
@@ -540,7 +540,7 @@
                 <div><span>{{ $t('noticePopup') }}</span></div>
                 <div class="forward">
                   <span>{{ setting.notice === 0 ? $t('enabled') : $t('disabled') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openNoticePopupSetting">
+                  <el-button class="opt-button" size="small" @click="openNoticePopupSetting">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -548,7 +548,7 @@
               <div class="setting-item">
                 <div><span>{{ $t('popUp') }}</span></div>
                 <div class="forward">
-                  <el-button class="opt-button" size="small" type="primary" @click="openNoticePopup">
+                  <el-button class="opt-button" size="small" @click="openNoticePopup">
                     <Icon icon="psg:cursor" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -575,7 +575,7 @@
               <div class="setting-item">
                 <div><span>{{ $t('codeRecognitionRules') }}</span></div>
                 <div class="forward">
-                  <el-button class="opt-button" size="small" type="primary" @click="openAiCodeFilter">
+                  <el-button class="opt-button" size="small" @click="openAiCodeFilter">
                     <Icon icon="psg:settings" width="18" height="18"/>
                   </el-button>
                 </div>
@@ -2697,9 +2697,12 @@ function editSetting(settingForm, refreshStatus = true) {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
-  /* The tiles carry the grey themselves; no well behind them. */
+  /* The tiles carry their own hairline; no card or well behind them (the
+     .card-content frame drew a second border 1px outside each tile). */
   padding: 0 !important;
   background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
 }
 
 .provider-config-section {
@@ -3160,6 +3163,9 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .ai-service-status {
   flex: 0 0 auto;
+  /* A status chip, not a field: keep it to its text at the row's end
+     (the grid cell stretched it into an empty 150px pill). */
+  justify-self: end;
   padding: 4px 8px;
   border-radius: var(--psg-radius-xs);
   font-size: 12px;

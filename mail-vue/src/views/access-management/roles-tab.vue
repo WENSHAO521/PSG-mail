@@ -452,9 +452,11 @@ defineExpose({ openCreate: openAddRole })
   gap: 14px;
 }
 
+/* A hairline card like the rest of the admin pages; the grey fill was the
+   last "well" left after the redesign. */
 .role-card {
-  background: var(--psg-surface-muted);
-  border: 0;
+  background: var(--psg-surface);
+  border: 1px solid var(--psg-border);
   border-radius: var(--psg-radius-md);
   padding: 16px;
   display: flex;
